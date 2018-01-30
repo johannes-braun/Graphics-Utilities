@@ -1,0 +1,18 @@
+if(APPLE)
+    message( FATAL_ERROR "I don't think it's a great idea to have it MacOS compatible." )
+elseif(WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest /MP")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:libcmt /ignore:4098,4099")
+
+    include("${AS_EXTENSIONS}/libraries_win32.cmake")
+elseif(UNIX)
+    if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+        set(CMAKE_CXX_COMPILER "g++-7")
+        set(CMAKE_C_COMPILER "gcc-7")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fopenmp")
+    elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -fopenmp")
+    endif()
+
+    include("${AS_EXTENSIONS}/libraries_unix.cmake")
+endif()

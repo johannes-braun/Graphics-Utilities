@@ -1,0 +1,94 @@
+#pragma once
+
+vec3 bsdf_correct_facet_normal(const in vec3 view, const in vec3 facet_normal, const in vec3 normal)
+{
+    const vec3 mid = normalize(cross(cross(view, normal), view) + normal);
+    return dot(facet_normal, view) > dot(mid, view) ? reflect(-facet_normal, mid) : facet_normal;
+}
+
+vec3 bsdf_local_to_world(const in vec3 vector, const in vec3 normal) {
+    // Find an axis that is not parallel to normal
+    vec3 u = normalize(cross(normal, (abs(normal.x) <= 0.6f) ? vec3(1, 0, 0) : vec3(0, 1, 0)));
+    mat3 transform = mat3(u, cross(normal, u), normal);
+    return normalize(transform * vector);
+}
+
+bsdf bsdf_reflection(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness)
+{
+    const float m_dot_in = dot(-view, facet_normal);
+    const float geometry = ggx_geometry(view, outgoing, normal, facet_normal, roughness);
+    bsdf result;
+    result.irradiance = vec3(0);
+    result.radiance = geometry / m_dot_in;
+    return result;
+}
+
+float bsdf_normal_response(float ior, float metalness)
+{
+  float response = abs((1-ior) / (1+ior));
+  response = response * response;
+  return mix(response, 1.f, metalness);
+}
+
+float bsdf_fresnel(const in vec3 view, const in vec3 normal, float ior, float metalness)
+{
+    float norm_response = bsdf_normal_response(ior, metalness); 
+    return clamp(norm_response + (1-norm_response) * pow(1 - max(dot(-view, normal), 0), 5), 0, 1);
+}
+
+int bsdf_largest_component(const in vec3 vector)
+{
+    return int(vector.y > vector.x || vector.z > vector.x) + int(vector.z > vector.y && vector.z > vector.x);
+}
+
+bsdf_env_sample bsdf_env_get_sample(samplerCube map, 
+    const in vec3 view,
+    const in vec3 normal,
+    float ior,
+    float roughness_squared,
+    float coat_roughness_squared)
+{ 
+    bsdf_env_sample cm_sample; 
+    cm_sample.reflection_vector = reflect(view, normal);
+    cm_sample.transmission_vector = refract(view, normal, 1.f/ior);
+    if(isnan(cm_sample.transmission_vector.x))
+        cm_sample.transmission_vector = cm_sample.reflection_vector;
+
+    ivec2 img_size2 = textureSize(map, 0); 
+    float mipmapLevel = textureQueryLod(map, cm_sample.reflection_vector).x;
+    float rough_scaling = log2(max(roughness_squared * img_size2.x, 1));   
+    float rough_scaling_coat = log2(max(coat_roughness_squared * img_size2.x, 1));   
+    cm_sample.reflection_color = vec3(0); 
+    cm_sample.transmission_color = vec3(0);
+    vec2 cms = 2.f*vec2(textureSize(map, int(max(mipmapLevel, rough_scaling))));
+    vec2 cmsc = 2.f*vec2(textureSize(map, int(max(mipmapLevel, rough_scaling_coat))));
+    vec2 inv_cms = 1.f / cms; 
+    vec2 inv_cmsc = 1.f / cmsc; 
+    for(int i=0; i<bsdf_env_sampling_offset_count; ++i)
+    {  
+        vec2 offset = bsdf_env_sampling_offsets[i] * inv_cms;
+        vec2 offsetc = bsdf_env_sampling_offsets[i] * inv_cmsc;
+
+        vec3 off_vec = cm_sample.reflection_vector;
+        int l_rf_cm = bsdf_largest_component(cm_sample.reflection_vector);
+        off_vec[(l_rf_cm+1) % 3] += offset.x;
+        off_vec[(l_rf_cm+2) % 3] += offset.y;
+        cm_sample.reflection_color += 0.2f * textureLod(map, normalize(off_vec), max(mipmapLevel, rough_scaling)).rgb;
+
+        off_vec = cm_sample.reflection_vector;
+        l_rf_cm = bsdf_largest_component(cm_sample.reflection_vector);
+        off_vec[(l_rf_cm+1) % 3] += offsetc.x;
+        off_vec[(l_rf_cm+2) % 3] += offsetc.y;
+        cm_sample.reflection_color_coat += 0.2f * textureLod(map, normalize(off_vec), max(mipmapLevel, rough_scaling_coat)).rgb;
+
+        off_vec = cm_sample.transmission_vector;
+        int l_rr_cm = bsdf_largest_component(cm_sample.transmission_vector);
+
+        off_vec[(l_rr_cm+1) % 3] += offset.x;
+        off_vec[(l_rr_cm+2) % 3] += offset.y;
+        cm_sample.transmission_color += 0.2f * textureLod(map, normalize(off_vec), max(mipmapLevel, rough_scaling)).rgb;
+    } 
+
+    cm_sample.diffuse_color = textureLod(map, normal, log2(max(img_size2.x, 1))).rgb;
+    return cm_sample;
+}

@@ -1,0 +1,28 @@
+string(TOUPPER ${CMAKE_BUILD_TYPE} uppercase_CMAKE_BUILD_TYPE)
+if(uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG)$")
+    set(LIB_PATH_APPENDIX "dbg")
+elseif(uppercase_CMAKE_BUILD_TYPE MATCHES "^(RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
+    set(LIB_PATH_APPENDIX "")
+else ()
+    message(FATAL_ERROR "Invalid value for CMAKE_BUILD_TYPE: ${uppercase_CMAKE_BUILD_TYPE}")
+endif()
+
+MACRO(add_ext_lib result filename filepath)
+    set(${result} ${filepath}/${filename})
+    #message(${filepath} ${filename})
+    #find_library(result NAMES ${filename} HINTS ${filepath})
+    message("${result}: at " ${${result}})
+    list(APPEND LIBRARIES ${${result}})
+ENDMACRO()
+
+add_ext_lib(LIBGLFW    glfw3.lib               ${AS_EXTERN_LIBRARIES_PATH}/glfw/win32/)
+add_ext_lib(LIBASSIMP  assimp-vc140-mt.lib     ${AS_EXTERN_LIBRARIES_PATH}/assimp/win32/)
+add_ext_lib(LIBGLAD    glad.lib                ${AS_EXTERN_LIBRARIES_PATH}/glad/win32/)
+add_ext_lib(LIBGLPP    glpp.lib                ${AS_EXTERN_LIBRARIES_PATH}/glpp/win32_x64/${LIB_PATH_APPENDIX})
+add_ext_lib(LIBIMGUI   imgui.lib               ${AS_EXTERN_LIBRARIES_PATH}/imgui/win32/${LIB_PATH_APPENDIX})
+add_ext_lib(LIBOPENAL  OpenAL32.lib            ${AS_EXTERN_LIBRARIES_PATH}/al/win32/)
+
+list(APPEND LIBRARIES opengl32)
+
+file(COPY ${AS_EXTERN_LIBRARIES_PATH}/assimp/win32/assimp-vc140-mt.dll DESTINATION ${AS_BINARY_DIR})
+file(COPY ${AS_EXTERN_LIBRARIES_PATH}/al/win32/OpenAL32.dll DESTINATION ${AS_BINARY_DIR})

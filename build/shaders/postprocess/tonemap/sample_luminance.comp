@@ -1,0 +1,39 @@
+const int size_x = 8;
+const int size_y = 4;
+const float inv_size_x = 1.f / size_x;
+const float inv_size_y = 1.f / size_y;
+
+layout(local_size_x = size_x, local_size_y = size_y) in;
+
+layout(std430, binding = 1) restrict writeonly buffer AccumulationBuffer
+{
+    float accumulated_luminance[];
+};
+
+uniform sampler2D src_texture;
+uniform float sample_scaling = 0.35f;
+
+const vec3 luma = vec3(0.299f, 0.587f, 0.114f);
+
+const int search_radius = 1;
+const float search_radius_correction = 1/(2.f*search_radius+1);
+const float search_sample_width = 16.f;
+uniform float minimum_luminance = 0.01f;
+uniform float maximum_luminance = 5.f;
+
+void main()
+{
+    const vec2 target_pixel = vec2(gl_LocalInvocationID.xy) - 0.5f * vec2(size_x, size_y);
+    const vec2 texture_size = vec2(textureSize(src_texture, 0));
+
+    const vec2 center = texture_size * 0.5f;
+
+    const vec2 pixel = center + target_pixel * texture_size * sample_scaling * vec2(inv_size_x, inv_size_y);
+
+    float luminance = 0;
+    for(int i=-search_radius; i<=search_radius; ++i)
+        for(int j=-search_radius; j<=search_radius; ++j)
+            luminance += dot(luma, texelFetch(src_texture, ivec2(pixel) + ivec2(vec2(search_sample_width) * vec2(i, j)), 0).rgb);
+
+    accumulated_luminance[gl_LocalInvocationIndex] = clamp(luminance * search_radius_correction, minimum_luminance, maximum_luminance);
+}

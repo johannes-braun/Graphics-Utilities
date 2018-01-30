@@ -1,0 +1,5 @@
+build/lib/*
+build/bin/*
+
+.vs
+.vscode

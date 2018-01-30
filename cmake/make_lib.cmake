@@ -1,0 +1,8 @@
+MACRO(make_library result directory list_to_append_to)	
+    file(GLOB_RECURSE SRC_C "${directory}/*.c")
+    file(GLOB_RECURSE SRC_CPP "${directory}/*.cpp")
+    file(GLOB_RECURSE SRC_H "${directory}/*.h")
+    file(GLOB_RECURSE SRC_HPP "${directory}/*.hpp")
+    add_library(${result} ${SRC_C} ${SRC_CPP} ${SRC_H} ${SRC_HPP})
+    list(APPEND ${list_to_append_to} ${result})
+ENDMACRO()
