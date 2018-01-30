@@ -37,7 +37,6 @@
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 jpu::ref_ptr<io::window> main_window;
-jpu::ref_ptr<io::gui> main_gui;
 
 bool is_fullscreen = false;
 bool is_iconified = false;
@@ -84,22 +83,26 @@ void resize(const int width, const int height, const int samples, const bool ful
     {
         quarter_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
         quarter_size_attachments[0]->storage_2d(quarter_resolution.x, quarter_resolution.y, GL_R11F_G11F_B10F, 1);
+        blur_framebuffer->attach(GL_COLOR_ATTACHMENT0, quarter_size_attachments[0]);
+
         quarter_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
         quarter_size_attachments[1]->storage_2d(quarter_resolution.x, quarter_resolution.y, GL_R11F_G11F_B10F, 1);
-        blur_framebuffer->attach(GL_COLOR_ATTACHMENT0, quarter_size_attachments[0]);
         blur_framebuffer->attach(GL_COLOR_ATTACHMENT1, quarter_size_attachments[1]);
 
         full_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
         full_size_attachments[0]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 3);
+        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT0, full_size_attachments[0]);
+
         full_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
         full_size_attachments[1]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 1);
+        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT1, full_size_attachments[1]);
+
         full_size_attachments[2] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
         full_size_attachments[2]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 1);
+        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT2, full_size_attachments[2]);
+
         full_size_attachments[3] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
         full_size_attachments[3]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 1);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT0, full_size_attachments[0]);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT1, full_size_attachments[1]);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT2, full_size_attachments[2]);
         resolve_framebuffer->attach(GL_COLOR_ATTACHMENT3, full_size_attachments[3]);
     }
 
@@ -107,31 +110,32 @@ void resize(const int width, const int height, const int samples, const bool ful
     {
         msaa_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::multisample_2d);
         msaa_attachments[0]->storage_2d_multisample(full_resolution.x, full_resolution.y, samples, GL_RGBA16F);
+        framebuffer->attach(GL_COLOR_ATTACHMENT0, msaa_attachments[0]);
+
         msaa_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::multisample_2d);
         msaa_attachments[1]->storage_2d_multisample(full_resolution.x, full_resolution.y, samples, GL_RGBA16F);
-        framebuffer->attach(GL_COLOR_ATTACHMENT0, msaa_attachments[0]);
         framebuffer->attach(GL_COLOR_ATTACHMENT1, msaa_attachments[1]);
+
         framebuffer->use_renderbuffer_multisample(GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH24_STENCIL8, full_resolution.x, full_resolution.y, samples);
     }
 }
 
 int main(int count, const char** arguments)
 {
+    gl::setup_shader_paths("../shaders");
+
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
-    gl::setup_shader_paths("../shaders");
 
     blur_framebuffer = jpu::make_ref<gl::framebuffer>();
     framebuffer = jpu::make_ref<gl::framebuffer>();
     resolve_framebuffer = jpu::make_ref<gl::framebuffer>();
     resize(1280, 720, 1 << 2, false);
 
-    main_gui = jpu::make_ref<io::gui>(static_cast<GLFWwindow*>(*main_window));
-
     glfwSwapInterval(1);
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_gui->key_action(key, action, mods))
+        if (main_window->gui()->key_action(key, action, mods))
             return;
 
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
@@ -140,16 +144,16 @@ int main(int count, const char** arguments)
     });
 
     glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_gui->scrolled(y);
+        main_window->gui()->scrolled(y);
     });
 
     glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_gui->char_input(static_cast<wchar_t>(ch)))
+        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
             return;
     });
 
     glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_gui->mouse_button_action(btn, action, mods))
+        if (main_window->gui()->mouse_button_action(btn, action, mods))
             return;
     });
 
@@ -263,10 +267,8 @@ int main(int count, const char** arguments)
     auto random_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     random_texture->storage_2d(512, 512, GL_RGBA16F, 1);
     std::vector<float> random_pixels(512 * 512 * 4);
-    std::generate(random_pixels.begin(), random_pixels.end(), [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable
-    {
-        return dist(gen);
-    });
+    std::generate(random_pixels.begin(), random_pixels.end(), 
+        [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable { return dist(gen); });
     random_texture->assign_2d(GL_RGBA, GL_FLOAT, random_pixels.data());
 
     io::Camera cam;
@@ -336,8 +338,6 @@ int main(int count, const char** arguments)
     {
         while (is_iconified)
             glfwPollEvents();
-
-        main_gui->new_frame();
 
         time += main_window->delta_time();
         if (static auto frame = 0; frame++, time >= 1)
@@ -579,11 +579,15 @@ int main(int count, const char** arguments)
 
         resolve_framebuffer->read_from_attachment(temporal_buffer);
         resolve_framebuffer->draw_to_attachments({ other_temporal_buffer });
-        resolve_framebuffer->blit(resolve_framebuffer, gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        resolve_framebuffer->blit(resolve_framebuffer, 
+            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
+            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
+            GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-        resolve_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-        main_gui->render();
+        resolve_framebuffer->blit(nullptr, 
+            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
+            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
+            GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 }
 

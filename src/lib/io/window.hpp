@@ -7,6 +7,7 @@
 #include <jpu/memory>
 #include <jpu/time>
 #include <filesystem>
+#include "gui.hpp"
 
 namespace io
 {
@@ -37,6 +38,7 @@ namespace io
         ~window();
 
         operator GLFWwindow*() const;
+        gui* gui() const;
 
         void load_icon(const std::experimental::filesystem::path& path);
         void set_monitor(std::optional<monitor> monitor);
@@ -45,6 +47,7 @@ namespace io
         void close() const;
 
     private:
+        jpu::ref_ptr<io::gui> _gui;
         struct freer { void operator()(unsigned char* d) const { free(d); } };
         std::unique_ptr<unsigned char[], freer> _icon_storage;
         GLFWimage _icon_image;

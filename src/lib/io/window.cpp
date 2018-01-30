@@ -66,6 +66,8 @@ namespace io
         glDebugMessageCallback(reinterpret_cast<GLDEBUGPROC>(&debug_callback), nullptr);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
+        
+        _gui = jpu::make_ref<io::gui>(_window);
     }
 
     window::~window()
@@ -76,6 +78,11 @@ namespace io
     window::operator struct GLFWwindow*() const
     {
         return _window;
+    }
+
+    gui* window::gui() const
+    {
+        return _gui.get();
     }
 
     void window::load_icon(const std::experimental::filesystem::path& path)
@@ -102,11 +109,15 @@ namespace io
 
     bool window::update()
     {
+        if(_gui->is_initialized())
+            _gui->render();
         glfwPollEvents();
         glfwSwapBuffers(_window);
+        const auto is_open = !glfwWindowShouldClose(_window);
+        if(is_open) _gui->new_frame();
         _delta_time = (glfwGetTime() - _last_time);
         _last_time = glfwGetTime();
-        return !glfwWindowShouldClose(_window);
+        return is_open;
     }
 
     double window::delta_time() const
