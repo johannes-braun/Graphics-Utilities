@@ -9,6 +9,7 @@
 
 namespace glpp
 {
+    namespace fs = std::experimental::filesystem;
     std::set<std::string> extensions;
 
     namespace glsl_impl

@@ -346,8 +346,6 @@ int main(int count, const char** arguments)
             fps = 1000.f / frametime;
             time = 0;
             frame = 0;
-            log_i << fps << " fps, " << frametime << " ms/f";
-            log_i << "LUMA " << luma;
         }
 
         ImGui::Begin("Window", nullptr, ImGuiWindowFlags_NoTitleBar);
@@ -366,6 +364,11 @@ int main(int count, const char** arguments)
         ImGui::PopFont();
 
         ImGui::Separator();
+        
+        ImGui::PushStyleColor(ImGuiCol_Text, 0x88ffffff);
+        ImGui::Text("%.1f fps at %.3f ms/f", fps, frametime);
+        ImGui::PopStyleColor();
+
         ImGui::Spacing();
 
         ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
