@@ -249,20 +249,19 @@ int main(int count, const char** arguments)
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    int t; using uptr = std::unique_ptr<float, void(*)(void*)>;
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGBA, GL_FLOAT, uptr(stbi_loadf("../res/hdr/posx.hdr", &t, &t, nullptr, STBI_rgb_alpha), &free).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGBA, GL_FLOAT, uptr(stbi_loadf("../res/hdr/negx.hdr", &t, &t, nullptr, STBI_rgb_alpha), &free).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGBA, GL_FLOAT, uptr(stbi_loadf("../res/hdr/posy.hdr", &t, &t, nullptr, STBI_rgb_alpha), &free).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGBA, GL_FLOAT, uptr(stbi_loadf("../res/hdr/negy.hdr", &t, &t, nullptr, STBI_rgb_alpha), &free).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGBA, GL_FLOAT, uptr(stbi_loadf("../res/hdr/posz.hdr", &t, &t, nullptr, STBI_rgb_alpha), &free).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGBA, GL_FLOAT, uptr(stbi_loadf("../res/hdr/negz.hdr", &t, &t, nullptr, STBI_rgb_alpha), &free).get());
+    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
 
-    auto texture_col = res::load_texture("../res/bricks/brick.png", GL_R11F_G11F_B10F, GL_RGBA, GL_FLOAT);
-    auto texture_dis = res::load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
-    auto texture_nor = res::load_texture("../res/bricks/brick_normal.png", GL_R11F_G11F_B10F, GL_RGBA, GL_FLOAT);
-    auto logo = res::load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
-    auto ic_image = res::load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    auto texture_col    = res::load_texture("../res/bricks/brick.png", GL_RGBA8, GL_RGBA, GL_FLOAT);
+    auto texture_dis    = res::load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
+    auto texture_nor    = res::load_texture("../res/bricks/brick_normal.png", GL_RGB16F, GL_RGB, GL_FLOAT);
+    auto logo           = res::load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    auto ic_image       = res::load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
     auto random_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     random_texture->storage_2d(512, 512, GL_RGBA16F, 1);

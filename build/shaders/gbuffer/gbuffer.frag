@@ -5,6 +5,7 @@
 
 #include "scene.h"
 
+#define NO_EFFECTS
 #ifndef NO_EFFECTS
 #define USE_PARALLAX_MAPPING
 #define USE_NORMAL_MAPPING 
@@ -72,10 +73,10 @@ void main()
     base_normal = bsdf_correct_facet_normal(camera_view, base_normal, normal.xyz);
 #endif //USE_NORMAL_MAPPING
    
-    const vec3 albedo = texture(my_texture, base_uv.xy).rgb;
-    const float roughness = 0.5f;  
-    const float roughness_coat = 0.4f;  
-    const float coat_strength = 0.01f;
+    const vec3 albedo = vec3(0.83f, 0.69f, 0.22f);//texture(my_texture, base_uv.xy).rgb;
+    const float roughness = 0.1f;  
+    const float roughness_coat = 0.04f;  
+    const float coat_strength = 0.04f;
     const float glass = 0.f;
     const float metal = 0.0f; 
     const float ior = 1.57f; 
@@ -83,15 +84,28 @@ void main()
     bsdf_env_sample environment = bsdf_env_get_sample(cube_map, camera_view, base_normal, ior, 
         roughness * roughness, roughness_coat * roughness_coat);
 
-    float fresnel = bsdf_fresnel(camera_view, base_normal, ior, metal);
+    vec3 fresnel;
+    fresnel.x = bsdf_fresnel_coefficient(camera_view, base_normal, 0.35018f, 2.6876f);
+    fresnel.y = bsdf_fresnel_coefficient(camera_view, base_normal, 0.48899f, 2.3389f);
+    fresnel.z = bsdf_fresnel_coefficient(camera_view, base_normal, 1.4503f, 1.9483f);
+
+    //out_color = vec4(dot(-camera_view, base_normal));
+    //return;
+
+    //float fresnel = bsdf_fresnel_coefficient(camera_view, base_normal, 0.277f, 2.92f);
+
+    out_color = vec4(environment.reflection_color * fresnel, 1);
+    return;
+
+    //float fresnel = bsdf_fresnel(camera_view, base_normal, ior, metal);
     vec3 reflection_tint = mix(vec3(1), albedo, fresnel);
     vec3 diffuse_color = environment.diffuse_color * albedo;
     vec3 transmission_color = environment.transmission_color * albedo;
-    vec3 reflection_color = environment.reflection_color * reflection_tint;
+    vec3 reflection_color = environment.reflection_color * fresnel;
     vec3 reflection_color_coat = environment.reflection_color_coat;
 
     vec3 base = mix(diffuse_color, transmission_color, glass);
-    vec3 overlay = mix(base, reflection_color, fresnel);
+    vec3 overlay = mix(base, reflection_color, length(fresnel));
     overlay = mix(overlay, reflection_color_coat, coat_strength);
 
     out_color = vec4(overlay, 1);

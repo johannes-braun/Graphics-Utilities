@@ -36,6 +36,25 @@ float bsdf_fresnel(const in vec3 view, const in vec3 normal, float ior, float me
     return clamp(norm_response + (1-norm_response) * pow(1 - max(dot(-view, normal), 0), 5), 0, 1);
 }
 
+float bsdf_fresnel_coefficient(const in vec3 view, const in vec3 normal, float ior, float coefficient)
+{
+    float nm1 = ior - 1;
+    nm1 *= nm1;
+
+    float np1 = ior + 1;
+    np1 *= np1;
+
+    float c2 = coefficient * coefficient;
+
+    float mcosth = 1 - abs(dot(-view, normal));
+    float mcosth2 = mcosth * mcosth;
+    float fn1mcosth = 4 * ior * mcosth2 * mcosth2 * mcosth;
+
+    float nom = nm1 + fn1mcosth + c2;
+    float den = np1 + c2;
+    return nom / den;
+}
+
 int bsdf_largest_component(const in vec3 vector)
 {
     return int(vector.y > vector.x || vector.z > vector.x) + int(vector.z > vector.y && vector.z > vector.x);

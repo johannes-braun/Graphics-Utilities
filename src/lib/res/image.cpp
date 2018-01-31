@@ -25,14 +25,12 @@ namespace res
         if (!filesystem::exists(path))
             throw std::invalid_argument("File not found: " + path.string());
         
-        struct free_deleter { void operator()(void* d) const { free(d); }};
-        using img_data = std::unique_ptr<void, free_deleter>;
         int w, h;
         const auto data = [&]() {
             switch (type)
             {
-            case GL_FLOAT: return img_data(stbi_loadf(path.string().c_str(), &w, &h, nullptr, components(format)));
-            case GL_UNSIGNED_BYTE: return img_data(stbi_load(path.string().c_str(), &w, &h, nullptr, components(format)));
+            case GL_FLOAT: return stbi_data(stbi_loadf(path.string().c_str(), &w, &h, nullptr, components(format)));
+            case GL_UNSIGNED_BYTE: return stbi_data(stbi_load(path.string().c_str(), &w, &h, nullptr, components(format)));
             default: throw std::invalid_argument("Unsupported type!");
             }
         }();
