@@ -471,7 +471,7 @@ int main(int count, const char** arguments)
         //transform.rotation *= glm::angleAxis(glm::radians<float>(30.f * static_cast<float>(win->delta_time())), glm::vec3(0, 1, 0));
         graphics_pipeline->bind();
         graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_matrix") = transform;
-        graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::transpose(glm::inverse(static_cast<glm::mat4>(transform)));
+        graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(glm::transpose(glm::inverse(static_cast<glm::mat4>(transform)))));
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("my_texture") = sampler->sample_texture(texture_col);
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("texture_depth") = sampler->sample_texture(texture_dis);
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("texture_normal") = sampler->sample_texture(texture_nor);

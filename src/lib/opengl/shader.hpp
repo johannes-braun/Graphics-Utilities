@@ -20,11 +20,14 @@ namespace gl
         compute = GL_COMPUTE_SHADER,
     };
     
-   
-        inline std::experimental::filesystem::path shader_root_path = "../src/shaders";
-        inline std::vector<std::experimental::filesystem::path> shader_include_directories {
+    namespace
+    {
+        std::experimental::filesystem::path shader_root_path = "../shaders";
+        std::vector<std::experimental::filesystem::path> shader_include_directories{
             shader_root_path
         };
+        const std::experimental::filesystem::path& shader_root = shader_root_path;
+    }
     
 
     inline void setup_shader_paths(std::experimental::filesystem::path root, const std::vector<std::experimental::filesystem::path>& include_directories = {})
@@ -35,7 +38,6 @@ namespace gl
         shader_include_directories.insert(shader_include_directories.end(), include_directories.begin(), include_directories.end());
     }
 
-    inline const std::experimental::filesystem::path& shader_root = shader_root_path;
 
     class shader : public jpu::ref_count
     {

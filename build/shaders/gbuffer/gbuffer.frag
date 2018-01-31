@@ -6,8 +6,8 @@
 #include "scene.h"
 
 #ifndef NO_EFFECTS
-#define USE_PARALLAX_MAPPING
-#define USE_NORMAL_MAPPING 
+//#define USE_PARALLAX_MAPPING
+//#define USE_NORMAL_MAPPING 
 #endif //NO_EFFECTS
 
 layout(location = 0) in vec4 position;
@@ -74,11 +74,11 @@ void main()
     base_normal = bsdf_correct_facet_normal(camera_view, base_normal, normal.xyz);
 #endif //USE_NORMAL_MAPPING
    
-    const vec3 albedo = vec3(1, 0.1f, 0.0f);//texture(my_texture, base_uv.xy).rgb;
-    const float roughness = 0.1f;  
-    const float roughness_coat = 0.01f;  
-    const float coat_strength = 0.05f;
-    const float glass = 1.0f;
+    const vec3 albedo = vec3(1, 1.f, 1.0f);//texture(my_texture, base_uv.xy).rgb;
+    const float roughness = 0.3f;  
+    const float roughness_coat = 0.02f;  
+    const float coat_strength = 0.06f;
+    const float glass = 1.f;
     const float metal = 0.0f; 
     const float ior = 1.57f; 
     
@@ -97,5 +97,5 @@ void main()
     overlay = mix(overlay, reflection_color_coat, coat_strength);
 
     out_color = vec4(overlay, 1);
-    out_normal_depth = vec4((current_scene.view * vec4(base_normal.xyz, 0)).xyz, (1-gl_FragCoord.z)/gl_FragCoord.w);
+    out_normal_depth = vec4(base_normal.xyz, (1-gl_FragCoord.z)/gl_FragCoord.w);
 }   

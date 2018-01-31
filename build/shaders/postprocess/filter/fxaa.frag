@@ -56,33 +56,33 @@ FXAA_SUBPIX_CAP - Insures fine detail is not completely removed.
                   1.0 - no capping of sub-pixel aliasing removal
 */
 
-// #ifndef FXAA_PRESET
-//     #define FXAA_PRESET 3
-// #endif
-// #if (FXAA_PRESET == 3)
-    // #define FXAA_EDGE_THRESHOLD      (1.0/8.0)
-    // #define FXAA_EDGE_THRESHOLD_MIN  (1.0/24.0)
-    // #define FXAA_SEARCH_STEPS        16
-    // #define FXAA_SEARCH_THRESHOLD    (1.0/4.0)
-    // #define FXAA_SUBPIX_CAP          (3.0/4.0)
-    // #define FXAA_SUBPIX_TRIM         (1.0/4.0)
-// #endif
-// #if (FXAA_PRESET == 4)
+ #ifndef FXAA_PRESET
+     #define FXAA_PRESET 3
+ #endif
+ #if (FXAA_PRESET == 3)
+     #define FXAA_EDGE_THRESHOLD      (1.0/8.0)
+     #define FXAA_EDGE_THRESHOLD_MIN  (1.0/24.0)
+     #define FXAA_SEARCH_STEPS        16
+     #define FXAA_SEARCH_THRESHOLD    (1.0/4.0)
+     #define FXAA_SUBPIX_CAP          (3.0/4.0)
+     #define FXAA_SUBPIX_TRIM         (1.0/4.0)
+ #endif
+ #if (FXAA_PRESET == 4)
     #define FXAA_EDGE_THRESHOLD      (1.0/8.0)
     #define FXAA_EDGE_THRESHOLD_MIN  (1.0/24.0)
     #define FXAA_SEARCH_STEPS        24
     #define FXAA_SEARCH_THRESHOLD    (1.0/4.0)
     #define FXAA_SUBPIX_CAP          (3.0/4.0)
     #define FXAA_SUBPIX_TRIM         (1.0/4.0)
-// #endif
-// #if (FXAA_PRESET == 5)
-    // #define FXAA_EDGE_THRESHOLD      (1.0/8.0)
-    // #define FXAA_EDGE_THRESHOLD_MIN  (1.0/24.0)
-    // #define FXAA_SEARCH_STEPS        32
-    // #define FXAA_SEARCH_THRESHOLD    (1.0/4.0)
-    // #define FXAA_SUBPIX_CAP          (3.0/4.0)
-    // #define FXAA_SUBPIX_TRIM         (1.0/4.0)
-// #endif
+ #endif
+ #if (FXAA_PRESET == 5)
+     #define FXAA_EDGE_THRESHOLD      (1.0/8.0)
+     #define FXAA_EDGE_THRESHOLD_MIN  (1.0/24.0)
+     #define FXAA_SEARCH_STEPS        32
+     #define FXAA_SEARCH_THRESHOLD    (1.0/4.0)
+     #define FXAA_SUBPIX_CAP          (3.0/4.0)
+     #define FXAA_SUBPIX_TRIM         (1.0/4.0)
+ #endif
 
 #define FXAA_SUBPIX_TRIM_SCALE (1.0/(1.0 - FXAA_SUBPIX_TRIM))
 

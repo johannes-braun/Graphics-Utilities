@@ -698,10 +698,12 @@ namespace glpp
                         // macro without params
                         auto value_end = space_skipped;
                         std::stringstream val;
-                        while (!(is_new_line(value_end) && *(value_end - 1) != '\\'))
+                        while (!is_new_line(value_end) && *value_end != '\0' && !is_comment_begin(value_end))
                         {
                             if (*value_end != '\\')
                                 val << *value_end;
+                            else
+                                value_end = skip_to_line_end(value_end) + 1;
                             if (is_new_line(value_end))
                                 increment_line(current_line, processed);
                             ++value_end;
