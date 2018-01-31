@@ -6,15 +6,13 @@
 #include "scene.h"
 
 #ifndef NO_EFFECTS
-//#define USE_PARALLAX_MAPPING
-//#define USE_NORMAL_MAPPING 
+#define USE_PARALLAX_MAPPING
+#define USE_NORMAL_MAPPING 
 #endif //NO_EFFECTS
 
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec4 uv;
 layout(location = 2) in vec4 normal;
- 
-uniform sampler2D my_texture;
 
 layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec4 out_normal_depth;
@@ -44,7 +42,7 @@ layout(binding = 8) restrict buffer Meshes
 };
   
 uniform samplerCube cube_map;
- 
+uniform sampler2D my_texture;
 uniform sampler2D texture_depth;  
 uniform sampler2D texture_normal; 
 
@@ -74,11 +72,11 @@ void main()
     base_normal = bsdf_correct_facet_normal(camera_view, base_normal, normal.xyz);
 #endif //USE_NORMAL_MAPPING
    
-    const vec3 albedo = vec3(1, 1.f, 1.0f);//texture(my_texture, base_uv.xy).rgb;
-    const float roughness = 0.3f;  
-    const float roughness_coat = 0.02f;  
-    const float coat_strength = 0.06f;
-    const float glass = 1.f;
+    const vec3 albedo = texture(my_texture, base_uv.xy).rgb;
+    const float roughness = 0.5f;  
+    const float roughness_coat = 0.4f;  
+    const float coat_strength = 0.01f;
+    const float glass = 0.f;
     const float metal = 0.0f; 
     const float ior = 1.57f; 
     
