@@ -105,11 +105,15 @@ void main()
         vec3 pt = c_pos + c_dir * dist_next;
         vec3 normal = march_get_normal(pt);
         const float eps = 0.1f;
-        float shad = march_soft_shadow(pt + eps * normal, normalize(vec3(0.1f, 3.5, -1)), eps, 10.f, 32);
+        float shad = march_soft_shadow(pt + eps * normal, normalize(vec3(0.1f, 0.5, -1)), eps, 10.f, 16);
 
-        float fresnel = bsdf_fresnel(c_dir, normal, 0.5f, 0.f);
+        float fresnel = bsdf_fresnel(c_dir, normal, 0.9f, 0.f);
 
-        color = vec4(vec3(0.1f, 0.5f, 0.9f)*shad, 1);
+        float ao_fac = 0.25f;
+        float ds = map(pt + ao_fac * normal);
+        float ao = 1 - (ao_fac - ds);
+
+        color = vec4(vec3(0.6f)*shad*ao, 1);
 
         color += textureLod(cubemap, normal, 16) * 0.3f;
         
