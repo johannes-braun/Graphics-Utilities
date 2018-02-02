@@ -4,7 +4,7 @@
 #define MAP_FUNCTION(pos) 0
 #endif
 
-const float step_epsilon = 0.0001f;
+const float step_epsilon = 0.001f;
 
 float march_cast_ray(const in vec3 origin, const in vec3 direction, float mint, float maxt, const int max_steps)
 {
