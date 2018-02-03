@@ -321,7 +321,7 @@ namespace glpp
             while (std::getline(param_stream, in, ','))
             {
                 const auto bg = skip_space(in.data());
-                inputs.push_back({ bg, skip_to_next_space(bg) });
+                inputs.push_back(in.data() + (bg - in.data()));
             }
         }
 
