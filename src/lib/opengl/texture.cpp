@@ -140,6 +140,26 @@ namespace gl
         glGenerateTextureMipmap(_id);
     }
 
+    void texture::set_buffer(uint32_t buffer, uint32_t internal_format) const
+    {
+        glTextureBuffer(_id, internal_format, buffer);
+    }
+
+    void texture::set_buffer(uint32_t buffer, uint32_t internal_format, size_t size, size_t offset) const
+    {
+        glTextureBufferRange(_id, internal_format, buffer, size, offset);
+    }
+
+    int texture::width() const
+    {
+        return _width;
+    }
+
+    int texture::height() const
+    {
+        return _height;
+    }
+
     int texture::max_levels(int width, int height, int depth)
     {
         return 1 + static_cast<uint32_t>(std::log2(std::max(width, std::max(height, depth))));

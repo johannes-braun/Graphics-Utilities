@@ -54,6 +54,12 @@ namespace gl
         uint64_t address() const;
         void generate_mipmaps() const;
 
+        void set_buffer(uint32_t buffer, uint32_t internal_format) const;
+        void set_buffer(uint32_t buffer, uint32_t internal_format, size_t size, size_t offset) const;
+
+        int width() const;
+        int height() const;
+
     private:
         static int max_levels(int width, int height, int depth);
 
