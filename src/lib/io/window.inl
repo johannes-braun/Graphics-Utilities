@@ -23,11 +23,11 @@ namespace io
         auto layers = vkn::detail::instance_layers();
 
         _instance = vk::createInstance(vk::InstanceCreateInfo({}, &application_info,
-#if defined(NDEBUG)
-            0, nullptr,
-#else
+//#if defined(NDEBUG)
+//            0, nullptr,
+//#else
             static_cast<uint32_t>(layers.size()), layers.data(),
-#endif
+//#endif
             static_cast<uint32_t>(extensions.size()), extensions.data()));
         if (!_instance) throw std::runtime_error("Could not create instance.");
 
@@ -145,7 +145,7 @@ namespace io
             _current_primary_command_buffer.end();
 
             // Submit primary command buffer for rendering
-            vk::ArrayProxy<const vk::CommandBuffer> command_buffers{ _current_primary_command_buffer };
+            std::array<vk::CommandBuffer, 1> command_buffers{ _current_primary_command_buffer };
             const auto wait_semaphores = { _swapchain->imageSemaphore() };
 
             vk::PipelineStageFlags stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
