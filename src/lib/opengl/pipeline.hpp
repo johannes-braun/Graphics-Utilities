@@ -5,6 +5,7 @@
 #include <jpu/memory>
 #include <map>
 #include "uniform.hpp"
+#include <set>
 
 namespace gl
 {

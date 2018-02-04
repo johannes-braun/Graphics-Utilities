@@ -1,12 +1,12 @@
 #pragma once
 #include "glad/glad.h"
 #include <filesystem>
-#include "glpp/glpp.hpp"
 #include <jpu/memory>
 #include "uniform.hpp"
 #include <any>
 #include <map>
 #include <optional>
+#include "binshader/shader.hpp"
 
 namespace gl
 {
@@ -42,15 +42,16 @@ namespace gl
     class shader : public jpu::ref_count
     {
     public:
-        explicit shader(shader_type type, const std::experimental::filesystem::path& path, const std::vector<glpp::definition>& definitions = {});
-        explicit shader(const std::experimental::filesystem::path& path, const std::vector<glpp::definition>& definitions = {});
+        explicit shader(shader_type type, const std::experimental::filesystem::path& path, const std::vector<res::definition>& definitions = {});
+        explicit shader(const std::experimental::filesystem::path& path, const std::vector<res::definition>& definitions = {});
+
         ~shader();
         operator bool() const;
         operator unsigned() const;
         shader_type type() const;
 
         void reload(bool force = false);
-        void reload(const std::vector<glpp::definition>& definitions);
+        void reload(const std::vector<res::definition>& definitions);
 
         template<typename T>
         uniform<T> get_uniform(std::string_view name)
@@ -87,7 +88,7 @@ namespace gl
         shader_type _type;
         std::map<std::string_view, all_uniform_types> _uniforms;
         std::experimental::filesystem::path _path;
-        std::vector<glpp::definition> _definitions;
+        std::vector<res::definition> _definitions;
         std::map<std::experimental::filesystem::path, std::experimental::filesystem::file_time_type> _dependency_change_times;
     };
 }

@@ -9,7 +9,7 @@ layout(location=0) out vec4 color;
 
 uniform float clip_near = 0.f;
 uniform float clip_far = 1000.f;
-uniform int max_march_steps = 80;
+uniform int max_march_steps = 60;
 uniform mat4 view_mat;
 uniform mat4 proj_mat;
 uniform mat4 inv_view_mat;

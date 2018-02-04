@@ -21,6 +21,12 @@ void main(int argc, const char** argv)
     main_window = jpu::make_ref<io::window>(1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
 
+    GLFWimage img;
+    auto storage = res::stbi_data(stbi_load("../res/cursor.png", &img.width, &img.height, nullptr, STBI_rgb_alpha));
+    img.pixels = static_cast<uint8_t*>(storage.get());
+    auto cursor = glfwCreateCursor(&img, 0, 0);
+    glfwSetCursor(*main_window, cursor);
+
     // glfwSwapInterval(1);
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
         if (main_window->gui()->key_action(key, action, mods))
@@ -43,14 +49,6 @@ void main(int argc, const char** argv)
     glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
         if (main_window->gui()->mouse_button_action(btn, action, mods))
             return;
-    });
-
-    //glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h) {
-    //    resize(w, h, current_samples, is_fullscreen);
-    //});
-
-    glfwSetWindowIconifyCallback(*main_window, [](GLFWwindow*, int ico) {
-        is_iconified = static_cast<bool>(ico);
     });
 
     const auto sampler = jpu::make_ref<gl::sampler>();

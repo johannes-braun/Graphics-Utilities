@@ -22,6 +22,7 @@ add_definitions(
 set(BUILD_DIR "${PROJECT_SOURCE_DIR}/build/")
 set(AS_BINARY_DIR "${PROJECT_SOURCE_DIR}/build/bin/")
 set(AS_LIB_DIR "${PROJECT_SOURCE_DIR}/build/lib/")
+set(AS_CACHE_DIR "${PROJECT_SOURCE_DIR}/build/cache/")
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${AS_LIB_DIR}")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${AS_LIB_DIR}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${AS_BINARY_DIR}")
@@ -39,10 +40,13 @@ FOREACH(subdir ${PROJECT_LIBRARIES})
     file(REMOVE "${BINARY_DIR}/${subdir}.lib")
 ENDFOREACH()
 
+file(REMOVE_RECURSE ${PROJECT_SOURCE_DIR}/Debug) # Removes randomly generated Debug folder from MSVC
 file(REMOVE_RECURSE ${AS_BINARY_DIR})
 file(MAKE_DIRECTORY ${AS_BINARY_DIR})
 file(REMOVE_RECURSE ${AS_LIB_DIR})
 file(MAKE_DIRECTORY ${AS_LIB_DIR})
+file(REMOVE_RECURSE ${AS_CACHE_DIR})
+file(MAKE_DIRECTORY ${AS_CACHE_DIR})
 include("${AS_EXTENSIONS}/libraries_all.cmake")
 
 ######## Add internal executables

@@ -137,6 +137,8 @@ namespace io
 #endif
         if (_gui->is_initialized())
             _gui->render();
+        else
+            glfwSetTime(0);
 #if defined(IO_API_VULKAN)
         if (_current_primary_command_buffer)
         {
