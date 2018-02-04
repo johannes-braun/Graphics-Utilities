@@ -1,8 +1,8 @@
 #pragma once
 
-#include "vulkan/vulkan.hpp"
-#include "jpu/memory"
-#include "logical_device.hpp"
+#include <vulkan/vulkan.hpp>
+#include <jpu/memory>
+#include "device.hpp"
 #include "pipeline_creator.hpp"
 
 namespace vkn
@@ -16,7 +16,7 @@ namespace vkn
     {
         GraphicsPipelineCreateInfo(
             const GraphicsPipelineCreateFlags flags = {},
-            LogicalDevice* device = nullptr,
+            device* device = nullptr,
             const vk::PipelineLayout layout = nullptr,
             const vk::RenderPass renderpass = nullptr,
             const uint32_t subpass = 0,
@@ -24,14 +24,14 @@ namespace vkn
             : flags(flags), device(device), layout(layout), renderpass(renderpass), subpass(subpass), shader_paths(shader_paths.begin(), shader_paths.end()) {}
         
         GraphicsPipelineCreateInfo& setFlags(const GraphicsPipelineCreateFlags value) { flags = value; return *this; }
-        GraphicsPipelineCreateInfo& setDevice(LogicalDevice* value) { device = value; return *this; }
+        GraphicsPipelineCreateInfo& setDevice(device* value) { device = value; return *this; }
         GraphicsPipelineCreateInfo& setLayout(const vk::PipelineLayout value) { layout = value; return *this; }
         GraphicsPipelineCreateInfo& setRenderPass(const vk::RenderPass value) { renderpass = value; return *this; }
         GraphicsPipelineCreateInfo& setSubPass(const uint32_t value) { subpass = value; return *this; }
         GraphicsPipelineCreateInfo& setShaderPaths(const vk::ArrayProxy<const fs::path> value) { shader_paths = std::vector<fs::path>(value.begin(), value.end()); return *this; }
 
         GraphicsPipelineCreateFlags flags;
-        LogicalDevice* device;
+        device* device;
         vk::PipelineLayout layout;
         vk::RenderPass renderpass;
         uint32_t subpass;

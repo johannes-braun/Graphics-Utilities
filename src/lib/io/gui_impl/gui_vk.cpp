@@ -1,13 +1,13 @@
 #include "gui_vk.hpp"
-#include "vulkan/logical_device.hpp"
+#include "vulkan/device.hpp"
 #include "vulkan/swapchain.hpp"
 #include "vulkan/shader.hpp"
-#include "vulkan/command_execute.hpp"
+#include "vulkan/command.hpp"
 #include "glm/detail/type_vec2.hpp"
 
 namespace io::impl
 {
-    gui_vk::gui_vk(vkn::LogicalDevice* device, vkn::Swapchain* swapchain)
+    gui_vk::gui_vk(vkn::device* device, vkn::Swapchain* swapchain)
         : _device(device), _swapchain(swapchain)
     {
         _device->inc_ref();
@@ -77,7 +77,7 @@ namespace io::impl
 
     ImTextureID gui_vk::build_font_atlas()
     {
-        _device->oneTimeCommand(vk::QueueFlagBits::eTransfer, [&](vk::CommandBuffer command_buffer) {
+        _device->unique_command(vk::QueueFlagBits::eTransfer, [&](vk::CommandBuffer command_buffer) {
             uint8_t* pixels;
             int width, height;
             ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
@@ -123,11 +123,11 @@ namespace io::impl
 
             // Upload from staging buffer to image
             {
-                vkn::command::transformImageLayout(command_buffer, m_font_image, image_view_info.subresourceRange, vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer);
+                vkn::command::transform_image_layout(command_buffer, m_font_image, image_view_info.subresourceRange, vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer);
                 command_buffer.copyBufferToImage(staging_buffer, m_font_image, vk::ImageLayout::eTransferDstOptimal,
                     { vk::BufferImageCopy(0, 0, 0, vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),{}, vk::Extent3D(width, height, 1)) });
 
-                vkn::command::transformImageLayout(command_buffer, m_font_image, image_view_info.subresourceRange, vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
+                vkn::command::transform_image_layout(command_buffer, m_font_image, image_view_info.subresourceRange, vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
             }
         });
         return reinterpret_cast<void*>(static_cast<VkImageView>(m_font_image_view));

@@ -141,9 +141,6 @@ void main(int argc, const char** argv)
 
     while (main_window->update())
     {
-        while (is_iconified)
-            glfwPollEvents();
-
         static glm::vec3 color_offset{ 0, 0, 0 };
         static glm::vec3 color_factor{ 1,1,1 };
         const auto id = sampler->sample_texture(texture.get());

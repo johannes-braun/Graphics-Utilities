@@ -1,7 +1,7 @@
 #include "texture.hpp"
 #include <any>
-#include "vulkan/command_execute.hpp"
-#include "vulkan/logical_device.hpp"
+#include "command.hpp"
+#include "device.hpp"
 #include "stb/stb_image.h"
 
 namespace vkn
@@ -23,7 +23,7 @@ namespace vkn
         const vk::QueueFlagBits transfer_queue_type)
     {
         auto&& transfer_queue = m_info.device->queue(transfer_queue_type).queue;
-        auto&& transfer_pool = m_info.device->commandPool(transfer_queue_type);
+        auto&& transfer_pool = m_info.device->command_pool(transfer_queue_type);
 
         uint8_t* data_ptr = nullptr;
         int width, height, channels;
@@ -74,7 +74,7 @@ namespace vkn
         transfer_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         {
             const vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-            command::transformImageLayout(transfer_buffer, m_image, range,
+            command::transform_image_layout(transfer_buffer, m_image, range,
                 vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite,
                 vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
                 vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer);
@@ -84,7 +84,7 @@ namespace vkn
                 .setImageExtent(m_extent);
             transfer_buffer.copyBufferToImage(staging_buffer, m_image, vk::ImageLayout::eTransferDstOptimal, copy);
 
-            command::transformImageLayout(transfer_buffer, m_image, range,
+            command::transform_image_layout(transfer_buffer, m_image, range,
                 vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead,
                 vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
                 vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllGraphics);
@@ -116,7 +116,7 @@ namespace vkn
 
     void Texture::generateMipmaps() const
     {
-        m_info.device->oneTimeCommand(vk::QueueFlagBits::eTransfer, [&](vk::CommandBuffer command_buffer) {
+        m_info.device->unique_command(vk::QueueFlagBits::eTransfer, [&](vk::CommandBuffer command_buffer) {
             generateMipmaps(command_buffer);
         });
     }
@@ -124,7 +124,7 @@ namespace vkn
     void Texture::generateMipmaps(const vk::CommandBuffer command_buffer) const
     {
         const vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-        command::transformImageLayout(command_buffer, m_image, range,
+        command::transform_image_layout(command_buffer, m_image, range,
             vk::AccessFlagBits::eShaderRead, vk::AccessFlagBits::eTransferRead,
             vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eTransferSrcOptimal,
             vk::PipelineStageFlagBits::eAllGraphics, vk::PipelineStageFlagBits::eTransfer);
@@ -139,20 +139,20 @@ namespace vkn
                 .setDstOffsets({ vk::Offset3D{}, vk::Offset3D{ static_cast<int32_t>(m_extent.width >> level), static_cast<int32_t>(m_extent.height >> level), 1 } })
                 .setDstSubresource(vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, level, 0, 1));
 
-            command::transformImageLayout(command_buffer, m_image, mip_range,
+            command::transform_image_layout(command_buffer, m_image, mip_range,
                 vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite,
                 vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
                 vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer);
 
             command_buffer.blitImage(m_image, vk::ImageLayout::eTransferSrcOptimal, m_image, vk::ImageLayout::eTransferDstOptimal, { image_blit }, vk::Filter::eLinear);
 
-            command::transformImageLayout(command_buffer, m_image, mip_range,
+            command::transform_image_layout(command_buffer, m_image, mip_range,
                 vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead,
                 vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
                 vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer);
         }
 
-        command::transformImageLayout(command_buffer, m_image,
+        command::transform_image_layout(command_buffer, m_image,
             vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, m_mip_levels, 0, 1),
             vk::AccessFlagBits::eTransferRead, vk::AccessFlagBits::eShaderRead,
             vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -193,7 +193,7 @@ namespace vkn
         m_info.texture->inc_ref();
     }
 
-    TextureView::TextureView(LogicalDevice* device, const vk::ImageViewCreateInfo create_info)
+    TextureView::TextureView(device* device, const vk::ImageViewCreateInfo create_info)
         : ClassInfo(TextureViewCreateInfo(new Texture(device), create_info.subresourceRange)),
         m_image_view(m_info.texture->m_info.device->createImageView(create_info))
     {

@@ -38,7 +38,6 @@ jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pip
 jpu::ref_ptr<io::window> main_window;
 
 bool is_fullscreen = false;
-bool is_iconified = false;
 
 jpu::ref_ptr<gl::framebuffer> blur_framebuffer;
 jpu::ref_ptr<gl::framebuffer> framebuffer;
@@ -158,10 +157,6 @@ int main(int count, const char** arguments)
 
     glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h) {
         resize(w, h, current_samples, is_fullscreen);
-    });
-
-    glfwSetWindowIconifyCallback(*main_window, [](GLFWwindow*, int ico) {
-        is_iconified = static_cast<bool>(ico);
     });
 
 
@@ -335,9 +330,6 @@ int main(int count, const char** arguments)
 
     while (main_window->update())
     {
-        while (is_iconified)
-            glfwPollEvents();
-
         time += main_window->delta_time();
         if (static auto frame = 0; frame++, time >= 1)
         {

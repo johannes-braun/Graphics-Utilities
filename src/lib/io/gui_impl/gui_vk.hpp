@@ -4,7 +4,7 @@
 #include "vulkan/memory.hpp"
 
 namespace vkn {
-    class LogicalDevice;
+    class device;
     class Swapchain;
 }
 
@@ -21,7 +21,7 @@ namespace io::impl
         friend window;
         constexpr static uint32_t queued_frames = 2;
 
-        gui_vk(vkn::LogicalDevice* device, vkn::Swapchain* swapchain);
+        gui_vk(vkn::device* device, vkn::Swapchain* swapchain);
         ~gui_vk();
         ImTextureID build_font_atlas();
         void pre_render(ImDrawData* draw_data);
@@ -33,7 +33,7 @@ namespace io::impl
         void set_next_command_buffer(vk::CommandBuffer buffer);
         void create_device_objects();
 
-        vkn::LogicalDevice* _device;
+        vkn::device* _device;
         vkn::Swapchain* _swapchain;
 
         // Device Objects
@@ -45,7 +45,7 @@ namespace io::impl
 
         // Font Atlas
         vk::Image m_font_image;
-        vkn::MemoryBlock m_font_image_memory;
+        const vkn::memory_block* m_font_image_memory;
         vk::ImageView m_font_image_view;
 
         vk::DescriptorImageInfo m_font_descriptor_image;
@@ -53,7 +53,7 @@ namespace io::impl
 
         struct FrameInfo
         {
-            vkn::MemoryBlock buffer_memory{ nullptr };
+            const vkn::memory_block* buffer_memory{ nullptr };
             vk::DeviceSize last_size = 0;
             vk::DeviceSize idx_offset = 0;
             vk::Buffer vertex_buffer{ nullptr };

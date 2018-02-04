@@ -1,32 +1,32 @@
 #pragma once
 #include <vector>
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include "create_info.hpp"
-#include "vulkan/texture.hpp"
+#include "texture.hpp"
 #include <jpu/memory>
 
 namespace vkn
 {
     class Window;
-    class LogicalDevice;
+    class device;
 
     struct SwapchainCreateInfo
     {
         SwapchainCreateInfo(
             vk::SurfaceKHR surface = nullptr,
-            LogicalDevice* device = nullptr,
+            device* device = nullptr,
             const uint32_t min_image_count = 1,
             const bool clipped = true,
             const vk::CompositeAlphaFlagBitsKHR composite_alpha = vk::CompositeAlphaFlagBitsKHR::eOpaque)
             : surface(surface), device(device), min_image_count(min_image_count), clipped(clipped), composite_alpha(composite_alpha) {}
         
-        SwapchainCreateInfo& setDevice(LogicalDevice* value) { device = value; return *this; }
+        SwapchainCreateInfo& setDevice(device* value) { device = value; return *this; }
         SwapchainCreateInfo& setSurface(const vk::SurfaceKHR value) { surface = value; return *this; }
         SwapchainCreateInfo& setMinImageCount(const uint32_t value) { min_image_count = value; return *this; }
         SwapchainCreateInfo& setClipped(const bool value) { clipped = value; return *this; }
         SwapchainCreateInfo& setCompositeAlpha(const vk::CompositeAlphaFlagBitsKHR value) { composite_alpha = value; return *this; }
 
-        LogicalDevice* device;
+        device* device;
         vk::SurfaceKHR surface;
         uint32_t min_image_count;
         bool clipped;

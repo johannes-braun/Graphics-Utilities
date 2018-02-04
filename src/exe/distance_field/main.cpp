@@ -9,7 +9,6 @@
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
-bool is_iconified = false;
 
 void main(int argc, const char** argv)
 {
@@ -42,14 +41,6 @@ void main(int argc, const char** argv)
     glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
         if (main_window->gui()->mouse_button_action(btn, action, mods))
             return;
-    });
-
-    //glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h) {
-    //    resize(w, h, current_samples, is_fullscreen);
-    //});
-
-    glfwSetWindowIconifyCallback(*main_window, [](GLFWwindow*, int ico) {
-        is_iconified = static_cast<bool>(ico);
     });
 
     const auto sampler = jpu::make_ref<gl::sampler>();
@@ -86,9 +77,6 @@ void main(int argc, const char** argv)
 
     while(main_window->update())
     {
-        while (is_iconified)
-            glfwPollEvents();
-
         ImGui::Begin("Bla");
         ImGui::Value("DT", 1000 * static_cast<float>(main_window->delta_time()));
         ImGui::End();

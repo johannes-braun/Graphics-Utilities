@@ -2,21 +2,22 @@
 
 #include <filesystem>
 #include <vulkan/vulkan.hpp>
-#include "vulkan/memory.hpp"
+#include "memory.hpp"
 #include <jpu/memory>
+#include "create_info.hpp"
 
 namespace vkn
 {
-    class LogicalDevice;
+    class device;
 
     struct TextureCreateInfo
     {
-        TextureCreateInfo(LogicalDevice* device = nullptr)
+        TextureCreateInfo(device* device = nullptr)
             : device(device) {}
 
-        TextureCreateInfo& setDevice(LogicalDevice* value) { device = value; return *this; }
+        TextureCreateInfo& setDevice(device* value) { device = value; return *this; }
 
-        LogicalDevice* device;
+        device* device;
     };
 
     enum class TextureDataType
@@ -56,7 +57,7 @@ namespace vkn
         uint32_t m_mip_levels{ 0 };
 
         vk::Image m_image{ nullptr };
-        MemoryBlock m_memory{ nullptr };
+        const memory_block* m_memory{ nullptr };
     };
 
     struct TextureViewCreateInfo
@@ -75,7 +76,7 @@ namespace vkn
     {
     public:
         explicit TextureView(const TextureViewCreateInfo& info);
-        explicit TextureView(LogicalDevice* device, vk::ImageViewCreateInfo create_info);
+        explicit TextureView(device* device, vk::ImageViewCreateInfo create_info);
         ~TextureView();
 
         operator vk::ImageView() const;

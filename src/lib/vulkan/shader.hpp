@@ -1,9 +1,10 @@
 #pragma once
 
 #include <filesystem>
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 #include <jpu/memory>
-#include "logical_device.hpp"
+#include "device.hpp"
+#include "create_info.hpp"
 
 namespace vkn
 {
@@ -11,13 +12,13 @@ namespace vkn
 
     struct ShaderModuleCreateInfo
     {
-        ShaderModuleCreateInfo(LogicalDevice* device, const fs::path path)
+        ShaderModuleCreateInfo(device* device, const fs::path path)
             : device(device), path(path) {}
 
-        ShaderModuleCreateInfo& setDevice(LogicalDevice* value) { device = value; return *this; }
+        ShaderModuleCreateInfo& setDevice(device* value) { device = value; return *this; }
         ShaderModuleCreateInfo& setPath(const fs::path value) { path = value; return *this; }
 
-        LogicalDevice* device;
+        device* device;
         fs::path path;
     };
 

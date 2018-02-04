@@ -1,69 +1,57 @@
 #pragma once
-#include "vulkan/vulkan.hpp"
-#include "devices.hpp"
+#include <vulkan/vulkan.hpp>
 #include <numeric>
 #include <map>
+#include <list>
 #include <jpu/memory>
-#include "create_info.hpp"
 
 namespace vkn
 {
-    class LogicalDevice;
+    class device;
 }
 
 namespace vkn
 {
-
-    struct MemoryPoolCreateInfo
+    struct memory_block
     {
-        MemoryPoolCreateInfo(LogicalDevice* device = nullptr, const vk::DeviceSize default_chunk_size = 1 << 25)
-            : device(device), default_chunk_size(default_chunk_size) {}
-
-        MemoryPoolCreateInfo& setDevice(LogicalDevice* value) { device = value; return *this; }
-        MemoryPoolCreateInfo& setDefaultChunkSize(const vk::DeviceSize value) { default_chunk_size = value; return *this; }
-
-        LogicalDevice* device;
-        vk::DeviceSize default_chunk_size;
+        size_t size = 0;
+        size_t offset = 0;
+        vk::DeviceMemory memory = nullptr;
+        bool free = true;
+        void* data = nullptr;
     };
 
-	struct Block
-	{
-		vk::DeviceSize size = 0;
-		vk::DeviceSize offset = 0;
-		vk::DeviceMemory memory = nullptr;
-		bool free = true;
+    struct memory_chunk
+    {
+        size_t size = 0;
+        vk::DeviceMemory memory = nullptr;
+        std::list<std::unique_ptr<memory_block>> blocks;
         void* data = nullptr;
-	};
+    };
 
-	struct Chunk
-	{
-		vk::DeviceSize size = 0;
-		vk::DeviceMemory memory = nullptr;
-		std::list<std::unique_ptr<Block>> blocks;
-        void* base_data = nullptr;
-	};
+    class memory_pool : public jpu::ref_count
+    {
+    public:
+        using size_type = uint64_t;
 
-	using MemoryBlock = const Block*;
+        explicit memory_pool(device* device, size_type chunk_size = 1 << 25);
+        ~memory_pool();
 
-	class MemoryPool : ClassInfo<MemoryPoolCreateInfo, MemoryPool>, public jpu::ref_count
-	{
-	public:
-		explicit MemoryPool(const MemoryPoolCreateInfo& info);
-		~MemoryPool();
+        const memory_block* allocate(size_type size, uint32_t filter, vk::MemoryPropertyFlags flags);
+        void free(const memory_block* block);
+        void clear();
 
-		MemoryBlock allocate(vk::DeviceSize size, uint32_t filter, vk::MemoryPropertyFlags flags);
-	    uint32_t typeIndex(uint32_t filter, vk::MemoryPropertyFlags flags) const;
+        uint32_t memory_type(uint32_t filter, vk::MemoryPropertyFlags flags) const;
+        
+        uint32_t chunk_count() const;
+        const std::map<uint32_t, std::list<memory_chunk>>& chunks() const;
 
-		void free(MemoryBlock block);
-		void freeAll();
+    private:
+        static memory_block* partition(vk::MemoryAllocateInfo info, memory_chunk& chunk, std::list<std::unique_ptr<memory_block>>::iterator block_position);
+        void free_block(std::list<memory_chunk>& chunk_list, std::list<memory_chunk>::iterator c, std::list<std::unique_ptr<memory_block>>::iterator block_position) const;
 
-        uint32_t allocatedChunkCount() const;
-        const std::map<uint32_t, std::list<Chunk>>& allocatedChunks() const;
-
-	private:
-		static Block* partitionBlock(vk::MemoryAllocateInfo info, Chunk& chunk, std::list<std::unique_ptr<Block>>::iterator block_position);
-		void freeBlock(std::list<Chunk>& chunk_list, std::list<Chunk>::iterator c, std::list<std::unique_ptr<Block>>::iterator block_position) const;
-
-		std::map<uint32_t, std::list<Chunk>> m_chunks;
-	};
+        std::map<uint32_t, std::list<memory_chunk>> _chunks;
+        device* _device;
+        size_type _chunk_size;
+    };
 }

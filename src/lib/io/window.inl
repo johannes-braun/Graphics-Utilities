@@ -60,16 +60,22 @@ namespace io
 
         log_i << "Vulkan Window creation finished successfully";
 
-        _physical_device = vkn::devices::findPhysical(_instance);
+        switch (auto available = _instance.enumeratePhysicalDevices(); available.size())
+        {
+        case 0:
+            throw std::runtime_error("Cannot fetch suitable Physical Device");
+        default:
+            _physical_device = available[0];
+        }
 
-        _device = jpu::make_ref<vkn::LogicalDevice>(vkn::LogicalDeviceCreateInfo(_physical_device, _surface,
-            vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer | vk::QueueFlagBits::eCompute, 1ui32 << 25ui32));
+        _device = jpu::make_ref<vkn::device>(_physical_device, _surface,
+            vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer | vk::QueueFlagBits::eCompute, 1ui32 << 25ui32);
         _swapchain = jpu::make_ref<vkn::Swapchain>(vkn::SwapchainCreateInfo(_surface, _device, 8));
 
         _gui = jpu::make_ref<io::gui>(_window, _device, _swapchain);
 
         _primary_command_buffers = _device->allocateCommandBuffers(vk::CommandBufferAllocateInfo(
-            _device->commandPool(vk::QueueFlagBits::eGraphics),
+            _device->command_pool(vk::QueueFlagBits::eGraphics),
             vk::CommandBufferLevel::ePrimary,
             static_cast<uint32_t>(_swapchain->images().size())));
         _memory_fence = _device->createFence({ vk::FenceCreateFlagBits::eSignaled });
@@ -159,11 +165,17 @@ namespace io
 #endif
         glfwPollEvents();
 
+        int ww, wh;
+        glfwGetFramebufferSize(_window, &ww, &wh);
+        while (ww*wh == 0)
+        {
+            glfwPollEvents();
+            glfwGetFramebufferSize(_window, &ww, &wh);
+        }
+
 #if defined(IO_API_OPENGL)
         glfwSwapBuffers(_window);
 #elif defined(IO_API_VULKAN)
-        while (!_swapchain->visible())
-            glfwPollEvents();
         _swapchain->swap();
 
         _device->waitForFences(_memory_fence, true, std::numeric_limits<uint64_t>::max());

@@ -3,7 +3,7 @@
 #if defined(IO_API_VULKAN)
 #include "vulkan/vulkan.hpp"
 #include "vulkan/detail.hpp"
-#include "vulkan/logical_device.hpp"
+#include "vulkan/device.hpp"
 #include "vulkan/swapchain.hpp"
 #include "vulkan/vulkan_ext.h"
 #elif defined(IO_API_OPENGL)
@@ -64,7 +64,7 @@ namespace io
         vk::Instance instance() const { return _instance; }
         vk::SurfaceKHR surface() const { return _surface; }
         vk::PhysicalDevice gpu() const { return _physical_device; }
-        vkn::LogicalDevice* device() const { return _device.get(); }
+        vkn::device* device() const { return _device.get(); }
         vkn::Swapchain* swapchain() const { return _swapchain.get(); }
         const std::vector<vk::CommandBuffer>& primary_command_buffers() const { return _primary_command_buffers; }
         vk::CommandBuffer current_primary_command_buffer() const { return _current_primary_command_buffer; }
@@ -98,7 +98,7 @@ namespace io
         vk::SurfaceKHR _surface;
         vk::Instance _instance;
         vk::PhysicalDevice _physical_device;
-        jpu::ref_ptr<vkn::LogicalDevice> _device;
+        jpu::ref_ptr<vkn::device> _device;
         jpu::ref_ptr<vkn::Swapchain> _swapchain;
         std::vector<vk::CommandBuffer> _primary_command_buffers;
         vk::CommandBuffer _current_primary_command_buffer;

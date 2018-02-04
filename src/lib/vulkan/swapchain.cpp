@@ -1,7 +1,7 @@
 #include <algorithm>
 #include "swapchain.hpp"
 #include "GLFW/glfw3.h"
-#include "logical_device.hpp"
+#include "device.hpp"
 
 namespace vkn
 {

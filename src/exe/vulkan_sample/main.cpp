@@ -1,8 +1,7 @@
 #define IO_API_VULKAN
 #define IO_EXPOSE_API_FUNCTIONS
 #include <io/window.hpp>
-#include <vulkan/logical_device.hpp>
-#include <vulkan/swapchain.hpp>
+#include <vulkan/device.hpp>
 #include <vulkan/framebuffer.hpp>
 
 jpu::ref_ptr<io::window> main_window;
@@ -30,7 +29,7 @@ int main(int argc, const char** args)
     createMultisampleFramebuffers();
 
     auto render_command_buffer = main_window->device()->allocateCommandBuffers(vk::CommandBufferAllocateInfo(
-        main_window->device()->commandPool(vk::QueueFlagBits::eGraphics),
+        main_window->device()->command_pool(vk::QueueFlagBits::eGraphics),
         vk::CommandBufferLevel::eSecondary, 1))[0];
 
     const auto clear_values = {

@@ -6,7 +6,7 @@ namespace vkn
 {
 	namespace command
 	{
-		void transformImageLayout(
+		void transform_image_layout(
 			vk::CommandBuffer buffer,
 			vk::Image image,
 			vk::ImageSubresourceRange range,

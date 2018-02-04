@@ -6,7 +6,7 @@
 #include "imgui/imgui_internal.h"
 #if defined(IO_API_VULKAN)
 #include "gui_impl/gui_vk.hpp"
-#include "vulkan/logical_device.hpp"
+#include "vulkan/device.hpp"
 #elif defined(IO_API_OPENGL)
 #include "gui_impl/gui_gl.hpp"
 #else
@@ -30,7 +30,7 @@ namespace io
         constexpr static int font_title = 2;
 
 #if defined(IO_API_VULKAN)
-        gui(GLFWwindow* window, vkn::LogicalDevice* device, vkn::Swapchain* swapchain) : _window(window), _render_interface(device, swapchain)
+        gui(GLFWwindow* window, vkn::device* device, vkn::Swapchain* swapchain) : _window(window), _render_interface(device, swapchain)
         {
             init();
         }

@@ -1,8 +1,8 @@
-#include "command_execute.hpp"
+#include "command.hpp"
 
 namespace vkn
 {
-	void command::transformImageLayout(const vk::CommandBuffer buffer,
+	void command::transform_image_layout(const vk::CommandBuffer buffer,
 		const vk::Image image, vk::ImageSubresourceRange range,
 		const vk::AccessFlags source_access, const vk::AccessFlags destination_access,
 		const vk::ImageLayout source_layout, const vk::ImageLayout destination_layout, 
