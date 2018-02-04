@@ -4,7 +4,6 @@
 #include <vulkan/vulkan.hpp>
 #include <jpu/memory>
 #include "device.hpp"
-#include "create_info.hpp"
 #include "binshader/shader.hpp"
 
 namespace vkn

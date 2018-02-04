@@ -42,7 +42,7 @@ namespace vkn
                 .setFormat(_surface_format.format)
                 .setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
                 .setViewType(vk::ImageViewType::e2D);
-            _image_views.push_back(jpu::make_ref<TextureView>(_device, image_view_info));
+            _image_views.push_back(jpu::make_ref<texture_view>(_device, image_view_info));
         }
     }
 
@@ -73,7 +73,7 @@ namespace vkn
         return _images;
     }
 
-    const std::vector<jpu::ref_ptr<TextureView>>& swapchain::image_views() const
+    const std::vector<jpu::ref_ptr<texture_view>>& swapchain::image_views() const
     {
         return _image_views;
     }

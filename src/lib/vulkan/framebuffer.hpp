@@ -13,7 +13,7 @@ namespace vkn
         framebuffer(device* device, vk::RenderPass pass, vk::Extent2D extent, uint32_t layers = 1);
         ~framebuffer();
 
-        void set_attachments(std::vector<jpu::ref_ptr<TextureView>> attachments);
+        void set_attachments(std::vector<jpu::ref_ptr<texture_view>> attachments);
         void finalize();
 
         operator vk::Framebuffer() const;
@@ -24,6 +24,6 @@ namespace vkn
         vk::RenderPass _pass;
         vk::Extent2D _extent;
         uint32_t _layers;
-        std::vector<jpu::ref_ptr<TextureView>> _attachments;
+        std::vector<jpu::ref_ptr<texture_view>> _attachments;
     };
 }

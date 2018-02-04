@@ -4,39 +4,27 @@
 #include <vulkan/vulkan.hpp>
 #include "memory.hpp"
 #include <jpu/memory>
-#include "create_info.hpp"
 
 namespace vkn
 {
     class device;
 
-    struct TextureCreateInfo
-    {
-        TextureCreateInfo(device* device = nullptr)
-            : device(device) {}
-
-        TextureCreateInfo& setDevice(device* value) { device = value; return *this; }
-
-        device* device;
-    };
-
-    enum class TextureDataType
+    enum class texture_data_type
     {
         eFloat = 0,
         eUByte
     };
 
-    class TextureView;
+    class texture_view;
 
-    class Texture : ClassInfo<TextureCreateInfo, Texture>, public jpu::ref_count
+    class texture : public jpu::ref_count
     {
-        friend TextureView;
+        friend texture_view;
     public:
-        explicit Texture(const TextureCreateInfo& info);
-        ~Texture();
+        explicit texture(device* device);
+        ~texture();
 
-        void loadFile(const std::experimental::filesystem::path& file, const TextureDataType type,
-            vk::QueueFlagBits transfer_queue_type = vk::QueueFlagBits::eTransfer);
+        void assign_2d(uint32_t width, uint32_t height, uint32_t channels, size_t type_size, vk::Format format, void* data, vk::QueueFlagBits transfer_queue_type = vk::QueueFlagBits::eTransfer);
 
         void loadEmpty(vk::ImageCreateInfo info);
 
@@ -51,37 +39,28 @@ namespace vkn
         vk::Image image() const;
 
     private:
-        vk::Format m_format{};
+        device* _device;
+        vk::Format _format{};
 
-        vk::Extent3D m_extent{};
-        uint32_t m_mip_levels{ 0 };
+        vk::Extent3D _extent{};
+        uint32_t _mip_levels{ 0 };
 
-        vk::Image m_image{ nullptr };
-        const memory_block* m_memory{ nullptr };
+        vk::Image _image{ nullptr };
+        const memory_block* _memory{ nullptr };
     };
 
-    struct TextureViewCreateInfo
-    {
-        TextureViewCreateInfo(Texture* texture = nullptr, const vk::ImageSubresourceRange resource_range = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 0, 0, 1))
-            : texture(texture), resource_range(resource_range) {}
-
-        TextureViewCreateInfo& setTexture(Texture* value) { texture = value; return *this; }
-        TextureViewCreateInfo& setResourceRange(const vk::ImageSubresourceRange value) { resource_range = value; return *this; }
-
-        Texture* texture;
-        vk::ImageSubresourceRange resource_range;
-    };
-
-    class TextureView : ClassInfo<TextureViewCreateInfo, TextureView>, public jpu::ref_count
+    class texture_view : public jpu::ref_count
     {
     public:
-        explicit TextureView(const TextureViewCreateInfo& info);
-        explicit TextureView(device* device, vk::ImageViewCreateInfo create_info);
-        ~TextureView();
+        explicit texture_view(texture* texture, vk::ImageSubresourceRange resource_range = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 0, 0, 1));
+        explicit texture_view(device* device, vk::ImageViewCreateInfo create_info);
+        ~texture_view();
 
         operator vk::ImageView() const;
 
     private:
-        vk::ImageView m_image_view;
+        texture* _texture;
+        vk::ImageSubresourceRange _resource_range;
+        vk::ImageView _image_view;
     };
 }

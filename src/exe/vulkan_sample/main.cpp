@@ -9,8 +9,8 @@
 
 jpu::ref_ptr<io::window> main_window;
 vk::RenderPass msaa_renderpass{ nullptr };
-jpu::ref_ptr<vkn::Texture> depth_attachment;
-jpu::ref_ptr<vkn::Texture> color_attachment;
+jpu::ref_ptr<vkn::texture> depth_attachment;
+jpu::ref_ptr<vkn::texture> color_attachment;
 std::vector<jpu::ref_ptr<vkn::framebuffer>> framebuffers;
 auto sample_count = vk::SampleCountFlagBits::e4;
 
@@ -193,19 +193,19 @@ void createMultisampleFramebuffers()
 
     image_info.setFormat(vk::Format::eD32SfloatS8Uint)
         .setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment);
-    depth_attachment = jpu::make_ref<vkn::Texture>(vkn::TextureCreateInfo(main_window->device()));
+    depth_attachment = jpu::make_ref<vkn::texture>(main_window->device());
     depth_attachment->loadEmpty(image_info);
 
     image_info.setFormat(vk::Format::eB8G8R8A8Unorm)
         .setUsage(vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment);
-    color_attachment = jpu::make_ref<vkn::Texture>(vkn::TextureCreateInfo(main_window->device()));
+    color_attachment = jpu::make_ref<vkn::texture>(main_window->device());
     color_attachment->loadEmpty(image_info);
 
 
 
-    const auto msaa_color_view = jpu::make_ref<vkn::TextureView>(vkn::TextureViewCreateInfo(color_attachment));
-    const auto msaa_depth_view = jpu::make_ref<vkn::TextureView>(vkn::TextureViewCreateInfo(depth_attachment,
-        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil, 0, 1, 0, 1)));
+    const auto msaa_color_view = jpu::make_ref<vkn::texture_view>(color_attachment);
+    const auto msaa_depth_view = jpu::make_ref<vkn::texture_view>(depth_attachment,
+        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil, 0, 1, 0, 1));
 
     framebuffers.resize(main_window->swapchain()->images().size(), nullptr);
     for (auto i = 0ui64; i < main_window->swapchain()->images().size(); ++i)

@@ -21,7 +21,7 @@ namespace vkn
         _device->dec_ref();
     }
 
-    void framebuffer::set_attachments(std::vector<jpu::ref_ptr<TextureView>> attachments)
+    void framebuffer::set_attachments(std::vector<jpu::ref_ptr<texture_view>> attachments)
     {
         _attachments = attachments;
     }

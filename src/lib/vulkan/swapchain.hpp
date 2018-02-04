@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "create_info.hpp"
 #include "texture.hpp"
 #include <jpu/memory>
 
@@ -20,7 +19,7 @@ namespace vkn
         const vk::Extent2D& extent() const;
         const vk::SurfaceFormatKHR& surface_format() const;
         const std::vector<vk::Image>& images() const;
-        const std::vector<jpu::ref_ptr<TextureView>>& image_views() const;
+        const std::vector<jpu::ref_ptr<texture_view>>& image_views() const;
         bool visible() const;
 
         vk::Semaphore swap_semaphore() const;
@@ -44,7 +43,7 @@ namespace vkn
         vk::SurfaceFormatKHR _surface_format;
         vk::PresentModeKHR _present_mode;
         std::vector<vk::Image> _images;
-        std::vector<jpu::ref_ptr<TextureView>> _image_views;
+        std::vector<jpu::ref_ptr<texture_view>> _image_views;
         vk::Semaphore _swap_semaphore;
     };
 }
