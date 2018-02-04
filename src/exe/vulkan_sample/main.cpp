@@ -1,7 +1,6 @@
 #define IO_API_VULKAN
 #define IO_EXPOSE_API_FUNCTIONS
 #include <io/window.hpp>
-#include <io/gui.hpp>
 #include <vulkan/logical_device.hpp>
 #include <vulkan/swapchain.hpp>
 #include <vulkan/framebuffer.hpp>

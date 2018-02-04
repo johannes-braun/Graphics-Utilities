@@ -19,7 +19,6 @@
 #include "opengl/framebuffer.hpp"
 
 #include "io/camera.hpp"
-#include "io/gui.hpp"
 #include "io/window.hpp"
 
 #include "res/image.hpp"
