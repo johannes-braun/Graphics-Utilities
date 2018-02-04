@@ -1,3 +1,5 @@
+#define IO_API_OPENGL
+
 #include <random>
 #include <numeric>
 
@@ -7,9 +9,7 @@
 #include <jpu/geometry>
 #include <jpu/log>
 
-#include "geo/vertex.hpp"
-#include "geo/transform.hpp"
-#include "geo/scene.hpp"
+#include "scene.hpp"
 
 #include "opengl/vertex_array.hpp"
 #include "opengl/buffer.hpp"
@@ -32,7 +32,7 @@
 #include "openal/buffer.hpp"
 #include "openal/listener.hpp"
 
-#include <stb_image.h>
+#include <stb/stb_image.h>
 
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
@@ -222,7 +222,7 @@ int main(int count, const char** arguments)
     const auto scene_buffer = jpu::make_ref<gl::buffer>(sizeof(geo::scene), gl::buffer_flag_bits::map_dynamic_persistent);
     scene_buffer->bind(0, GL_UNIFORM_BUFFER);
 
-    geo::transform transform;
+    res::transform transform;
     transform.position = glm::vec3(4.f, 4.f, 4.f);
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
@@ -270,7 +270,8 @@ int main(int count, const char** arguments)
         [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable { return dist(gen); });
     random_texture->assign_2d(GL_RGBA, GL_FLOAT, random_pixels.data());
 
-    io::Camera cam;
+    io::camera cam;
+    io::default_cam_controller cam_controller;
     uint32_t temporal_target = GL_COLOR_ATTACHMENT0;
     uint32_t temporal_buffer = GL_COLOR_ATTACHMENT2;
     uint32_t other_temporal_buffer = GL_COLOR_ATTACHMENT3;
@@ -440,13 +441,13 @@ int main(int count, const char** arguments)
 
         ImGui::End();
 
-        cam.update(main_window->delta_time());
+        cam_controller.update(cam, *main_window, main_window->delta_time());
         listener->set_position(cam.transform.position);
         listener->set_orientation(cam.transform.rotation);
 
         auto&& scene = scene_buffer->at<geo::scene>(0);
-        scene.set_view(cam.viewMatrix());
-        scene.set_projection(cam.projectionMatrix());
+        scene.set_view(cam.view());
+        scene.set_projection(cam.projection());
         scene.set_time(glfwGetTime());
         glFinish();
 

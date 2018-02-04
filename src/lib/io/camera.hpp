@@ -1,65 +1,50 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include "geo/transform.hpp"
-#include <memory>
+#include "res/transform.hpp"
+#include "button_press.hpp"
+#include "cursor_controls.hpp"
+#include "GLFW/glfw3.h"
 
 namespace io
 {
-	// You can derive from this to create your own Controller.
-	class CameraController
-	{
-	public:
-		virtual ~CameraController() = default;
-		virtual bool updateTransform(geo::transform& transform, double delta) = 0;
-	};
+    struct camera
+    {
+        glm::mat4 view() const;
 
-	// The camera is just a controllable wrapper object to contain the Perspective and View matrices.
+#if defined(IO_API_OPENGL)
+        glm::mat4 projection() const
+        {
+            GLint last_viewport[4];
+            glGetIntegerv(GL_VIEWPORT, last_viewport);
+            return projection(last_viewport[2], last_viewport[3]);
+        }
+#endif
 
-	class Camera
-	{
-	public:
-		// Use default camera controller.
-		Camera();
+        glm::mat4 projection(int width, int height) const;
 
-		// Use custom camera controller.
-		Camera(std::shared_ptr<CameraController> controller);
-
-        void setController(std::shared_ptr<CameraController> controller);
-
-		// Pushes the view- and projection-matrices into a ModelViewProjection object (if available).
-		// If mvp is set to nullptr, only the controller will be updated.
-		void update(double delta);
-
-		glm::mat4 viewMatrix() const;
-		glm::mat4 projectionMatrix() const;
-
-		geo::transform transform;
+        res::transform transform;
         float field_of_view = glm::radians(80.f);
         float clip_near = 0.1f;
         float clip_far = 1000.f;
+    };
 
-	private:
-		std::shared_ptr<CameraController> m_controller;
-		bool m_controller_enabled = true;
-	};
+    struct default_cam_controller
+    {
+        void update(camera& camera, GLFWwindow* window, double delta_time);
 
-	// The default controller type for the Camera steering.
-	// Use with WASD to normally navigate, use E to go up and Q to go down along the local up vector.
-	// Right click (with release) to make the mouse cursor grabbed. It will disappear and you can then you can drag the mouse to look around.
-	class DefaultCameraController : public CameraController
-	{
-	public:
-		explicit DefaultCameraController(float rotation_speed = 1.f, float movement_speed = 10.f);
+        float rotation_speed = 1.f;
+        float movement_speed = 12.f;
 
-		bool updateTransform(geo::transform& transform, double delta) override;
+        keyboard_button btn_forward{ GLFW_KEY_W };
+        keyboard_button btn_backward{ GLFW_KEY_S };
+        keyboard_button btn_left{ GLFW_KEY_A };
+        keyboard_button btn_right{ GLFW_KEY_D };
+        keyboard_button btn_up{ GLFW_KEY_E };
+        keyboard_button btn_down{ GLFW_KEY_Q };
 
-	private:
-		bool m_mode_changed = false;
-
-		glm::dvec2 m_last_cursor_position{};
-
-		float m_rotation_speed = 1.f;
-		float m_movement_speed = 10.f;
-	};
+        mouse_button grab_action{ GLFW_MOUSE_BUTTON_RIGHT };
+    private:
+        cursor_controls _cursor_controls;
+    };
 }

@@ -61,6 +61,6 @@ namespace al
 
     void source::set(const ALenum name, const glm::vec3& value) const
     {
-        alSource3i(_id, name, value.x, value.y, value.z);
+        alSource3f(_id, name, value.x, value.y, value.z);
     }
 }

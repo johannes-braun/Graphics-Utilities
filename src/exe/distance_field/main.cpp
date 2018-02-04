@@ -1,10 +1,10 @@
-
+#define IO_API_OPENGL
 
 #include <jpu/memory>
 #include <jpu/data>
 #include "io/window.hpp"
 #include "io/camera.hpp"
-#include "stb_image.h"
+#include "stb/stb_image.h"
 #include "res/image.hpp"
 
 jpu::ref_ptr<io::window> main_window;
@@ -79,28 +79,28 @@ void main(int argc, const char** argv)
     );
     const auto gen_vao = jpu::make_ref<gl::vertex_array>();
     glClearColor(1, 1, 1, 1);
-    io::Camera cam;
+
+    io::camera cam;
+    io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
 
-    float time = glfwGetTime();
     while(main_window->update())
     {
         while (is_iconified)
             glfwPollEvents();
 
         ImGui::Begin("Bla");
-        ImGui::Value("DT", 1000 * (float(glfwGetTime()) - time));
-        time = glfwGetTime();
+        ImGui::Value("DT", 1000 * static_cast<float>(main_window->delta_time()));
         ImGui::End();
 
-        cam.update(main_window->delta_time());
+        cam_controller.update(cam, *main_window, main_window->delta_time());
 
         glClear(GL_COLOR_BUFFER_BIT);
         gen_vao->bind();
         distance_field_pipeline->bind();
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("view_mat") = cam.viewMatrix();
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("proj_mat") = cam.projectionMatrix();
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view_mat") = inverse(cam.viewMatrix());
+        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("view_mat") = cam.view();
+        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("proj_mat") = cam.projection();
+        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view_mat") = inverse(cam.view());
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("cubemap") = sampler->sample_texture(cubemap);
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }

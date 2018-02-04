@@ -1,11 +1,11 @@
+#define IO_API_OPENGL
+
 #include <jpu/memory>
 #include <jpu/data>
 #include "io/window.hpp"
 #include "io/camera.hpp"
-#include "stb_image.h"
+#include "stb/stb_image.h"
 #include "res/image.hpp"
-#include "geo/vertex.hpp"
-#include "assimp/config.h"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
@@ -110,7 +110,9 @@ void main(int argc, const char** argv)
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glClearColor(0.2f, 0.2f, 0.2f, 1.f);
-    io::Camera cam;
+
+    io::camera cam;
+    io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
     const auto vao = jpu::make_ref<gl::vertex_array>();
 
@@ -127,7 +129,7 @@ void main(int argc, const char** argv)
         ImGui::Value("Amount", iw * ih);
         ImGui::Combo("Mode", &sel, " VBO \0 Tex \0 SSBO \0 Buf Texture");
         ImGui::End();
-        cam.update(main_window->delta_time());
+        cam_controller.update(cam, *main_window, main_window->delta_time());
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -136,28 +138,28 @@ void main(int argc, const char** argv)
         case 0:
         {
             vbo_pipeline->bind();
-            vbo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+            vbo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
             vbo_vao->bind();
             glDrawArrays(GL_POINTS, 0, iw * ih);
         } break;
         case 1:
         {
             tex_pipeline->bind();
-            tex_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+            tex_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
             vao->bind();
             glDrawArrays(GL_POINTS, 0, iw * ih);
         } break;
         case 2:
         {
             ssbo_pipeline->bind();
-            ssbo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+            ssbo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
             vao->bind();
             glDrawArrays(GL_POINTS, 0, iw * ih);
         } break;
         case 3:
         {
             tex_buf_pipeline->bind();
-            tex_buf_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+            tex_buf_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
             vao->bind();
             glDrawArrays(GL_POINTS, 0, iw * ih);
         } break;

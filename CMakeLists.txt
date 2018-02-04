@@ -7,20 +7,8 @@ set(AS_EXTERN_LIBRARIES_PATH "${PROJECT_SOURCE_DIR}/lib")
 set(AS_LIBRARIES_PATH "${PROJECT_SOURCE_DIR}/src/lib")
 set(AS_EXECUTABLES_PATH "${PROJECT_SOURCE_DIR}/src/exe")
 
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/glfw/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/glad/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/glm/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/assimp/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/al/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/stb/)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/jpu/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/glpp/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/imgui/include)
-list(APPEND INCLUDES ${AS_EXTERN_LIBRARIES_PATH}/pugixml/include)
-
 add_definitions(
-    # GLFW
-    -DGLFW_INCLUDE_GLCOREARB 
+    -DGLFW_INCLUDE_NONE
 
     # GLM
     -DGLM_FORCE_RADIANS
@@ -43,9 +31,11 @@ include("${AS_EXTENSIONS}/make_lib.cmake")
 list(APPEND INCLUDES "${AS_LIBRARIES_PATH}")
 collect_subdirectories(PROJECT_LIBRARIES "${AS_LIBRARIES_PATH}")
 FOREACH(subdir ${PROJECT_LIBRARIES})
-    make_library(${subdir} "${AS_LIBRARIES_PATH}/${subdir}" LIBRARIES)
-    set_target_properties(${subdir} PROPERTIES LINKER_LANGUAGE CXX)
-    target_include_directories(${subdir} PUBLIC ${INCLUDES})
+    make_library(${subdir} "${AS_LIBRARIES_PATH}/${subdir}" LIBRARIES success)
+    if("${success}" STREQUAL "1")
+        set_target_properties(${subdir} PROPERTIES LINKER_LANGUAGE CXX)
+        target_include_directories(${subdir} PUBLIC ${INCLUDES})
+    endif()
     file(REMOVE "${BINARY_DIR}/${subdir}.lib")
 ENDFOREACH()
 

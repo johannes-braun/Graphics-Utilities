@@ -1,10 +1,10 @@
 #include "image.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <stb/stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_MSC_SECURE_CRT
-#include <stb_image_write.h>
+#include <stb/stb_image_write.h>
 
 namespace res
 {
@@ -51,8 +51,8 @@ namespace res
         glGetTextureLevelParameteriv(*texture, 0, GL_TEXTURE_HEIGHT, &h);
         const auto comp = components(format);
         const auto type = path.extension() == ".hdr" ? GL_FLOAT : GL_UNSIGNED_BYTE;
-        const auto type_size = type==GL_FLOAT ? sizeof(float) : sizeof(uint8_t);
-        const auto data_size = type_size * comp * w * h;
+        const uint32_t type_size = type==GL_FLOAT ? sizeof(float) : sizeof(uint8_t);
+        const uint32_t data_size = type_size * comp * w * h;
 
         std::unique_ptr<void, decltype(&free)> texture_data(malloc(data_size), &free);
         glGetTextureImage(*texture, level, format, type, data_size, texture_data.get());

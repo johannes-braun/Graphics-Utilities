@@ -1,10 +1,12 @@
+#define IO_API_OPENGL
+
 #include <jpu/memory>
 #include <jpu/data>
 #include "io/window.hpp"
 #include "io/camera.hpp"
-#include "stb_image.h"
+#include "stb/stb_image.h"
 #include "res/image.hpp"
-#include "geo/vertex.hpp"
+#include "res/presets.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
@@ -111,12 +113,12 @@ void main(int argc, const char** argv)
         new gl::shader("../shaders/color_space/image.frag")
     );
 
-    const auto vbo = jpu::make_ref<gl::buffer>(geo::cube::vertices);
-    const auto ibo = jpu::make_ref<gl::buffer>(geo::cube::indices);
+    const auto vbo = jpu::make_ref<gl::buffer>(res::presets::cube::vertices);
+    const auto ibo = jpu::make_ref<gl::buffer>(res::presets::cube::indices);
     const auto cube_vao = jpu::make_ref<gl::vertex_array>();
     cube_vao->add_bindings({
-        gl::vertex_attribute_binding(0, *vbo, 0, 4, GL_FLOAT, sizeof(geo::vertex), offsetof(geo::vertex, position), false),
-        gl::vertex_attribute_binding(0, *vbo, 0, 2, GL_FLOAT, sizeof(geo::vertex), offsetof(geo::vertex, uv), false),
+        gl::vertex_attribute_binding(0, *vbo, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false),
+        gl::vertex_attribute_binding(0, *vbo, 0, 2, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, uv), false),
     });
     cube_vao->set_element_buffer(*ibo);
 
@@ -129,7 +131,8 @@ void main(int argc, const char** argv)
     //glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
     glClearColor(0.2f, 0.2f, 0.2f, 1.f);
     //glClearDepth(0);
-    io::Camera cam;
+    io::camera cam;
+    io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
     const auto vao = jpu::make_ref<gl::vertex_array>();
     const auto line_vao = jpu::make_ref<gl::vertex_array>();
@@ -156,12 +159,12 @@ void main(int argc, const char** argv)
         ImGui::ColorEdit3("##col_mul", &color_factor[0], ImGuiColorEditFlags_HDR);
         ImGui::End();
 
-        cam.update(main_window->delta_time());
+        cam_controller.update(cam, *main_window, main_window->delta_time());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         points_pipeline->bind();
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<gl::sampler2D>("picture") = id;
-        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("offset") = color_offset;
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("factor") = color_factor;
         vao->bind();
@@ -169,7 +172,7 @@ void main(int argc, const char** argv)
 
         glDisable(GL_DEPTH_TEST);
         center_pipeline->bind();
-        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("center") = val;
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("offset") = color_offset;
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("factor") = color_factor;
@@ -177,24 +180,24 @@ void main(int argc, const char** argv)
         glEnable(GL_DEPTH_TEST);
 
         gizmo_pipeline->bind();
-        gizmo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+        gizmo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         vao->bind();
         glDrawArrays(GL_LINES, 0, 6);
 
         glFrontFace(GL_CW);
         cube_pipeline->bind();
-        cube_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projectionMatrix() * cam.viewMatrix();
+        cube_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("tex") = sampler->sample_texture(grid.get());
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
         cube_vao->bind();
-        glDrawElements(GL_TRIANGLES, geo::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, res::presets::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
         glFrontFace(GL_CCW);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
-        glDrawElements(GL_TRIANGLES, geo::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, res::presets::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
