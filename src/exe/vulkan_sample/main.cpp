@@ -6,6 +6,7 @@
 #include "vulkan/pipeline.hpp"
 #include "vulkan/pipeline.hpp"
 #include "res/vertex.hpp"
+#include "res/image.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 vk::RenderPass msaa_renderpass{ nullptr };
@@ -73,9 +74,19 @@ int main(int argc, const char** args)
 
     const auto set = desc_pool->allocate(proxy_layout);
 
+    auto tex = jpu::make_ref<vkn::texture>(main_window->device());
+    int w, h;
+    stbi_ldr_to_hdr_gamma(1.f);
+    const auto dat = res::stbi_data(stbi_loadf("../res/img.jpg", &w, &h, nullptr, 4));
+    tex->assign_2d(w, h, vk::Format::eR32G32B32A32Sfloat, w*h * 4 * sizeof(float), dat.get());
+    tex->generateMipmaps();
+
+    const auto tex_view = jpu::make_ref<vkn::texture_view>(tex);
+
     while (main_window->update())
     {
         ImGui::Begin("Test");
+        ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<VkImageView>(static_cast<vk::ImageView>(*tex_view))), ImVec2(w/10.f, h/10.f));
         ImGui::End();
 
         ImGui::Begin("iasdsads");

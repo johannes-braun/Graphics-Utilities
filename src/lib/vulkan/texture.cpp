@@ -19,7 +19,7 @@ namespace vkn
         _device->dec_ref();
     }
 
-    void texture::assign_2d(uint32_t width, uint32_t height, uint32_t channels, size_t type_size, vk::Format format, void* data, vk::QueueFlagBits transfer_queue_type)
+    void texture::assign_2d(uint32_t width, uint32_t height, vk::Format format, size_t data_size, void* data, vk::QueueFlagBits transfer_queue_type)
     {
         auto&& transfer_queue = _device->queue(transfer_queue_type).queue;
         auto&& transfer_pool = _device->command_pool(transfer_queue_type);
@@ -28,7 +28,7 @@ namespace vkn
         _mip_levels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height))) + 1);
 
         _format = format;
-        const vk::DeviceSize texture_data_size = width * height*type_size * channels;
+        const vk::DeviceSize texture_data_size = data_size;
 
         const auto staging_buffer = _device->createBuffer(vk::BufferCreateInfo({}, texture_data_size, vk::BufferUsageFlagBits::eTransferSrc));
         const auto staging_buffer_req = _device->getBufferMemoryRequirements(staging_buffer);

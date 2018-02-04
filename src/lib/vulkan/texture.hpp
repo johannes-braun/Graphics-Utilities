@@ -24,7 +24,7 @@ namespace vkn
         explicit texture(device* device);
         ~texture();
 
-        void assign_2d(uint32_t width, uint32_t height, uint32_t channels, size_t type_size, vk::Format format, void* data, vk::QueueFlagBits transfer_queue_type = vk::QueueFlagBits::eTransfer);
+        void assign_2d(uint32_t width, uint32_t height, vk::Format format, size_t data_size, void* data, vk::QueueFlagBits transfer_queue_type = vk::QueueFlagBits::eTransfer);
 
         void loadEmpty(vk::ImageCreateInfo info);
 
