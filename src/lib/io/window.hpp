@@ -65,7 +65,7 @@ namespace io
         vk::SurfaceKHR surface() const { return _surface; }
         vk::PhysicalDevice gpu() const { return _physical_device; }
         vkn::device* device() const { return _device.get(); }
-        vkn::Swapchain* swapchain() const { return _swapchain.get(); }
+        vkn::swapchain* swapchain() const { return _swapchain.get(); }
         const std::vector<vk::CommandBuffer>& primary_command_buffers() const { return _primary_command_buffers; }
         vk::CommandBuffer current_primary_command_buffer() const { return _current_primary_command_buffer; }
         void rebuild_swapchain()
@@ -73,7 +73,7 @@ namespace io
             _device->waitIdle();
             while (_swapchain->dec_ref());
             _swapchain.reset();
-            _swapchain = jpu::make_ref<vkn::Swapchain>(vkn::SwapchainCreateInfo(_surface, _device.get(), 8));
+            _swapchain = jpu::make_ref<vkn::swapchain>(_device.get(), _surface, 8);
             _gui->render_interface().update_swapchain(_swapchain.get());
         }
 #endif
@@ -99,7 +99,7 @@ namespace io
         vk::Instance _instance;
         vk::PhysicalDevice _physical_device;
         jpu::ref_ptr<vkn::device> _device;
-        jpu::ref_ptr<vkn::Swapchain> _swapchain;
+        jpu::ref_ptr<vkn::swapchain> _swapchain;
         std::vector<vk::CommandBuffer> _primary_command_buffers;
         vk::CommandBuffer _current_primary_command_buffer;
         vk::Semaphore _semaphore_render_finished;

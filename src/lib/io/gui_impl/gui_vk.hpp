@@ -5,7 +5,7 @@
 
 namespace vkn {
     class device;
-    class Swapchain;
+    class swapchain;
 }
 
 namespace io
@@ -21,7 +21,7 @@ namespace io::impl
         friend window;
         constexpr static uint32_t queued_frames = 2;
 
-        gui_vk(vkn::device* device, vkn::Swapchain* swapchain);
+        gui_vk(vkn::device* device, vkn::swapchain* swapchain);
         ~gui_vk();
         ImTextureID build_font_atlas();
         void pre_render(ImDrawData* draw_data);
@@ -29,12 +29,12 @@ namespace io::impl
         void post_render();
 
     private:
-        void update_swapchain(vkn::Swapchain* swapchain);
+        void update_swapchain(vkn::swapchain* swapchain);
         void set_next_command_buffer(vk::CommandBuffer buffer);
         void create_device_objects();
 
         vkn::device* _device;
-        vkn::Swapchain* _swapchain;
+        vkn::swapchain* _swapchain;
 
         // Device Objects
         vk::Sampler m_font_sampler;

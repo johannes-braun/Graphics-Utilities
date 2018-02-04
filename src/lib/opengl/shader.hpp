@@ -89,6 +89,5 @@ namespace gl
         std::map<std::string_view, all_uniform_types> _uniforms;
         std::experimental::filesystem::path _path;
         std::vector<res::definition> _definitions;
-        std::map<std::experimental::filesystem::path, std::experimental::filesystem::file_time_type> _dependency_change_times;
     };
 }

@@ -92,13 +92,7 @@ namespace jpu
     }
 
     template <typename T>
-    ref_ptr<T>::operator T* const()
-    {
-        return _object;
-    }
-
-    template <typename T>
-    ref_ptr<T>::operator const T* const()
+    ref_ptr<T>::operator T*() const
     {
         return _object;
     }

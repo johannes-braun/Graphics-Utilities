@@ -38,4 +38,36 @@ namespace vkn
         vk::PhysicalDevice _gpu;
         vk::SurfaceKHR _surface;
     };
+
+    struct queue_filter
+    {
+        using filter_props = std::function<bool(const vk::QueueFamilyProperties&)>;
+        using filter_family = std::function<bool(int32_t)>;
+        using filter_both = std::function<bool(int32_t, const vk::QueueFamilyProperties&)>;
+
+        queue_filter(float priority, vk::QueueFlags flags);
+        queue_filter(float priority, int32_t family);
+        queue_filter(float priority, filter_props filter);
+        queue_filter(float priority, filter_family filter);
+        queue_filter(float priority, filter_both filter);
+
+        float priority = 1.f;
+        filter_both filter;
+    };
+
+    class queue_creator
+    {
+    public:
+        queue_creator(vk::PhysicalDevice physical_device, vk::ArrayProxy<const queue_filter> filters);
+
+        const std::vector<uint32_t>& families() const;
+        const std::vector<uint32_t>& unique_families() const;
+        const std::vector<vk::DeviceQueueCreateInfo>& create_infos() const;
+
+    private:
+        std::map<uint32_t, std::tuple<uint32_t, std::vector<float>>> m_family_filter;
+        std::vector<uint32_t> m_families;
+        std::vector<uint32_t> m_unique_families;
+        std::vector<vk::DeviceQueueCreateInfo> m_queue_infos;
+    };
 }

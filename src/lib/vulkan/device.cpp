@@ -1,6 +1,5 @@
 
 #include "device.hpp"
-#include "queue_filter.hpp"
 #include "memory.hpp"
 #include "detail.hpp"
 
@@ -10,16 +9,16 @@ namespace vkn
         uint32_t memory_block_size)
         : _gpu(gpu), _surface(surface)
     {
-        std::vector<QueueFilter> filters;
+        std::vector<queue_filter> filters;
         if ((enabled_queues & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
-            filters.push_back(QueueFilter(1.f, [&](int32_t fam, const auto& props) -> bool {
+            filters.push_back(queue_filter(1.f, [&](int32_t fam, const auto& props) -> bool {
             return _gpu.getSurfaceSupportKHR(fam, _surface) && (props.queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics;
         }));
         if ((enabled_queues & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
-            filters.push_back(QueueFilter(1.f, vk::QueueFlagBits::eCompute));
+            filters.push_back(queue_filter(1.f, vk::QueueFlagBits::eCompute));
         if ((enabled_queues & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
-            filters.push_back(QueueFilter(0.8f, vk::QueueFlagBits::eTransfer));
-        QueueCreator queue_creator(_gpu, filters);
+            filters.push_back(queue_filter(0.8f, vk::QueueFlagBits::eTransfer));
+        queue_creator queue_creator(_gpu, filters);
 
         vk::DeviceCreateInfo device_info;
         device_info.setEnabledExtensionCount(static_cast<uint32_t>(detail::device_extensions.size()))
@@ -31,8 +30,8 @@ namespace vkn
             .setPpEnabledLayerNames(detail::layers.data());
 #endif
 
-        device_info.setQueueCreateInfoCount(static_cast<uint32_t>(queue_creator.createInfos().size()))
-            .setPQueueCreateInfos(queue_creator.createInfos().data());
+        device_info.setQueueCreateInfoCount(static_cast<uint32_t>(queue_creator.create_infos().size()))
+            .setPQueueCreateInfos(queue_creator.create_infos().data());
         const auto features = _gpu.getFeatures();
         device_info.setPEnabledFeatures(&features);
 
@@ -61,7 +60,7 @@ namespace vkn
                 (_queues[vk::QueueFlagBits::eTransfer] = make_queue(queue_creator.families()[2])).family });
         }
 
-        _unique_families = queue_creator.uniqueFamilies();
+        _unique_families = queue_creator.unique_families();
         _memory_pool = jpu::make_ref<memory_pool>(this, memory_block_size);
     }
 
@@ -111,4 +110,69 @@ namespace vkn
     {
         return _memory_pool.get();
     }
+
+    queue_creator::queue_creator(vk::PhysicalDevice physical_device, vk::ArrayProxy<const queue_filter> filters)
+    {
+        m_families.resize(filters.size(), -1);
+
+        auto family_properties = physical_device.getQueueFamilyProperties();
+        for (int32_t family = 0; family < family_properties.size(); ++family)
+        {
+            const auto properties = family_properties[family];
+            for (size_t idx = 0; idx < filters.size(); ++idx)
+            {
+                auto&& filter = filters.data()[idx];
+                if (m_families[idx] == -1 && filter.filter(family, properties))
+                {
+                    auto&& tuple = m_family_filter[m_families[idx] = family];
+                    ++std::get<0>(tuple);
+                    std::get<1>(tuple).push_back(filter.priority);
+                }
+            }
+        }
+
+        for (const auto& family : m_family_filter)
+        {
+            m_queue_infos.push_back(vk::DeviceQueueCreateInfo({}, family.first, std::get<0>(family.second),
+                std::get<1>(family.second).data()));
+            m_unique_families.push_back(family.first);
+        }
+    }
+
+    const std::vector<uint32_t>& queue_creator::families() const
+    {
+        return m_families;
+    }
+
+    const std::vector<uint32_t>& queue_creator::unique_families() const
+    {
+        return m_unique_families;
+    }
+
+    const std::vector<vk::DeviceQueueCreateInfo>& queue_creator::create_infos() const
+    {
+        return m_queue_infos;
+    }
+
+    queue_filter::queue_filter(const float priority, const vk::QueueFlags flags)
+        : priority(priority), filter([flags](auto, const auto& props) { return static_cast<bool>(props.queueFlags & vk::QueueFlagBits::eGraphics); })
+    {
+
+    }
+
+    queue_filter::queue_filter(const float priority, const int32_t family)
+        : priority(priority), filter([family](auto fm, const auto&) { return fm == family; })
+    {}
+
+    queue_filter::queue_filter(const float priority, const filter_props filter)
+        : priority(priority), filter([filter](auto, const auto& props) { return filter(props); })
+    {}
+
+    queue_filter::queue_filter(const float priority, const filter_family filter)
+        : priority(priority), filter([filter](auto fm, const auto&) { return filter(fm); })
+    {}
+
+    queue_filter::queue_filter(const float priority, const filter_both filter)
+        : priority(priority), filter(filter)
+    {}
 }

@@ -5,108 +5,102 @@
 
 namespace vkn
 {
-    Swapchain::Swapchain(const SwapchainCreateInfo& info)
-        : ClassInfo(info)
+    swapchain::swapchain(device* device, vk::SurfaceKHR surface, uint32_t image_count, bool clipped,
+        vk::CompositeAlphaFlagBitsKHR composite_alpha)
+        : _device(device), _surface(surface), _image_count(image_count), _clipped(clipped), _composite_alpha(composite_alpha)
     {
-        m_info.device->inc_ref();
+        _device->inc_ref();
+        const auto capabilities = _device->gpu().getSurfaceCapabilitiesKHR(_surface);
 
-        const auto capabilities = m_info.device->gpu().getSurfaceCapabilitiesKHR(m_info.surface);
-
-        m_image_semaphore = m_info.device->createSemaphore({});
-        m_extent = fetchExtent(capabilities);
-        m_surface_format = fetchFormat();
-        m_present_mode = fetchPresentMode();
+        _swap_semaphore = _device->createSemaphore({});
+        _extent = get_extent(capabilities);
+        _surface_format = get_format();
+        _present_mode = get_present_mode();
 
         vk::SwapchainCreateInfoKHR swapchain_info;
-        swapchain_info.setSurface(m_info.surface)
-            .setClipped(m_info.clipped)
-            .setCompositeAlpha(m_info.composite_alpha)
-            .setPresentMode(m_present_mode)
-            .setImageExtent(m_extent)
-            .setImageFormat(m_surface_format.format)
-            .setImageColorSpace(m_surface_format.colorSpace)
-            .setMinImageCount(std::clamp(m_info.min_image_count, capabilities.minImageCount, capabilities.maxImageCount))
+        swapchain_info.setSurface(_surface)
+            .setClipped(_clipped)
+            .setCompositeAlpha(_composite_alpha)
+            .setPresentMode(_present_mode)
+            .setImageExtent(_extent)
+            .setImageFormat(_surface_format.format)
+            .setImageColorSpace(_surface_format.colorSpace)
+            .setMinImageCount(std::clamp(_image_count, capabilities.minImageCount, capabilities.maxImageCount))
             .setImageSharingMode(vk::SharingMode::eExclusive)
             .setImageArrayLayers(1)
             .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
             .setPreTransform(capabilities.currentTransform)
-            .setPQueueFamilyIndices(m_info.device->families().data())
-            .setQueueFamilyIndexCount(static_cast<uint32_t>(m_info.device->families().size()));
+            .setPQueueFamilyIndices(_device->families().data())
+            .setQueueFamilyIndexCount(static_cast<uint32_t>(_device->families().size()));
 
-        m_swapchain = m_info.device->createSwapchainKHR(swapchain_info);
+        _swapchain = _device->createSwapchainKHR(swapchain_info);
 
-        for (auto&& image : m_images = m_info.device->getSwapchainImagesKHR(m_swapchain))
+        for (auto&& image : _images = _device->getSwapchainImagesKHR(_swapchain))
         {
             vk::ImageViewCreateInfo image_view_info;
             image_view_info.setImage(image)
-                .setFormat(m_surface_format.format)
+                .setFormat(_surface_format.format)
                 .setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
                 .setViewType(vk::ImageViewType::e2D);
-            m_image_views.push_back(jpu::make_ref<TextureView>(m_info.device, image_view_info));
+            _image_views.push_back(jpu::make_ref<TextureView>(_device, image_view_info));
         }
     }
 
-    Swapchain::~Swapchain()
+    swapchain::~swapchain()
     {
-        m_info.device->destroySemaphore(m_image_semaphore);
-        m_info.device->destroySwapchainKHR(m_swapchain);
-
-        m_info.device->dec_ref();
+        _device->destroySemaphore(_swap_semaphore);
+        _device->destroySwapchainKHR(_swapchain);
+        _device->dec_ref();
     }
 
-    vk::SwapchainKHR Swapchain::swapchain() const
+    swapchain::operator vk::SwapchainKHR() const
     {
-        return m_swapchain;
+        return _swapchain;
     }
 
-    Swapchain::operator vk::SwapchainKHR() const
+    const vk::Extent2D& swapchain::extent() const
     {
-        return m_swapchain;
+        return _extent;
     }
 
-    const vk::Extent2D& Swapchain::extent() const
+    const vk::SurfaceFormatKHR& swapchain::surface_format() const
     {
-        return m_extent;
+        return _surface_format;
     }
 
-    const vk::SurfaceFormatKHR& Swapchain::surfaceFormat() const
+    const std::vector<vk::Image>& swapchain::images() const
     {
-        return m_surface_format;
+        return _images;
     }
 
-    bool Swapchain::visible() const
+    const std::vector<jpu::ref_ptr<TextureView>>& swapchain::image_views() const
     {
-        return m_extent.width * m_extent.height != 0;
+        return _image_views;
     }
 
-    const std::vector<vk::Image>& Swapchain::images() const
+    bool swapchain::visible() const
     {
-        return m_images;
+        return _extent.width * _extent.height != 0;
     }
 
-    const std::vector<jpu::ref_ptr<TextureView>>& Swapchain::imageViews() const
+    vk::Semaphore swapchain::swap_semaphore() const
     {
-        return m_image_views;
+        return _swap_semaphore;
     }
 
-    vk::Semaphore Swapchain::imageSemaphore() const
+    vk::Result swapchain::swap(vk::Fence fence, uint64_t timeout)
     {
-        return m_image_semaphore;
-    }
-
-    vk::Result Swapchain::swap(const vk::Fence fence, const uint64_t timeout)
-    {
-        const auto result = m_info.device->acquireNextImageKHR(m_swapchain, timeout, m_image_semaphore, fence);
-        m_last_image = result.value;
+        const auto result = _device->acquireNextImageKHR(_swapchain, timeout, _swap_semaphore, fence);
+        _last_image = result.value;
         return result.result;
     }
 
-    uint32_t Swapchain::currentImage() const
+    uint32_t swapchain::current_image() const
     {
-        return m_last_image;
+        return _last_image;
     }
 
-    vk::Extent2D Swapchain::fetchExtent(const vk::SurfaceCapabilitiesKHR& capabilities) const
+    vk::Extent2D swapchain::get_extent(const vk::SurfaceCapabilitiesKHR& capabilities) const
     {
         return capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max() ?
             capabilities.currentExtent :
@@ -114,7 +108,7 @@ namespace vkn
                 std::clamp(static_cast<uint32_t>(capabilities.currentExtent.height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
     }
 
-    vk::SurfaceFormatKHR Swapchain::fetchFormat() const
+    vk::SurfaceFormatKHR swapchain::get_format() const
     {
         const auto mk_fmt = [](auto f, auto space) {
             vk::SurfaceFormatKHR fmt;
@@ -123,7 +117,7 @@ namespace vkn
             return fmt;
         };
 
-        const auto formats = m_info.device->gpu().getSurfaceFormatsKHR(m_info.surface);
+        const auto formats = _device->gpu().getSurfaceFormatsKHR(_surface);
 
         if (formats.size() == 1 && formats[0].format == vk::Format::eUndefined)
             return mk_fmt(vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear);
@@ -135,9 +129,9 @@ namespace vkn
         return formats[0];
     }
 
-    vk::PresentModeKHR Swapchain::fetchPresentMode() const
+    vk::PresentModeKHR swapchain::get_present_mode() const
     {
-        const auto modes = m_info.device->gpu().getSurfacePresentModesKHR(m_info.surface);
+        const auto modes = _device->gpu().getSurfacePresentModesKHR(_surface);
         auto best = vk::PresentModeKHR::eFifo;
 
         for (const auto& present_mode : modes)

@@ -61,8 +61,7 @@ namespace jpu
         
         ref_ptr(T* value);
         ref_ptr& operator=(T* other) noexcept;
-        operator T* const();
-        operator const T* const();
+        operator T*() const;
 
         remove_add_refcount_t<T>& operator*() const;
         T* operator->() const;

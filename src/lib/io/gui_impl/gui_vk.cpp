@@ -7,7 +7,7 @@
 
 namespace io::impl
 {
-    gui_vk::gui_vk(vkn::device* device, vkn::Swapchain* swapchain)
+    gui_vk::gui_vk(vkn::device* device, vkn::swapchain* swapchain)
         : _device(device), _swapchain(swapchain)
     {
         _device->inc_ref();
@@ -141,7 +141,7 @@ namespace io::impl
         auto&& command_buffer = _command_buffer;
 
         const vk::Rect2D scissor_rect({ 0, 0 }, { static_cast<uint32_t>(_swapchain->extent().width), static_cast<uint32_t>(_swapchain->extent().height) });
-        command_buffer.beginRenderPass(vk::RenderPassBeginInfo(m_renderpass, m_framebuffers[_swapchain->currentImage()], scissor_rect, 0, nullptr), vk::SubpassContents::eInline);
+        command_buffer.beginRenderPass(vk::RenderPassBeginInfo(m_renderpass, m_framebuffers[_swapchain->current_image()], scissor_rect, 0, nullptr), vk::SubpassContents::eInline);
         if (frame_infos.last_size < size)
         {
             _device->waitIdle();
@@ -230,7 +230,7 @@ namespace io::impl
         _command_buffer.endRenderPass();
     }
 
-    void gui_vk::update_swapchain(vkn::Swapchain* swapchain)
+    void gui_vk::update_swapchain(vkn::swapchain* swapchain)
     {
         for (auto&& fbo : m_framebuffers) _device->destroyFramebuffer(fbo);
         m_framebuffers.clear();
@@ -239,7 +239,7 @@ namespace io::impl
         vk::FramebufferCreateInfo framebuffer_info({}, m_renderpass, 1, nullptr, _swapchain->extent().width, _swapchain->extent().height, 1);
         for (auto i = 0u; i < static_cast<int32_t>(_swapchain->images().size()); ++i)
         {
-            const std::array<vk::ImageView, 1> att = { *_swapchain->imageViews()[i] };
+            const std::array<vk::ImageView, 1> att = { *_swapchain->image_views()[i] };
             framebuffer_info.setPAttachments(std::data(att));
             m_framebuffers.push_back(_device->createFramebuffer(framebuffer_info));
         }
@@ -279,9 +279,11 @@ namespace io::impl
             m_pipeline_layout = _device->createPipelineLayout(vk::PipelineLayoutCreateInfo({}, 1, &m_descriptor_set_layout, 1, &push_constant_range));
         }
 
-        const auto vs = jpu::make_ref<vkn::ShaderModule>(vkn::ShaderModuleCreateInfo(_device, "../shaders/gui/vk/imgui.vert"));
-        const auto fs = jpu::make_ref<vkn::ShaderModule>(vkn::ShaderModuleCreateInfo(_device, "../shaders/gui/vk/imgui.frag"));
-        const auto shader_stages = { vs->makePipelineStage(), fs->makePipelineStage() };
+        const auto vs = jpu::make_ref<vkn::shader>(_device, "../shaders/gui/vk/imgui.vert");
+        const auto fs = jpu::make_ref<vkn::shader>(_device, "../shaders/gui/vk/imgui.frag");
+        const auto shader_stages = { 
+            vk::PipelineShaderStageCreateInfo({}, vs->type(), *vs, "main"), 
+            vk::PipelineShaderStageCreateInfo({}, fs->type(), *fs, "main")};
 
         vk::VertexInputBindingDescription vertex_input_binding(0, sizeof(ImDrawVert), vk::VertexInputRate::eVertex);
         const auto vertex_attributes = {

@@ -3,6 +3,59 @@
 
 namespace vkn
 {
+    shader::shader(device* device, const vk::ShaderStageFlagBits type, const std::experimental::filesystem::path& path,
+        const std::vector<res::definition>& definitions)
+        : _device(device), _type(type), _path(path), _definitions(definitions)
+    {
+        _device->inc_ref();
+        reload(true);
+    }
+
+    shader::shader(device* device, const std::experimental::filesystem::path& path,
+        const std::vector<res::definition>& definitions)
+        : shader(device, type_of(path.extension()), path, definitions)
+    {
+    }
+
+    shader::~shader()
+    {
+        _device->destroyShaderModule(_shader_module);
+        _device->dec_ref();
+    }
+
+    vk::ShaderStageFlagBits shader::type() const
+    {
+        return _type;
+    }
+
+    void shader::reload(bool force)
+    {
+        _device->waitIdle();
+        if(_shader_module)
+            _device->destroyShaderModule(_shader_module);
+
+        auto bin = res::load_binary_shader(res::shader_format::spirv, _path, { "../shaders/" }, {});
+        _shader_module = _device->createShaderModule(vk::ShaderModuleCreateInfo({}, bin.data.size(),
+            reinterpret_cast<const uint32_t*>(bin.data.data())));
+    }
+
+    void shader::reload(const std::vector<res::definition>& definitions)
+    {
+        _definitions = definitions;
+        reload(true);
+    }
+
+    shader::operator vk::ShaderModule() const
+    {
+        return _shader_module;
+    }
+
+/*
+
+
+
+
+
     ShaderModule::ShaderModule(const ShaderModuleCreateInfo& info)
         : ClassInfo(info), vk::ShaderModule([&]() {
         auto bin = res::load_binary_shader(res::shader_format::spirv, info.path, { "../shaders/" }, {});
@@ -38,5 +91,5 @@ namespace vkn
         if (override_stage != vk::ShaderStageFlagBits(0))
             stage = override_stage;
         return vk::PipelineShaderStageCreateInfo({}, stage, *this, override_entry);
-    }
+    }*/
 }

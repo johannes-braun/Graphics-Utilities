@@ -70,7 +70,7 @@ namespace io
 
         _device = jpu::make_ref<vkn::device>(_physical_device, _surface,
             vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer | vk::QueueFlagBits::eCompute, 1ui32 << 25ui32);
-        _swapchain = jpu::make_ref<vkn::Swapchain>(vkn::SwapchainCreateInfo(_surface, _device, 8));
+        _swapchain = jpu::make_ref<vkn::swapchain>(_device.get(), _surface, 8);
 
         _gui = jpu::make_ref<io::gui>(_window, _device, _swapchain);
 
@@ -146,7 +146,7 @@ namespace io
 
             // Submit primary command buffer for rendering
             std::array<vk::CommandBuffer, 1> command_buffers{ _current_primary_command_buffer };
-            const auto wait_semaphores = { _swapchain->imageSemaphore() };
+            const auto wait_semaphores = { _swapchain->swap_semaphore() };
 
             vk::PipelineStageFlags stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
             vk::SubmitInfo render_submit_info;
@@ -159,9 +159,9 @@ namespace io
                 .setPWaitDstStageMask(&stage_flags);
             _device->queue(vk::QueueFlagBits::eGraphics).queue.submit(render_submit_info, _memory_fence);
 
-            const auto sc = _swapchain->swapchain();
+            vk::SwapchainKHR sc = *_swapchain;
             const auto present_semaphores = { _semaphore_render_finished };
-            const auto image = { _swapchain->currentImage() };
+            const auto image = { _swapchain->current_image() };
             _device->queue(vk::QueueFlagBits::eGraphics).queue.presentKHR(vk::PresentInfoKHR(static_cast<uint32_t>(std::size(present_semaphores)), std::data(present_semaphores), 1, &sc, std::data(image)));
         }
 #endif
@@ -183,7 +183,7 @@ namespace io
         _device->waitForFences(_memory_fence, true, std::numeric_limits<uint64_t>::max());
         _device->resetFences(_memory_fence);
 
-        _current_primary_command_buffer = _primary_command_buffers[_swapchain->currentImage()];
+        _current_primary_command_buffer = _primary_command_buffers[_swapchain->current_image()];
         _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
 #endif
         const auto is_open = !glfwWindowShouldClose(_window);

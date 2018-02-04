@@ -3,12 +3,15 @@
 #include <io/window.hpp>
 #include <vulkan/device.hpp>
 #include <vulkan/framebuffer.hpp>
+#include "vulkan/pipeline.hpp"
+#include "vulkan/pipeline.hpp"
+#include "res/vertex.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 vk::RenderPass msaa_renderpass{ nullptr };
 jpu::ref_ptr<vkn::Texture> depth_attachment;
 jpu::ref_ptr<vkn::Texture> color_attachment;
-std::vector<jpu::ref_ptr<vkn::Framebuffer>> framebuffers;
+std::vector<jpu::ref_ptr<vkn::framebuffer>> framebuffers;
 auto sample_count = vk::SampleCountFlagBits::e4;
 
 void createMultisampleRenderpass();
@@ -38,23 +41,61 @@ int main(int argc, const char** args)
         vk::ClearValue{ vk::ClearDepthStencilValue() }
     };
 
-    while(main_window->update())
+    ;
+    const auto bindings = { vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, nullptr) };
+    const auto proxy_layout = jpu::make_ref<vkn::descriptor_set_layout>(main_window->device(), bindings);
+    const auto push_layout = jpu::make_ref<vkn::descriptor_set_layout>(main_window->device(), bindings, vk::DescriptorSetLayoutCreateFlagBits::ePushDescriptorKHR);
+
+    const auto pipeline_layout = jpu::make_ref<vkn::pipeline_layout>(main_window->device());
+    pipeline_layout->add_push_constant_range(vk::ShaderStageFlagBits::eVertex, 0, sizeof(float) * 4);
+    pipeline_layout->add_descriptor_set_layout(push_layout);
+    pipeline_layout->finalize();
+
+    const auto pipeline = jpu::make_ref<vkn::graphics_pipeline>(main_window->device(), pipeline_layout, msaa_renderpass, 0);
+    pipeline->use_stages(
+        jpu::make_ref<vkn::shader>(main_window->device(), vkn::shader_root / "simple_vk/simple.vert"),
+        jpu::make_ref<vkn::shader>(main_window->device(), vkn::shader_root / "simple_vk/simple.frag")
+    );
+    pipeline->set_vertex_attributes({
+        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(res::vertex, position)),
+        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(res::vertex, uv)),
+        vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(res::vertex, normal))
+        });
+    pipeline->set_vertex_bindings({ vk::VertexInputBindingDescription(0, sizeof(res::vertex)) });
+    pipeline->multisample.setRasterizationSamples(sample_count);
+    pipeline->finalize();
+
+    const auto pool_sizes = {
+        vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 256),
+        vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 256),
+    };
+    const auto desc_pool = jpu::make_ref<vkn::descriptor_pool>(main_window->device(), 256, pool_sizes);
+
+    const auto set = desc_pool->allocate(proxy_layout);
+
+    while (main_window->update())
     {
         ImGui::Begin("Test");
         ImGui::End();
 
         ImGui::Begin("iasdsads");
-        ImGui::Button("Aua");
+        if (ImGui::Button("Aua"))
+        {
+            pipeline->reload_stages();
+        }
         ImGui::Text("aspiod");
         ImGui::End();
 
         // Update...
         vk::CommandBufferInheritanceInfo inheritance(msaa_renderpass);
         render_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eRenderPassContinue | vk::CommandBufferUsageFlagBits::eSimultaneousUse, &inheritance));
+        render_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
+        render_command_buffer.setViewport(0, vk::Viewport(0, 0, 1280, 720, 0, 1.f));
+        render_command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(), vk::Extent2D(1280, 720)));
         render_command_buffer.end();
 
         main_window->current_primary_command_buffer().beginRenderPass(vk::RenderPassBeginInfo(msaa_renderpass,
-            *framebuffers[main_window->swapchain()->currentImage()],
+            *framebuffers[main_window->swapchain()->current_image()],
             vk::Rect2D({ 0, 0 }, main_window->swapchain()->extent()),
             static_cast<uint32_t>(std::size(clear_values)), std::data(clear_values)),
             vk::SubpassContents::eSecondaryCommandBuffers);
@@ -169,8 +210,8 @@ void createMultisampleFramebuffers()
     framebuffers.resize(main_window->swapchain()->images().size(), nullptr);
     for (auto i = 0ui64; i < main_window->swapchain()->images().size(); ++i)
     {
-        framebuffers[i] = jpu::make_ref<vkn::Framebuffer>(vkn::FramebufferCreateInfo(main_window->device(), msaa_renderpass, main_window->swapchain()->extent(), 1, {
-            msaa_color_view, main_window->swapchain()->imageViews()[i], msaa_depth_view
-            }));
+        framebuffers[i] = jpu::make_ref<vkn::framebuffer>(main_window->device(), msaa_renderpass, main_window->swapchain()->extent());
+        framebuffers[i]->set_attachments({ msaa_color_view, main_window->swapchain()->image_views()[i], msaa_depth_view });
+        framebuffers[i]->finalize();
     }
 }

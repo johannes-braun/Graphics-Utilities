@@ -30,7 +30,7 @@ namespace io
         constexpr static int font_title = 2;
 
 #if defined(IO_API_VULKAN)
-        gui(GLFWwindow* window, vkn::device* device, vkn::Swapchain* swapchain) : _window(window), _render_interface(device, swapchain)
+        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window), _render_interface(device, swapchain)
         {
             init();
         }
