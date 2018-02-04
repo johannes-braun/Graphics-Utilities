@@ -86,6 +86,8 @@ namespace res
         tmp.seekg(0, std::ios_base::beg);
         spirv.resize(length);
         tmp.read(reinterpret_cast<char*>(spirv.data()), length);
+        tmp.close();
+        fs::remove(temp_file_name);
         return std::make_tuple(spirv, std::vector<fs::path>(dependencies.begin(), dependencies.end()));
     }
 
