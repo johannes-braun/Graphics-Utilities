@@ -76,7 +76,7 @@ namespace res
             {
                 defines += "=" + def.info.replacement;
             }
-            defines += '\' ';
+            defines += "\' ";
         }
         system(cmd(glslc_location, std::string(" -std=450core -o ") + temp_file_name + " -mfmt=bin" + includes + defines + " " + fs::absolute(file_path).string() + "").c_str());
         std::ifstream tmp(temp_file_name, std::ios::in | std::ios::binary);
@@ -135,7 +135,7 @@ namespace res
         glGetProgramiv(id, GL_PROGRAM_BINARY_LENGTH, &length);
         target.resize(length);
         GLenum fmt;
-        glGetProgramBinary(id, target.capacity(), &length, &fmt, target.data());
+        glGetProgramBinary(id, static_cast<int>(target.capacity()), &length, &fmt, target.data());
         glDeleteProgram(id);
         std::vector<fs::path> deps;
         deps.push_back(file_path);
@@ -176,7 +176,7 @@ namespace res
                 /*std::vector<char> dep_data(header.dependencies_length);
                 input.read(dep_data.data(), header.dependencies_length);*/
 
-                for (int i = 0; i < header.dependencies_count; ++i)
+                for (int i = 0; i < static_cast<int>(header.dependencies_count); ++i)
                 {
                     std::time_t last_write{ 0 };
                     uint32_t slength{ 0 };
@@ -252,7 +252,7 @@ namespace res
             {
                 std::time_t t = std::chrono::system_clock::to_time_t(fs::last_write_time(dep));
                 auto str = dep.string();
-                uint32_t len = str.length();
+                uint32_t len = static_cast<uint32_t>(str.length());
                 buf.write(reinterpret_cast<const char*>(&t), sizeof(t));
                 buf.write(reinterpret_cast<const char*>(&len), sizeof(len));
                 buf.write(str.data(), str.length());
@@ -264,8 +264,8 @@ namespace res
             std::string out_compressed;
             snappy::Compress(reinterpret_cast<const char*>(bin.data()), bin.size(), &out_compressed);
             header.version = 100;
-            header.dependencies_length = deps.size();
-            header.dependencies_count = dependencies.size();
+            header.dependencies_length = static_cast<uint32_t>(deps.size());
+            header.dependencies_count = static_cast<uint32_t>(dependencies.size());
             header.binary_format = format;
             header.binary_length = static_cast<uint32_t>(out_compressed.size());
 
