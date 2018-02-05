@@ -27,6 +27,8 @@ namespace io
         float field_of_view = glm::radians(80.f);
         float clip_near = 0.1f;
         float clip_far = 1000.f;
+        bool negative_y = false;
+        bool inverse_z = false;
     };
 
     struct default_cam_controller

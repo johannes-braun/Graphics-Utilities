@@ -12,7 +12,12 @@ namespace io
 
     glm::mat4 camera::projection(const int width, const int height) const
     {
-        return glm::perspectiveFov(glm::radians(70.f), static_cast<float>(width), static_cast<float>(height), 0.01f, 1000.f);
+        const glm::mat4 inv_z_mat = transpose(glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 1, 0, 0, 0, 1));
+        const glm::mat4 neg_y_mat = transpose(glm::mat4(1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1));
+
+        return (inverse_z ? inv_z_mat : glm::mat4(1.f)) *
+            (negative_y ? neg_y_mat : glm::mat4(1.f)) *
+            glm::perspectiveFov(glm::radians(70.f), static_cast<float>(width), static_cast<float>(height), 0.01f, 1000.f);
     }
 
     void default_cam_controller::update(camera& camera, GLFWwindow* window, const double delta_time)
