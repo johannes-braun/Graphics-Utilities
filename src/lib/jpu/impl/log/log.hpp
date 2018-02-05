@@ -90,34 +90,23 @@ namespace jpu::logging
 	template<severity S> struct log_info;
 	template<> struct log_info<severity::verbose>	: log_data<1, 1, 1, 1, Tag("VRB")> {};
 	template<> struct log_info<severity::debug>	: log_data<0, 0, 1, 1, Tag("DBG")> {};
-	template<> struct log_info<severity::info>		: log_data<0, 1, 0, 1, Tag("INF")> {};
+	template<> struct log_info<severity::info>		: log_data<0, 1, 0, 0, Tag("INF")> {};
 	template<> struct log_info<severity::hint>		: log_data<1, 0, 1, 1, Tag("HNT")> {};
-	template<> struct log_info<severity::warning>	: log_data<1, 1, 0, 1, Tag("WRN")> {};
+	template<> struct log_info<severity::warning>	: log_data<1, 1, 0, 0, Tag("WRN")> {};
 	template<> struct log_info<severity::error>	: log_data<1, 0, 0, 1, Tag("ERR")> {};
 
 	// Creates a colored log prefix text for a given Severity using the according log_data struct.
-	template<severity S> constexpr std::array<char, 33> log_text{
+	template<severity S> constexpr std::array<char, 23> log_text{
 		'\033', '[',
 		'0' + (log_info<S>::coloring + 10) / 100,
 		'0' + ((log_info<S>::coloring + 10) % 100 / 10),
 		'0' + (log_info<S>::coloring + 10) % 10,
-		'm', ' ',
+		'm', ' ', '\033', '[', '1', ';', '9', '8', 'm',
+        log_info<S>::short_form[0],
+        log_info<S>::short_form[1],
+        log_info<S>::short_form[2], ' ',
 
-		'\033', '[', '4', '9', 'm',
-
-		'\033', '[',
-		'0' + (log_info<S>::coloring) / 100,
-		'0' + ((log_info<S>::coloring) % 100 / 10),
-		'0' + (log_info<S>::coloring) % 10,
-		'm',
-
-		' ', '[', 
-		log_info<S>::short_form[0],
-		log_info<S>::short_form[1],
-		log_info<S>::short_form[2], ']', ' ',
-
-		'\033', '[', '0', 'm', 'i', 'n', ' ',
-		'\0' };
+        '\033', '[', '0', 'm', ' '};
 
 	// A LogChannel is being created every time logging::capture is called.
 	// It shall not be saved anywhere and is used to only print completed Log streams to mutex locked stdout.
@@ -157,12 +146,30 @@ namespace jpu::logging
 		static WinCMD win_cmd = mkwincmd();
 #endif
 
-		std::stringstream prefix;
-		prefix << logging::log_text<S>.data() << "\033[90m" << std::experimental::filesystem::path(file).filename() << " \033[0m:\033[90m " << line << "\033[0m ";
+        std::stringstream prefix;
+        if (line != -1)
+        {
+            auto fname = std::experimental::filesystem::path(file).filename();
+            auto stem = fname.stem().string();
+            std::string end(stem.end() - 3, stem.end());
+            if (stem.size() > 15)
+            {
+                stem.resize(15);
+                stem[stem.length() - 1] = '.';
+                stem[stem.length() - 2] = '.';
+                stem[stem.length() - 3] = '.';
+                stem += end;
+            }
+            prefix << logging::log_text<S>.data() << "\033[90m[ " << stem << fname.extension() << ":" << line << " ]\033[0m ";
+        }
+        else
+        {
+            prefix << logging::log_text<S>.data() << "\033[90m[ " << file << " ]\033[0m ";
+        }
 		auto str = prefix.str();
 
 		log_channel channel;
-		channel << '\n' << str << std::string(85 - str.size(), '-') << " ";
+		channel << '\n' << str << std::string(58 - str.size(), ' ') << " ";
 		return channel;
 	}
 }
@@ -177,9 +184,16 @@ constexpr jpu::logging::severity min_severity =
 
 // Log definitions
 #define log_out(S) if constexpr(S >= min_severity) jpu::logging::capture<S>(__FILE__, __LINE__)
+#define tlog_out(tag, S) if constexpr(S >= min_severity) jpu::logging::capture<S>(tag, -1)
 #define log_v log_out(jpu::logging::severity::verbose)
 #define log_d log_out(jpu::logging::severity::debug)
 #define log_i log_out(jpu::logging::severity::info)
 #define log_h log_out(jpu::logging::severity::hint)
 #define log_w log_out(jpu::logging::severity::warning)
 #define log_e log_out(jpu::logging::severity::error)
+#define tlog_v(t) tlog_out(t, jpu::logging::severity::verbose)
+#define tlog_d(t) tlog_out(t, jpu::logging::severity::debug)
+#define tlog_i(t) tlog_out(t, jpu::logging::severity::info)
+#define tlog_h(t) tlog_out(t, jpu::logging::severity::hint)
+#define tlog_w(t) tlog_out(t, jpu::logging::severity::warning)
+#define tlog_e(t) tlog_out(t, jpu::logging::severity::error)

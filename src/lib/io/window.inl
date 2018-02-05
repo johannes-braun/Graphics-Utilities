@@ -12,6 +12,7 @@ namespace io
 #if defined(IO_API_VULKAN)
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 #endif
+        glfwSetErrorCallback([](int code, const char* msg) { tlog_e("GLFW Callback") << "[ Code: " << code << " ]: " << msg; });
         _window = glfwCreateWindow(width, height, title.data(),
             monitor.has_value() ? static_cast<GLFWmonitor*>(*monitor) : nullptr,
             share ? static_cast<GLFWwindow*>(*share) : nullptr);
@@ -38,15 +39,15 @@ namespace io
             switch (flags)
             {
             case vk::DebugReportFlagBitsEXT::eError:
-                log_e << msg; break;
+                tlog_e("Vulkan Debug") << msg; break;
             case vk::DebugReportFlagBitsEXT::eWarning:
-                log_w << msg; break;
+                tlog_w("Vulkan Debug") << msg; break;
             case vk::DebugReportFlagBitsEXT::ePerformanceWarning:
-                log_h << msg; break;
+                tlog_h("Vulkan Debug") << msg; break;
             case vk::DebugReportFlagBitsEXT::eInformation:
-                log_i << msg; break;
+                tlog_i("Vulkan Debug") << msg; break;
             case vk::DebugReportFlagBitsEXT::eDebug:
-                log_d << msg; break;
+                tlog_d("Vulkan Debug") << msg; break;
             }
 
             return false;
@@ -89,19 +90,19 @@ namespace io
             switch (severity)
             {
             case gl::debug_severity::high:
-                log_e << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                tlog_e("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
                     get_debug_enum_desc(type) << "\" -- " << message;
                 break;
             case gl::debug_severity::medium:
-                log_w << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                tlog_w("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
                     get_debug_enum_desc(type) << "\" -- " << message;
                 break;
             case gl::debug_severity::low:
-                log_d << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                tlog_d("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
                     get_debug_enum_desc(type) << "\" -- " << message;
                 break;
             case gl::debug_severity::notification:
-                log_v << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                tlog_v("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
                     get_debug_enum_desc(type) << "\" -- " << message;
                 break;
             default: break;
