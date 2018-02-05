@@ -9,6 +9,7 @@ set(AS_EXECUTABLES_PATH "${PROJECT_SOURCE_DIR}/src/exe")
 
 add_definitions(
     -DGLFW_INCLUDE_NONE
+    -DSTBI_MSC_SECURE_CRT
 
     # GLM
     -DGLM_FORCE_RADIANS
