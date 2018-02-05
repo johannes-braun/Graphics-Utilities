@@ -55,13 +55,13 @@ namespace vkn
             vk::DynamicState::eViewport,
             vk::DynamicState::eScissor
         };
-        vk::PipelineDynamicStateCreateInfo dynamic_state;
         vk::PipelineViewportStateCreateInfo viewport_state;
         std::vector<vk::PipelineColorBlendAttachmentState> blend_attachments;
         vk::PipelineColorBlendStateCreateInfo blend_state;
         vk::PipelineDepthStencilStateCreateInfo depth_stencil;
 
     private:
+        vk::PipelineDynamicStateCreateInfo _dynamic_state;
         std::vector<vk::VertexInputAttributeDescription> _vertex_attributes;
         std::vector<vk::VertexInputBindingDescription> _vertex_bindings;
         vk::PipelineVertexInputStateCreateInfo _vertex_input;

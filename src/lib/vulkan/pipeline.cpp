@@ -100,10 +100,6 @@ namespace vkn
             .setDepthBoundsTestEnable(true)
             .setMinDepthBounds(0.f)
             .setMaxDepthBounds(1.f);
-
-        // As said before, use the viewport and scissor as dynamic states.
-        dynamic_state.setDynamicStateCount(static_cast<uint32_t>(std::size(dynamic_states)))
-            .setPDynamicStates(std::data(dynamic_states));
     }
 
     graphics_pipeline::~graphics_pipeline()
@@ -127,6 +123,8 @@ namespace vkn
 
     void graphics_pipeline::finalize()
     {
+        _dynamic_state.setDynamicStateCount(static_cast<uint32_t>(std::size(dynamic_states)))
+            .setPDynamicStates(std::data(dynamic_states));
         _device->waitIdle();
         if (_pipeline) _device->destroyPipeline(_pipeline);
         _vertex_input.setPVertexAttributeDescriptions(std::data(_vertex_attributes)).setVertexAttributeDescriptionCount(
@@ -142,7 +140,7 @@ namespace vkn
             .setPStages(std::data(_stage_infos))
             .setPRasterizationState(&rasterizer)
             .setPMultisampleState(&multisample)
-            .setPDynamicState(&dynamic_state)
+            .setPDynamicState(dynamic_states.empty() ? nullptr : &_dynamic_state)
             .setPViewportState(&viewport_state)
             .setPColorBlendState(&blend_state)
             .setPDepthStencilState(&depth_stencil)
