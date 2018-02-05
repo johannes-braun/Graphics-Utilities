@@ -87,8 +87,11 @@ namespace vkn
         _device->destroyBuffer(staging_buffer);
     }
 
-    void texture::loadEmpty(const vk::ImageCreateInfo info)
+    void texture::create_empty(const vk::ImageCreateInfo info)
     {
+        if (_image) _device->destroyImage(_image);
+        if (_memory) _device->memory()->free(_memory);
+
         _extent = info.extent;
         _format = info.format;
         _mip_levels = info.mipLevels;
@@ -99,14 +102,14 @@ namespace vkn
         _device->bindImageMemory(_image, _memory->memory, _memory->offset);
     }
 
-    void texture::generateMipmaps() const
+    void texture::generate_mipmaps() const
     {
         _device->unique_command(vk::QueueFlagBits::eTransfer, [&](vk::CommandBuffer command_buffer) {
-            generateMipmaps(command_buffer);
+            generate_mipmaps(command_buffer);
         });
     }
 
-    void texture::generateMipmaps(const vk::CommandBuffer command_buffer) const
+    void texture::generate_mipmaps(const vk::CommandBuffer command_buffer) const
     {
         const vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
         command::transform_image_layout(command_buffer, _image, range,
@@ -144,11 +147,10 @@ namespace vkn
             vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllGraphics);
     }
 
-    vk::ImageView texture::createImageView(vk::ImageSubresourceRange resource_range) const
+    vk::ImageView texture::create_image_view(vk::ImageSubresourceRange resource_range) const
     {
         if (resource_range.levelCount == 0)
             resource_range.setLevelCount(_mip_levels);
-
         return _device->createImageView(vk::ImageViewCreateInfo({}, _image, vk::ImageViewType::e2D, _format, {}, resource_range));
     }
 
@@ -173,7 +175,7 @@ namespace vkn
     }
 
     texture_view::texture_view(texture* texture, vk::ImageSubresourceRange resource_range)
-        : _texture(texture), _resource_range(resource_range), _image_view(_texture->createImageView(_resource_range))
+        : _texture(texture), _resource_range(resource_range), _image_view(_texture->create_image_view(_resource_range))
     {
         _texture->inc_ref();
     }

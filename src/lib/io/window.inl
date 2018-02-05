@@ -116,6 +116,7 @@ namespace io
     {
         _gui.reset();
 #ifdef IO_API_VULKAN
+        _swapchain.reset();
         _device->destroyFence(_memory_fence);
         _device->destroySemaphore(_semaphore_render_finished);
         _instance.destroyDebugReportCallbackEXT(_debug_callback);

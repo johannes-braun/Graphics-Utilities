@@ -71,10 +71,20 @@ namespace io
         void rebuild_swapchain()
         {
             _device->waitIdle();
-            while (_swapchain->dec_ref());
+            while (_swapchain->dec_ref() > 1);
             _swapchain.reset();
             _swapchain = jpu::make_ref<vkn::swapchain>(_device.get(), _surface, 8);
             _gui->render_interface().update_swapchain(_swapchain.get());
+
+            for (auto && cmdbuf : _primary_command_buffers)
+                cmdbuf.reset({});
+
+            if (_current_primary_command_buffer)
+            {
+                _swapchain->swap();
+                _current_primary_command_buffer = _primary_command_buffers[_swapchain->current_image()];
+                _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+            }
         }
 #endif
 #endif

@@ -26,12 +26,12 @@ namespace vkn
 
         void assign_2d(uint32_t width, uint32_t height, vk::Format format, size_t data_size, void* data, vk::QueueFlagBits transfer_queue_type = vk::QueueFlagBits::eTransfer);
 
-        void loadEmpty(vk::ImageCreateInfo info);
+        void create_empty(vk::ImageCreateInfo info);
 
-        void generateMipmaps() const;
-        void generateMipmaps(const vk::CommandBuffer command_buffer) const;
+        void generate_mipmaps() const;
+        void generate_mipmaps(const vk::CommandBuffer command_buffer) const;
 
-        vk::ImageView createImageView(vk::ImageSubresourceRange resource_range = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 0, 0, 1)) const;
+        vk::ImageView create_image_view(vk::ImageSubresourceRange resource_range = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 0, 0, 1)) const;
 
         vk::Format format() const;
         const vk::Extent3D& extent() const;
