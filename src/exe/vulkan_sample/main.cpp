@@ -20,6 +20,7 @@ std::vector<jpu::ref_ptr<vkn::framebuffer>> framebuffers;
 glm::ivec2 full_resolution;
 bool is_fullscreen;
 auto sample_count = vk::SampleCountFlagBits::e4;
+float max_framerate = 60.0;
 
 void createMultisampleRenderpass();
 void createMultisampleFramebuffers();
@@ -30,6 +31,10 @@ void rebuildSwapchain()
     if (is_fullscreen)
     {
         main_window->set_monitor(io::monitor());
+    }
+    else
+    {
+        main_window->set_monitor({});
     }
     glfwSetWindowSize(*main_window, full_resolution.x, full_resolution.y);
     main_window->rebuild_swapchain();
@@ -42,13 +47,38 @@ int main(int argc, const char** args)
     full_resolution = { 1280, 720 };
     main_window = jpu::make_ref<io::window>(full_resolution.x, full_resolution.y, "My Window");
     main_window->load_icon("../res/ui/logo.png");
+    main_window->limit_framerate(max_framerate);
+
+    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow* w, int x, int y)
+    {
+        full_resolution = { x, y };
+        rebuildSwapchain();
+    });
+    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
+        if (main_window->gui()->key_action(key, action, mods))
+            return;
+    });
+
+    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
+        main_window->gui()->scrolled(y);
+    });
+
+    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
+        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
+            return;
+    });
+
+    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
+        if (main_window->gui()->mouse_button_action(btn, action, mods))
+            return;
+    });
 
     createMultisampleRenderpass();
     rebuildSwapchain();
 
     const auto clear_values = {
         vk::ClearValue{ vk::ClearColorValue(std::array<float, 4>{ 0.7f, 0.8f, 1.f, 1 }) },
-        vk::ClearValue{ vk::ClearColorValue() },
+        vk::ClearValue{ vk::ClearColorValue(std::array<float, 4>{ 0.7f, 0.8f, 1.f, 1 }) },
         vk::ClearValue{ vk::ClearDepthStencilValue() }
     };
 
@@ -169,27 +199,45 @@ int main(int argc, const char** args)
             static bool fscr = is_fullscreen;
             ImGui::Checkbox("Fullscreen", &fscr);
 
-            if (fscr != is_fullscreen || res != full_resolution)
-            {
-                ImGui::PushStyleColor(ImGuiCol_Text, 0x88ffffff);
-                ImGui::TextWrapped("Click \"Apply\" for your changes to take effect.");
-                ImGui::PopStyleColor();
-            }
-
             static int curr_msaa = 2;
             ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth());
             if (ImGui::Combo("MSAA", &curr_msaa, "  1x MSAA (OFF) \0 2x MSAA \0 4x MSAA \0 8x MSAA \0 16x MSAA \0"))
             {
-                sample_count = vk::SampleCountFlagBits(1 << curr_msaa);
-                rebuildSwapchain();
             }
             ImGui::PopItemWidth();
 
-            if (ImGui::Button("Apply", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+            if (fscr != is_fullscreen || res != full_resolution || 1<< curr_msaa != static_cast<uint32_t>(sample_count))
             {
-                full_resolution = res;
-                rebuildSwapchain();
+                ImGui::PushStyleColor(ImGuiCol_Text, 0x88ffffff);
+                ImGui::TextWrapped("Click \"Apply\" for your changes to take effect.");
+                ImGui::PopStyleColor();
+
+                if (ImGui::Button("Apply", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+                {
+                    full_resolution = res;
+                    is_fullscreen = fscr;
+                    sample_count = vk::SampleCountFlagBits(1 << curr_msaa);
+                    createMultisampleRenderpass();
+                    rebuildSwapchain();
+                    pipeline->renderpass = msaa_renderpass.get();
+                    pipeline->multisample.setRasterizationSamples(sample_count);
+                    pipeline->finalize();
+                }
             }
+
+            static bool en_lim = true;
+            ImGui::Checkbox("Limit FPS", &en_lim);
+            if (en_lim)
+            {
+                ImGui::SameLine();
+                ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth());
+                ImGui::DragFloat("##LimitFPS", &max_framerate, 0.1f, 20.f, 9999999.f, "%.1f fps");
+                ImGui::PopItemWidth();
+                main_window->limit_framerate(max_framerate);
+            }
+            else
+                main_window->limit_framerate(std::numeric_limits<float>::max());
+
             ImGui::Spacing();
             ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
             ImGui::PushStyleColor(ImGuiCol_Text, 0xff87f100);
@@ -221,8 +269,8 @@ int main(int argc, const char** args)
 
         // Setup render environment
         render_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
-        render_command_buffer.setViewport(0, vk::Viewport(0, 0, 1280, 720, 0, 1.f));
-        render_command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(), vk::Extent2D(1280, 720)));
+        render_command_buffer.setViewport(0, vk::Viewport(0, 0, main_window->swapchain()->extent().width, main_window->swapchain()->extent().height, 0, 1.f));
+        render_command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(), main_window->swapchain()->extent()));
 
         // Push information
         render_command_buffer.pushDescriptorSetKHR(vk::PipelineBindPoint::eGraphics, *pipeline_layout, 0, tex_set);
@@ -265,7 +313,7 @@ void createMultisampleRenderpass()
 
     const auto color_resolve_attachment = vk::AttachmentDescription().setFormat(vk::Format::eB8G8R8A8Unorm)
         .setSamples(vk::SampleCountFlagBits::e1)
-        .setLoadOp(vk::AttachmentLoadOp::eDontCare)
+        .setLoadOp(vk::AttachmentLoadOp::eClear)
         .setStoreOp(vk::AttachmentStoreOp::eStore)
         .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
         .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
@@ -281,14 +329,14 @@ void createMultisampleRenderpass()
         .setInitialLayout(vk::ImageLayout::eUndefined)
         .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
-    vk::AttachmentReference color_reference(sample_count == vk::SampleCountFlagBits::e1 ? 1 : 0, vk::ImageLayout::eColorAttachmentOptimal);
+    vk::AttachmentReference color_reference(0, vk::ImageLayout::eColorAttachmentOptimal);
     vk::AttachmentReference resolve_reference(1, vk::ImageLayout::eColorAttachmentOptimal);
     vk::AttachmentReference depth_reference(2, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     vk::SubpassDescription subpass;
     subpass.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
         .setColorAttachmentCount(1)
-        .setPColorAttachments(&color_reference)
+        .setPColorAttachments(sample_count == vk::SampleCountFlagBits::e1 ? &resolve_reference : &color_reference)
         .setPResolveAttachments(sample_count == vk::SampleCountFlagBits::e1 ? nullptr : &resolve_reference)
         .setPDepthStencilAttachment(&depth_reference);
 

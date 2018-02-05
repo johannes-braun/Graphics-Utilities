@@ -27,7 +27,6 @@ void main(int argc, const char** argv)
     auto cursor = glfwCreateCursor(&img, 0, 0);
     glfwSetCursor(*main_window, cursor);
 
-    // glfwSwapInterval(1);
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
         if (main_window->gui()->key_action(key, action, mods))
             return;

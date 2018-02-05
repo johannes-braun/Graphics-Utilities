@@ -54,6 +54,16 @@ namespace io
 
         bool update();
 
+        void set_swap_delay(double delay)
+        {
+            _swap_delay = delay;
+        }
+
+        void limit_framerate(double max_fps)
+        {
+            set_swap_delay(1 / max_fps);
+        }
+
         double delta_time() const;
         void close() const;
 
@@ -102,6 +112,7 @@ namespace io
         int _position_before_monitor_y{ 0 };
         double _delta_time{ 0 };
         double _last_time{ 0 };
+        double _swap_delay{ 0.f };
         GLFWwindow * _window{ nullptr };
 
 #if defined(IO_API_VULKAN)

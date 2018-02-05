@@ -82,6 +82,7 @@ namespace io
         _semaphore_render_finished = _device->createSemaphore({});
 #elif defined(IO_API_OPENGL)
         gladLoadGL();
+        glfwSwapInterval(0);
 
         gl::set_debug_callback([](gl::debug_source source, gl::debug_type type, uint32_t id,
             gl::debug_severity severity, const char* message) {
@@ -187,6 +188,9 @@ namespace io
         _current_primary_command_buffer = _primary_command_buffers[_swapchain->current_image()];
         _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
 #endif
+        while (_last_time > glfwGetTime() - _swap_delay)
+            glfwPollEvents();
+
         const auto is_open = !glfwWindowShouldClose(_window);
         if (is_open) _gui->new_frame();
         _delta_time = (glfwGetTime() - _last_time);
