@@ -42,13 +42,13 @@ namespace gl
 
     void debug_callback(GLenum source, GLenum type, const GLuint id, const GLenum severity, GLsizei length, const GLchar* message, const void* user_param)
     {
-        if (user_param)
+        /*if (user_param)
             (*static_cast<const debug_function*>(user_param))(
                 static_cast<debug_source>(source),
                 static_cast<debug_type>(type),
                 id,
                 static_cast<debug_severity>(severity),
-                message);
+                message);*/
     }
 
     void set_debug_callback(debug_function function)
