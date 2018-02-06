@@ -11,13 +11,14 @@ namespace io::impl
     class gui_gl
     {
     public:
-        gui_gl();
+        gui_gl(bool init);
         ImTextureID build_font_atlas();
         void pre_render(ImDrawData* draw_data);
         void render(const ImDrawCmd& cmd, int index_offset, int vertex_offset) const;
         void post_render();
 
     private:
+        bool _init;
         jpu::ref_ptr<gl::graphics_pipeline> _graphics_pipeline;
         jpu::ref_ptr<gl::vertex_array> _vertex_array;
         jpu::ref_ptr<gl::buffer> _vertex_buffer;

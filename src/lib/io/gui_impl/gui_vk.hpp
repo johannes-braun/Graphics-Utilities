@@ -20,7 +20,7 @@ namespace io::impl
     public:
         friend window;
         constexpr static uint32_t queued_frames = 2;
-
+        gui_vk() : _init(false) {};
         gui_vk(vkn::device* device, vkn::swapchain* swapchain);
         ~gui_vk();
         ImTextureID build_font_atlas();
@@ -29,6 +29,8 @@ namespace io::impl
         void post_render();
 
     private:
+        bool _init{ true };
+
         void update_swapchain(vkn::swapchain* swapchain);
         void set_next_command_buffer(vk::CommandBuffer buffer);
         void create_device_objects();

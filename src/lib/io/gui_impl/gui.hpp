@@ -27,14 +27,14 @@ namespace io
         constexpr static int font_large_light = 1;
         constexpr static int font_title = 2;
 
-        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window), _impl(impl::gui_vk(device, swapchain)),
+        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window), _vk_impl(impl::gui_vk(device, swapchain)),
             _api(api::vulkan)
         {
             init();
         }
 
         gui(GLFWwindow* window)
-            : _window(window), _impl(impl::gui_gl()), _api(api::opengl)
+            : _window(window), _gl_impl(impl::gui_gl(true)), _api(api::opengl)
         {
             init();
         }
@@ -60,19 +60,20 @@ namespace io
 
         void render();
 
-        auto&& render_interface() { return _impl; }
-        const auto& render_interface() const { return _impl; }
+        auto&& render_interface_vk() { return _vk_impl; }
+        const auto& render_interface_gl() const { return _gl_impl; }
+        auto&& render_interface_gl() { return _gl_impl; }
+        const auto& render_interface_vk() const { return _vk_impl; }
 
     private:
 
         void init_atlas(){
             switch (_api)
             {
-            case api::opengl:
-                ImGui::GetIO().Fonts->TexID = std::get<impl::gui_gl>(_impl).build_font_atlas();
+            case api::opengl:_gl_impl.build_font_atlas();
                 break;
             case api::vulkan:
-                ImGui::GetIO().Fonts->TexID = std::get<impl::gui_vk>(_impl).build_font_atlas();
+                ImGui::GetIO().Fonts->TexID = _vk_impl.build_font_atlas();
                 break;
             }
         }
@@ -81,10 +82,10 @@ namespace io
             switch (_api)
             {
             case api::opengl:
-                std::get<impl::gui_gl>(_impl).pre_render(draw_data);
+                _gl_impl.pre_render(draw_data);
                 break;
             case api::vulkan:
-                std::get<impl::gui_vk>(_impl).pre_render(draw_data);
+                _vk_impl.pre_render(draw_data);
                 break;
             }
         }
@@ -92,10 +93,10 @@ namespace io
             switch (_api)
             {
             case api::opengl:
-                std::get<impl::gui_gl>(_impl).render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+                _gl_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
                 break;
             case api::vulkan:
-                std::get<impl::gui_vk>(_impl).render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+                _vk_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
                 break;
             }
         }
@@ -103,10 +104,10 @@ namespace io
             switch (_api)
             {
             case api::opengl:
-                std::get<impl::gui_gl>(_impl).post_render();
+                _gl_impl.post_render();
                 break;
             case api::vulkan:
-                std::get<impl::gui_vk>(_impl).post_render();
+                _vk_impl.post_render();
                 break;
             }
         }
@@ -122,7 +123,8 @@ namespace io
         mutable float _mouse_wheel_delta = 0;
 
         //std::any _impl;
-        std::variant<impl::gui_vk, impl::gui_gl> _impl;
+        impl::gui_gl _gl_impl{ false };
+        impl::gui_vk _vk_impl;
         api _api;
     };
 }

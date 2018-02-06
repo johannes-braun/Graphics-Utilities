@@ -138,7 +138,7 @@ namespace io
     inline bool window::update()
     {
         if (_api == api::vulkan)
-            std::get<impl::gui_vk>(_gui->render_interface()).set_next_command_buffer(_current_primary_command_buffer);
+            _gui->render_interface_vk().set_next_command_buffer(_current_primary_command_buffer);
 
         if (_gui->is_initialized())
             _gui->render();

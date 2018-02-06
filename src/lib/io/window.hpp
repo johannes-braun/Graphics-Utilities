@@ -82,7 +82,7 @@ namespace io
             while (_swapchain->dec_ref() > 1);
             _swapchain.reset();
             _swapchain = jpu::make_ref<vkn::swapchain>(_device.get(), _surface, 8);
-            std::get<impl::gui_vk>(_gui->render_interface()).update_swapchain(_swapchain.get());
+            _gui->render_interface_vk().update_swapchain(_swapchain.get());
 
             for (auto && cmdbuf : _primary_command_buffers)
                 cmdbuf.reset({});

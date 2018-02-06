@@ -74,7 +74,8 @@ int main(int argc, const char** args)
     });
 
     createMultisampleRenderpass();
-    rebuildSwapchain();
+    //rebuildSwapchain();
+    createMultisampleFramebuffers();
 
     const auto clear_values = {
         vk::ClearValue{ vk::ClearColorValue(std::array<float, 4>{ 0.7f, 0.8f, 1.f, 1 }) },
