@@ -25,7 +25,7 @@
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+#pragma warning(push, 0) 
 #include "snappy.h"
 #include "snappy-internal.h"
 #include "snappy-sinksource.h"
@@ -1551,3 +1551,4 @@ bool Uncompress(Source* compressed, Sink* uncompressed) {
 }
 
 } // end namespace snappy
+#pragma warning(pop)

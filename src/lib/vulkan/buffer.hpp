@@ -39,9 +39,7 @@ namespace vkn
         const memory_block* _memory_block;
     };
 
-    template<typename Container, typename = std::void_t<typename Container::value_type,
-        decltype(std::declval<Container>().data()),
-        decltype(std::declval<Container>().size())>>
+    template<typename Container, typename>
     buffer::buffer(device* device, const Container& c, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memory_flags)
         : buffer(device, c.size() * sizeof(typename Container::value_type), usage, memory_flags)
     {
@@ -49,7 +47,7 @@ namespace vkn
         assign(c);
     }
 
-    template<typename Container, typename = std::void_t<typename Container::value_type, decltype(std::declval<Container>().data()), decltype(std::declval<Container>().size())>>
+    template<typename Container, typename>
     void buffer::assign(const Container& c, size_t offset)
     {
         if (!data())

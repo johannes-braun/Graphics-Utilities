@@ -1,7 +1,9 @@
 /// @ref core
 /// @file glm/glm.cpp
 
+#ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
+#endif // GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/ext/vec1.hpp>
 #include <glm/gtc/quaternion.hpp>
