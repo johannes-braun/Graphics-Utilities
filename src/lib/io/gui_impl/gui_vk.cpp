@@ -211,8 +211,7 @@ namespace io::impl
         auto&& command_buffer = _command_buffer;
         if (cmd.TextureId)
         {
-            const auto image = static_cast<vk::ImageView>(reinterpret_cast<VkImageView>(cmd.TextureId));
-            m_font_descriptor_image.imageView = image;
+            m_font_descriptor_image.imageView = static_cast<VkImageView>(cmd.TextureId);
             command_buffer.pushDescriptorSetKHR(vk::PipelineBindPoint::eGraphics, m_pipeline_layout, 0, { m_font_write_descriptor });
         }
 
