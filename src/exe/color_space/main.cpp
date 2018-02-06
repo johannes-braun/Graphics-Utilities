@@ -66,12 +66,7 @@ void main(int argc, const char** argv)
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
     main_window->limit_framerate(60.0);
-
-    GLFWimage img;
-    auto storage = res::stbi_data(stbi_load("../res/cursor.png", &img.width, &img.height, nullptr, STBI_rgb_alpha));
-    img.pixels = static_cast<uint8_t*>(storage.get());
-    auto cursor = glfwCreateCursor(&img, 0, 0);
-    glfwSetCursor(*main_window, cursor);
+    main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
 
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
         if (main_window->gui()->key_action(key, action, mods))

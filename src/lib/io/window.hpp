@@ -7,6 +7,7 @@
 #include "vulkan/vulkan_ext.h"
 #include "glad/glad.h"
 #include "opengl/debug.hpp"
+#include "cursor.hpp"
 #include "GLFW/glfw3.h"
 #include <optional>
 #include <jpu/memory>
@@ -49,6 +50,7 @@ namespace io
 
         void load_icon(const std::experimental::filesystem::path& path);
         void set_monitor(std::optional<monitor> monitor);
+        void set_cursor(cursor* cursor) { _cursor = cursor; glfwSetCursor(_window, *_cursor); }
 
         bool update();
 
@@ -111,6 +113,7 @@ namespace io
         double _last_time{ 0 };
         double _swap_delay{ 0.f };
         GLFWwindow * _window{ nullptr };
+        jpu::ref_ptr<cursor> _cursor;
 
         vk::SurfaceKHR _surface;
         vk::Instance _instance;
