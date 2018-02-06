@@ -7,15 +7,16 @@
 #include "vulkan/vulkan_ext.h"
 #include "glad/glad.h"
 #include "opengl/debug.hpp"
-#include "cursor.hpp"
 #include "GLFW/glfw3.h"
 #include <optional>
 #include <jpu/memory>
-#include <filesystem>
-#include "gui_impl/gui.hpp"
-#include <functional>
 #include <jpu/log>
+#include <filesystem>
+#include <functional>
+
+#include "cursor.hpp"
 #include "api.hpp"
+#include "gui_impl/gui.hpp"
 
 namespace io
 {
@@ -141,6 +142,3 @@ namespace io
 
     
 }
-
-
-#include "window.inl"

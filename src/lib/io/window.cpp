@@ -1,13 +1,13 @@
-#pragma once
+#include "window.hpp"
 #include "stb/stb_image.h"
 
 namespace io
 {
-    inline window::window(api api, int width, int height, std::string_view title, std::optional<monitor> monitor) : window(api,
+    window::window(api api, int width, int height, std::string_view title, std::optional<monitor> monitor) : window(api,
         width, height, title, nullptr, monitor)
     {}
 
-    inline window::window(api api, int width, int height, std::string_view title, window* share, std::optional<monitor> monitor)
+    window::window(api api, int width, int height, std::string_view title, window* share, std::optional<monitor> monitor)
         : _api(api)
     {
         glfwWindowHint(GLFW_CLIENT_API, static_cast<int>(api));
@@ -113,7 +113,7 @@ namespace io
         }
     }
 
-    inline window::~window()
+    window::~window()
     {
         _gui.reset();
         switch (_api)
@@ -130,12 +130,12 @@ namespace io
         glfwDestroyWindow(_window);
     }
 
-    inline gui* window::gui() const
+    gui* window::gui() const
     {
         return _gui.get();
     }
 
-    inline bool window::update()
+    bool window::update()
     {
         if (_api == api::vulkan)
             _gui->render_interface_vk().set_next_command_buffer(_current_primary_command_buffer);
@@ -207,24 +207,24 @@ namespace io
         return is_open;
 }
 
-    inline void window::freer::operator()(unsigned char* d) const
+    void window::freer::operator()(unsigned char* d) const
     {
         free(d);
     }
 
-    inline window::operator struct GLFWwindow*() const
+    window::operator struct GLFWwindow*() const
     {
         return _window;
     }
 
-    inline void window::load_icon(const std::experimental::filesystem::path& path)
+    void window::load_icon(const std::experimental::filesystem::path& path)
     {
         _icon_storage = decltype(_icon_storage)(stbi_load(path.string().c_str(), &_icon_image.width, &_icon_image.height, nullptr, STBI_rgb_alpha));
         _icon_image.pixels = _icon_storage.get();
         glfwSetWindowIcon(_window, 1, &_icon_image);
     }
 
-    inline void window::set_monitor(std::optional<monitor> monitor)
+    void window::set_monitor(std::optional<monitor> monitor)
     {
         if (monitor)
         {
@@ -239,42 +239,42 @@ namespace io
         }
     }
 
-    inline double window::delta_time() const
+    double window::delta_time() const
     {
         return _delta_time;
     }
 
-    inline void window::close() const
+    void window::close() const
     {
         glfwSetWindowShouldClose(_window, true);
     }
 
-    inline glfw_pre_init::glfw_pre_init()
+    glfw_pre_init::glfw_pre_init()
     {
         glfwInit();
     }
 
-    inline glfw_pre_init::~glfw_pre_init()
+    glfw_pre_init::~glfw_pre_init()
     {
         glfwTerminate();
     }
 
-    inline monitor::monitor() : monitor(0)
+    monitor::monitor() : monitor(0)
     {}
 
-    inline monitor::monitor(int index)
+    monitor::monitor(int index)
     {
         int count;
         _monitor = glfwGetMonitors(&count)[index];
         _mode = glfwGetVideoMode(_monitor);
     }
 
-    inline const GLFWvidmode& monitor::video_mode() const
+    const GLFWvidmode& monitor::video_mode() const
     {
         return *_mode;
     }
 
-    inline monitor::operator struct GLFWmonitor*() const
+    monitor::operator struct GLFWmonitor*() const
     {
         return _monitor;
     }

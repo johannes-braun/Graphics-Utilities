@@ -1,8 +1,8 @@
-#pragma once
+#include "gui.hpp"
 
 namespace io
 {
-    inline void gui::init()
+    void gui::init()
     {
         // Save the default ImGui context.
         // At execution termination, restore the default context and Shutdown ImGui.
@@ -55,7 +55,7 @@ namespace io
         init_atlas();
     }
 
-    inline void gui::new_frame()
+    void gui::new_frame()
     {
         _has_frame = true;
         ImGui::SetCurrentContext(_context);
@@ -102,7 +102,7 @@ namespace io
         ImGui::NewFrame();
     }
 
-    inline bool gui::key_action(const int key, const int action, [[maybe_unused]] int mods) const
+    bool gui::key_action(const int key, const int action, [[maybe_unused]] int mods) const
     {
         auto&& io = _context->IO;
         if (action == GLFW_PRESS)
@@ -117,7 +117,7 @@ namespace io
         return io.WantCaptureKeyboard && io.WantTextInput;
     }
 
-    inline bool gui::mouse_button_action(const int button, const int action, [[maybe_unused]] int mods) const
+    bool gui::mouse_button_action(const int button, const int action, [[maybe_unused]] int mods) const
     {
         auto&& io = _context->IO;
         if (action == GLFW_PRESS && button >= 0 && button < 3)
@@ -125,12 +125,12 @@ namespace io
         return io.WantCaptureMouse;
     }
 
-    inline void gui::scrolled(const double delta_y) const
+    void gui::scrolled(const double delta_y) const
     {
         _mouse_wheel_delta += static_cast<float>(delta_y);
     }
 
-    inline bool gui::char_input(const wchar_t character) const
+    bool gui::char_input(const wchar_t character) const
     {
         auto&& io = _context->IO;
         if (character > 0 && character < 0x10000)
@@ -138,19 +138,19 @@ namespace io
         return io.WantCaptureKeyboard && io.WantTextInput;
     }
 
-    inline bool gui::is_initialized() const
+    bool gui::is_initialized() const
     {
         return _has_frame;
     }
 
-    inline void gui::render()
+    void gui::render()
     {
         ImGui::SetCurrentContext(_context);
         ImGui::Render();
         render_data(ImGui::GetDrawData());
     }
 
-    inline void gui::render_data(ImDrawData* draw_data)
+    void gui::render_data(ImDrawData* draw_data)
     {
         auto&& io = _context->IO;
         const int fb_width = static_cast<int>(io.DisplaySize.x * io.DisplayFramebufferScale.x);
@@ -191,7 +191,7 @@ namespace io
         post_render();
     }
 
-    inline void gui::apply_theme() const
+    void gui::apply_theme() const
     {
         auto atlas = _context->IO.Fonts;
         // Default Font
@@ -263,7 +263,7 @@ namespace io
 
     }
 
-    inline gui::~gui()
+    gui::~gui()
     {
         if (_context)
             ImGui::DestroyContext(_context);

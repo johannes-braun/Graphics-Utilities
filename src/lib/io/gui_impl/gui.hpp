@@ -2,14 +2,12 @@
 
 #include <array>
 #include <jpu/memory>
-#include <any>
-#include <variant>
-#include "api.hpp"
+#include "io/api.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
-#include "gui_impl/gui_vk.hpp"
 #include "vulkan/device.hpp"
-#include "gui_impl/gui_gl.hpp"
+#include "gui_vk.hpp"
+#include "gui_gl.hpp"
 #include "GLFW/glfw3.h"
 
 struct GLFWwindow;
@@ -130,5 +128,3 @@ namespace io
         api _api;
     };
 }
-
-#include "gui.inl"
