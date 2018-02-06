@@ -182,17 +182,21 @@ namespace io
             glfwGetFramebufferSize(_window, &ww, &wh);
         }
 
-#if defined(IO_API_OPENGL)
-        glfwSwapBuffers(_window);
-#elif defined(IO_API_VULKAN)
-        _swapchain->swap();
+        if (_api == api::opengl)
+        {
+            glfwSwapBuffers(_window);
+        }
+        else if (_api == api::vulkan)
+        {
+            _swapchain->swap();
 
-        _device->waitForFences(_memory_fence, true, std::numeric_limits<uint64_t>::max());
-        _device->resetFences(_memory_fence);
+            _device->waitForFences(_memory_fence, true, std::numeric_limits<uint64_t>::max());
+            _device->resetFences(_memory_fence);
 
-        _current_primary_command_buffer = _primary_command_buffers[_swapchain->current_image()];
-        _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
-#endif
+            _current_primary_command_buffer = _primary_command_buffers[_swapchain->current_image()];
+            _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+        }
+
         while (_last_time > glfwGetTime() - _swap_delay)
             glfwPollEvents();
 
@@ -201,7 +205,7 @@ namespace io
         _delta_time = (glfwGetTime() - _last_time);
         _last_time = glfwGetTime();
         return is_open;
-    }
+}
 
     inline void window::freer::operator()(unsigned char* d) const
     {

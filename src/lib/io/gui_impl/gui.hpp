@@ -60,9 +60,10 @@ namespace io
 
         void render();
 
-        auto&& render_interface_vk() { return _vk_impl; }
-        const auto& render_interface_gl() const { return _gl_impl; }
         auto&& render_interface_gl() { return _gl_impl; }
+        const auto& render_interface_gl() const { return _gl_impl; }
+
+        auto&& render_interface_vk() { return _vk_impl; }
         const auto& render_interface_vk() const { return _vk_impl; }
 
     private:
@@ -71,6 +72,7 @@ namespace io
             switch (_api)
             {
             case api::opengl:_gl_impl.build_font_atlas();
+                ImGui::GetIO().Fonts->TexID = _gl_impl.build_font_atlas();
                 break;
             case api::vulkan:
                 ImGui::GetIO().Fonts->TexID = _vk_impl.build_font_atlas();

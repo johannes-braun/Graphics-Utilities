@@ -65,7 +65,6 @@ namespace io
         double delta_time() const;
         void close() const;
 
-//#if defined(IO_API_VULKAN)
         using debug_callback = std::function<bool(vk::DebugReportFlagBitsEXT flags, vk::DebugReportObjectTypeEXT type, uint64_t object, size_t location, int32_t code, std::string_view layer_prefix, std::string_view message)>;
 
 #ifdef IO_EXPOSE_API_FUNCTIONS
@@ -95,7 +94,6 @@ namespace io
             }
         }
 #endif
-//#endif
 
     private:
         api _api;
@@ -114,7 +112,6 @@ namespace io
         double _swap_delay{ 0.f };
         GLFWwindow * _window{ nullptr };
 
-//#if defined(IO_API_VULKAN)
         vk::SurfaceKHR _surface;
         vk::Instance _instance;
         vk::PhysicalDevice _physical_device;
@@ -137,7 +134,6 @@ namespace io
                 static_cast<vk::DebugReportObjectTypeEXT>(obj_type),
                 obj, location, code, layer_prefix, msg) : false;
         }
-//#endif
     };
 
     
