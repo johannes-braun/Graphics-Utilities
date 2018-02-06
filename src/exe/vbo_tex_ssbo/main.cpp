@@ -1,5 +1,3 @@
-#define IO_API_OPENGL
-
 #include <jpu/memory>
 #include <jpu/data>
 #include "io/window.hpp"

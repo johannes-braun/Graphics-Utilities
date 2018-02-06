@@ -4,6 +4,7 @@
 #include "res/transform.hpp"
 #include "button_press.hpp"
 #include "cursor_controls.hpp"
+#include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
 namespace io
@@ -12,14 +13,12 @@ namespace io
     {
         glm::mat4 view() const;
 
-#if defined(IO_API_OPENGL)
         glm::mat4 projection() const
         {
             GLint last_viewport[4];
             glGetIntegerv(GL_VIEWPORT, last_viewport);
             return projection(last_viewport[2], last_viewport[3]);
         }
-#endif
 
         glm::mat4 projection(int width, int height) const;
 

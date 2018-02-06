@@ -1,5 +1,3 @@
-#define IO_API_OPENGL
-
 #include <jpu/log>
 
 struct col

@@ -1,4 +1,3 @@
-#define IO_API_OPENGL
 #include "io/window.hpp"
 
 #include <random>

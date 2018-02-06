@@ -1,4 +1,3 @@
-#define IO_API_VULKAN
 #define IO_EXPOSE_API_FUNCTIONS
 #include <io/window.hpp>
 #include <vulkan/device.hpp>
