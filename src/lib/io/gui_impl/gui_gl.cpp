@@ -2,8 +2,10 @@
 
 namespace io::impl
 {
-    gui_gl::gui_gl()
+    gui_gl::gui_gl(bool init)
     {
+        if (!init)
+            return;
         _graphics_pipeline = jpu::make_ref<gl::graphics_pipeline>();
         _graphics_pipeline->use_stages(
             jpu::make_ref<gl::shader>(gl::shader_root / "gui/gui.vert"),

@@ -1,4 +1,5 @@
 #define IO_API_OPENGL
+#include "io/window.hpp"
 
 #include <random>
 #include <numeric>
@@ -19,7 +20,6 @@
 #include "opengl/framebuffer.hpp"
 
 #include "io/camera.hpp"
-#include "io/window.hpp"
 
 #include "res/image.hpp"
 #include "res/audio.hpp"
@@ -123,7 +123,7 @@ int main(int count, const char** arguments)
     gl::setup_shader_paths("../shaders");
 
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(1280, 720, "My Window");
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
 
     blur_framebuffer = jpu::make_ref<gl::framebuffer>();

@@ -1,15 +1,12 @@
 #pragma once
 
-#if defined(IO_API_VULKAN)
 #include "vulkan/vulkan.hpp"
 #include "vulkan/detail.hpp"
 #include "vulkan/device.hpp"
 #include "vulkan/swapchain.hpp"
 #include "vulkan/vulkan_ext.h"
-#elif defined(IO_API_OPENGL)
 #include "glad/glad.h"
 #include "opengl/debug.hpp"
-#endif
 #include "GLFW/glfw3.h"
 #include <optional>
 #include <jpu/memory>
@@ -17,6 +14,7 @@
 #include "gui_impl/gui.hpp"
 #include <functional>
 #include <jpu/log>
+#include "api.hpp"
 
 namespace io
 {
@@ -42,8 +40,8 @@ namespace io
     class window : public jpu::ref_count
     {
     public:
-        window(int width, int height, std::string_view title, std::optional<monitor> monitor = {});
-        window(int width, int height, std::string_view title, window* share, std::optional<monitor> monitor = {});
+        window(api api, int width, int height, std::string_view title, std::optional<monitor> monitor = {});
+        window(api api, int width, int height, std::string_view title, window* share, std::optional<monitor> monitor = {});
         ~window();
 
         operator GLFWwindow*() const;
@@ -67,7 +65,7 @@ namespace io
         double delta_time() const;
         void close() const;
 
-#if defined(IO_API_VULKAN)
+//#if defined(IO_API_VULKAN)
         using debug_callback = std::function<bool(vk::DebugReportFlagBitsEXT flags, vk::DebugReportObjectTypeEXT type, uint64_t object, size_t location, int32_t code, std::string_view layer_prefix, std::string_view message)>;
 
 #ifdef IO_EXPOSE_API_FUNCTIONS
@@ -84,7 +82,7 @@ namespace io
             while (_swapchain->dec_ref() > 1);
             _swapchain.reset();
             _swapchain = jpu::make_ref<vkn::swapchain>(_device.get(), _surface, 8);
-            _gui->render_interface().update_swapchain(_swapchain.get());
+            _gui->render_interface_vk().update_swapchain(_swapchain.get());
 
             for (auto && cmdbuf : _primary_command_buffers)
                 cmdbuf.reset({});
@@ -97,9 +95,10 @@ namespace io
             }
         }
 #endif
-#endif
+//#endif
 
     private:
+        api _api;
         jpu::ref_ptr<io::gui> _gui;
         struct freer {
             void operator()(unsigned char* d) const;
@@ -115,7 +114,7 @@ namespace io
         double _swap_delay{ 0.f };
         GLFWwindow * _window{ nullptr };
 
-#if defined(IO_API_VULKAN)
+//#if defined(IO_API_VULKAN)
         vk::SurfaceKHR _surface;
         vk::Instance _instance;
         vk::PhysicalDevice _physical_device;
@@ -138,7 +137,7 @@ namespace io
                 static_cast<vk::DebugReportObjectTypeEXT>(obj_type),
                 obj, location, code, layer_prefix, msg) : false;
         }
-#endif
+//#endif
     };
 
     

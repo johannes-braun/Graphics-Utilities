@@ -2,16 +2,14 @@
 
 #include <array>
 #include <jpu/memory>
+#include <any>
+#include <variant>
+#include "api.hpp"
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
-#if defined(IO_API_VULKAN)
 #include "gui_impl/gui_vk.hpp"
 #include "vulkan/device.hpp"
-#elif defined(IO_API_OPENGL)
 #include "gui_impl/gui_gl.hpp"
-#else
-#include "gui_impl/gui_none.hpp"
-#endif
 #include "GLFW/glfw3.h"
 
 struct GLFWwindow;
@@ -29,18 +27,18 @@ namespace io
         constexpr static int font_large_light = 1;
         constexpr static int font_title = 2;
 
-#if defined(IO_API_VULKAN)
-        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window), _render_interface(device, swapchain)
+        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window), _vk_impl(impl::gui_vk(device, swapchain)),
+            _api(api::vulkan)
         {
             init();
         }
-#elif defined(IO_API_OPENGL)
+
         gui(GLFWwindow* window)
-            : _window(window)
+            : _window(window), _gl_impl(impl::gui_gl(true)), _api(api::opengl)
         {
             init();
         }
-#endif
+      
         ~gui();
 
         // Is called each frame and resets the current input states.
@@ -62,23 +60,56 @@ namespace io
 
         void render();
 
-        auto&& render_interface() { return _render_interface; }
-        const auto& render_interface() const { return _render_interface; }
+        auto&& render_interface_vk() { return _vk_impl; }
+        const auto& render_interface_gl() const { return _gl_impl; }
+        auto&& render_interface_gl() { return _gl_impl; }
+        const auto& render_interface_vk() const { return _vk_impl; }
 
     private:
 
         void init_atlas(){
-            ImGui::GetIO().Fonts->TexID = _render_interface.build_font_atlas();
+            switch (_api)
+            {
+            case api::opengl:_gl_impl.build_font_atlas();
+                break;
+            case api::vulkan:
+                ImGui::GetIO().Fonts->TexID = _vk_impl.build_font_atlas();
+                break;
+            }
         }
         void init();
         void pre_render(ImDrawData* draw_data){
-            _render_interface.pre_render(draw_data);
+            switch (_api)
+            {
+            case api::opengl:
+                _gl_impl.pre_render(draw_data);
+                break;
+            case api::vulkan:
+                _vk_impl.pre_render(draw_data);
+                break;
+            }
         }
         void mid_render(const ImDrawCmd& pcmd, int idx_buffer_offset, int vtx_buffer_offset){
-            _render_interface.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+            switch (_api)
+            {
+            case api::opengl:
+                _gl_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+                break;
+            case api::vulkan:
+                _vk_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+                break;
+            }
         }
         void post_render(){
-            _render_interface.post_render();
+            switch (_api)
+            {
+            case api::opengl:
+                _gl_impl.post_render();
+                break;
+            case api::vulkan:
+                _vk_impl.post_render();
+                break;
+            }
         }
         void render_data(ImDrawData* data);
         void apply_theme() const;
@@ -91,13 +122,10 @@ namespace io
         mutable std::array<bool, 3> _mouse_button_states;
         mutable float _mouse_wheel_delta = 0;
 
-#if defined(IO_API_VULKAN)
-        impl::gui_vk _render_interface;
-#elif defined(IO_API_OPENGL)
-        impl::gui_gl _render_interface;
-#else
-        impl::gui_none _render_interface;
-#endif
+        //std::any _impl;
+        impl::gui_gl _gl_impl{ false };
+        impl::gui_vk _vk_impl;
+        api _api;
     };
 }
 

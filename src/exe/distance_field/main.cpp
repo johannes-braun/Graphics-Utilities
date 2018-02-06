@@ -16,7 +16,7 @@ void main(int argc, const char** argv)
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(1280, 720, "My Window");
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
 
    // glfwSwapInterval(1);

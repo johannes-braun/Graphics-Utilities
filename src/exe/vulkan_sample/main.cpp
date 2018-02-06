@@ -45,7 +45,7 @@ void rebuildSwapchain()
 int main(int argc, const char** args)
 {
     full_resolution = { 1280, 720 };
-    main_window = jpu::make_ref<io::window>(full_resolution.x, full_resolution.y, "My Window");
+    main_window = jpu::make_ref<io::window>(io::api::vulkan, full_resolution.x, full_resolution.y, "My Window");
     main_window->load_icon("../res/ui/logo.png");
     main_window->limit_framerate(max_framerate);
 
@@ -74,7 +74,8 @@ int main(int argc, const char** args)
     });
 
     createMultisampleRenderpass();
-    rebuildSwapchain();
+    //rebuildSwapchain();
+    createMultisampleFramebuffers();
 
     const auto clear_values = {
         vk::ClearValue{ vk::ClearColorValue(std::array<float, 4>{ 0.7f, 0.8f, 1.f, 1 }) },
@@ -158,7 +159,7 @@ int main(int argc, const char** args)
     while (main_window->update())
     {
         ImGui::Begin("Window", nullptr, ImGuiWindowFlags_NoTitleBar);
-        ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<VkImageView>(static_cast<vk::ImageView>(*logo_view))), ImVec2(32, 32));
+        ImGui::Image(static_cast<VkImageView>(static_cast<vk::ImageView>(*logo_view)), ImVec2(32, 32));
         ImGui::SameLine();
         const auto cur_pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(ImVec2(cur_pos.x, cur_pos.y + 6));

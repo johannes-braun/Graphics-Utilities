@@ -52,6 +52,9 @@ namespace io::impl
 
     gui_vk::~gui_vk()
     {
+        if (!_init)
+            return;
+
         for (auto&& info : m_frame_infos)
         {
             if (info.index_buffer) _device->destroyBuffer(info.index_buffer);
@@ -211,8 +214,7 @@ namespace io::impl
         auto&& command_buffer = _command_buffer;
         if (cmd.TextureId)
         {
-            const auto image = static_cast<vk::ImageView>(reinterpret_cast<VkImageView>(cmd.TextureId));
-            m_font_descriptor_image.imageView = image;
+            m_font_descriptor_image.imageView = static_cast<VkImageView>(cmd.TextureId);
             command_buffer.pushDescriptorSetKHR(vk::PipelineBindPoint::eGraphics, m_pipeline_layout, 0, { m_font_write_descriptor });
         }
 
