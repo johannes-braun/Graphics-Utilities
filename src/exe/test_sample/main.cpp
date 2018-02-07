@@ -6,7 +6,7 @@
 #include <io/window.hpp>
 #include <jpu/data>
 
-constexpr int Logn = 19;
+constexpr int Logn = 18;
 std::vector<uint32_t> data1(1 << Logn);
 std::vector<uint32_t> data2(1 << Logn);
 
@@ -71,20 +71,20 @@ int main(int argc, const char** argv)
 
     std::generate(data1.begin(), data1.end(), []() { return rand(); });
     data2 = data1;
-    auto buf = jpu::make_ref<gl::buffer>(data1, gl::buffer_flag_bits::map_dynamic_persistent);
+    auto buf = jpu::make_ref<gl::buffer>(data1);
     buf->bind(0, GL_SHADER_STORAGE_BUFFER);
 
     auto cmp = jpu::make_ref<gl::compute_pipeline>(
         jpu::make_ref<gl::shader>(gl::shader_root_path / "sort/bitonic.comp"));
-    glFinish();
-
-    auto t = std::chrono::system_clock::now();
-    const int trg = data1.size() >> 1;
+    log_i << data1.size();
     cmp->bind();
     auto&& stage = cmp->stage(gl::shader_type::compute);
     auto puni = stage->get_uniform<int>("p");
     auto quni = stage->get_uniform<int>("q");
     auto duni = stage->get_uniform<int>("d");
+
+    auto t = std::chrono::steady_clock::now();
+    const int trg = data1.size() >> 1;
     for (int p = 0; p < Logn; ++p)
     {
         puni = p;
@@ -98,14 +98,16 @@ int main(int argc, const char** argv)
         }
     }
     glFinish();
-    log_i << (std::chrono::system_clock::now() - t).count();
+    log_i << (std::chrono::steady_clock::now() - t).count();
 
-    t = std::chrono::system_clock::now();
+    t = std::chrono::steady_clock::now();
+    //bitonic(Logn, data2.data(), data2.size());
     std::sort(data2.begin(), data2.end());
-    log_i << (std::chrono::system_clock::now() - t).count();
+    log_i << (std::chrono::steady_clock::now() - t).count();
 
 
-    std::vector<uint32_t> out(buf->data_as<uint32_t>(), buf->data_as<uint32_t>() + buf->size() / sizeof(uint32_t));
+   // std::vector<uint32_t> out(buf->data_as<uint32_t>(), buf->data_as<uint32_t>() + buf->size() / sizeof(uint32_t));
+    log_i << "";
     system("pause");
     return 0;
 }
