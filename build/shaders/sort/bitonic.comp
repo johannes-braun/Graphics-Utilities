@@ -1,0 +1,28 @@
+layout(local_size_x = 32) in;
+
+layout(binding=0) buffer Databuf
+{
+    uint a[];
+};
+
+uniform int d;
+uniform int p;
+uniform int q;
+
+void main()
+{
+    for (int i = 0; i < 1; ++i)
+    {
+        int id = int(gl_GlobalInvocationID.x * 1 + i);
+        const int gid = (id + d * (id / d));
+
+        uint sel[2];
+        sel[0] = a[gid];
+        sel[1] = a[gid | d];
+
+        const bool up = ((gid >> p) & 2) == 0;
+        uint x = uint((a[gid] > a[gid | d]) == up);
+        a[gid] = sel[x];
+        a[gid | d] = sel[1 - x];
+    }
+}
