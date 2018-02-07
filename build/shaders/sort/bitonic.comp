@@ -8,9 +8,12 @@ layout(binding=0) buffer Databuf
 uniform int d;
 uniform int p;
 uniform int q;
+uniform int count;
 
 void main()
 {
+    if(gl_GlobalInvocationID.x >= count) return;
+
     for (int i = 0; i < 1; ++i)
     {
         int id = int(gl_GlobalInvocationID.x * 1 + i);
