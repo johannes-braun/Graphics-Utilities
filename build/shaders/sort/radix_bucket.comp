@@ -9,11 +9,6 @@ layout(binding=0) restrict buffer Data
     uint data[];
 };
 
-layout(binding=2) restrict buffer Buckets
-{
-    uint buckets[];
-};
-
 uniform uint four_shift;
 
 shared uint sdata[2*WSIZE];

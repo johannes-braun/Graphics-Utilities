@@ -6,8 +6,9 @@
 #include <io/window.hpp>
 #include <jpu/data>
 #include <stack>
+#include "opengl/query.hpp"
 
-constexpr int Logn = 13;
+constexpr int Logn = 16;
 std::vector<float> data1(1 << Logn);
 std::vector<float> data2(1 << Logn);
 
@@ -183,18 +184,18 @@ int main(int argc, const char** argv)
     });
     data2 = data1;
 
+
     std::generate(data1.begin(), data1.end(), []() { return rand(); });
-    auto buf = jpu::make_ref<gl::buffer>(data1);
+    auto buf = jpu::make_ref<gl::buffer>(data1, gl::buffer_flag_bits::map_dynamic_persistent);
     buf->bind(0, GL_SHADER_STORAGE_BUFFER);
-
-
-
-
-
+    auto pingpong_buf = jpu::make_ref<gl::buffer>(data1, gl::buffer_flag_bits::map_dynamic_persistent);
+    pingpong_buf->bind(1, GL_SHADER_STORAGE_BUFFER);
+    glFinish();
 
     auto rdx_bckt = jpu::make_ref<gl::compute_pipeline>(
         jpu::make_ref<gl::shader>(gl::shader_root_path / "sort/radix_bucket.comp"));
-
+    auto rdx_mrg = jpu::make_ref<gl::compute_pipeline>(
+        jpu::make_ref<gl::shader>(gl::shader_root_path / "sort/radix_merge.comp"));
     auto cmp = jpu::make_ref<gl::compute_pipeline>(
         jpu::make_ref<gl::shader>(gl::shader_root_path / "sort/bitonic.comp"));
     log_i << data1.size();
@@ -204,27 +205,100 @@ int main(int argc, const char** argv)
     auto quni = stage->get_uniform<int>("q");
     auto duni = stage->get_uniform<int>("d");
     auto count = stage->get_uniform<int>("count");
-
     const int trg = data1.size() >> 1;
-    GPU_Clock::instance().start();
-    int i = 0;
-    for (int p = 0; p < Logn; ++p)
-    {
-        puni = p;
-        for (int q = 0; q <= p; ++q)
-        {
-            const int d = 1 << (p - q);
-            duni = d;
-            quni = q;
-            count = trg;
-            cmp->dispatch(trg);
-            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-            ++i;
-        }
-    }
-    log_i << GPU_Clock::instance().end();
 
-    log_i << "I is " << i;
+    gl::query query(GL_TIME_ELAPSED);
+
+  /*  glBeginQuery(GL_TIME_ELAPSED, query);
+    rdx_bckt->bind();
+    rdx_bckt->dispatch(data1.size());
+    rdx_mrg->bind();
+    rdx_mrg->dispatch(data1.size());
+    glEndQuery(GL_TIME_ELAPSED);
+    uint64_t time;
+    glGetQueryObjectui64v(query, GL_QUERY_RESULT, &time);
+    log_i << time / 1000000.f;
+    
+    std::vector<float> out(buf->data_as<float>(), buf->data_as<float>() + buf->size() / sizeof(float));
+    std::vector<uint32_t> out2(pingpong_buf->data_as<uint32_t>(), pingpong_buf->data_as<uint32_t>() + pingpong_buf->size() / sizeof(uint32_t));
+
+*/
+
+
+
+    const auto run = [&]() {
+        std::generate(data1.begin(), data1.end(), []() { return rand(); });
+        auto buf = jpu::make_ref<gl::buffer>(data1);
+        buf->bind(0, GL_SHADER_STORAGE_BUFFER);
+        glFinish();
+
+        //GPU_Clock::instance().start();
+        query.begin();
+        int i = 0;
+        for (int p = 0; p < Logn; ++p)
+        {
+            puni = p;
+            for (int q = 0; q <= p; ++q)
+            {
+                const int d = 1 << (p - q);
+                duni = d;
+                quni = q;
+                count = trg;
+                cmp->dispatch(trg);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                ++i;
+            }
+        }
+        query.end();
+        uint64_t time = query.get_uint64();
+        log_i << time / 1000000.f;
+        glFinish();
+    };
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
+
+    run();
+    run();
+    run();
+    run();
 
     auto t = std::chrono::steady_clock::now();
     // bitonic(Logn, reinterpret_cast<uint32_t*>(data2.data()), data2.size());
