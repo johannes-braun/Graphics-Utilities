@@ -1,0 +1,18 @@
+const uint _bits = 4;
+const uint _radix = 1 << _bits;
+const uint _lsize = 64;
+
+layout(local_size_x = 64) in;
+
+layout(location=0) restrict buffer Hist { uint histogram[]; };
+layout(location=1) restrict buffer Sum { uint sum[]; };
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    uint group_id = gl_WorkGroupID.x;
+    uint s = sum[group_id];
+
+    histogram[2 * gid] += s;
+    histogram[2 * gid + 1] += s;
+}

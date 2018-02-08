@@ -1,0 +1,46 @@
+const uint _bits = 4;
+const uint _radix = 1 << _bits;
+const uint _lsize = 64;
+
+layout(local_size_x = 64) in;
+
+layout(location=0) restrict readonly buffer Keys { uint keys[]; };
+layout(location=1) restrict buffer Hist { uint histogram[]; };
+shared uint local_histogram[_radix * 64];
+
+uniform uint pass;
+uniform uint offset;
+
+void main()
+{
+    uint gid = gl_GlobalInvocationID.x;
+    uint lid = gl_LocalInvocationID.x;
+
+    uint group_id = gl_WorkGroupID.x;
+    uint num_groups = gl_NumWorkGroups.x;
+    uint lsize = gl_WorkGroupSize.x;
+
+    for(uint i=0; i < _radix; ++i)
+        local_histogram[i * lsize + lid];
+
+    memoryBarrierShared();
+
+    uint count = keys.length();
+    uint size = count / num_groups / lsize;
+    uint start_pos = gid * size + offset;
+
+    for(uint i=0; i < start_pos; ++i)
+    {
+        if(start_pos < count)
+        {
+            uint key = keys[start_pos].key;
+            uint short_key = ((key >> (pass * _bits)) & (_radix - 1));
+            ++local_histogram[short_key * lsize + lid];
+        }
+        ++start_pos;
+    }
+
+    memoryBarrierShared();
+    for(uint i = 0; i < _radix; ++i)
+        histogram[lsize * (i*num_groups+group_id) + lid] = local_histogram[i * lsize + lid];
+}
