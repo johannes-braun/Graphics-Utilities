@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <jpu/memory>
-#include <opengl/texture.hpp>
 
 namespace res
 {
@@ -11,6 +10,29 @@ namespace res
     struct stbi_free_deleter { void operator()(void* d) const { free(d); } };
     using stbi_data = std::unique_ptr<void, stbi_free_deleter>;
 
-    jpu::ref_ptr<gl::texture> load_texture(const filesystem::path& path, GLenum internal_format, GLenum format, GLenum type);
-    int save_texture(gl::texture* texture, const filesystem::path& path, GLenum format, int level = 0, int jpg_quality = 95);
+    enum class image_type
+    {
+        unsigned_byte = 0,
+        signed_float
+    };
+
+    enum class image_components
+    {
+        automatic = 0,
+        grey,
+        grey_alpha,
+        rgb,
+        rgb_alpha
+    };
+
+    struct image
+    {
+        int width{ 0 };
+        int height{ 0 };
+        int components{ 0 };
+        image_type type{ image_type::unsigned_byte };
+        stbi_data data;
+    };
+
+    image load_image(const filesystem::path& path, image_type type, image_components components = image_components::automatic);
 }

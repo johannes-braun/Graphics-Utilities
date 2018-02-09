@@ -1,7 +1,8 @@
 #pragma once
 #include <jpu/memory>
 #include "glad/glad.h"
-#include <algorithm>
+#include <memory>
+#include <stdexcept>
 
 namespace gl
 {
@@ -59,6 +60,8 @@ namespace gl
 
         int width() const;
         int height() const;
+
+        void get_texture_data(GLenum format, GLenum type, size_t target_byte_size, void* target, int level = 0) const;
 
     private:
         static int max_levels(int width, int height, int depth);

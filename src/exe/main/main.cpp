@@ -250,11 +250,21 @@ int main(int count, const char** arguments)
     cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
 
-    auto texture_col    = res::load_texture("../res/bricks/brick.png", GL_RGBA8, GL_RGBA, GL_FLOAT);
-    auto texture_dis    = res::load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
-    auto texture_nor    = res::load_texture("../res/bricks/brick_normal.png", GL_RGB16F, GL_RGB, GL_FLOAT);
-    auto logo           = res::load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
-    auto ic_image       = res::load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    const auto load_texture = [&](auto path, auto internal_format, auto format, auto type)
+    {
+        auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::signed_float : res::image_type::unsigned_byte,
+            format == GL_RED ? res::image_components::grey : (format == GL_RG ? res::image_components::grey_alpha : (format == GL_RGB ? res::image_components::rgb : res::image_components::rgb_alpha)));
+        auto texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+        texture->storage_2d(image.width, image.height, internal_format);
+        texture->assign_2d(format, type, image.data.get());
+        return texture;
+    };
+
+    auto texture_col    = load_texture("../res/bricks/brick.png", GL_RGBA8, GL_RGBA, GL_FLOAT);
+    auto texture_dis    = load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
+    auto texture_nor    = load_texture("../res/bricks/brick_normal.png", GL_RGB16F, GL_RGB, GL_FLOAT);
+    auto logo           = load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    auto ic_image       = load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
     auto random_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     random_texture->storage_2d(512, 512, GL_RGBA16F, 1);

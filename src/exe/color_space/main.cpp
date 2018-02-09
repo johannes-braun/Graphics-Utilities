@@ -122,9 +122,11 @@ void main(int argc, const char** argv)
     val /= glm::vec3(255.f);
     val /= iw * ih;
 
-    //stbi_write_jpg("../res/corrected.jpg", iw, ih, 3, new_img.data(), 95);
-
-    const auto grid = res::load_texture("../res/grid.jpg", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    auto grid_image = res::load_image("../res/grid.jpg", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    const auto grid = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    grid->storage_2d(grid_image.width, grid_image.height, GL_RGBA8);
+    grid->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
+    grid->generate_mipmaps();
 
     auto points_pipeline = graphics_pipelines.push("Points Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     points_pipeline->use_stages(
