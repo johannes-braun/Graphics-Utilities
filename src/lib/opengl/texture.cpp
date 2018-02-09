@@ -163,7 +163,7 @@ namespace gl
 
     void texture::get_texture_data(GLenum format, GLenum type, size_t target_byte_size, void* target, int level) const
     {
-        glGetTextureImage(_id, level, format, type, target_byte_size, target);
+        glGetTextureImage(_id, level, format, type, static_cast<int>(target_byte_size), target);
     }
 
     int texture::max_levels(int width, int height, int depth)
