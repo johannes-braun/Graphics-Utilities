@@ -48,14 +48,14 @@ namespace gl
                 static_cast<debug_type>(type),
                 id,
                 static_cast<debug_severity>(severity),
-                message);/**/
+                message);
     }
 
     void set_debug_callback(debug_function function)
     {
         static debug_function global_debug_callback;
         global_debug_callback = function;
-        glDebugMessageCallback(reinterpret_cast<GLDEBUGPROC>(&debug_callback), &function);
+        glDebugMessageCallback(reinterpret_cast<GLDEBUGPROC>(&debug_callback), &global_debug_callback);
     }
 
     void set_debug_callback_enabled(debug_source d, const bool enable)
