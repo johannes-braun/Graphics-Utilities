@@ -18,6 +18,9 @@ add_definitions(
 
 	# ImGui
 	-DIMGUI_INCLUDE_IMGUI_USER_H
+
+    -DASIO_STANDALONE
+    -D_WIN32_WINNT=0x0501
 )
 
 set(BUILD_DIR "${PROJECT_SOURCE_DIR}/build/")
