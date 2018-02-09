@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include <jpu/memory>
 #include "device.hpp"
-#include "binshader/shader.hpp"
+#include "glshader/binary.hpp"
 
 namespace vkn
 {
@@ -29,14 +29,14 @@ namespace vkn
     class shader : public jpu::ref_count
     {
     public:
-        explicit shader(device* device, vk::ShaderStageFlagBits type, const std::experimental::filesystem::path& path, const std::vector<res::definition>& definitions = {});
-        explicit shader(device* device, const std::experimental::filesystem::path& path, const std::vector<res::definition>& definitions = {});
+        explicit shader(device* device, vk::ShaderStageFlagBits type, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
+        explicit shader(device* device, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
 
         ~shader();
 
         vk::ShaderStageFlagBits type() const;
         void reload(bool force = false);
-        void reload(const std::vector<res::definition>& definitions);
+        void reload(const std::vector<glshader::definition>& definitions);
         operator vk::ShaderModule() const;
     private:
         static vk::ShaderStageFlagBits type_of(const std::experimental::filesystem::path& extension)
@@ -61,39 +61,6 @@ namespace vkn
         vk::ShaderModule _shader_module;
         vk::ShaderStageFlagBits _type;
         std::experimental::filesystem::path _path;
-        std::vector<res::definition> _definitions;
+        std::vector<glshader::definition> _definitions;
     };
-
-
-
-
-
-
-
-
-    namespace fs = std::experimental::filesystem;
-
-   /* struct ShaderModuleCreateInfo
-    {
-        ShaderModuleCreateInfo(device* device, const fs::path path)
-            : device(device), path(path) {}
-
-        ShaderModuleCreateInfo& setDevice(device* value) { device = value; return *this; }
-        ShaderModuleCreateInfo& setPath(const fs::path value) { path = value; return *this; }
-
-        device* device;
-        fs::path path;
-    };
-
-    class ShaderModule : ClassInfo<ShaderModuleCreateInfo, ShaderModule>, public jpu::ref_count, public vk::ShaderModule
-    {
-    public:
-        explicit ShaderModule(const ShaderModuleCreateInfo& info);
-        ~ShaderModule();
-
-        vk::PipelineShaderStageCreateInfo makePipelineStage(vk::ShaderStageFlagBits override_stage = vk::ShaderStageFlagBits(0), const char* override_entry = "main") const;
-
-    private:
-        vk::ShaderStageFlagBits m_proposed_stage;
-    };*/
 }

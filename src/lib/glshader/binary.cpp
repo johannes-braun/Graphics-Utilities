@@ -1,15 +1,17 @@
-#include "shader.hpp"
+#include "binary.hpp"
 #include <iterator>
 #include <sstream>
 #include <tuple>
 #include <fstream>
 #include <glad/glad.h>
-#include <glpp/glpp.hpp>
+#include "preprocessor.hpp"
 #include "jpu/impl/log/log.hpp"
 #include "snappy/snappy.h"
+#include "config.hpp"
 
-namespace res
+namespace glshader
 {
+    namespace fs = std::experimental::filesystem;
 
     struct shader_file_header
     {
@@ -24,8 +26,6 @@ namespace res
 
         uint32_t data_tag;              // DATA
     };
-
-    namespace fs = std::experimental::filesystem;
 
     std::string cmd(const fs::path& glslc_path, const std::string& args)
     {
@@ -43,7 +43,7 @@ namespace res
 
     std::vector<std::string> get_dependencies(const fs::path& glslc_path, std::experimental::filesystem::path path)
     {
-        auto str = call(glslc_path, std::string(" ") + default_flags + " -M " + path.string() + "");
+        auto str = call(glslc_path, std::string(" ") + glslc_default_flags + " -M " + path.string() + "");
         return std::vector<std::string>{ ++std::istream_iterator<std::string>(str), std::istream_iterator<std::string>() };
     }
 
@@ -78,8 +78,8 @@ namespace res
             }
             defines += "\' ";
         }
-        system(cmd(glslc_location, std::string(" -std=450core -o ") + temp_file_name + " -mfmt=bin" + includes + defines + " " + fs::absolute(file_path).string() + "").c_str());
-        std::ifstream tmp(temp_file_name, std::ios::in | std::ios::binary);
+        system(cmd(glslc_location, std::string(" -std=450core -o ") + glslc_temp_file_name + " -mfmt=bin" + includes + defines + " " + fs::absolute(file_path).string() + "").c_str());
+        std::ifstream tmp(glslc_temp_file_name, std::ios::in | std::ios::binary);
         tmp.ignore(std::numeric_limits<std::streamsize>::max());
         const std::streamsize length = tmp.gcount();
         tmp.clear();   //  Since ignore will have set eof.
@@ -87,7 +87,7 @@ namespace res
         spirv.resize(length);
         tmp.read(reinterpret_cast<char*>(spirv.data()), length);
         tmp.close();
-        fs::remove(temp_file_name);
+        fs::remove(glslc_temp_file_name);
         return std::make_tuple(spirv, std::vector<fs::path>(dependencies.begin(), dependencies.end()));
     }
 
@@ -95,10 +95,10 @@ namespace res
         const std::vector<std::experimental::filesystem::path>& include_directories,
         const std::vector<definition>& definitions)
     {
-        auto proc = glpp::load_file(file_path, include_directories, reinterpret_cast<const std::vector<glpp::definition>&>(definitions));
+        auto proc = preprocessor::preprocess_file(file_path, include_directories, definitions);
 
         // Precompile shader
-        auto src = default_prefix + proc.contents + default_postfix;
+        auto src = opengl_prefix + proc.contents + opengl_postfix;
         auto src_ptr = src.data();
 
         const auto shader_type = [&, extension = file_path.extension()] {

@@ -6,7 +6,7 @@
 #include <any>
 #include <map>
 #include <optional>
-#include "binshader/shader.hpp"
+#include "glshader/binary.hpp"
 
 namespace gl
 {
@@ -42,8 +42,8 @@ namespace gl
     class shader : public jpu::ref_count
     {
     public:
-        explicit shader(shader_type type, const std::experimental::filesystem::path& path, const std::vector<res::definition>& definitions = {});
-        explicit shader(const std::experimental::filesystem::path& path, const std::vector<res::definition>& definitions = {});
+        explicit shader(shader_type type, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
+        explicit shader(const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
 
         ~shader();
         operator bool() const;
@@ -51,7 +51,7 @@ namespace gl
         shader_type type() const;
 
         void reload(bool force = false);
-        void reload(const std::vector<res::definition>& definitions);
+        void reload(const std::vector<glshader::definition>& definitions);
 
         template<typename T>
         uniform<T> get_uniform(std::string_view name)
@@ -88,6 +88,6 @@ namespace gl
         shader_type _type;
         std::map<std::string_view, all_uniform_types> _uniforms;
         std::experimental::filesystem::path _path;
-        std::vector<res::definition> _definitions;
+        std::vector<glshader::definition> _definitions;
     };
 }

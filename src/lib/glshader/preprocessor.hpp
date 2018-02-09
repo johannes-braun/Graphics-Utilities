@@ -3,29 +3,14 @@
 #include <experimental/filesystem>
 #include <map>
 #include <set>
+#include "definition.hpp"
 
-namespace glpp
+namespace glshader::preprocessor
 {
     enum class shader_profile
     {
         core = 0,
         compat
-    };
-
-    struct definition_info
-    {
-        definition_info() = default;
-        definition_info(std::string value);
-        definition_info(std::vector<std::string> parameters, std::string replacement);
-
-        std::string replacement;
-        std::vector<std::string> parameters;
-    };
-
-    struct definition
-    {
-        std::string name;
-        definition_info info;
     };
 
     struct processed_file
@@ -59,7 +44,7 @@ namespace glpp
     // You can also add pre-defined definitions.
     // 
     // All OpenGL extensions on the system are automatically added.
-    processed_file load_file(const std::experimental::filesystem::path& file_path, 
+    processed_file preprocess_file(const std::experimental::filesystem::path& file_path, 
         const std::vector<std::experimental::filesystem::path>& include_directories, 
         const std::vector<definition>& definitions);
 }

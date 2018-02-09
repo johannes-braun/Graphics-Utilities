@@ -1,13 +1,13 @@
-#include "glpp.hpp"
+#include "preprocessor.hpp"
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <stack>
 #include <cstring>
-#include "glad/glad.h"
+#include "config.hpp"
 
-namespace glpp
+namespace glshader::preprocessor
 {
     namespace fs = std::experimental::filesystem;
     std::set<std::string> extensions;
@@ -19,66 +19,31 @@ namespace glpp
         bool is_new_line(const char* in);
         bool is_comment_begin(const char* in);
         bool is_space(const char* in);
-
         const char* skip_space(const char* in);
-
         const char* skip_space_reverse(const char* in);
-
         const char* skip_to_next_space(const char* in);
-
         const char* skip_to_line_end(const char* in);
-
-        bool is_token_same(const char* text_ptr, const char* token, const unsigned size, const bool test_before = true,
-            const bool test_after = true);
-
-        template<unsigned N>
-        bool is_token_same(const char* text_ptr, const char(&token)[N], const bool test_before = true,
-            const bool test_after = true);
-
-        bool is_directive_begin(const char* text_ptr, const bool test_before = true);
-
+        bool is_token_same(const char* text_ptr, const char* token, unsigned size, bool test_before = true, bool test_after = true);
+        template<unsigned N> bool is_token_same(const char* text_ptr, const char(&token)[N], bool test_before = true, bool test_after = true);
+        bool is_directive_begin(const char* text_ptr, bool test_before = true);
         const char* skip_to_next_token(const char* in);
         const char* skip_to_next_space_or(const char* in, char alt);
-
-        std::string line_directive(const fs::path& file, const int line);
-
+        std::string line_directive(const fs::path& file, int line);
         bool is_defined(const std::string& val, const processed_file& processed);
-
         void increment_line(int& current_line, processed_file& processed);
-
-        const char* ignore_comments(const char* text_ptr, int& current_line, processed_file& processed,
-            const fs::path& current_file, std::stringstream& result);
-
+        const char* ignore_comments(const char* text_ptr, int& current_line, processed_file& processed, const fs::path& current_file, std::stringstream& result);
         bool is_macro(const char* text_ptr, processed_file& processed);
-
-        std::string expand_macro(const std::string& name, const char* param_start, const int param_length,
-            const fs::path& current_file, const int current_line, processed_file& processed);
-
+        std::string expand_macro(const std::string& name, const char* param_start, int param_length, const fs::path& current_file, int current_line, processed_file& processed);
         bool is_important_arithmetic_op(const char* c);
-
         const char* skip_prefixes(const char* c);
-
-        const char* skip_eval_token(const char* current_character, const int max_length, const fs::path& current_file,
-            const int current_line);
-
+        const char* skip_eval_token(const char* current_character, int max_length, const fs::path& current_file, int current_line);
         int evaluate(const char* ptr, int length, const fs::path& current_file, int current_line);
-
-        int evaluate_token(const char* ptr, int length, const fs::path& current_file, const int current_line);
-
-        const char* skip_important_operator(const char* ptr, int length, const fs::path& current_file,
-            const int current_line);
-
-        int evaluate(const char* ptr, const int length, const fs::path& current_file, const int current_line);
-
-        std::string expand_inline_macros(const char* text_ptr, const char* & text_ptr_after,
-            const fs::path& current_file, const int current_line,
-            processed_file& processed);
-
-        void process_impl(const fs::path& file_path,
-            const std::vector<fs::path>& include_directories,
-            processed_file& processed,
-            std::set<fs::path>& unique_includes,
-            std::stringstream& result);
+        int evaluate_token(const char* ptr, int length, const fs::path& current_file, int current_line);
+        const char* skip_important_operator(const char* ptr, int length, const fs::path& current_file, int current_line);
+        int evaluate(const char* ptr, int length, const fs::path& current_file, int current_line);
+        std::string expand_inline_macros(const char* text_ptr, const char* & text_ptr_after, const fs::path& current_file, int current_line, processed_file& processed);
+        void process_impl(const fs::path& file_path, const std::vector<fs::path>& include_directories,
+            processed_file& processed, std::set<fs::path>& unique_includes, std::stringstream& result);
     }
 
     namespace
@@ -116,49 +81,12 @@ namespace glpp
         { '%', &mod },
     };
 
-    /*std::map<char, int(*)(int, int)> operators_logic =
+    std::map<char, int(*)(int, int)> operators_logic =
     {
         { '&', &op_and },
         { '|', &op_or },
         { '^', &op_xor }
-    };*/
-
-    definition_info::definition_info(const std::string value): replacement(std::move(value))
-    {
-    }
-
-    definition_info::
-    definition_info(const std::vector<std::string> parameters, const std::string replacement):
-        replacement(std::move(replacement)), parameters(std::move(parameters))
-    {
-    }
-
-    processed_file load_file(const fs::path& file_path, const std::vector<fs::path>& include_directories,
-        const std::vector<definition>& definitions)
-    {
-        [[maybe_unused]] const static auto ext = [] {
-            int n;
-            glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-            for (auto i = 0; i < n; ++i)
-                extensions.emplace(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
-            return 0;
-        }();
-
-        processed_file processed;
-        processed.version = -1;
-        processed.file_path = file_path;
-
-        for (auto&& definition : definitions)
-            processed.definitions[definition.name] = definition.info;
-
-        std::stringstream result;
-        std::set<fs::path> unique_includes;
-        unique_includes.emplace(file_path);
-        glsl_impl::process_impl(file_path, include_directories, processed, unique_includes, result);
-
-        processed.contents = result.str();
-        return processed;
-    }
+    };
 
     void glsl_impl::syntax_error(const fs::path& file, const int line, const std::string& reason)
     {
@@ -692,8 +620,8 @@ namespace glpp
                     while (!is_space(text_ptr) && !is_new_line(text_ptr) && *text_ptr != '(')
                         ++text_ptr;
 
-                    if (const auto space_skipped = skip_space(text_ptr); 
-                        is_space(text_ptr) && !is_new_line(space_skipped) && !is_comment_begin(space_skipped))
+                    if (const auto space_skipped = skip_space(text_ptr);
+                    is_space(text_ptr) && !is_new_line(space_skipped) && !is_comment_begin(space_skipped))
                     {
                         // macro without params
                         auto value_end = space_skipped;
@@ -1015,5 +943,32 @@ namespace glpp
                 ++text_ptr;
             }
         }
+    }
+
+    processed_file preprocess_file(const fs::path& file_path, const std::vector<fs::path>& include_directories,
+        const std::vector<definition>& definitions)
+    {
+        [[maybe_unused]] const static auto ext = [] {
+            int n;
+            glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+            for (auto i = 0; i < n; ++i)
+                extensions.emplace(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
+            return 0;
+        }();
+
+        processed_file processed;
+        processed.version = -1;
+        processed.file_path = file_path;
+
+        for (auto&& definition : definitions)
+            processed.definitions[definition.name] = definition.info;
+
+        std::stringstream result;
+        std::set<fs::path> unique_includes;
+        unique_includes.emplace(file_path);
+        glsl_impl::process_impl(file_path, include_directories, processed, unique_includes, result);
+
+        processed.contents = result.str();
+        return processed;
     }
 }
