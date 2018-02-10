@@ -1,5 +1,5 @@
 #include "window.hpp"
-#include "stb/stb_image.h"
+#include "stb_image.h"
 
 namespace io
 {
@@ -81,7 +81,7 @@ namespace io
         else if (_api == api::opengl)
         {
 
-            gladLoadGL();
+            gladLoadGLSimple(reinterpret_cast<GLADsimpleloadproc>(glfwGetProcAddress));
             glfwSwapInterval(0);
 
             gl::set_debug_callback([](gl::debug_source source, gl::debug_type type, uint32_t id,

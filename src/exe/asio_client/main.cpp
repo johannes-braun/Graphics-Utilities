@@ -1,6 +1,6 @@
 #include <array>
 #include <iostream>
-#include <asio/asio.hpp>
+#include <asio.hpp>
 #include <jpu/log>
 
 using asio::ip::tcp;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <asio/asio.hpp>
+#include <asio.hpp>
 
 namespace net
 {

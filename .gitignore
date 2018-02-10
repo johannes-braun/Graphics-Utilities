@@ -1,6 +1,7 @@
 build/lib/*
 build/bin/*
 build/cache/*
+external/cached/*
 
 .vs
 .vscode

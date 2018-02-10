@@ -1,4 +1,6 @@
 #include "debug.hpp"
+#define GLAD_GL_IMPLEMENTATION
+#include "glad/glad.h"
 
 namespace gl
 {

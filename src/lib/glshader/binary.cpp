@@ -6,7 +6,7 @@
 #include <glad/glad.h>
 #include "preprocessor.hpp"
 #include "jpu/impl/log/log.hpp"
-#include "snappy/snappy.h"
+#include <snappy.h>
 #include "config.hpp"
 
 namespace glshader

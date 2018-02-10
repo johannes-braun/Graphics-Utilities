@@ -2,7 +2,7 @@
 #include <any>
 #include "command.hpp"
 #include "device.hpp"
-#include "stb/stb_image.h"
+#include "stb_image.h"
 
 namespace vkn
 {

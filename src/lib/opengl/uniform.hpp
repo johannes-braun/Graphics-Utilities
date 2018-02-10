@@ -91,8 +91,8 @@ namespace gl
     template<> inline void uniform<glm::uvec2>::update() const { glProgramUniform2uiv(_shader, _location, 1, glm::value_ptr(_value)); }
     template<> inline void uniform<glm::uvec3>::update() const { glProgramUniform3uiv(_shader, _location, 1, glm::value_ptr(_value)); }
     template<> inline void uniform<glm::uvec4>::update() const { glProgramUniform4uiv(_shader, _location, 1, glm::value_ptr(_value)); }
-    template<> inline void uniform<uint64_t>::update() const { glProgramUniform1ui64ARB(_shader, _location, _value); }
-    template<> inline void uniform<intptr_t>::update() const { glProgramUniform1i64ARB(_shader, _location, _value); }
+    template<> inline void uniform<uint64_t>::update() const { glProgramUniform1ui64NV(_shader, _location, _value); }
+    template<> inline void uniform<intptr_t>::update() const { glProgramUniform1i64NV(_shader, _location, _value); }
 
     template<> inline void uniform<float>::update() const { glProgramUniform1f(_shader, _location, _value); }
     template<> inline void uniform<glm::vec2>::update() const { glProgramUniform2fv(_shader, _location, 1, glm::value_ptr(_value)); }

@@ -1,6 +1,6 @@
 #include "audio.hpp"
 #include <fstream>
-#include <stb/stb_vorbis.h>
+#include <stb_vorbis.h>
 
 namespace res
 {

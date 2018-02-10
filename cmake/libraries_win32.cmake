@@ -14,14 +14,3 @@ MACRO(add_ext_lib result filename filepath)
     message("${result}: at " ${${result}})
     list(APPEND LIBRARIES ${${result}})
 ENDMACRO()
-
-add_ext_lib(LIBGLFW    glfw3.lib               ${AS_EXTERN_LIBRARIES_PATH}/glfw/win32/)
-add_ext_lib(LIBASSIMP  assimp-vc140-mt.lib     ${AS_EXTERN_LIBRARIES_PATH}/assimp/win32/)
-add_ext_lib(LIBOPENAL  OpenAL32.lib            ${AS_EXTERN_LIBRARIES_PATH}/al/win32/)
-add_ext_lib(LIBVULKAN  vulkan-1.lib            ${AS_EXTERN_LIBRARIES_PATH}/vulkan/win32/)
-
-list(APPEND LIBRARIES opengl32)
-
-file(COPY ${AS_EXTERN_LIBRARIES_PATH}/assimp/win32/assimp-vc140-mt.dll DESTINATION ${AS_BINARY_DIR})
-file(COPY ${AS_EXTERN_LIBRARIES_PATH}/al/win32/OpenAL32.dll DESTINATION ${AS_BINARY_DIR})
-file(COPY ${AS_EXTERN_LIBRARIES_PATH}/vulkan/win32/glslc.exe DESTINATION ${AS_BINARY_DIR})

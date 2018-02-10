@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <GLFW/glfw3.h>
 #include <jpu/memory>
-#include <stb/stb_image.h>
+#include <stb_image.h>
 
 namespace io
 {
