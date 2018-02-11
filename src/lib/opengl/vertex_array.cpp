@@ -4,6 +4,7 @@ namespace gl
 {
     void vertex_array::add_binding(const vertex_attribute_binding& binding)
     {
+        assert(glIsBuffer(_id));
         glEnableVertexArrayAttrib(_id, _attributes);
 		glVertexArrayVertexBuffer(_id, _attributes, binding.buffer_id, binding.offset, binding.stride);
 		glVertexArrayAttribFormat(_id, _attributes, binding.components, binding.type, binding.normalized, binding.member_offset);
@@ -18,6 +19,7 @@ namespace gl
 
     void vertex_array::set_element_buffer(uint32_t buffer)
     {
+        assert(glIsBuffer(_id));
         glVertexArrayElementBuffer(_id, buffer);
     }
 
