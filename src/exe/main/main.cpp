@@ -30,20 +30,16 @@
 #include "openal/buffer.hpp"
 #include "openal/listener.hpp"
 
+#include "renderer.hpp"
+
 #include <stb_image.h>
 
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 jpu::ref_ptr<io::window> main_window;
+std::unique_ptr<renderer> main_renderer;
 
 bool is_fullscreen = false;
-
-jpu::ref_ptr<gl::framebuffer> blur_framebuffer;
-jpu::ref_ptr<gl::framebuffer> framebuffer;
-jpu::ref_ptr<gl::framebuffer> resolve_framebuffer;
-std::array<jpu::ref_ptr<gl::texture>, 2> quarter_size_attachments;
-std::array<jpu::ref_ptr<gl::texture>, 4> full_size_attachments;
-std::array<jpu::ref_ptr<gl::texture>, 2> msaa_attachments;
 
 int current_samples;
 glm::ivec2 full_resolution;
@@ -54,8 +50,6 @@ void resize(const int width, const int height, const int samples, const bool ful
     if (width * height * samples == 0)
         return;
 
-    const bool samples_changed = (current_samples != samples);
-    const bool resolution_changed = full_resolution != glm::ivec2{ width, height };
     const bool fullscreen_changed = is_fullscreen != fullscreen;
 
     full_resolution = { width, height };
@@ -76,45 +70,7 @@ void resize(const int width, const int height, const int samples, const bool ful
         }
     }
 
-    if (resolution_changed)
-    {
-        quarter_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-        quarter_size_attachments[0]->storage_2d(quarter_resolution.x, quarter_resolution.y, GL_R11F_G11F_B10F, 1);
-        blur_framebuffer->attach(GL_COLOR_ATTACHMENT0, quarter_size_attachments[0]);
-
-        quarter_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-        quarter_size_attachments[1]->storage_2d(quarter_resolution.x, quarter_resolution.y, GL_R11F_G11F_B10F, 1);
-        blur_framebuffer->attach(GL_COLOR_ATTACHMENT1, quarter_size_attachments[1]);
-
-        full_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-        full_size_attachments[0]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 3);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT0, full_size_attachments[0]);
-
-        full_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-        full_size_attachments[1]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 1);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT1, full_size_attachments[1]);
-
-        full_size_attachments[2] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-        full_size_attachments[2]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 1);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT2, full_size_attachments[2]);
-
-        full_size_attachments[3] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-        full_size_attachments[3]->storage_2d(full_resolution.x, full_resolution.y, GL_R11F_G11F_B10F, 1);
-        resolve_framebuffer->attach(GL_COLOR_ATTACHMENT3, full_size_attachments[3]);
-    }
-
-    if (resolution_changed || samples_changed)
-    {
-        msaa_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::multisample_2d);
-        msaa_attachments[0]->storage_2d_multisample(full_resolution.x, full_resolution.y, samples, GL_RGBA16F);
-        framebuffer->attach(GL_COLOR_ATTACHMENT0, msaa_attachments[0]);
-
-        msaa_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::multisample_2d);
-        msaa_attachments[1]->storage_2d_multisample(full_resolution.x, full_resolution.y, samples, GL_RGBA16F);
-        framebuffer->attach(GL_COLOR_ATTACHMENT1, msaa_attachments[1]);
-
-        framebuffer->use_renderbuffer_multisample(GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH24_STENCIL8, full_resolution.x, full_resolution.y, samples);
-    }
+    main_renderer->resize(width, height, samples);
 }
 
 int main(int count, const char** arguments)
@@ -125,9 +81,6 @@ int main(int count, const char** arguments)
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
 
-    blur_framebuffer = jpu::make_ref<gl::framebuffer>();
-    framebuffer = jpu::make_ref<gl::framebuffer>();
-    resolve_framebuffer = jpu::make_ref<gl::framebuffer>();
     resize(1280, 720, 1 << 2, false);
 
     glfwSwapInterval(1);
@@ -136,8 +89,11 @@ int main(int count, const char** arguments)
             return;
 
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
+        {
+            main_renderer->reload_pipelines();
             for (auto&& p : graphics_pipelines)
                 p->reload_stages();
+        }
     });
 
     glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
@@ -266,41 +222,10 @@ int main(int count, const char** arguments)
     auto logo           = load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
     auto ic_image       = load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
-    auto random_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    random_texture->storage_2d(512, 512, GL_RGBA16F, 1);
-    std::vector<float> random_pixels(512 * 512 * 4);
-    std::generate(random_pixels.begin(), random_pixels.end(), 
-        [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable { return dist(gen); });
-    random_texture->assign_2d(GL_RGBA, GL_FLOAT, random_pixels.data());
-
     io::camera cam;
     io::default_cam_controller cam_controller;
-    uint32_t temporal_target = GL_COLOR_ATTACHMENT0;
-    uint32_t temporal_buffer = GL_COLOR_ATTACHMENT2;
-    uint32_t other_temporal_buffer = GL_COLOR_ATTACHMENT3;
 
-    const auto luminance_compute_shader = jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/tonemap/sample_luminance.comp");
-    const auto luminance_compute_pipeline = jpu::make_ref<gl::compute_pipeline>(luminance_compute_shader.get());
-    const auto sample_buffer = jpu::make_ref<gl::buffer>(std::array<float, 32>{}, gl::buffer_flag_bits::map_dynamic_persistent_read);
-    sample_buffer->bind(1, GL_SHADER_STORAGE_BUFFER);
-    float luma = 1;
-
-    const auto screen_vertex_shader = jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/screen.vert");
-
-    auto tonemap_pipeline = graphics_pipelines.push("Tonemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    tonemap_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/const_multiply.frag"));
-    auto blur_pipeline = graphics_pipelines.push("Blur Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    blur_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/blur.frag"));
-    auto fxaa_pipeline = graphics_pipelines.push("FXAA Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    fxaa_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/fxaa.frag"));
-    auto flare_pipeline = graphics_pipelines.push("Flare Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    flare_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/flare.frag"));
-    auto bright_spots_pipeline = graphics_pipelines.push("Bright Spots Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    bright_spots_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/bright_spots.frag"));
-    auto add_pipeline = graphics_pipelines.push("Add Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    add_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/add.frag"));
-    auto ssao_pipeline = graphics_pipelines.push("SSAO Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    ssao_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/ssao.frag"));
+    main_renderer = std::make_unique<renderer>(full_resolution.x, full_resolution.y, current_samples);
 
     // Init audio
     auto device = jpu::make_ref<al::default_device>();
@@ -323,7 +248,7 @@ int main(int count, const char** arguments)
     source->set(AL_POSITION, glm::vec3(0, 0, 0));
     source->set(AL_LOOPING, AL_TRUE);
     source->set(AL_PITCH, 1.f);
-    source->set(AL_GAIN, 1.f);
+    source->set(AL_GAIN, 0.4f);
     source->set(AL_MIN_GAIN, 0.f);
     source->set(AL_MAX_GAIN, 1.f);
     source->set(AL_REFERENCE_DISTANCE, 3.f);
@@ -451,10 +376,7 @@ int main(int count, const char** arguments)
         scene.set_time(glfwGetTime());
         glFinish();
 
-        framebuffer->bind();
-        framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        main_renderer->bind();
 
         cubemap_pipeline->bind();
         cubemap_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("cubemap_matrix") =
@@ -478,119 +400,8 @@ int main(int count, const char** arguments)
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("cube_map") = sampler->sample_texture(cubemap);
         vertex_vao->bind();
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(cylinder.meshes.get_by_index(0).indices.size()), GL_UNSIGNED_INT, nullptr);
-        framebuffer->unbind();
 
-        framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT0);
-        resolve_framebuffer->draw_to_attachments({ temporal_target });
-        framebuffer->blit(resolve_framebuffer,
-            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y },
-            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-        constexpr auto adaption_speed = 0.4f;
-        constexpr auto brightness = 1.8f;
-
-        const auto new_luma = std::accumulate(sample_buffer->data_as<float>(), sample_buffer->data_as<float>() + 32, 0.f) * (1 / 32.f);
-        luma = glm::mix(glm::mix(luma, new_luma, adaption_speed * main_window->delta_time()), new_luma, adaption_speed * main_window->delta_time());
-        const auto half_inv_luma = 0.5f / luma;
-        const auto luminance = half_inv_luma * (half_inv_luma * brightness + 1.f) / (half_inv_luma + 1.f);
-        luminance_compute_pipeline->bind();
-        luminance_compute_pipeline->stage(gl::shader_type::compute)->get_uniform<gl::sampler2D>("src_texture") = sampler->sample_texture(full_size_attachments[0]);
-        luminance_compute_pipeline->dispatch(1);
-
-        generic_vao->bind();
-        resolve_framebuffer->bind();
-        resolve_framebuffer->draw_to_attachments({ temporal_target });
-        tonemap_pipeline->bind();
-        tonemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(full_size_attachments[0]);
-        tonemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor") = luminance;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        resolve_framebuffer->unbind();
-        full_size_attachments[0]->generate_mipmaps();
-
-        blur_framebuffer->bind();
-        blur_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
-        glViewport(0, 0, quarter_resolution.x, quarter_resolution.y);
-        bright_spots_pipeline->bind();
-        bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(full_size_attachments[0]);
-        bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("threshold_lower") = 1.0f;
-        bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("threshold_higher") = 1.75f;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        blur_framebuffer->unbind();
-
-        blur_framebuffer->bind();
-        blur_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-        blur_pipeline->bind();
-        blur_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(quarter_size_attachments[0]);
-        blur_pipeline->stage(gl::shader_type::fragment)->get_uniform<int>("axis") = 0;
-        blur_pipeline->stage(gl::shader_type::fragment)->get_uniform<int>("level") = 0;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        blur_framebuffer->unbind();
-
-        blur_framebuffer->bind();
-        blur_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
-        blur_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(quarter_size_attachments[1]);
-        blur_pipeline->stage(gl::shader_type::fragment)->get_uniform<int>("axis") = 1;
-        blur_pipeline->stage(gl::shader_type::fragment)->get_uniform<int>("level") = 0;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        blur_framebuffer->unbind();
-
-        resolve_framebuffer->bind();
-        resolve_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-        glViewport(0, 0, full_resolution.x, full_resolution.y);
-        flare_pipeline->bind();
-        flare_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(quarter_size_attachments[0]);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        resolve_framebuffer->unbind();
-
-        resolve_framebuffer->bind();
-        resolve_framebuffer->draw_to_attachments({ temporal_target });
-        add_pipeline->bind();
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(full_size_attachments[0]);
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[1]") = sampler->sample_texture(full_size_attachments[1]);
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_one") = 1.f;
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_two") = 0.3f;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        resolve_framebuffer->unbind();
-
-        resolve_framebuffer->bind();
-        resolve_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-        ssao_pipeline->bind();
-        ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("albedo_texture") = sampler->sample_texture(full_size_attachments[0]);
-        ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("random_texture") = sampler->sample_texture(random_texture);
-        ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("normal_depth_texture") = msaa_attachments[0]->address();
-        ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("time") = glfwGetTime();
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        resolve_framebuffer->unbind();
-
-        resolve_framebuffer->bind();
-        resolve_framebuffer->draw_to_attachments({ temporal_target });
-        fxaa_pipeline->bind();
-        fxaa_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(full_size_attachments[1]);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        resolve_framebuffer->unbind();
-
-        resolve_framebuffer->bind();
-        resolve_framebuffer->draw_to_attachments({ other_temporal_buffer });
-        add_pipeline->bind();
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[0]") = sampler->sample_texture(full_size_attachments[temporal_target - GL_COLOR_ATTACHMENT0]);
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("src_textures[1]") = sampler->sample_texture(full_size_attachments[temporal_buffer - GL_COLOR_ATTACHMENT0]);
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_one") = 0.7f;
-        add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_two") = 0.3f;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        resolve_framebuffer->unbind();
-        std::swap(temporal_buffer, other_temporal_buffer);
-
-        resolve_framebuffer->read_from_attachment(temporal_buffer);
-        resolve_framebuffer->draw_to_attachments({ other_temporal_buffer });
-        resolve_framebuffer->blit(resolve_framebuffer, 
-            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
-            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
-            GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-        resolve_framebuffer->blit(nullptr, 
-            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
-            gl::framebuffer::blit_rect{ 0, 0, full_resolution.x, full_resolution.y }, 
-            GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        main_renderer->draw(main_window->delta_time());
     }
 }
 
