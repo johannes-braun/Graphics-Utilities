@@ -6,7 +6,6 @@ layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(rgba16f) uniform image2D target_image;
 uniform samplerCube cubemap;
-uniform sampler2D random_texture;
 uniform float random_gen;
 uniform vec3 camera_position;
 uniform mat4 camera_matrix;
@@ -48,6 +47,12 @@ vec3 uniform_sphere(vec2 uv)
 	return vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 }
 
+bool isTotalReflection(float ior_in, float ior_out, vec3 incoming, vec3 micro_normal)
+{
+	float c = abs(dot(incoming, micro_normal));
+	return c * c < -(ior_out / ior_in) + 1;
+}
+
 void main()
 {
     const float one_over_pi = 0.31830988618;
@@ -70,7 +75,7 @@ void main()
     vec3 last_color = imageLoad(target_image, pixel).rgb;
     vec3 color = vec3(0);
     vec3 rad = vec3(1);
-    for(int i=0; i<7; ++i)
+    for(int i=0; i<6; ++i)
     {
         bvh_state_set_mode(bvh_mode_nearest);
         bvh_result result = bvh_hit(origin, direction, bvh, elements, vertices, 1.f/0.f);
@@ -86,7 +91,7 @@ void main()
             vec3 norm = barycentric_resolve(normal).xyz;
             vec3 pos = barycentric_resolve(position).xyz;
             vec2 uv = barycentric_resolve(uv).xy;
-            const float roughness = 0.15f;
+            const float roughness = 0.12f;
             const float glass = 0.f;
 
             rand_val = random_value(int(pixel.x * 20323 + pixel.y * 43143 + 29012 * random_gen));
@@ -101,15 +106,18 @@ void main()
             float ior_in = swap ? 1.25f : 1.f;
             float ior_out = swap ? 1.f : 1.25f;
             vec3 world_out_refract = refract(direction, forward_normal, ior_in / ior_out) - 1e-4f * forward_normal;
-            bsdf reflection = bsdf_reflection(direction, norm, forward_normal, world_out, roughness);
+            bsdf reflection = bsdf_reflection(direction, faceforward(norm, direction, norm), forward_normal, world_out, roughness);
 
-            float fresnel = bsdf_fresnel_coefficient(direction, norm, 1.25f, 0.7f);
+            float fresnel = bsdf_fresnel_coefficient(direction, norm, 1.25f, 0.25f);
 
             const vec3 light_pos = 5.f * vec3(0.7, 2, 1);
             vec3 light_offset_pos = light_pos + 0.1f*uniform_sphere(random_sample);
             const vec3 to_light_full = light_offset_pos - pos;
             vec3 to_light = normalize(to_light_full);
-            if(random_value(2149) > fresnel && !isnan(world_out_refract.x))
+
+            bool total_ref = isTotalReflection(ior_in, ior_out, direction, forward_normal);
+
+            if(random_value(2149) > fresnel && !total_ref)
             {
                 if(random_value(23103) > glass)
                 {
@@ -126,8 +134,9 @@ void main()
                             color += rad * d * vec3(1.f, 0.97f, 0.90f) * base_color * 0.5f;
                         }
                     }
-                    rad *= base_color;
+                    rad *= base_color;// * (1-fresnel);
                     direction = bsdf_local_to_world(cosine_hemisphere(random_sample), norm);
+                    origin = pos + 1e-3f * direction;
                 }
                 else
                 {
@@ -135,19 +144,24 @@ void main()
                     direction = world_out_refract;
                     bsdf transmission = bsdf_transmission(direction, norm, forward_normal, 
                         world_out_refract, roughness, 1.25f);
-                    color += rad * dist * vec3(1.f, 0.97f, 0.90f);
-                    rad *= transmission.radiance;
+                    //color += rad * dist * vec3(1.f, 0.97f, 0.90f);
+                    //rad *= transmission.radiance;
+                    origin = pos + 1e-3f * direction;
                 }
             }
             else
             {
                 float dist = ggx_distribution(dot(faceforward(norm, direction, norm), normalize(-direction+to_light)), roughness);
                 direction = reflect(direction, forward_normal);
-                color += rad * dist * vec3(1.f, 0.97f, 0.90f);
-                rad *= reflection.radiance;
+                //color += rad * dist * vec3(1.f, 0.97f, 0.90f);
+                //rad *= reflection.radiance;
+                origin = pos + 1e-2f * facet_normal;
+                //color += vec3(1, 0, 0);
             }
 
-            origin = pos + 1e-4f * direction;
+            if(dot(rad, rad) < 0.0001f)
+                break;
+
         }
         else
         {
@@ -155,5 +169,5 @@ void main()
             break;
         }
     }
-    imageStore(target_image, pixel, vec4(mix(last_color, color, 1/16.f), 1));
+    imageStore(target_image, pixel, vec4(mix(last_color, color, 1/20.f), 1));
 }

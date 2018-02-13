@@ -7,10 +7,16 @@
 #include "res/geometry.hpp"
 #include "jpu/impl/geometry/bvh/bvh.hpp"
 #include "res/image.hpp"
+#include "opengl/query.hpp"
+
+#include "jpu/impl/log/log.hpp"
+#include "tinyfd/tinyfiledialogs.h"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipelines;
-jpu::ref_ptr<gl::texture> target_texture;
+uint32_t current_target = 0;
+jpu::ref_ptr<gl::texture> target_textures[2];
+jpu::ref_ptr<gl::texture> rad_texture;
 
 int main(int argc, const char** args)
 {
@@ -51,12 +57,25 @@ int main(int argc, const char** args)
     glClearColor(0.8f, 0.9f, 1.f, 0);
     glClearDepth(0);
 
-    target_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_texture->storage_2d(1280, 720, GL_RGBA16F);
-    const gl::image target_image(target_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
+    target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[0]->storage_2d(1280, 720, GL_RGBA16F);
+    const gl::image target_image_01(target_textures[0], 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
+    target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[1]->storage_2d(1280, 720, GL_RGBA16F);
+    const gl::image target_image_02(target_textures[1], 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
+    rad_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    rad_texture->storage_2d(1280, 720, GL_RGBA16F);
+    const gl::image rad_image(rad_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
 
     gl::framebuffer blit_framebuffer;
-    blit_framebuffer.attach(GL_COLOR_ATTACHMENT0, target_texture);
+    blit_framebuffer.attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
+    blit_framebuffer.attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
+
+    gl::buffer ray_buffer(1280 * 720 * 3 * sizeof(glm::vec4));
+    const auto pp_generate = compute_pipelines.push("Generate", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/generate.comp")));
+    const auto pp_traverse = compute_pipelines.push("Traverse", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/traverse.comp")));
+    const auto pp_shade = compute_pipelines.push("Shade", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/shade.comp")));
+    const auto pp_copy_back = compute_pipelines.push("Copy Back", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/copy_back.comp")));
 
     const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/trace.comp")));
 
@@ -85,17 +104,11 @@ int main(int argc, const char** args)
     cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
 
-
-    jpu::ref_ptr<gl::texture> random_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    random_texture->storage_2d(512, 512, GL_RGBA16F, 1);
-    std::vector<float> random_pixels(512 * 512 * 4);
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
-    std::generate(random_pixels.begin(), random_pixels.end(),[&] { return dist(gen); });
-    random_texture->assign_2d(GL_RGBA, GL_FLOAT, random_pixels.data());
 
     // Test out mesh
-    const auto geometry = res::load_geometry("../res/bunny_decimated.dae");
+    const auto geometry = res::load_geometry("../res/bunny.dae");
     const std::vector<res::vertex> vertices = std::move(geometry.meshes.get_by_index(0).vertices);
     std::vector<uint32_t> indices = std::move(geometry.meshes.get_by_index(0).indices);
     jpu::bvh<3> bvh;
@@ -104,29 +117,94 @@ int main(int argc, const char** args)
     gl::buffer index_buffer(indices);
     gl::buffer bvh_buffer(bvh.pack());
 
+    gl::query query_generate(GL_TIME_ELAPSED);
+    gl::query query_traverse(GL_TIME_ELAPSED);
+    gl::query query_shade(GL_TIME_ELAPSED);
+    gl::query query_copy_back(GL_TIME_ELAPSED);
+
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
 
-        ImGui::Begin("Window");
-        ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
-        ImGui::End();
+        glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
+
+       /* ray_buffer.bind(0, GL_SHADER_STORAGE_BUFFER);
+
+        query_generate.begin();
+        pp_generate->bind();
+        pp_generate->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = target_image_02;
+        pp_generate->stage(gl::shader_type::compute)->get_uniform<float>("random_gen") = dist(gen);
+        pp_generate->stage(gl::shader_type::compute)->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
+        pp_generate->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("camera_matrix") = camera_matrix;
+        pp_generate->dispatch(1280 * 720);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        query_generate.end();
+
+        glm::vec4 clear{ 1 };
+        glClearTexImage(*rad_texture, 0, GL_RGBA, GL_FLOAT, &clear);
+
+        for (int bounce = 0; bounce < 4; ++bounce)
+        {
+            query_traverse.begin();
+            pp_traverse->bind();
+            pp_traverse->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("vertices") = vertex_buffer.address();
+            pp_traverse->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("elements") = index_buffer.address();
+            pp_traverse->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("bvh") = bvh_buffer.address();
+            pp_traverse->dispatch(1280 * 720);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+            query_traverse.end();
+
+            query_shade.begin();
+            pp_shade->bind();
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = target_image_02;
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<uint64_t>("rad_image") = rad_image;
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<float>("random_gen") = dist(gen);
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("vertices") = vertex_buffer.address();
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("elements") = index_buffer.address();
+            pp_shade->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("bvh") = bvh_buffer.address();
+            pp_shade->dispatch(1280 * 720);
+            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+            query_shade.end();
+        }
+
+        query_copy_back.begin();
+        pp_copy_back->bind();
+        pp_copy_back->stage(gl::shader_type::compute)->get_uniform<uint64_t>("src_image") = target_image_02;
+        pp_copy_back->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = target_image_01;
+        pp_copy_back->dispatch(1280, 720);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        query_copy_back.end();*/
 
         pp_trace->bind();
-        pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = target_image;
-        pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("random_texture") = random_texture->address();
+        pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = target_image_01;
         pp_trace->stage(gl::shader_type::compute)->get_uniform<float>("random_gen") = dist(gen);
+        pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
+        pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("camera_matrix") = camera_matrix;
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("vertices") = vertex_buffer.address();
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("elements") = index_buffer.address();
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("bvh") = bvh_buffer.address();
-        pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
-        pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("camera_matrix") = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
         pp_trace->dispatch(1280, 720);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         blit_framebuffer.read_from_attachment(GL_COLOR_ATTACHMENT0);
         blit_framebuffer.blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, 1280, 720 }, gl::framebuffer::blit_rect{ 0, 0, 1280, 720 }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        ImGui::Begin("Window");
+        ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
+        ImGui::Value("Generate", query_generate.get_uint64() / 1'000'000.f);
+        ImGui::Value("Traverse", query_traverse.get_uint64() / 1'000'000.f);
+        ImGui::Value("Shade", query_shade.get_uint64() / 1'000'000.f);
+        ImGui::Value("Copy Back", query_copy_back.get_uint64() / 1'000'000.f);
+        if(ImGui::Button("Open"))
+        {
+            constexpr const char *fs[2] = {
+                "*.jpg", "*.png"
+            };
+            log_i << tinyfd_openFileDialog("Test", "../res", 2, fs, "Hm", false);
+        }
+        ImGui::End();
     }
 
     return 0;

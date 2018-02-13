@@ -18,7 +18,7 @@ bsdf bsdf_reflection(const in vec3 view, const in vec3 normal, const in vec3 fac
     const float geometry = ggx_geometry(view, outgoing, normal, facet_normal, roughness);
     bsdf result;
     result.irradiance = vec3(0);
-    result.radiance = geometry / m_dot_in;
+    result.radiance = 1 / m_dot_in;
     return result;
 }
 
@@ -34,12 +34,13 @@ bsdf bsdf_transmission(const in vec3 view, const in vec3 normal, const in vec3 f
     const float n_dot_out = dot(outgoing, normal);
 	const float geometry = ggx_geometry(view, outgoing, faceforward(normal, view, normal), facet_normal, roughness);
 
-    float val1 = abs(ior_out * ior_out * m_dot_in * m_dot_out) / max(abs(n_dot_in * n_dot_out), 0.1f);
+    float val1 = abs(ior_out * ior_out * m_dot_in * m_dot_out / n_dot_in * n_dot_out);
     float den = pow(ior_in * m_dot_in, 2) + pow(ior_out * m_dot_out, 2);
 
     bsdf result;
     result.irradiance = vec3(0);
-    result.radiance = abs(val1)*geometry / 1;
+    result.radiance = val1 * geometry;
+    result.radiance = geometry;//val1 * geometry / den;
     return result;
 }
 

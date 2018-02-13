@@ -94,7 +94,7 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction,
                         if(_bvh_mode_current == bvh_mode_any)
                             return result;
                     }
-
+                    
 #ifndef DISABLE_FARTHEST
                     if(current_distance > result.far_distance)
                     {

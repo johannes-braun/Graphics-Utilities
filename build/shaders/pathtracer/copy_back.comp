@@ -1,0 +1,15 @@
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba16f) uniform image2D src_image;
+layout(rgba16f) uniform image2D target_image;
+
+void main()
+{
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+
+    if(any(greaterThanEqual(pixel, imageSize(target_image))))
+        return;
+
+    vec4 last = imageLoad(target_image, pixel);
+    imageStore(target_image, pixel, mix(last, imageLoad(src_image, pixel), 1/8.f));
+}

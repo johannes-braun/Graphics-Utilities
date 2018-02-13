@@ -100,7 +100,7 @@ int main(int argc, const char** argv)
 
     auto texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     int iw, ih;
-    const auto data = res::stbi_data(stbi_load("../res/tinted.jpg", &iw, &ih, nullptr, 3));
+    const auto data = res::stbi_data(stbi_load("../res/Lena.png", &iw, &ih, nullptr, 3));
     texture->storage_2d(iw, ih, GL_RGB8);
     texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
     texture->generate_mipmaps();

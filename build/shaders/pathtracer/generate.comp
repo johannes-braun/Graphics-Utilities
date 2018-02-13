@@ -1,0 +1,44 @@
+#include "../ext/random.h"
+
+layout(local_size_x = 64) in;
+
+layout(rgba16f) uniform image2D target_image;
+uniform vec3 camera_position;
+uniform mat4 camera_matrix;
+uniform float random_gen;
+
+struct ray
+{
+    vec4 origin_px;
+    vec4 direction_py;
+    vec2 barycentric;
+    int mesh;
+    int triangle;
+};
+
+layout(binding = 0) restrict writeonly buffer RayBuffer
+{
+    ray rays[];
+};
+
+void main()
+{
+    ivec2 target_size = imageSize(target_image);
+    float count = target_size.x * target_size.y;
+    vec2 inv_target_size = 1.f / target_size;
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.x % target_size.x, gl_GlobalInvocationID.x / target_size.x);
+
+    if(gl_GlobalInvocationID.x > rays.length())
+        return;
+
+    float rand_val = random_value(int(pixel.x * 20323 + pixel.y * 43143 + 29012 * random_gen));
+    vec2 random_sample = random_hammersley_2d(rand_val * count, 1/count);
+    vec2 off_pixel = pixel + random_sample;
+    vec2 uv = off_pixel * inv_target_size - 0.5f;
+
+    ray r;
+    r.origin_px = vec4(camera_position, off_pixel.x);
+    r.direction_py = vec4(vec3(camera_matrix * vec4(uv, 0, 1)), off_pixel.y);
+    r.mesh = -1;
+    rays[gl_GlobalInvocationID.x] = r;
+}
