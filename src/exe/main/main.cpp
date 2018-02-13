@@ -30,14 +30,14 @@
 #include "openal/buffer.hpp"
 #include "openal/listener.hpp"
 
-#include "renderer.hpp"
+#include "framework/renderer.hpp"
 
 #include <stb_image.h>
 
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 jpu::ref_ptr<io::window> main_window;
-std::unique_ptr<renderer> main_renderer;
+std::unique_ptr<gfx::renderer> main_renderer;
 
 bool is_fullscreen = false;
 
@@ -80,7 +80,7 @@ int main(int count, const char** arguments)
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
-
+    main_renderer = std::make_unique<gfx::renderer>(full_resolution.x, full_resolution.y, current_samples);
     resize(1280, 720, 1 << 2, false);
 
     glfwSwapInterval(1);
@@ -224,8 +224,6 @@ int main(int count, const char** arguments)
 
     io::camera cam;
     io::default_cam_controller cam_controller;
-
-    main_renderer = std::make_unique<renderer>(full_resolution.x, full_resolution.y, current_samples);
 
     // Init audio
     auto device = jpu::make_ref<al::default_device>();

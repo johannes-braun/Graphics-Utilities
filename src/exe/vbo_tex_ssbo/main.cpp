@@ -8,7 +8,7 @@
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
-void main(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
     gl::setup_shader_paths("../shaders");
 

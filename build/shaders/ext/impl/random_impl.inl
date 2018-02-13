@@ -6,6 +6,7 @@ vec2 random_hammersley_2d(float current, float inverse_sample_count)
     result.x = current * inverse_sample_count;
 
     // Radical inverse
+	uint bits = uint(current);
     bits = (bits << 16u) | (bits >> 16u);
 	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
 	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);

@@ -1,0 +1,159 @@
+#include "../ext/bvh.h"
+#include "../ext/random.h"
+#include "../ext/bsdf.h"
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba16f) uniform image2D target_image;
+uniform samplerCube cubemap;
+uniform sampler2D random_texture;
+uniform float random_gen;
+uniform vec3 camera_position;
+uniform mat4 camera_matrix;
+
+uniform uintptr_t vertices;
+uniform uintptr_t elements;
+uniform uintptr_t bvh;
+
+struct vertex {
+    vec4 position;
+    vec4 uv;
+    vec4 normal;
+};
+
+struct triangle {
+    uint a;
+    uint b;
+    uint c;
+};
+
+vec3 cosine_hemisphere(vec2 uv)
+{
+	// (Uniformly) sample a point on the unit disk
+    float r = sqrt(uv.x);
+    float theta = 2 * 3.14152692 * uv.y;
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+
+    // Project point up to the unit sphere
+    float z = sqrt(max(0.f, 1 - x * x - y * y));
+    return vec3(x, y, z);
+}
+
+vec3 uniform_sphere(vec2 uv)
+{
+	float cosTheta = 2 * uv.x - 1;
+	float phi = uv.y * 2.f * 3.14152692;
+	float sinTheta = sqrt(max(0, 1 - cosTheta * cosTheta));
+	return vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
+void main()
+{
+    const float one_over_pi = 0.31830988618;
+    const vec3 base_color = vec3(0, 0.4f, 0.9f);
+
+    ivec2 target_size = imageSize(target_image);
+    float count = target_size.x * target_size.y;
+    vec2 inv_target_size = 1.f / target_size;
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+
+    if(any(greaterThanEqual(pixel, target_size)))
+        return;
+
+    float rand_val = random_value(int(pixel.x * 20323 + pixel.y * 43143 + 29012 * random_gen));
+    vec2 random_sample = random_hammersley_2d(rand_val * count, 1/count);
+    vec2 uv = (pixel + random_sample-0.5f) * inv_target_size - 0.5f;
+    vec3 direction = vec3(camera_matrix * vec4(uv, 0, 1));
+    vec3 origin = camera_position;
+
+    vec3 last_color = imageLoad(target_image, pixel).rgb;
+    vec3 color = vec3(0);
+    vec3 rad = vec3(1);
+    for(int i=0; i<7; ++i)
+    {
+        bvh_state_set_mode(bvh_mode_nearest);
+        bvh_result result = bvh_hit(origin, direction, bvh, elements, vertices, 1.f/0.f);
+        if(result.hits)
+        {
+            vertex* mesh_vertices = (vertex*) vertices;
+            triangle* tri = ((triangle*)elements)+result.near_triangle;
+            
+            #define barycentric_resolve(param) (mesh_vertices[tri->b].param * result.near_barycentric.x + \
+                mesh_vertices[tri->c].param * result.near_barycentric.y + \
+                mesh_vertices[tri->a].param * (1-result.near_barycentric.x-result.near_barycentric.y))
+
+            vec3 norm = barycentric_resolve(normal).xyz;
+            vec3 pos = barycentric_resolve(position).xyz;
+            vec2 uv = barycentric_resolve(uv).xy;
+            const float roughness = 0.15f;
+            const float glass = 0.f;
+
+            rand_val = random_value(int(pixel.x * 20323 + pixel.y * 43143 + 29012 * random_gen));
+            random_sample = random_hammersley_2d(rand_val * count, 1/count);
+
+            vec2 importance_sample = ggx_importance_sample(random_sample, roughness);
+            vec3 hemi = ggx_importance_hemisphere(importance_sample);
+            vec3 world_out = reflect(direction, bsdf_local_to_world(hemi, norm));
+            vec3 facet_normal = bsdf_local_to_world(hemi, norm);
+            vec3 forward_normal = faceforward(facet_normal, direction, facet_normal);
+            bool swap = dot(direction, norm) > 0;
+            float ior_in = swap ? 1.25f : 1.f;
+            float ior_out = swap ? 1.f : 1.25f;
+            vec3 world_out_refract = refract(direction, forward_normal, ior_in / ior_out) - 1e-4f * forward_normal;
+            bsdf reflection = bsdf_reflection(direction, norm, forward_normal, world_out, roughness);
+
+            float fresnel = bsdf_fresnel_coefficient(direction, norm, 1.25f, 0.7f);
+
+            const vec3 light_pos = 5.f * vec3(0.7, 2, 1);
+            vec3 light_offset_pos = light_pos + 0.1f*uniform_sphere(random_sample);
+            const vec3 to_light_full = light_offset_pos - pos;
+            vec3 to_light = normalize(to_light_full);
+            if(random_value(2149) > fresnel && !isnan(world_out_refract.x))
+            {
+                if(random_value(23103) > glass)
+                {
+                    float distance_to_light = length(to_light_full);
+                    float cos_light_angle = dot(to_light, norm);
+
+                    if(cos_light_angle > 0)
+                    {
+                        bvh_state_set_mode(bvh_mode_any);
+                        bvh_result shadow_test = bvh_hit(pos + to_light * 1e-4f, to_light, bvh, elements, vertices, distance_to_light);
+                        if(!shadow_test.hits)
+                        {
+                            float d = max(cos_light_angle, 0);
+                            color += rad * d * vec3(1.f, 0.97f, 0.90f) * base_color * 0.5f;
+                        }
+                    }
+                    rad *= base_color;
+                    direction = bsdf_local_to_world(cosine_hemisphere(random_sample), norm);
+                }
+                else
+                {
+                    float dist = ggx_distribution(dot(-faceforward(norm, direction, norm), normalize(-direction+to_light)), roughness);
+                    direction = world_out_refract;
+                    bsdf transmission = bsdf_transmission(direction, norm, forward_normal, 
+                        world_out_refract, roughness, 1.25f);
+                    color += rad * dist * vec3(1.f, 0.97f, 0.90f);
+                    rad *= transmission.radiance;
+                }
+            }
+            else
+            {
+                float dist = ggx_distribution(dot(faceforward(norm, direction, norm), normalize(-direction+to_light)), roughness);
+                direction = reflect(direction, forward_normal);
+                color += rad * dist * vec3(1.f, 0.97f, 0.90f);
+                rad *= reflection.radiance;
+            }
+
+            origin = pos + 1e-4f * direction;
+        }
+        else
+        {
+            color += clamp(rad * texture(cubemap, direction).rgb * 4.f, vec3(0), vec3(2.f));
+            break;
+        }
+    }
+    imageStore(target_image, pixel, vec4(mix(last_color, color, 1/16.f), 1));
+}

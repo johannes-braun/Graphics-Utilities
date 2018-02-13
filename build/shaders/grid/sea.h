@@ -10,11 +10,11 @@ float EPSILON_NRM = 0.00001f;
 
 // sea
 const int ITER_GEOMETRY = 2;
-const int ITER_FRAGMENT = 4;
+const int ITER_FRAGMENT = 2;
 const float SEA_HEIGHT = 0.45f;
-const float SEA_CHOPPY = 3.0;
+const float SEA_CHOPPY = 8.0;
 const float SEA_SPEED = 1.1;
-const float SEA_FREQ = 0.3;
+const float SEA_FREQ = 0.2;
 const vec3 SEA_BASE = vec3(0.3, 0.36, 0.4);
 const vec3 SEA_WATER_COLOR = vec3(0.8, 0.9, 0.6);
 float SEA_TIME = 0.;

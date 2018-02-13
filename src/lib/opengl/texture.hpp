@@ -88,4 +88,21 @@ namespace gl
     private:
         uint32_t _id;
     };
+
+    class image
+    {
+    public:
+        image(texture* t, int level, bool layered, int layer, GLenum format, GLenum access)
+            : _handle(glGetImageHandleARB(*t, level, layered, layer, format))
+        {
+            glMakeImageHandleResidentARB(_handle, access);
+        }
+
+        ~image() { glMakeImageHandleNonResidentARB(_handle); }
+
+        operator uint64_t() const { return _handle; }
+
+    private:
+        uint64_t _handle;
+    };
 }

@@ -11,6 +11,7 @@ struct bsdf
 vec3 bsdf_correct_facet_normal(const in vec3 view, const in vec3 facet_normal, const in vec3 normal);
 vec3 bsdf_local_to_world(const in vec3 vector, const in vec3 normal);
 bsdf bsdf_reflection(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness);
+bsdf bsdf_transmission(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness, float ior);
 float bsdf_normal_response(float ior, float metalness);
 float bsdf_fresnel(const in vec3 view, const in vec3 normal, float ior, float metalness);
 

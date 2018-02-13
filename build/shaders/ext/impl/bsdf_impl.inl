@@ -9,8 +9,7 @@ vec3 bsdf_correct_facet_normal(const in vec3 view, const in vec3 facet_normal, c
 vec3 bsdf_local_to_world(const in vec3 vector, const in vec3 normal) {
     // Find an axis that is not parallel to normal
     vec3 u = normalize(cross(normal, (abs(normal.x) <= 0.6f) ? vec3(1, 0, 0) : vec3(0, 1, 0)));
-    mat3 transform = mat3(u, cross(normal, u), normal);
-    return normalize(transform * vector);
+    return normalize(mat3(u, cross(normal, u), normal) * vector);
 }
 
 bsdf bsdf_reflection(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness)
@@ -20,6 +19,27 @@ bsdf bsdf_reflection(const in vec3 view, const in vec3 normal, const in vec3 fac
     bsdf result;
     result.irradiance = vec3(0);
     result.radiance = geometry / m_dot_in;
+    return result;
+}
+
+bsdf bsdf_transmission(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness, float ior)
+{
+    const bool swap = dot(normal, view) > 0; // normal and view in the same direction -> outgoing
+    const float ior_in = swap ? ior : 1.f;
+    const float ior_out = swap ? 1.f : ior;
+    const float eta = ior_in / ior_out;
+    const float m_dot_in = dot(-view, facet_normal);
+    const float m_dot_out = dot(outgoing, facet_normal);
+    const float n_dot_in = dot(-view, normal);
+    const float n_dot_out = dot(outgoing, normal);
+	const float geometry = ggx_geometry(view, outgoing, faceforward(normal, view, normal), facet_normal, roughness);
+
+    float val1 = abs(ior_out * ior_out * m_dot_in * m_dot_out) / max(abs(n_dot_in * n_dot_out), 0.1f);
+    float den = pow(ior_in * m_dot_in, 2) + pow(ior_out * m_dot_out, 2);
+
+    bsdf result;
+    result.irradiance = vec3(0);
+    result.radiance = abs(val1)*geometry / 1;
     return result;
 }
 

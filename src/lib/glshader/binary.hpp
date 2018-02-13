@@ -6,7 +6,7 @@
 
 namespace glshader
 {
-    constexpr uint32_t make_tag(char name[4])
+    constexpr uint32_t make_tag(const char name[4])
     {
         return (name[0] << 0) | (name[1] << 8) | (name[2] << 16) | (name[3] << 24);
     }

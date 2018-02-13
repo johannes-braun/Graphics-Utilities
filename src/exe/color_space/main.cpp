@@ -55,7 +55,7 @@ glm::mat4 principal_axis_transformation(glm::u8vec3* pixels, size_t count)
     return tr1 * toMat4(angleAxis(angle, axis)) * tr0;
 }
 
-void main(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
     gl::setup_shader_paths("../shaders");
 

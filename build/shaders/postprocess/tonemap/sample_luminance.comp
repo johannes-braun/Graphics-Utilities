@@ -18,8 +18,8 @@ const vec3 luma = vec3(0.299f, 0.587f, 0.114f);
 const int search_radius = 1;
 const float search_radius_correction = 1/(2.f*search_radius+1);
 const float search_sample_width = 16.f;
-uniform float minimum_luminance = 0.01f;
-uniform float maximum_luminance = 5.f;
+uniform float minimum_luminance = 0.1f;
+uniform float maximum_luminance = 2.f;
 
 void main()
 {

@@ -163,6 +163,19 @@ namespace jpu
             return nodes.data();
         }
 
+        size_t packed_size() const
+        {
+            return node_count * sizeof(nodes[0]) + sizeof(attributes);
+        }
+
+        std::vector<uint8_t> pack() const
+        {
+            std::vector<uint8_t> packed_bvh(packed_size());
+            memcpy(packed_bvh.data(), &attributes, sizeof(attributes));
+            memcpy(packed_bvh.data() + sizeof(attributes), data(), node_count * sizeof(node));
+            return packed_bvh;
+        }
+        
         int depth = 0;
         int node_count = 0;
         std::vector<node> nodes;

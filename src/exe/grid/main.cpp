@@ -6,11 +6,11 @@
 #include "res/presets.hpp"
 #include "res/geometry.hpp"
 #include "res/image.hpp"
-#include "renderer.hpp"
+#include "framework/renderer.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::ref_ptr<gl::graphics_pipeline> floor_pipeline;
-std::unique_ptr<renderer> main_renderer;
+std::unique_ptr<gfx::renderer> main_renderer;
 
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
@@ -27,11 +27,16 @@ int main(int argc, const char** args)
     main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
     main_window->limit_framerate(60.f);
     gl::setup_shader_paths("../shaders");
-    main_renderer = std::make_unique<renderer>(1280, 720, 4);
+    main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
         if (main_window->gui()->key_action(key, action, mods))
             return;
+
+        if (key == GLFW_KEY_P && action == GLFW_PRESS)
+        {
+            floor_pipeline->reload_stages();
+        }
     });
     glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
         main_window->gui()->scrolled(y);
@@ -80,19 +85,17 @@ int main(int argc, const char** args)
         infos[wall].idx = std::move(scene.meshes.get_by_index(0).indices);
     }
 
-    auto img = res::load_image("../res/heights.png", res::image_type::signed_float, res::image_components::grey);
+    auto img = res::load_image("../res/grid/heightmap.png", res::image_type::signed_float, res::image_components::grey);
     int width = img.width;
     int height = img.height;
     std::vector<int32_t> heights(width * height);
     std::vector<bool> blocked(width * height);
+
+    constexpr float scale = 12.f;
     for(int i=0; i<width*height; ++i)
     {
-        if (static_cast<float*>(img.data.get())[i] > 0)
-        {
-            heights[i] = 1;
-        }
-        else
-            heights[i] = 0;
+        const float val = static_cast<float*>(img.data.get())[i];
+        heights[i] = val > 0 ? (val * scale +1) : val;
     }
 
     const std::array<glm::ivec2, 8> offsets{
@@ -221,6 +224,31 @@ int main(int argc, const char** args)
         new gl::shader(gl::shader_root_path / "grid/fs.frag")
     );
 
+    auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
+    cubemap_pipeline->use_stages(
+        jpu::make_ref<gl::shader>(gl::shader_root / "cubemap/cubemap.vert"),
+        jpu::make_ref<gl::shader>(gl::shader_root / "cubemap/cubemap.frag")
+    );
+    const auto sampler = jpu::make_ref<gl::sampler>();
+    sampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    sampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    sampler->set(GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
+    sampler->set(GL_TEXTURE_CUBE_MAP_SEAMLESS, 16);
+    sampler->set(GL_TEXTURE_WRAP_R, GL_MIRRORED_REPEAT);
+    sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
+    int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
+    cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
+    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->generate_mipmaps();
+    const auto generic_vao = jpu::make_ref<gl::vertex_array>();
+
     while (main_window->update())
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -232,8 +260,22 @@ int main(int argc, const char** args)
         floor_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view") = inverse(camera.view());
         floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("time") = glfwGetTime();
+        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("cubemap") = sampler->sample_texture(cubemap);
+        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("random") = sampler->sample_texture(main_renderer->random_texture());
         vertex_array->bind();
         glDrawElements(GL_TRIANGLES, floor_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+        cubemap_pipeline->bind();
+        cubemap_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("cubemap_matrix") =
+            glm::mat4(glm::mat3(inverse(camera.view()))) * inverse(camera.projection());
+        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
+        generic_vao->bind();
+        int mask;
+        glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
+        glDepthMask(GL_FALSE);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDepthMask(mask);
         main_renderer->draw(main_window->delta_time());
     }
     return 0;
