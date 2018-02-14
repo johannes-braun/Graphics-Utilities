@@ -3,6 +3,7 @@
 #include "shader.hpp"
 #include "glad/glad.h"
 #include <jpu/memory>
+#include <jpu/log>
 #include <map>
 #include "uniform.hpp"
 #include <set>

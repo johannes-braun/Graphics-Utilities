@@ -167,6 +167,7 @@ int main(int argc, const char** argv)
     });
     cube_vao->set_element_buffer(*ibo);
 
+    log_i << "Reached here";
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_DEPTH_TEST);
