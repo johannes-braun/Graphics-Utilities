@@ -6,6 +6,7 @@
 #include "stb_image_write.h"
 #include "res/image.hpp"
 #include "res/presets.hpp"
+#include "tinyfd/tinyfiledialogs.h"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
@@ -100,7 +101,10 @@ int main(int argc, const char** argv)
 
     auto texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     int iw, ih;
-    const auto data = res::stbi_data(stbi_load("../res/Lena.png", &iw, &ih, nullptr, 3));
+    constexpr const char *fs[2] = {
+        "*.jpg", "*.png"
+    };
+    const auto data = res::stbi_data(stbi_load(tinyfd_openFileDialog("Open Image", "../res", 2, fs, "Images", false), &iw, &ih, nullptr, 3));
     texture->storage_2d(iw, ih, GL_RGB8);
     texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
     texture->generate_mipmaps();
