@@ -24,9 +24,11 @@ set(EXT_LIB_DEFAULTS -DCMAKE_VERBOSE_MAKEFILE=OFF
     -DCMAKE_INSTALL_MESSAGE=NEVER 
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>)
-macro(load_git_library lib_name lib_repo lib_file)
+macro(load_git_library lib_name lib_repo lib_file git_tag)
     ExternalProject_Add(${lib_name}-external
         GIT_REPOSITORY ${lib_repo}
+        GIT_TAG ${git_tag}
+        UPDATE_COMMAND "" 
         INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/${lib_name}
         BUILD_BYPRODUCTS <INSTALL_DIR>/lib/${lib_file}
         BUILD_ALWAYS 0
@@ -52,7 +54,7 @@ set(EXT_LIB_ARGS
     -DGLFW_BUILD_DOCS=OFF 
     -DGLFW_BUILD_EXAMPLES=OFF
 )
-load_git_library(glfw3 "https://github.com/glfw/glfw.git" glfw3.lib)
+load_git_library(glfw3 "https://github.com/glfw/glfw.git" glfw3.lib master)
 
 set(EXT_LIB_ARGS 
     -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
@@ -60,7 +62,7 @@ set(EXT_LIB_ARGS
     -DALSOFT_EXAMPLES=OFF 
     -DALSOFT_TESTS=OFF
 )
-load_git_library(openal-soft "https://github.com/kcat/openal-soft.git" OpenAL32.lib)
+load_git_library(openal-soft "https://github.com/kcat/openal-soft.git" OpenAL32.lib master)
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_uppercase)
 IF(${CMAKE_BUILD_TYPE_uppercase} MATCHES "DEBUG")
@@ -107,14 +109,13 @@ set(EXT_LIB_ARGS
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
-#set(ARGS "/bigobj /DASSIMP_BUILD_NO_EXPORT /DASSIMP_BUILD_NO_AMF_IMPORTER /DASSIMP_BUILD_NO_AC_IMPORTER /DASSIMP_BUILD_NO_ASE_IMPORTER /DASSIMP_BUILD_NO_ASSBIN_IMPORTER /DASSIMP_BUILD_NO_ASSXML_IMPORTER /DASSIMP_BUILD_NO_B3D_IMPORTER /DASSIMP_BUILD_NO_BVH_IMPORTER /DASSIMP_BUILD_NO_DXF_IMPORTER /DASSIMP_BUILD_NO_CSM_IMPORTER /DASSIMP_BUILD_NO_HMP_IMPORTER /DASSIMP_BUILD_NO_IRRMESH_IMPORTER /DASSIMP_BUILD_NO_IRR_IMPORTER /DASSIMP_BUILD_NO_LWO_IMPORTER /DASSIMP_BUILD_NO_LWS_IMPORTER /DASSIMP_BUILD_NO_NFF_IMPORTER /DASSIMP_BUILD_NO_NDO_IMPORTER /DASSIMP_BUILD_NO_OFF_IMPORTER /DASSIMP_BUILD_NO_MS3D_IMPORTER /DASSIMP_BUILD_NO_COB_IMPORTER /DASSIMP_BUILD_NO_IFC_IMPORTER /DASSIMP_BUILD_NO_XGL_IMPORTER /DASSIMP_BUILD_NO_SIB_IMPORTER /DASSIMP_BUILD_NO_3D_IMPORTER /DASSIMP_BUILD_NO_X_IMPORTER /DASSIMP_BUILD_NO_X3D_IMPORTER /DASSIMP_BUILD_NO_GLTF_IMPORTER /DASSIMP_BUILD_NO_3MF_IMPORTER /DASSIMP_BUILD_NO_MMD_IMPORTER")
-load_git_library(assimp "https://github.com/assimp/assimp.git" ${ASSIMP_LIB_FILE})
+load_git_library(assimp "https://github.com/assimp/assimp.git" ${ASSIMP_LIB_FILE} master)
 
 set(EXT_LIB_ARGS -DSNAPPY_BUILD_TESTS=OFF)
-load_git_library(snappy "https://github.com/google/snappy.git" snappy.lib -DSNAPPY_BUILD_TESTS=OFF)
-load_git_library(pugixml "https://github.com/zeux/pugixml.git" pugixml.lib)
+load_git_library(snappy "https://github.com/google/snappy.git" snappy.lib master)
+load_git_library(pugixml "https://github.com/zeux/pugixml.git" pugixml.lib master)
 
-ExternalProject_Add(glm-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/glm GIT_REPOSITORY "https://github.com/g-truc/glm.git" 
+ExternalProject_Add(glm-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/glm GIT_REPOSITORY "https://github.com/g-truc/glm.git" GIT_TAG master UPDATE_COMMAND "" 
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/glm -DCMAKE_INSTALL_MESSAGE=NEVER)
 list(APPEND DEPENDENCIES glm-external)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glm/include)
@@ -127,7 +128,7 @@ list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/glad/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/stb/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/tinyfd/include)
 add_definitions(-DGLFW_INCLUDE_NONE -DSTBI_MSC_SECURE_CRT -DGLM_FORCE_RADIANS
-    -DGLM_FORCE_SWIZZLE -DGLM_ENABLE_EXPERIMENTAL -DIMGUI_INCLUDE_IMGUI_USER_H
+    -DGLM_ENABLE_EXPERIMENTAL -DIMGUI_INCLUDE_IMGUI_USER_H
     -DASIO_STANDALONE -D_WIN32_WINNT=0x0501 -DNOMINMAX
 )
 

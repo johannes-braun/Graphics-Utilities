@@ -53,7 +53,7 @@ namespace res
             {
                 current_mesh.vertices[i].position = glm::vec4(to_vec3(ai_mesh->mVertices[i]), 1);
                 current_mesh.vertices[i].normal = glm::vec4(to_vec3(ai_mesh->mNormals[i]), 0);
-                current_mesh.vertices[i].uv = glm::vec4(ai_mesh->HasTextureCoords(0) ? to_vec3(ai_mesh->mTextureCoords[0][i]).xy : glm::vec2(0), 0, 0);
+                current_mesh.vertices[i].uv = glm::vec4(ai_mesh->HasTextureCoords(0) ? glm::vec2(to_vec3(ai_mesh->mTextureCoords[0][i])) : glm::vec2(0), 0, 0);
             }
             
             current_mesh.material = result.materials.data() + ai_mesh->mMaterialIndex;
