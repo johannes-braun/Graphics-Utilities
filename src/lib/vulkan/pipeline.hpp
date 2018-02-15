@@ -77,7 +77,8 @@ namespace vkn
         for (auto&& sh : _shaders)
             sh->dec_ref();
         _shaders.clear();
-        for (auto s : std::initializer_list<shader*>{ shd... })
+        const std::initializer_list<shader*> list{ shd... };
+        for (auto s : list)
         {
             s->inc_ref();
             _shaders.push_back(s);

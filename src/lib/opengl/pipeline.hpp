@@ -43,7 +43,8 @@ namespace gl
         void use_stages(TShaders ... shd)
         {
             _shaders.clear();
-            for (auto s : std::initializer_list<shader*>{ shd... })
+            const std::initializer_list<shader*> list{ shd... };
+            for (auto s : list)
                 use_shader(s);
 
             glValidateProgramPipeline(_id);
