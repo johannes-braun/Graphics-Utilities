@@ -21,7 +21,7 @@ jpu::ref_ptr<gl::texture> rad_texture;
 int main(int argc, const char** args)
 {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "Grid");
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 800, 800, "Grid");
     main_window->load_icon("../res/ui/logo.png");
     main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
     main_window->limit_framerate(120.f);
@@ -58,20 +58,20 @@ int main(int argc, const char** args)
     glClearDepth(0);
 
     target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_textures[0]->storage_2d(1280, 720, GL_RGBA16F);
+    target_textures[0]->storage_2d(800, 800, GL_RGBA16F);
     const gl::image target_image_01(target_textures[0], 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
     target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_textures[1]->storage_2d(1280, 720, GL_RGBA16F);
+    target_textures[1]->storage_2d(800, 800, GL_RGBA16F);
     const gl::image target_image_02(target_textures[1], 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
     rad_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    rad_texture->storage_2d(1280, 720, GL_RGBA16F);
+    rad_texture->storage_2d(800, 800, GL_RGBA16F);
     const gl::image rad_image(rad_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
 
     gl::framebuffer blit_framebuffer;
     blit_framebuffer.attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
     blit_framebuffer.attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
 
-    gl::buffer ray_buffer(1280 * 720 * 3 * sizeof(glm::vec4));
+    gl::buffer ray_buffer(800 * 800 * 3 * sizeof(glm::vec4));
     const auto pp_generate = compute_pipelines.push("Generate", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/generate.comp")));
     const auto pp_traverse = compute_pipelines.push("Traverse", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/traverse.comp")));
     const auto pp_shade = compute_pipelines.push("Shade", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/shade.comp")));
@@ -106,11 +106,11 @@ int main(int argc, const char** args)
 
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
-
+     
     // Test out mesh
     const auto geometry = res::load_geometry("../res/bunny.dae");
-    const std::vector<res::vertex> vertices = std::move(geometry.meshes.get_by_index(0).vertices);
-    std::vector<uint32_t> indices = std::move(geometry.meshes.get_by_index(0).indices);
+    const std::vector<res::vertex> vertices = std::move(geometry.meshes.get_by_index(2).vertices);
+    std::vector<uint32_t> indices = std::move(geometry.meshes.get_by_index(2).indices);
     jpu::bvh<3> bvh;
     bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
     gl::buffer vertex_buffer(vertices);
@@ -185,11 +185,11 @@ int main(int argc, const char** args)
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("vertices") = vertex_buffer.address();
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("elements") = index_buffer.address();
         pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("bvh") = bvh_buffer.address();
-        pp_trace->dispatch(1280, 720);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        pp_trace->dispatch(800, 800);
+        //glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         blit_framebuffer.read_from_attachment(GL_COLOR_ATTACHMENT0);
-        blit_framebuffer.blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, 1280, 720 }, gl::framebuffer::blit_rect{ 0, 0, 1280, 720 }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        blit_framebuffer.blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, 800, 800 }, gl::framebuffer::blit_rect{ 0, 0, 800, 800 }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         ImGui::Begin("Window");
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
@@ -199,10 +199,6 @@ int main(int argc, const char** args)
         ImGui::Value("Copy Back", query_copy_back.get_uint64() / 1'000'000.f);
         if(ImGui::Button("Open"))
         {
-            constexpr const char *fs[2] = {
-                "*.jpg", "*.png"
-            };
-            log_i << tinyfd_openFileDialog("Test", "../res", 2, fs, "Hm", false);
         }
         ImGui::End();
     }
