@@ -99,32 +99,25 @@ int main(int argc, const char** argv)
     sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
     sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
     auto texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     int iw, ih;
     constexpr const char *fs[2] = {
         "*.jpg", "*.png"
     };
-    const auto data = res::stbi_data(stbi_load(tinyfd_openFileDialog("Open Image", "../res", 2, fs, "Images", false), &iw, &ih, nullptr, 3));
+    auto data = res::stbi_data(stbi_load(tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false), &iw, &ih, nullptr, 3));
     texture->storage_2d(iw, ih, GL_RGB8);
     texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
     texture->generate_mipmaps();
 
     glm::mat4 hat = principal_axis_transformation(reinterpret_cast<glm::u8vec3*>(data.get()), iw * ih);
 
-    glm::u8vec3* data_cast = reinterpret_cast<glm::u8vec3*>(data.get());
-    std::vector<glm::u8vec3> new_img(iw * ih);
-    glm::vec3 val{ 0 };
-    for(int x=0; x < iw; ++x)
-    {
-        for(int y = 0; y<ih; ++y)
-        {
-            auto idx = x + y * iw;
-            new_img[idx] = glm::clamp(glm::vec3(hat * glm::vec4(glm::vec3(data_cast[x + y * iw]) / 255.f, 1)) * 255.f,glm::vec3(0), glm::vec3(255.f));
-            val += glm::vec3(data_cast[x + y * iw]);
-        }
-    }
-    val /= glm::vec3(255.f);
-    val /= iw * ih;
+    glm::vec3 mu = glm::vec3(0);
+    for (int i = 0; i<iw*ih; ++i)
+        mu += reinterpret_cast<glm::u8vec3*>(data.get())[i];
+    mu /= iw * ih * 255;
 
     auto grid_image = res::load_image("../res/grid.jpg", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     const auto grid = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
@@ -206,6 +199,38 @@ int main(int argc, const char** argv)
         ImGui::ColorEdit3("##col_mul", &color_factor[0], ImGuiColorEditFlags_HDR);
         static bool hat_en = true;
         ImGui::Checkbox("Show HAT", &hat_en);
+
+        if(ImGui::Button("Load other"))
+        {
+            data = res::stbi_data(stbi_load(tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false), &iw, &ih, nullptr, 3));
+            texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+            texture->storage_2d(iw, ih, GL_RGB8);
+            texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
+            texture->generate_mipmaps();
+            hat = principal_axis_transformation(reinterpret_cast<glm::u8vec3*>(data.get()), iw * ih);
+            mu = glm::vec3(0);
+            for (int i = 0; i<iw*ih; ++i)
+                mu += reinterpret_cast<glm::u8vec3*>(data.get())[i];
+            mu /= iw * ih * 255;
+        }
+
+        if(ImGui::Button("Save..."))
+        {
+            glm::u8vec3* data_cast = reinterpret_cast<glm::u8vec3*>(data.get());
+            std::vector<glm::u8vec3> new_img(iw * ih);
+            for (int x = 0; x < iw; ++x)
+            {
+                for (int y = 0; y<ih; ++y)
+                {
+                    auto idx = x + y * iw;
+                    new_img[idx] = glm::clamp(glm::vec3(hat * glm::vec4(glm::vec3(data_cast[x + y * iw]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
+                }
+            }
+            constexpr const char *f2s[1] = {
+                "*.png"
+            };
+            stbi_write_png(tinyfd_saveFileDialog("Save output", "../res/", 1, f2s, "PNG"), iw, ih, 3, new_img.data(), 0);
+        }
         ImGui::End();
 
         cam_controller.update(cam, *main_window, main_window->delta_time());
@@ -222,7 +247,7 @@ int main(int argc, const char** argv)
         center_pipeline->bind();
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? hat : glm::mat4(1.0);
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
-        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("center") = val;
+        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("center") = mu;
         glDrawArrays(GL_POINTS, 0, 1);
         glEnable(GL_DEPTH_TEST);
 
@@ -248,7 +273,7 @@ int main(int argc, const char** argv)
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
-        glViewport(0, 0, texture->width() / 5.f, texture->height() / 5.f);
+        glViewport(0, 0, texture->width() / 7.f, texture->height() / 7.f);
         img_pipeline->bind();
         img_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("hat_mat") = hat_en ? hat : glm::mat4(1.0);
         img_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("tex") = id;
