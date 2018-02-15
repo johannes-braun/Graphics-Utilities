@@ -25,6 +25,7 @@ set(EXT_LIB_DEFAULTS -DCMAKE_VERBOSE_MAKEFILE=OFF
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>)
 macro(load_git_library lib_name lib_repo lib_file git_tag)
+    file(REMOVE_RECURSE ${EXT_EXTERNAL_LIBRARIES}/cached/${lib_name})
     ExternalProject_Add(${lib_name}-external
         GIT_REPOSITORY ${lib_repo}
         GIT_TAG ${git_tag}
