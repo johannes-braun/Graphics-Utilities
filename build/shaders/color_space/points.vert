@@ -25,7 +25,7 @@ void main()
 
     position = clamp(hat_mat * vec4(rgb_color, 1), vec4(0.f), vec4(1.f));
 
-    gl_PointSize = 1.5f;
+    gl_PointSize = 1.0f;
 
     gl_Position = view_projection * vec4(scale*position.xyz, 1);
 }

@@ -116,10 +116,17 @@ set(EXT_LIB_ARGS -DSNAPPY_BUILD_TESTS=OFF)
 load_git_library(snappy "https://github.com/google/snappy.git" snappy.lib master)
 load_git_library(pugixml "https://github.com/zeux/pugixml.git" pugixml.lib master)
 
+
+ExternalProject_Add(eigen-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/eigen GIT_REPOSITORY "https://github.com/eigenteam/eigen-git-mirror.git" GIT_TAG master UPDATE_COMMAND "" 
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/eigen -DCMAKE_INSTALL_MESSAGE=NEVER -DBUILD_TESTING=OFF)
+list(APPEND DEPENDENCIES eigen-external)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/eigen/include)
+
 ExternalProject_Add(glm-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/glm GIT_REPOSITORY "https://github.com/g-truc/glm.git" GIT_TAG master UPDATE_COMMAND "" 
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/glm -DCMAKE_INSTALL_MESSAGE=NEVER)
 list(APPEND DEPENDENCIES glm-external)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glm/include)
+
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/asio/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/lib/vulkan-1.lib)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/include)

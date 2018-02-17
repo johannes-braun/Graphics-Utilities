@@ -8,52 +8,195 @@
 #include "res/presets.hpp"
 #include "tinyfd/tinyfiledialogs.h"
 
+#include "eigen3/Eigen/Eigenvalues"
+
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 bool is_iconified = false;
 
-glm::mat4 principal_axis_transformation(glm::u8vec3* pixels, size_t count)
+struct pat_result
+{
+    glm::mat4 with_eigenvectors;
+    glm::mat4 with_cov_columns;
+
+    glm::mat4 with_eigenvectors_pom;
+    glm::mat4 with_cov_columns_pom;
+
+    glm::mat4 with_eigenvectors_pom_rgb;
+};
+
+pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
 {
     using namespace glm;
-    vec3 mu = vec3(0);
 
-    for (int i = 0; i<count; ++i)
-        mu += vec3(pixels[i]);
+    const dmat3 pom_mat = transpose(dmat3(0.5f, -1.f, 0.5f, -0.875f, 0, 0.875f, 1.5f, 1.5f, 1.5f));
 
-    mu /= count * 255;
-    float inv = 1 / 255.f;
+    dvec3 mu = dvec3(0);
+    dvec3 mu_pom = dvec3(0);
+    for (int i = 0; i < count; ++i)
+    {
+        mu += dvec3(pixels[i]) / 255.0;
+        mu_pom += pom_mat * (dvec3(pixels[i]) / 255.0);
+    }
+    mu /= count;
+    mu_pom /= count;
+    double inv = 1 / 255.0;
 
-    mat4 tr0 = mat4(1.0);
-    tr0[3] = vec4(-mu, 1);
+    dmat4 tr0 = dmat4(1.0);
+    tr0[3] = dvec4(-mu, 1);
 
-    mat4 tr1 = mat4(1.0);
-    tr1[3] = vec4(normalize(vec3(1)) * length(mu), 1);
+    dmat4 tr1 = dmat4(1.0);
+    tr1[3] = dvec4(normalize(dvec3(1)) * length(mu), 1);
 
-    mat3 rot(0);
+    dmat4 tr0_pom = dmat4(1.f);
+    tr0_pom[3] = dvec4(-mu_pom, 1);
+
+    dmat4 tr1_pom = dmat4(1.0);
+    tr1_pom[3] = dvec4(normalize(vec3(0, 0, 1)) * length(mu_pom), 1);
+
+    log_i << glm::to_string(mu_pom) << " versus " << glm::to_string(pom_mat * mu);
+    log_i << glm::to_string(inverse(pom_mat) * mu_pom) << " versus " << glm::to_string(mu);
+
+    dmat3 rot_pom(0);
+    dmat3 rot(0);
     for (int i = 0; i<count; ++i)
     {
-        const vec3 diff = vec3(pixels[i]) * inv - mu;
+        const dvec3 diff = dvec3(pixels[i]) * inv - mu;
         rot += outerProduct(diff, diff);
+
+        const dvec3 diff_pom = pom_mat * (dvec3(pixels[i]) * inv) - mu_pom;
+        rot_pom += outerProduct(diff_pom, diff_pom);
     }
     rot /= count;
+    rot_pom /= count;
 
-    vec3 ha = normalize(rot[0]);
-    float len = length(rot[0]);
+    dmat3 rot_pom_next = pom_mat * rot * transpose(pom_mat);
+    Eigen::Matrix3d cov_matrix = reinterpret_cast<Eigen::Matrix3d&>(rot);
+    Eigen::Matrix3d cov_matrix_pom = reinterpret_cast<Eigen::Matrix3d&>(rot_pom);
+    Eigen::Matrix3d cov_matrix_pom_ext = reinterpret_cast<Eigen::Matrix3d&>(rot_pom_next);
+    Eigen::EigenSolver<decltype(cov_matrix)> solver;
 
-    if (length(rot[1]) > len)
+    solver.compute(cov_matrix);
+    Eigen::Matrix3d evm = solver.eigenvectors().real();
+    dmat3 eigenvectormatrix = reinterpret_cast<dmat3&>(evm);
+
+    solver.compute(cov_matrix_pom);
+    Eigen::Matrix3d evm_pom = solver.eigenvectors().real();
+    dmat3 eigenvectormatrix_pom = reinterpret_cast<dmat3&>(evm_pom);
+
+    Eigen::Matrix3d pom_mat_eigen = reinterpret_cast<const Eigen::Matrix3d&>(pom_mat);
+    solver.compute(pom_mat_eigen);
+    Eigen::Matrix3d pom_eigen_mat = solver.eigenvectors().real();
+    dmat3 pom_eigen_mat_glm = reinterpret_cast<dmat3&>(pom_eigen_mat);
+
+    solver.compute(cov_matrix_pom_ext);
+    Eigen::Matrix3d evm_pom_next = solver.eigenvectors().real();
+    dmat3 eigenvectormatrix_pom_next = reinterpret_cast<dmat3&>(evm_pom_next);
+
+    dmat3 eigenvectormatrix_construct;
+    eigenvectormatrix_construct[0] = pom_mat * eigenvectormatrix[0];
+    eigenvectormatrix_construct[1] = pom_mat * eigenvectormatrix[1];
+    eigenvectormatrix_construct[2] = pom_mat * eigenvectormatrix[2];
+
+    log_i << "EVMP: " << glm::to_string(eigenvectormatrix_pom);
+    log_i << "EVMP: " << glm::to_string(eigenvectormatrix_pom_next);
+    log_i << "EVMP: " << glm::to_string(eigenvectormatrix_construct);
+    log_i << "EVMP: " << glm::to_string(pom_eigen_mat_glm);
+
+    pat_result result;
+
     {
-        len = length(rot[1]);
-        ha = rot[1];
-    }
-    if (length(rot[2]) > len)
-    {
-        ha = rot[2];
+        dvec3 ha = normalize(rot[0]);
+        double len = length(rot[0]);
+        if (length(rot[1]) > len)
+        {
+            len = length(rot[1]);
+            ha = rot[1];
+        }
+        if (length(rot[2]) > len)
+        {
+            ha = rot[2];
+        }
+        ha = normalize(ha);
+        double angle = dot(ha, normalize(dvec3(1)));
+        dvec3 axis = cross(ha, normalize(dvec3(1)));
+        result.with_cov_columns = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
     }
 
-    ha = normalize(ha);
-    float angle = dot(ha, normalize(vec3(1)));
-    vec3 axis = cross(ha, normalize(vec3(1)));
-    return tr1 * toMat4(angleAxis(angle, axis)) * tr0;
+    {
+        dvec3 ha = normalize(eigenvectormatrix[0]);
+        double len = length(eigenvectormatrix[0]);
+        if (length(eigenvectormatrix[1]) > len)
+        {
+            len = length(eigenvectormatrix[1]);
+            ha = eigenvectormatrix[1];
+        }
+        if (length(eigenvectormatrix[2]) > len)
+        {
+            ha = eigenvectormatrix[2];
+        }
+        ha = normalize(ha);
+        double angle = dot(ha, normalize(dvec3(1)));
+        dvec3 axis = cross(ha, normalize(dvec3(1)));
+        result.with_eigenvectors = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
+    }
+
+    {
+        dvec3 ha = normalize(rot_pom[0]);
+        double len = length(rot_pom[0]);
+        if (length(rot_pom[1]) > len)
+        {
+            len = length(rot_pom[1]);
+            ha = rot_pom[1];
+        }
+        if (length(rot[2]) > len)
+        {
+            ha = rot_pom[2];
+        }
+        ha = normalize(ha);
+        double angle = dot(ha, normalize(dvec3(0, 0, 1)));
+        dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
+        result.with_cov_columns_pom = glm::dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * glm::dmat4(pom_mat);
+    }
+
+    {
+        dvec3 ha = normalize(eigenvectormatrix_pom[0]);
+        double len = length(eigenvectormatrix_pom[0]);
+        if (length(eigenvectormatrix_pom[1]) > len)
+        {
+            len = length(eigenvectormatrix_pom[1]);
+            ha = eigenvectormatrix_pom[1];
+        }
+        if (length(eigenvectormatrix_pom[2]) > len)
+        {
+            ha = eigenvectormatrix_pom[2];
+        }
+        ha = normalize(ha);
+        double angle = dot(ha, normalize(dvec3(0, 0, 1)));
+        dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
+        result.with_eigenvectors_pom = glm::dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * glm::dmat4(pom_mat);
+    }
+
+    {
+        glm::dmat3 ppt = rot * pom_mat * transpose(pom_mat);
+        dvec3 ha = normalize(ppt * eigenvectormatrix[0]);
+        double len = length(ppt * eigenvectormatrix[0]);
+        if (length(ppt * eigenvectormatrix[1]) > len)
+        {
+            len = length(ppt * eigenvectormatrix[1]);
+            ha = ppt * eigenvectormatrix[1];
+        }
+        if (length(ppt * eigenvectormatrix[2]) > len)
+        {
+            ha = ppt * eigenvectormatrix[2];
+        }
+        ha = normalize(ha);
+        double angle = dot(ha, normalize(dvec3(1)));
+        dvec3 axis = cross(ha, normalize(dvec3(1)));
+        result.with_eigenvectors_pom_rgb = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
+    }
+
+    return result;
 }
 
 int main(int argc, const char** argv)
@@ -107,12 +250,14 @@ int main(int argc, const char** argv)
     constexpr const char *fs[2] = {
         "*.jpg", "*.png"
     };
-    auto data = res::stbi_data(stbi_load(tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false), &iw, &ih, nullptr, 3));
+    auto src_data = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false);
+    if (!src_data) return 0;
+    auto data = res::stbi_data(stbi_load(src_data, &iw, &ih, nullptr, 3));
     texture->storage_2d(iw, ih, GL_RGB8);
     texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
     texture->generate_mipmaps();
 
-    glm::mat4 hat = principal_axis_transformation(reinterpret_cast<glm::u8vec3*>(data.get()), iw * ih);
+    pat_result pat = principal_axis_transformation(reinterpret_cast<glm::u8vec3*>(data.get()), iw * ih);
 
     glm::vec3 mu = glm::vec3(0);
     for (int i = 0; i<iw*ih; ++i)
@@ -189,29 +334,40 @@ int main(int argc, const char** argv)
         const auto id = sampler->sample_texture(texture.get());
         ImGui::Begin("Bla");
         ImGui::Value("DT", 1000.f * static_cast<float>(main_window->delta_time()));
-        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
-        ImGui::Text("Additive color correction");
-        ImGui::PopFont();
-        ImGui::ColorEdit3("##col_add", &color_offset[0], ImGuiColorEditFlags_HDR);
-        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[2]);
-        ImGui::Text("Multiplicative color correction");
-        ImGui::PopFont();
-        ImGui::ColorEdit3("##col_mul", &color_factor[0], ImGuiColorEditFlags_HDR);
         static bool hat_en = true;
         ImGui::Checkbox("Show HAT", &hat_en);
+        static int mode = 0;
+        ImGui::Combo("Mode", &mode, " Default (Cov) \0 Default (Eigen) \0 POM (Cov) \0 POM (Eigen) \0 POM (RGB) \0");
+
+        static float scale = 1.f;
+        ImGui::DragFloat("Scale", &scale, 0.01f, 0.f, 100.f);
 
         if(ImGui::Button("Load other"))
         {
-            data = res::stbi_data(stbi_load(tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false), &iw, &ih, nullptr, 3));
-            texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            texture->storage_2d(iw, ih, GL_RGB8);
-            texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
-            texture->generate_mipmaps();
-            hat = principal_axis_transformation(reinterpret_cast<glm::u8vec3*>(data.get()), iw * ih);
-            mu = glm::vec3(0);
-            for (int i = 0; i<iw*ih; ++i)
-                mu += reinterpret_cast<glm::u8vec3*>(data.get())[i];
-            mu /= iw * ih * 255;
+            if (auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
+            {
+                data = res::stbi_data(stbi_load(src, &iw, &ih, nullptr, 3));
+                texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+                texture->storage_2d(iw, ih, GL_RGB8);
+                texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
+                texture->generate_mipmaps();
+                pat = principal_axis_transformation(reinterpret_cast<glm::u8vec3*>(data.get()), iw * ih);
+                mu = glm::vec3(0);
+                for (int i = 0; i < iw*ih; ++i)
+                    mu += reinterpret_cast<glm::u8vec3*>(data.get())[i];
+                mu /= iw * ih * 255;
+            }
+        }
+        
+        glm::mat4 patmat = glm::mat4(1.f); 
+        
+        switch(mode)
+        {
+        case 0: patmat = pat.with_cov_columns; break;
+        case 1: patmat = pat.with_eigenvectors; break;
+        case 2: patmat = pat.with_cov_columns_pom; break;
+        case 3: patmat = pat.with_eigenvectors_pom; break;
+        case 4: patmat = pat.with_eigenvectors_pom_rgb; break;
         }
 
         if(ImGui::Button("Save..."))
@@ -223,13 +379,14 @@ int main(int argc, const char** argv)
                 for (int y = 0; y<ih; ++y)
                 {
                     auto idx = x + y * iw;
-                    new_img[idx] = glm::clamp(glm::vec3(hat * glm::vec4(glm::vec3(data_cast[x + y * iw]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
+                    new_img[idx] = glm::clamp(glm::vec3(patmat * glm::vec4(glm::vec3(data_cast[x + y * iw]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
                 }
             }
             constexpr const char *f2s[1] = {
                 "*.png"
             };
-            stbi_write_png(tinyfd_saveFileDialog("Save output", "../res/", 1, f2s, "PNG"), iw, ih, 3, new_img.data(), 0);
+            if(auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, f2s, "PNG"))
+                stbi_write_png(dst, iw, ih, 3, new_img.data(), 0);
         }
         ImGui::End();
 
@@ -237,7 +394,7 @@ int main(int argc, const char** argv)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         points_pipeline->bind();
-        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? hat : glm::mat4(1.0);
+        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<gl::sampler2D>("picture") = id;
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         vao->bind();
@@ -245,7 +402,7 @@ int main(int argc, const char** argv)
 
         glDisable(GL_DEPTH_TEST);
         center_pipeline->bind();
-        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? hat : glm::mat4(1.0);
+        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("center") = mu;
         glDrawArrays(GL_POINTS, 0, 1);
@@ -273,9 +430,9 @@ int main(int argc, const char** argv)
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
-        glViewport(0, 0, texture->width() / 7.f, texture->height() / 7.f);
+        glViewport(0, 0, texture->width() *scale, texture->height() *scale);
         img_pipeline->bind();
-        img_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("hat_mat") = hat_en ? hat : glm::mat4(1.0);
+        img_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         img_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("tex") = id;
         vao->bind();
         glDrawArrays(GL_TRIANGLES, 0, 3);
