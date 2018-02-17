@@ -234,7 +234,8 @@ namespace jpu::impl
                 const float surface_left = bins_left[plane].bounds.surface();
                 const float surface_right = bins_right[plane].bounds.surface();
 
-                const float cost = surface_left * bins_left[plane].objects + surface_right * bins_right[plane].objects;
+                const float exponent = 2;
+                const float cost = glm::pow(surface_left, exponent) * bins_left[plane].objects + pow(surface_right, exponent) * bins_right[plane].objects;
                 if (cost < best.cost)
                 {
                     best.cost = cost;
