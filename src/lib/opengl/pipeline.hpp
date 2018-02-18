@@ -69,6 +69,8 @@ namespace gl
 
         void dispatch(const uint32_t count_x, const uint32_t count_y = 1, const uint32_t count_z = 1);
 
+        const std::array<int, 3>& work_group_sizes() const { return _group_sizes; }
+
     private:
         std::array<int, 3> _group_sizes;
     };
