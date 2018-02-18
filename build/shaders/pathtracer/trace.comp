@@ -240,6 +240,8 @@ void main()
                 break;
             }
         }
-        imageStore(target_image, pixel, mix(last_color, vec4(color, alpha), 1.f/(max_samples + sample_blend_offset)));
+
+        vec3 mapped = pow(color, vec3(1/1.5f));
+        imageStore(target_image, pixel, mix(last_color, vec4(mapped, alpha), 1.f/(max_samples + sample_blend_offset)));
     }
 }
