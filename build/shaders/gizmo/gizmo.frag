@@ -11,5 +11,5 @@ uniform int hovered = 1;
 
 void main()
 {
-    out_color = (hovered == -2) ? vec4(vec3(1.f, 0.5f, 0), 0.2f) :  vec4(((hovered==color)?1.f:0.35f)*colors[color], 1);
+    out_color = (hovered == -2) ? vec4(vec3(1.f, 0.5f, 0), 0.1f) :  vec4(((hovered==color)?1.f:0.35f)*colors[color], 1);
 }

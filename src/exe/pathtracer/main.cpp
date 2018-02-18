@@ -23,7 +23,78 @@ jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipelines;
 uint32_t current_target = 0;
 jpu::ref_ptr<gl::texture> target_texture;
+jpu::ref_ptr<gl::image> target_image;
+jpu::ref_ptr<gl::framebuffer> blit_framebuffer;
 float dt = 1 / 60.f;
+
+struct mesh;
+class mesh_proxy : public jpu::ref_count
+{
+public:
+    friend mesh;
+    mesh_proxy(const res::mesh& mesh)
+    {
+        std::vector<uint32_t> indices = mesh.indices;
+        jpu::bvh<3> bvh;
+        bvh.assign_to(indices, mesh.vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
+        _vertex_buffer = jpu::make_ref<gl::buffer>(mesh.vertices);
+        _index_buffer = jpu::make_ref<gl::buffer>(indices);
+        _bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
+        _vao = jpu::make_ref<gl::vertex_array>();
+        _vao->set_element_buffer(*_index_buffer);
+        _vao->add_binding(gl::vertex_attribute_binding(0, *_vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false));
+        _transform = mesh.transform;
+        _idx_count = indices.size();
+    }
+
+    void draw() const
+    {
+        _vao->bind();
+        glDrawElements(GL_TRIANGLES, _idx_count, GL_UNSIGNED_INT, nullptr);
+    }
+
+private:
+    int _idx_count;
+    jpu::ref_ptr<gl::buffer> _vertex_buffer;
+    jpu::ref_ptr<gl::buffer> _index_buffer;
+    jpu::ref_ptr<gl::buffer> _bvh_buffer;
+    jpu::ref_ptr<gl::vertex_array> _vao;
+    res::transform _transform;
+};
+
+struct material
+{
+    glm::vec3 glass_tint{ 0.4, 0.6, 0.1 };
+    float roughness_sqrt = 0.6f;
+    glm::vec3 reflection_tint{ 1 };
+    float glass = 0.0f;
+    glm::vec3 base_color{ 0.4, 0.6, 0.1 };
+    float ior = 1.5f;
+    float extinction_coefficient = 0.01f;
+
+private:
+    float _p[3];
+};
+
+struct mesh
+{
+    mesh(mesh_proxy* proxy, intptr_t material_addr, glm::mat4 model)
+        : vertices(proxy->_vertex_buffer->address()), 
+        elements(proxy->_index_buffer->address()),
+        bvh(proxy->_bvh_buffer->address()),
+        material(material_addr),
+        model(model),
+        inv_model(inverse(model)) {}
+
+    intptr_t vertices;
+    intptr_t elements;
+    intptr_t bvh;
+    intptr_t material;
+    glm::mat4 inv_model;
+    glm::mat4 model;
+};
+
+jpu::named_vector<std::string, std::pair<jpu::ref_ptr<mesh_proxy>, std::vector<mesh*>>> meshes;
 
 bool intersect_bounds(
     const glm::vec3 origin,
@@ -48,11 +119,23 @@ bool intersect_bounds(
     return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
 
+glm::ivec2 resolution{ 800, 800 };
+
+void resize()
+{
+    target_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_texture->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_image = jpu::make_ref<gl::image>(target_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
+    blit_framebuffer = jpu::make_ref<gl::framebuffer>();
+    blit_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_texture);
+    glViewport(0, 0, resolution.x, resolution.y);
+}
+
 int main(int argc, const char** args)
 {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 8);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 800, 800, "Grid");
+    main_window = jpu::make_ref<io::window>(io::api::opengl, resolution.x, resolution.y, "Grid");
     main_window->load_icon("../res/ui/logo.png");
     main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
     main_window->set_swap_delay(dt);
@@ -80,6 +163,12 @@ int main(int argc, const char** args)
             return;
     });
 
+    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h)
+    {
+        resolution = { w, h };
+        resize();
+    });
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -88,12 +177,7 @@ int main(int argc, const char** args)
     glClearColor(0.8f, 0.9f, 1.f, 0);
     glClearDepth(0);
 
-    target_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_texture->storage_2d(800, 800, GL_RGBA16F);
-    const gl::image target_image(target_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
-
-    gl::framebuffer blit_framebuffer;
-    blit_framebuffer.attach(GL_COLOR_ATTACHMENT0, target_texture);
+    resize();
 
     const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/trace.comp")));
     gl::graphics_pipeline pp_chunk;
@@ -130,44 +214,36 @@ int main(int argc, const char** args)
 
     // Test out mesh
     auto geometry = res::load_geometry("../res/torusse.dae");
-    std::vector<res::vertex> vertices = std::move(geometry.meshes.get_by_index(0).vertices);
-    std::vector<uint32_t> indices = std::move(geometry.meshes.get_by_index(0).indices);
-    jpu::bvh<3> bvh;
-    bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-    auto vertex_buffer = jpu::make_ref<gl::buffer>(vertices);
-    auto index_buffer = jpu::make_ref<gl::buffer>(indices);
-    auto bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
-    auto mesh_vao = jpu::make_ref<gl::vertex_array>();
-    mesh_vao->set_element_buffer(*index_buffer);
-    mesh_vao->add_binding(gl::vertex_attribute_binding(0, *vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false));
-
-    struct material
+    int idx = 0;
+    if(const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you want to load.", "0"))
     {
-        glm::vec3 glass_tint{ 0.4, 0.6, 0.1 };
-        float roughness_sqrt = 0.6f;
-        glm::vec3 reflection_tint{ 1 };
-        float glass = 0.0f;
-        glm::vec3 base_color{ 0.4, 0.6, 0.1 };
-        float ior = 1.5f;
-        float extinction_coefficient = 0.01f;
-
-    private:
-        float _p[3];
-    };
-    auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
-    *material_buffer->data_as<material>() = material();
+        for (int i = 0; i < strlen(c_idx); ++i)
+            if (!isdigit(c_idx[i]))
+            {
+                idx = 0;
+                break;
+            }
+        idx = atoi(c_idx);
+    }
+    meshes[geometry.meshes.id_by_index(idx)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(idx)), std::vector<mesh*>());
     
+    auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
+    material_buffer->data_as<material>()[0] = material();
+
+    auto meshes_buffer = jpu::make_ref<gl::buffer>(2*sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
+    meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, geometry.meshes.get_by_index(0).transform)));
+    meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[1] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, geometry.meshes.get_by_index(0).transform)));
+
     gl::query query_time(GL_TIME_ELAPSED);
 
     const int cube_vcount = static_cast<int>(res::presets::cube::vertices.size());
     const int cube_icount = static_cast<int>(res::presets::cube::indices.size());
     std::vector<glm::vec3> gizmo_positions(3 * cube_vcount);
     std::vector<uint16_t> gizmo_indices(3 * cube_icount);
-    const glm::mat4 scale = glm::scale(glm::vec3(0.05f, 0.05f, 0.5f));
+    const glm::mat4 scale = glm::scale(glm::vec3(0.01f, 0.01f, 0.1f));
     const glm::mat4 translate = glm::translate(glm::vec3(0, 0, 1.f));
     const glm::mat4 rot1 = glm::rotate(glm::radians(-90.f), glm::vec3(1, 0, 0));
     const glm::mat4 rot2 = glm::rotate(glm::radians(90.f), glm::vec3(0, 1, 0));
-    res::transform trafo;
     int moving = -1;
     for(int i=0; i < cube_vcount; ++i)
     {
@@ -195,26 +271,28 @@ int main(int argc, const char** args)
 
         glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
 
-        static int size = 7;
+        static int size = 4;
         static int frame = 0;
         static int max_samples = 4;
         static int sample_blend_offset = 0;
         static bool show_grid = true;
+        static bool show_gizmo= true;
 
-        const int size_x = 1 << size;
-        const int size_y = 1 << size;
-        const int count_x = ceil(800.f / size_x);
-        const int count_y = ceil(800.f / size_y);
+        const int size_x = pp_trace->work_group_sizes()[0] * size;
+        const int size_y = pp_trace->work_group_sizes()[0] * size;
+        const int count_x = ceil(static_cast<float>(resolution.x) / size_x);
+        const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
 
+        res::transform trafo = meshes.get_by_index(0).second.front()->model;
         int selected = -1;
         double mx, my;
         glfwGetCursorPos(*main_window, &mx, &my);
-        glm::vec2 uv = (glm::vec2(mx, my) / glm::vec2(800, 800) - 0.5f) * 2.f;
+        glm::vec2 uv = (glm::vec2(mx, my) / glm::vec2(resolution) - 0.5f) * 2.f;
         uv.y = - uv.y;
         glm::vec3 direction = glm::vec3(camera_matrix * glm::vec4(uv, 0, 1));
         glm::vec3 origin = cam.transform.position;
-        glm::vec3 inv_origin = inverse(static_cast<glm::mat4>(trafo)) * glm::vec4(origin, 1);
-        glm::vec3 inv_dir = inverse(transpose(inverse(static_cast<glm::mat4>(trafo)))) * glm::vec4(direction, 0);
+        glm::vec3 inv_origin = inverse(glm::translate(trafo.position)) * glm::vec4(origin, 1);
+        glm::vec3 inv_dir = inverse(transpose(inverse(glm::translate(trafo.position)))) * glm::vec4(direction, 0);
         const float grip_width = 0.1f;
         if(!(moving+1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(-grip_width, -grip_width, 0.f), glm::vec3(grip_width, grip_width, 1.f), 100000000.f))
         {
@@ -249,24 +327,23 @@ int main(int argc, const char** args)
             moving = -1;
         }
 
+        meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(trafo);
+        meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(trafo));
+
         float t = 0.f;
         while (t < dt)
         {
             query_time.begin();
             pp_trace->bind();
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = target_image;
+            pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = *target_image;
             pp_trace->stage(gl::shader_type::compute)->get_uniform<float>("random_gen") = dist(gen);
             pp_trace->stage(gl::shader_type::compute)->get_uniform<int>("sample_blend_offset") = sample_blend_offset;
             pp_trace->stage(gl::shader_type::compute)->get_uniform<int>("max_samples") = max_samples;
             pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
             pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("camera_matrix") = camera_matrix;
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("model") = static_cast<glm::mat4>(trafo);
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("inv_model") = inverse(static_cast<glm::mat4>(trafo));
             pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("vertices") = vertex_buffer->address();
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("elements") = index_buffer->address();
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("bvh") = bvh_buffer->address();
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("materials") = material_buffer->address();
+            pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("meshes") = meshes_buffer->address();
+            pp_trace->stage(gl::shader_type::compute)->get_uniform<int>("num_meshes") = meshes_buffer->size() / sizeof(mesh);
             pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::ivec2>("offset") = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
             pp_trace->dispatch(size_x, size_y);
             frame = (frame + 1) % (count_x * count_y);
@@ -274,13 +351,14 @@ int main(int argc, const char** args)
             t += query_time.get_uint64() / 1'000'000'000.f;
         }
 
-        blit_framebuffer.read_from_attachment(GL_COLOR_ATTACHMENT0);
-        blit_framebuffer.blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, 800, 800 }, gl::framebuffer::blit_rect{ 0, 0, 800, 800 }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        blit_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT0);
+        blit_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, 
+            gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         glLineWidth(2.f);
         pp_chunk.bind();
         vao.bind();
-        pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(800, 800);
+        pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(resolution);
         pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
         pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("size") = glm::vec2(size_x, size_y);
         glDrawArrays(GL_LINE_STRIP, 0, 5);
@@ -289,42 +367,50 @@ int main(int argc, const char** args)
         glClear(GL_DEPTH_BUFFER_BIT);
         gizmo_pipeline.bind();
         gizmo_vao.bind();
-        gizmo_pipeline.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * static_cast<glm::mat4>(trafo);
+        gizmo_pipeline.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * glm::translate(trafo.position);
         gizmo_pipeline.stage(gl::shader_type::fragment)->get_uniform<int>("hovered") = selected;
-        glDrawElements(GL_TRIANGLES, 3 * cube_icount, GL_UNSIGNED_SHORT, nullptr);
+        if(show_gizmo)
+            glDrawElements(GL_TRIANGLES, 3 * cube_icount, GL_UNSIGNED_SHORT, nullptr);
 
         if (show_grid)
         {
-            glLineWidth(0.1f);
-            glPolygonMode(GL_FRONT, GL_LINE);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            gizmo_pipeline.stage(gl::shader_type::fragment)->get_uniform<int>("hovered") = -2;
-            mesh_vao->bind();
-            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
-            glPolygonMode(GL_FRONT, GL_FILL);
-            glDisable(GL_BLEND);
-            glDisable(GL_DEPTH_TEST);
+            for(auto&& p : meshes)
+            {
+                glLineWidth(0.1f);
+                glPolygonMode(GL_FRONT, GL_LINE);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                for (auto&& s : p.second)
+                {
+                    gizmo_pipeline.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * s->model;
+                    gizmo_pipeline.stage(gl::shader_type::fragment)->get_uniform<int>("hovered") = -2;
+                    p.first->draw();
+                }
+                glPolygonMode(GL_FRONT, GL_FILL);
+                glDisable(GL_BLEND);
+            }
         }
+        glDisable(GL_DEPTH_TEST);
 
         ImGui::Begin("Window");
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
-        ImGui::DragInt("Size", &size, 0.1f, 3.f, 10.f);
+        ImGui::DragInt("Size", &size, 0.1f, 1.f, 100.f);
         ImGui::DragInt("Max. Samples", &max_samples, 0.01f, 1.f, 100.f);
         ImGui::DragInt("Sample Blend Offset", &sample_blend_offset, 0.01f, 1.f, 100.f);
         ImGui::Checkbox("Show Mesh", &show_grid);
+        ImGui::Checkbox("Show Gizmo", &show_gizmo);
         if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
         {
-            res::stbi_data tex_data(malloc(800 * 800 * 4 * sizeof(float)));
-            target_texture->get_texture_data(GL_RGBA, GL_FLOAT, 800 * 800 * 4 * sizeof(float), tex_data.get());
+            res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
+            target_texture->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
 
             glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
-            std::vector<glm::u8vec4> convert(800 * 800);
-            for (int x = 0; x < 800; ++x)
+            std::vector<glm::u8vec4> convert(resolution.x * resolution.y);
+            for (int x = 0; x < resolution.x; ++x)
             {
-                for (int y = 0; y < 800; ++y)
+                for (int y = 0; y < resolution.y; ++y)
                 {
-                    convert[y * 800 + x] = glm::clamp(ic[(800 - 1 - y) * 800 + x] * 255.f, glm::vec4(0), glm::vec4(255.f));
+                    convert[y * resolution.x + x] = glm::clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0), glm::vec4(255.f));
                 }
             }
 
@@ -332,27 +418,33 @@ int main(int argc, const char** args)
                 "*.png"
             };
             if (const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, f2s, "*.png"))
-                stbi_write_png(dst, 800, 800, 4, convert.data(), 0);
+                stbi_write_png(dst, resolution.x, resolution.y, 4, convert.data(), 0);
         }
         ImGui::SameLine();
         if (ImGui::Button("Open", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
-            constexpr const char *fs[5] = {
-                "*.dae", "*.fbx", "*.obj", "*.stl", "*.ply"
+            constexpr const char *fs[6] = {
+                "*.dae", "*.fbx", "*.obj", "*.stl", "*.ply", "*.blend"
             };
-            if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 5, fs, "mesh", false))
+            if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 6, fs, "mesh", false))
             {
+                idx = 0;
+                if (const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you wnat to load.", "0"))
+                {
+                    for (int i = 0; i < strlen(c_idx); ++i)
+                        if (!isdigit(c_idx[i]))
+                        {
+                            idx = 0;
+                            break;
+                        }
+                    idx = atoi(c_idx);
+                }
+                meshes.clear();
                 geometry = res::load_geometry(src);
-                vertices = std::move(geometry.meshes.get_by_index(0).vertices);
-                indices = std::move(geometry.meshes.get_by_index(0).indices);
-                bvh = jpu::bvh<3>();
-                bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-                vertex_buffer = jpu::make_ref<gl::buffer>(vertices);
-                index_buffer = jpu::make_ref<gl::buffer>(indices);
-                bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
-                mesh_vao = jpu::make_ref<gl::vertex_array>();
-                mesh_vao->set_element_buffer(*index_buffer);
-                mesh_vao->add_binding(gl::vertex_attribute_binding(0, *vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false));
+                trafo = geometry.meshes.get_by_index(idx).transform;
+                meshes[geometry.meshes.id_by_index(idx)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(idx)), std::vector<mesh*>());
+                meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, glm::mat4(1.f))));
+                meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[1] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, glm::mat4(1.f))));
             }
         }
 
