@@ -60,6 +60,12 @@ namespace jpu
     }
 
     template <typename TIdentifier, typename TPayload>
+    const TIdentifier& named_vector<TIdentifier, TPayload>::id_by_index(const int64_t index) const
+    {
+        return _keys[index];
+    }
+
+    template <typename TIdentifier, typename TPayload>
     TPayload& named_vector<TIdentifier, TPayload>::get_by_index(const int64_t index)
     {
         return _payloads[index];
@@ -124,6 +130,13 @@ namespace jpu
         // Then remove
         _keys.pop_back();
         _payloads.pop_back();
+    }
+
+    template <typename TIdentifier, typename TPayload>
+    void named_vector<TIdentifier, TPayload>::clear()
+    {
+        _payloads.clear();
+        _keys.clear();
     }
 
     template <typename TIdentifier, typename TPayload>

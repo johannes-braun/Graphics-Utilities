@@ -26,6 +26,8 @@ namespace jpu
         const TPayload& get_by_index(const int64_t index) const;
         TPayload& get_by_index(const int64_t index);
 
+        const TIdentifier& id_by_index(const int64_t index) const;
+
         int64_t index_of(const TIdentifier& id) const;
 
         bool exists(const TIdentifier& id) const;
@@ -34,6 +36,7 @@ namespace jpu
         template<typename... Args> TPayload& emplace(const TIdentifier& id, Args&&... args) { return push(std::forward<const TIdentifier&>(id), TPayload(std::forward<Args&&>(args)...)); }
         void erase(const TIdentifier& id);
         void erase_exact(const TIdentifier& id, const TPayload& payload);
+        void clear();
 
         size_t capacity() const;
         const std::vector<TIdentifier>& keys() const;
