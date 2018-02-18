@@ -2,14 +2,30 @@
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/vector3.h"
-#include "assimp/scene.h" 
+#include "assimp/scene.h"
+#include <glm/glm.hpp>
 
 namespace res
 {
+    void handle_node(geometry_file& file, aiNode* node, const glm::mat4& transform)
+    {
+        glm::mat4 node_trafo = transform * transpose(reinterpret_cast<glm::mat4&>(node->mTransformation));
+        
+        for(uint32_t i = 0; i < node->mNumMeshes; ++i)
+        {
+            file.meshes.get_by_index(node->mMeshes[i]).transform = static_cast<res::transform>(node_trafo);
+        }
+
+        for(int i=0; i<node->mNumChildren; ++i)
+        {
+            handle_node(file, node->mChildren[i], node_trafo);
+        }
+    }
+
     geometry_file load_geometry(const std::experimental::filesystem::path& path)
     {
         Assimp::Importer importer;
-        const auto scene = importer.ReadFile(path.string(),
+        const aiScene* scene = importer.ReadFile(path.string(),
             aiProcess_GenSmoothNormals |
             aiProcess_JoinIdenticalVertices |
             aiProcess_ImproveCacheLocality |
@@ -58,6 +74,8 @@ namespace res
             
             current_mesh.material = result.materials.data() + ai_mesh->mMaterialIndex;
         }
+
+        handle_node(result, scene->mRootNode, glm::mat4(1.f));
 
         return result;
     }

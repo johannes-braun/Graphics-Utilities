@@ -17,6 +17,7 @@ namespace res
         const material* material;
         std::vector<uint32_t> indices;
         std::vector<vertex> vertices;
+        transform transform;
     };
 
     struct geometry_file
