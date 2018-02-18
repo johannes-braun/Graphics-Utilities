@@ -89,7 +89,7 @@ namespace gl
         uint32_t _id;
     };
 
-    class image
+    class image : public jpu::ref_count
     {
     public:
         image(texture* t, int level, bool layered, int layer, GLenum format, GLenum access)
