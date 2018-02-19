@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-#include "glad/glad.h"
+#include <glad/glad.h>
 
 namespace gl
 {
@@ -46,6 +46,6 @@ namespace gl
     void set_debug_callback_enabled(debug_severity d, bool enable);
     void set_debug_callback_enabled(uint32_t* ids, size_t count, bool enable);
 
-    inline void set_debug_callback_enabled(std::vector<uint32_t> ids, bool enable) { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
-    template<size_t I> void set_debug_callback_enabled(std::array<uint32_t, I> ids, bool enable) { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
+    inline void set_debug_callback_enabled(std::vector<uint32_t> ids, const bool enable) { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
+    template<size_t I> void set_debug_callback_enabled(std::array<uint32_t, I> ids, const bool enable) { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
 }

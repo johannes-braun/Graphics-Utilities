@@ -76,7 +76,7 @@ int main(int argc, const char** argv)
         new gl::shader("../shaders/vbo_tex_ssbo/tex.vert"),
         new gl::shader("../shaders/vbo_tex_ssbo/draw.frag")
     );
-    tex_pipeline->stage(gl::shader_type::vertex)->get_uniform<gl::sampler2D>("picture") = sampler->sample_texture(texture);
+    tex_pipeline->stage(gl::shader_type::vertex)->get_uniform<uint64_t>("picture") = sampler->sample_texture(texture);
 
     const auto vbo = jpu::make_ref<gl::buffer>(static_cast<glm::vec4*>(data.get()), iw*ih);
     const auto vbo_vao = jpu::make_ref<gl::vertex_array>();
@@ -92,7 +92,7 @@ int main(int argc, const char** argv)
         new gl::shader("../shaders/vbo_tex_ssbo/tex_buf.vert"),
         new gl::shader("../shaders/vbo_tex_ssbo/draw.frag")
     );
-    tex_buf_pipeline->stage(gl::shader_type::vertex)->get_uniform<gl::sampler2D>("picture") = texture_buf->address();
+    tex_buf_pipeline->stage(gl::shader_type::vertex)->get_uniform<uint64_t>("picture") = texture_buf->address();
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_DEPTH_TEST);

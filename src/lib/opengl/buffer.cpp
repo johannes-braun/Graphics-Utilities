@@ -11,11 +11,6 @@ namespace gl
         glDeleteBuffers(1, &_id);
     }
 
-    buffer::operator bool() const
-    {
-        return _id != 0;
-    }
-
     buffer::operator unsigned() const
     {
         return _id;

@@ -23,20 +23,20 @@ namespace gl
         return _id;
     }
 
-    void texture::storage_1d(int width, GLenum internal_format, int levels)
+    void texture::storage_1d(const int width, const GLenum internal_format, const int levels)
     {
         _width = width;
         glTextureStorage1D(_id, levels == -1 ? max_levels(width, 1, 1) : levels, internal_format, width);
     }
 
-    void texture::storage_2d(int width, int height, GLenum internal_format, int levels)
+    void texture::storage_2d(const int width, const int height, const GLenum internal_format, const int levels)
     {
         _width = width;
         _height = height;
         glTextureStorage2D(_id, levels == -1 ? max_levels(width, height, 1) : levels, internal_format, width, height);
     }
 
-    void texture::storage_3d(int width, int height, int depth, GLenum internal_format, int levels)
+    void texture::storage_3d(const int width, const int height, const int depth, const GLenum internal_format, const int levels)
     {
         _width = width;
         _height = height;
@@ -45,16 +45,16 @@ namespace gl
                            height, depth);
     }
 
-    void texture::storage_2d_multisample(int width, int height, int samples, GLenum internal_format,
-                                         bool fixed_sample_locations)
+    void texture::storage_2d_multisample(const int width, int height, const int samples, const GLenum internal_format,
+                                         const bool fixed_sample_locations)
     {
         _width = width;
         _height = height;
         glTextureStorage2DMultisample(_id, samples, internal_format, width, height, fixed_sample_locations);
     }
 
-    void texture::storage_2d_multisample(int width, int height, int depth, int samples, GLenum internal_format,
-                                         bool fixed_sample_locations)
+    void texture::storage_2d_multisample(const int width, const int height, const int depth, const int samples, const GLenum internal_format,
+                                         const bool fixed_sample_locations)
     {
         _width = width;
         _height = height;
@@ -62,73 +62,73 @@ namespace gl
         glTextureStorage3DMultisample(_id, samples, internal_format, width, height, depth, fixed_sample_locations);
     }
 
-    void texture::assign_1d(int x, int width, int level, GLenum format, GLenum type, void* pixels) const
+    void texture::assign_1d(const int x, const int width, const int level, const GLenum format, const GLenum type, void* pixels) const
     {
         glTextureSubImage1D(_id, level, x, width, format, type, pixels);
     }
 
-    void texture::assign_1d(GLenum format, GLenum type, void* pixels) const
+    void texture::assign_1d(const GLenum format, const GLenum type, void* pixels) const
     {
         assign_1d(0, _width, 0, format, type, pixels);
     }
 
-    void texture::assign_1d_compressed(int x, int width, int level, GLenum format, GLenum type, void* pixels) const
+    void texture::assign_1d_compressed(const int x, const int width, const int level, const GLenum format, const GLenum type, void* pixels) const
     {
         glCompressedTextureSubImage1D(_id, level, x, width, format, type, pixels);
     }
 
-    void texture::assign_1d_compressed(GLenum format, GLenum type, void* pixels) const
+    void texture::assign_1d_compressed(const GLenum format, const GLenum type, void* pixels) const
     {
         assign_1d_compressed(0, _width, 0, format, type, pixels);
     }
 
-    void texture::assign_2d_compressed(int x, int y, int width, int height, int level, GLenum format, GLenum type,
-        void* pixels) const
+    void texture::assign_2d_compressed(const int x, const int y, const int width, const int height, const int level, const GLenum format, const GLenum type,
+                                       void* pixels) const
     {
         glCompressedTextureSubImage2D(_id, level, x, y, width, height, format, type, pixels);
     }
 
-    void texture::assign_2d_compressed(GLenum format, GLenum type, void* pixels) const
+    void texture::assign_2d_compressed(const GLenum format, const GLenum type, void* pixels) const
     {
         assign_2d_compressed(0, 0, _width, _height, 0, format, type, pixels);
     }
 
-    void texture::assign_2d(int x, int y, int width, int height, int level, GLenum format, GLenum type,
+    void texture::assign_2d(const int x, const int y, const int width, const int height, const int level, const GLenum format, const GLenum type,
                             void* pixels) const
     {
         glTextureSubImage2D(_id, level, x, y, width, height, format, type, pixels);
     }
 
-    void texture::assign_2d(GLenum format, GLenum type, void* pixels) const
+    void texture::assign_2d(const GLenum format, const GLenum type, void* pixels) const
     {
         assign_2d(0, 0, _width, _height, 0, format, type, pixels);
     }
 
-    void texture::assign_3d(int x, int y, int z, int width, int height, int depth, int level, GLenum format,
-                            GLenum type, void* pixels) const
+    void texture::assign_3d(const int x, const int y, const int z, const int width, const int height, const int depth, const int level, const GLenum format,
+                            const GLenum type, void* pixels) const
     {
         glTextureSubImage3D(_id, level, x, y, z, width, height, depth, format, type, pixels);
     }
 
-    void texture::assign_3d_compressed(int x, int y, int z, int width, int height, int depth, int level, GLenum format,
-                            GLenum type, void* pixels) const
+    void texture::assign_3d_compressed(const int x, const int y, const int z, const int width, const int height, const int depth, const int level, const GLenum format,
+        const GLenum type, void* pixels) const
     {
         glCompressedTextureSubImage3D(_id, level, x, y, z, width, height, depth, format, type, pixels);
     }
 
-    void texture::assign_3d_compressed(GLenum format, GLenum type, void* pixels) const
+    void texture::assign_3d_compressed(const GLenum format, const GLenum type, void* pixels) const
     {
         assign_3d_compressed(0, 0, 0, _width, _height, _depth, 0, format, type, pixels);
     }
 
-    void texture::assign_3d(GLenum format, GLenum type, void* pixels) const
+    void texture::assign_3d(const GLenum format, const GLenum type, void* pixels) const
     {
         assign_3d(0, 0, 0, _width, _height, _depth, 0, format, type, pixels);
     }
 
     uint64_t texture::address() const
     {
-        if(!glGetTextureSamplerHandleARB)
+        if (!glGetTextureSamplerHandleARB)
             return 0;
         const auto handle = glGetTextureHandleARB(_id);
         if (!glIsTextureHandleResidentARB(handle))
@@ -141,12 +141,12 @@ namespace gl
         glGenerateTextureMipmap(_id);
     }
 
-    void texture::set_buffer(uint32_t buffer, uint32_t internal_format) const
+    void texture::set_buffer(const uint32_t buffer, const uint32_t internal_format) const
     {
         glTextureBuffer(_id, internal_format, buffer);
     }
 
-    void texture::set_buffer(uint32_t buffer, uint32_t internal_format, size_t size, size_t offset) const
+    void texture::set_buffer(const uint32_t buffer, const uint32_t internal_format, const size_t size, const size_t offset) const
     {
         glTextureBufferRange(_id, internal_format, buffer, size, offset);
     }
@@ -161,12 +161,12 @@ namespace gl
         return _height;
     }
 
-    void texture::get_texture_data(GLenum format, GLenum type, size_t target_byte_size, void* target, int level) const
+    void texture::get_texture_data(const GLenum format, const GLenum type, const size_t target_byte_size, void* target, const int level) const
     {
         glGetTextureImage(_id, level, format, type, static_cast<int>(target_byte_size), target);
     }
 
-    int texture::max_levels(int width, int height, int depth)
+    int texture::max_levels(const int width, const int height, const int depth)
     {
         return 1 + static_cast<uint32_t>(std::log2(std::max(width, std::max(height, depth))));
     }
@@ -181,24 +181,40 @@ namespace gl
         glDeleteSamplers(1, &_id);
     }
 
-    void sampler::set(GLenum name, int value) const
+    void sampler::set(const GLenum name, const int value) const
     {
         glSamplerParameteri(_id, name, value);
     }
 
-    void sampler::set(GLenum name, float value) const
+    void sampler::set(const GLenum name, const float value) const
     {
         glSamplerParameterf(_id, name, value);
     }
 
     uint64_t sampler::sample_texture(texture* t) const
     {
-        if(!glGetTextureSamplerHandleARB)
+        if (!glGetTextureSamplerHandleARB)
             return 0;
         const auto handle = glGetTextureSamplerHandleARB(*t, _id);
         if (!glIsTextureHandleResidentARB(handle))
             glMakeTextureHandleResidentARB(handle);
         return handle;
+    }
+
+    image::image(texture* t, const int level, const bool layered, const int layer, const GLenum format, const GLenum access): _handle(
+        glGetImageHandleARB(*t, level, layered, layer, format))
+    {
+        glMakeImageHandleResidentARB(_handle, access);
+    }
+
+    image::~image()
+    {
+        glMakeImageHandleNonResidentARB(_handle);
+    }
+
+    image::operator uint64_t() const
+    {
+        return _handle;
     }
 
     sampler::operator unsigned() const

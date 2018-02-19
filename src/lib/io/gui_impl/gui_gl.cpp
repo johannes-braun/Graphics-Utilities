@@ -108,7 +108,7 @@ namespace io::impl
     void gui_gl::render(const ImDrawCmd& cmd, const int index_offset, const int vertex_offset) const
     {
         assert(GL_UNSIGNED_INT == GL_UNSIGNED_BYTE + 4 && GL_UNSIGNED_SHORT == GL_UNSIGNED_BYTE + 2);
-        _graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("img") = reinterpret_cast<uint64_t>(cmd.TextureId);
+        _graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("img") = reinterpret_cast<uint64_t>(cmd.TextureId);
         glScissor(static_cast<int>(cmd.ClipRect.x), static_cast<int>(static_cast<int>(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
             static_cast<int>(cmd.ClipRect.z - cmd.ClipRect.x), static_cast<int>(cmd.ClipRect.w - cmd.ClipRect.y));
         glDrawElementsBaseVertex(GL_TRIANGLES, static_cast<GLsizei>(cmd.ElemCount), GL_UNSIGNED_BYTE + sizeof(ImDrawIdx),

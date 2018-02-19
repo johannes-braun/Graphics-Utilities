@@ -260,15 +260,15 @@ int main(int argc, const char** args)
         floor_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view") = inverse(camera.view());
         floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("time") = glfwGetTime();
-        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("cubemap") = sampler->sample_texture(cubemap);
-        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("random") = sampler->sample_texture(main_renderer->random_texture());
+        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
+        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("random") = sampler->sample_texture(main_renderer->random_texture());
         vertex_array->bind();
         glDrawElements(GL_TRIANGLES, floor_indices.size(), GL_UNSIGNED_INT, nullptr);
 
         cubemap_pipeline->bind();
         cubemap_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("cubemap_matrix") =
             glm::mat4(glm::mat3(inverse(camera.view()))) * inverse(camera.projection());
-        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("map") = sampler->sample_texture(cubemap);
         cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
         generic_vao->bind();
         int mask;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <stdexcept>
 #include <jpu/memory>
 #include <jpu/flags>
 
@@ -24,24 +23,23 @@ namespace gl
     class buffer : public jpu::ref_count
     {
     public:
-        buffer(const size_t size, const buffer_flags flags = {});
+        explicit buffer(size_t size, buffer_flags flags = {});
         
         template<typename TContainer, typename = decltype(std::data(std::declval<TContainer>()))>
-        buffer(TContainer data, const buffer_flags flags = {});
+        explicit buffer(TContainer data, buffer_flags flags = {});
 
         template<typename TValue>
-        buffer(TValue* data, const size_t count, const buffer_flags flags = {});
+        buffer(TValue* data, size_t count, buffer_flags flags = {});
 
         ~buffer();
-        operator bool() const;
         operator unsigned() const;
 
         template<typename TContainer, typename = decltype(std::data(std::declval<TContainer>()))>
         void assign(TContainer data, size_t offset_bytes = 0) const;
         template<typename TValue>
-        void assign(TValue* data, const size_t count, size_t offset_bytes = 0) const;
+        void assign(TValue* data, size_t count, size_t offset_bytes = 0) const;
 
-        void clear_to_float(const float value) const;
+        void clear_to_float(float value) const;
 
         template<typename T>
         T& at(size_t position) const;
@@ -51,14 +49,14 @@ namespace gl
 
         void map();
         void unmap() const;
-        void flush(const size_t size_bytes, const size_t offset_bytes) const;
-        void bind(const uint32_t binding_point, const GLenum type) const;
+        void flush(size_t size_bytes, size_t offset_bytes) const;
+        void bind(uint32_t binding_point, GLenum type) const;
 
         size_t size() const;
         uint64_t address() const;
 
     private:
-        void allocate(const size_t size, const void* data, const buffer_flags flags) const;
+        void allocate(size_t size, const void* data, buffer_flags flags) const;
         void map_if_needed();
         void make_persistent_address();
 
@@ -69,46 +67,6 @@ namespace gl
         uint32_t _map_access{ 0 };
         uint64_t _persistent_address;
     };
-
-    template <typename TContainer, typename>
-    buffer::buffer(TContainer data, const buffer_flags flags): buffer(std::data(data), std::size(data), flags)
-    {
-    }
-
-    template <typename TValue>
-    buffer::buffer(TValue* data, const size_t count, const buffer_flags flags): _size(count * sizeof(TValue)),
-                                                                                _flags(flags)
-    {
-        glCreateBuffers(1, &_id);
-        allocate(count * sizeof(TValue), data, flags);
-        map_if_needed();
-        make_persistent_address();
-    }
-
-    template <typename TContainer, typename>
-    void buffer::assign(TContainer data, size_t offset_bytes) const
-    {
-        glNamedBufferSubData(_id, offset_bytes, std::size(data), std::data(data));
-    }
-
-    template <typename TValue>
-    void buffer::assign(TValue* data, const size_t count, size_t offset_bytes) const
-    {
-        glNamedBufferSubData(_id, offset_bytes, count * sizeof(TValue), data);
-    }
-
-    template <typename T>
-    T& buffer::at(size_t position) const
-    {
-        if (!_mapped_data || position * sizeof(T) >= _size)
-            throw std::range_error("Position references an invalid position.");
-
-        return static_cast<T*>(_mapped_data)[position];
-    }
-
-    template <typename T>
-    T* buffer::data_as() const
-    {
-        return static_cast<T*>(_mapped_data);
-    }
 }
+
+#include "buffer.inl"

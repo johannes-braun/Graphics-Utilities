@@ -1,4 +1,5 @@
 #include "pipeline.hpp"
+#include <glad/glad.h>
 
 namespace gl
 {
@@ -12,12 +13,27 @@ namespace gl
         glDeleteProgramPipelines(1, &_id);
     }
 
+    pipeline::operator unsigned() const
+    {
+        return _id;
+    }
+
+    int pipeline::location(std::string_view name) const
+    {
+        return glGetUniformLocation(_id, name.data());
+    }
+
+    shader* pipeline::stage(const shader_type s) const
+    {
+        return _shaders.count(s) != 0 ? _shaders.at(s).get() : nullptr;
+    }
+
     void pipeline::bind() const
     {
         glBindProgramPipeline(_id);
     }
 
-    void pipeline::reload_stages(bool force) const
+    void pipeline::reload_stages(const bool force) const
     {
         for (auto&& shader : _shaders)
         {
@@ -29,7 +45,7 @@ namespace gl
         validate();
     }
 
-    void pipeline::set_stages_enabled(const std::vector<shader_type>& stages, bool enable)
+    void pipeline::set_stages_enabled(const std::vector<shader_type>& stages, const bool enable)
     {
         for(auto stage : stages)
             set_stage_enabled(stage, enable);
@@ -37,7 +53,7 @@ namespace gl
         validate();
     }
 
-    void pipeline::set_stage_enabled(shader_type stage, bool enable)
+    void pipeline::set_stage_enabled(shader_type stage, const bool enable)
     {
         if (enable)
         {
@@ -65,7 +81,7 @@ namespace gl
         _shaders[s->type()] = s;
     }
 
-    uint32_t pipeline::stage_bits(shader_type t)
+    uint32_t pipeline::stage_bits(const shader_type t)
     {
         uint32_t stage_bits = 0;
         switch (t)

@@ -1,7 +1,6 @@
 #pragma once
 #include <jpu/memory>
 #include "glad/glad.h"
-#include <memory>
 #include <stdexcept>
 
 namespace gl
@@ -92,15 +91,9 @@ namespace gl
     class image : public jpu::ref_count
     {
     public:
-        image(texture* t, int level, bool layered, int layer, GLenum format, GLenum access)
-            : _handle(glGetImageHandleARB(*t, level, layered, layer, format))
-        {
-            glMakeImageHandleResidentARB(_handle, access);
-        }
-
-        ~image() { glMakeImageHandleNonResidentARB(_handle); }
-
-        operator uint64_t() const { return _handle; }
+        image(texture* t, int level, bool layered, int layer, GLenum format, GLenum access);
+        ~image();
+        operator uint64_t() const;
 
     private:
         uint64_t _handle;

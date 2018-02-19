@@ -1,11 +1,12 @@
 #pragma once
-#include <array>
+
 #include "shader.hpp"
-#include "glad/glad.h"
+#include "uniform.hpp"
+
 #include <jpu/memory>
 #include <jpu/log>
+#include <array>
 #include <map>
-#include "uniform.hpp"
 #include <set>
 
 namespace gl
@@ -16,11 +17,11 @@ namespace gl
         pipeline();
         virtual ~pipeline();
 
-        operator unsigned() const { return _id; }
+        operator unsigned() const;
 
         void bind() const;
-        int location(std::string_view name) const { return glGetUniformLocation(_id, name.data()); }
-        shader* stage(shader_type s) const { return _shaders.count(s) != 0 ? _shaders.at(s).get() : nullptr; }
+        int location(std::string_view name) const;
+        shader* stage(shader_type s) const;
         void reload_stages(bool force = false) const;
         
         void set_stages_enabled(const std::vector<shader_type>& stages, bool enable);
@@ -40,38 +41,19 @@ namespace gl
     {
     public:
         template<typename... TShaders>
-        void use_stages(TShaders ... shd)
-        {
-            _shaders.clear();
-            const std::initializer_list<shader*> list{ shd... };
-            for (auto s : list)
-                use_shader(s);
-
-            glValidateProgramPipeline(_id);
-
-            if (int success = 0; glGetProgramPipelineiv(_id, GL_VALIDATE_STATUS, &success), !success)
-            {
-                int log_length;
-                glGetProgramPipelineiv(_id, GL_INFO_LOG_LENGTH, &log_length);
-                std::string log(log_length, ' ');
-                glGetProgramPipelineInfoLog(_id, log_length, &log_length, log.data());
-                glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
-
-                throw std::runtime_error("Program pipeline validation failed: " + log);
-            }
-        }
+        void use_stages(TShaders ... shd);
     };
 
     class compute_pipeline : public pipeline
     {
     public:
         explicit compute_pipeline(shader* shader);
-
-        void dispatch(const uint32_t count_x, const uint32_t count_y = 1, const uint32_t count_z = 1);
-
+        void dispatch(uint32_t count_x, uint32_t count_y = 1, uint32_t count_z = 1);
         const std::array<int, 3>& work_group_sizes() const { return _group_sizes; }
 
     private:
         std::array<int, 3> _group_sizes;
     };
 }
+
+#include "pipeline.inl"

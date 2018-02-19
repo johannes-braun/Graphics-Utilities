@@ -8,7 +8,7 @@
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
-void main(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
     gl::setup_shader_paths("../shaders");
 
@@ -87,7 +87,7 @@ void main(int argc, const char** argv)
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("view_mat") = cam.view();
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("proj_mat") = cam.projection();
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view_mat") = inverse(cam.view());
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("cubemap") = sampler->sample_texture(cubemap);
+        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
 }

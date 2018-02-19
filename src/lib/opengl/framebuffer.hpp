@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 #include <vector>
-#include "jpu/memory"
+#include <jpu/memory>
 #include <map>
 
 namespace gl
@@ -13,9 +13,9 @@ namespace gl
     {
         struct render_buffer
         {
-            render_buffer() { glCreateRenderbuffers(1, &_id); }
-            ~render_buffer() { glDeleteRenderbuffers(1, &_id); }
-            operator unsigned() const { return _id; }
+            render_buffer();
+            ~render_buffer();
+            operator unsigned() const;
         private:
             uint32_t _id;
         };
@@ -34,10 +34,10 @@ namespace gl
         void read_from_attachment(GLenum attachment) const;
 
         void bind();
-        void unbind();
+        void unbind() const;
 
         struct blit_rect { int x0, y0, x1, y1; };
-        void blit(framebuffer* other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter);
+        void blit(framebuffer* other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter) const;
 
     private:
         void check_complete() const;

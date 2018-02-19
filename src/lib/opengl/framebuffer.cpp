@@ -3,6 +3,21 @@
 
 namespace gl
 {
+    framebuffer::render_buffer::render_buffer()
+    {
+        glCreateRenderbuffers(1, &_id);
+    }
+
+    framebuffer::render_buffer::~render_buffer()
+    {
+        glDeleteRenderbuffers(1, &_id);
+    }
+
+    framebuffer::render_buffer::operator unsigned() const
+    {
+        return _id;
+    }
+
     framebuffer::framebuffer()
     {
         glCreateFramebuffers(1, &_id);
@@ -23,9 +38,9 @@ namespace gl
         return _id;
     }
 
-    void framebuffer::use_renderbuffer(GLenum attachment, GLenum internal_format, int width, int height)
+    void framebuffer::use_renderbuffer(const GLenum attachment, const GLenum internal_format, const int width, const int height)
     {
-        if(_render_buffers.count(attachment) != 0)
+        if (_render_buffers.count(attachment) != 0)
             _render_buffers.erase(attachment);
 
         auto&& buffer = _render_buffers[attachment];
@@ -36,10 +51,10 @@ namespace gl
         check_complete();
     }
 
-    void framebuffer::use_renderbuffer_multisample(GLenum attachment, GLenum internal_format, int width, int height,
-        int samples)
+    void framebuffer::use_renderbuffer_multisample(const GLenum attachment, const GLenum internal_format, const int width, const int height,
+        const int samples)
     {
-        if(_render_buffers.count(attachment) != 0)
+        if (_render_buffers.count(attachment) != 0)
             _render_buffers.erase(attachment);
 
         auto&& buffer = _render_buffers[attachment];
@@ -50,7 +65,7 @@ namespace gl
         check_complete();
     }
 
-    void framebuffer::attach(GLenum attachment, texture* texture, int level)
+    void framebuffer::attach(const GLenum attachment, texture* texture, const int level)
     {
         glNamedFramebufferTexture(_id, attachment, *texture, level);
         _attachments[attachment] = texture;
@@ -64,7 +79,7 @@ namespace gl
         glNamedFramebufferDrawBuffers(_id, static_cast<int>(attachments.size()), attachments.data());
     }
 
-    void framebuffer::read_from_attachment(GLenum attachment) const
+    void framebuffer::read_from_attachment(const GLenum attachment) const
     {
         glNamedFramebufferReadBuffer(_id, attachment);
     }
@@ -78,12 +93,12 @@ namespace gl
 
     }
 
-    void framebuffer::unbind()
+    void framebuffer::unbind() const
     {
         glBindFramebuffer(GL_FRAMEBUFFER, _last_bound_framebuffer);
     }
 
-    void framebuffer::blit(framebuffer* other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter)
+    void framebuffer::blit(framebuffer* other, const blit_rect src, const blit_rect dst, const GLbitfield buffers, const GLenum filter) const
     {
         int read, draw, fbo;
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);

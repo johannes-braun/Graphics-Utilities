@@ -5,7 +5,7 @@
 
 namespace gl
 {
-    class query
+    class query : public jpu::ref_count
     {
     public:
         query(GLenum type);

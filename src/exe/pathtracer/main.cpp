@@ -11,7 +11,6 @@
 
 #include "jpu/impl/log/log.hpp"
 #include "tinyfd/tinyfiledialogs.h"
-#include "io/gui_impl/gui_none.hpp"
 #include "opengl/pipeline.hpp"
 #include "opengl/texture.hpp"
 #include "opengl/buffer.hpp"

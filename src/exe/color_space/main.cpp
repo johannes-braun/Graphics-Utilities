@@ -395,7 +395,7 @@ int main(int argc, const char** argv)
 
         points_pipeline->bind();
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<gl::sampler2D>("picture") = id;
+        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<uint64_t>("picture") = id;
         points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         vao->bind();
         glDrawArrays(GL_POINTS, 0, texture->width() * texture->height());
@@ -416,7 +416,7 @@ int main(int argc, const char** argv)
         glFrontFace(GL_CW);
         cube_pipeline->bind();
         cube_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
-        cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("tex") = sampler->sample_texture(grid.get());
+        cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("tex") = sampler->sample_texture(grid.get());
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
         cube_vao->bind();
         glDrawElements(GL_TRIANGLES, res::presets::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
@@ -433,7 +433,7 @@ int main(int argc, const char** argv)
         glViewport(0, 0, texture->width() *scale, texture->height() *scale);
         img_pipeline->bind();
         img_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        img_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("tex") = id;
+        img_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("tex") = id;
         vao->bind();
         glDrawArrays(GL_TRIANGLES, 0, 3);
 

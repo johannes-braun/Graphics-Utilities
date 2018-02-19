@@ -379,7 +379,7 @@ int main(int count, const char** arguments)
         cubemap_pipeline->bind();
         cubemap_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("cubemap_matrix") =
             glm::mat4(glm::mat3(scene.get_inv_view())) * scene.get_inv_projection();
-        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("map") = sampler->sample_texture(cubemap);
         cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
         generic_vao->bind();
         int mask;
@@ -392,10 +392,10 @@ int main(int count, const char** arguments)
         graphics_pipeline->bind();
         graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_matrix") = transform;
         graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(glm::transpose(glm::inverse(static_cast<glm::mat4>(transform)))));
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("my_texture") = sampler->sample_texture(texture_col);
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("texture_depth") = sampler->sample_texture(texture_dis);
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::sampler2D>("texture_normal") = sampler->sample_texture(texture_nor);
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<gl::samplerCube>("cube_map") = sampler->sample_texture(cubemap);
+        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("my_texture") = sampler->sample_texture(texture_col);
+        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_depth") = sampler->sample_texture(texture_dis);
+        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_normal") = sampler->sample_texture(texture_nor);
+        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cube_map") = sampler->sample_texture(cubemap);
         vertex_vao->bind();
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(cylinder.meshes.get_by_index(0).indices.size()), GL_UNSIGNED_INT, nullptr);
 
