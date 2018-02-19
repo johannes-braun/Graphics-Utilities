@@ -11,7 +11,7 @@ namespace al
         alcCloseDevice(_device);
     }
 
-    record_device::record_device(const char* name, uint32_t frequency, ALCenum format, int buffer_size)
+    record_device::record_device(const char* name, const uint32_t frequency, const ALCenum format, const int buffer_size)
         : _device(alcCaptureOpenDevice(name, frequency, format, buffer_size))
     {
     }

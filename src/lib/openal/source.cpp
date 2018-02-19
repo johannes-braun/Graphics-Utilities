@@ -1,6 +1,4 @@
 #include "source.hpp"
-#include <AL/alc.h>
-#include <glm/ext.hpp>
 
 namespace al
 {

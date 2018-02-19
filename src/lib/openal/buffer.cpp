@@ -1,6 +1,5 @@
 #include "buffer.hpp"
-#include "AL/al.h"
-#include "AL/alext.h"
+#include <AL/al.h>
 
 namespace al
 {

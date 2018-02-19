@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cinttypes>
-#include "AL/al.h"
+#include <AL/al.h>
 #include <jpu/memory>
 
 namespace al

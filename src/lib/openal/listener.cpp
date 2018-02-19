@@ -1,7 +1,5 @@
 #include "listener.hpp"
 #include "AL/al.h"
-#include "glm/gtc/type_ptr.hpp"
-#include "jpu/impl/log/log.hpp"
 
 namespace al
 {
@@ -22,7 +20,7 @@ namespace al
             o * glm::vec3(0, 0, -1),
             o * glm::vec3(0, 1, 0)
         };
-        alListenerfv(AL_ORIENTATION, glm::value_ptr(ori[0]));
+        alListenerfv(AL_ORIENTATION, &ori[0][0]);
     }
 
     void listener::set_position(const glm::vec3 p)
@@ -64,7 +62,7 @@ namespace al
             _orientation * glm::vec3(0, 0, -1),
             _orientation * glm::vec3(0, 1, 0)
         };
-        alListenerfv(AL_ORIENTATION, glm::value_ptr(ori[0]));
+        alListenerfv(AL_ORIENTATION, &ori[0][0]);
         alListener3f(AL_POSITION, _position.x, _position.y, _position.z);
         alListener3f(AL_VELOCITY, _velocity.x, _velocity.y, _velocity.z);
     }

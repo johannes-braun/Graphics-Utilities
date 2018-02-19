@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <jpu/memory>
-#include "AL/alc.h"
+#include <AL/alc.h>
 
 namespace al
 {

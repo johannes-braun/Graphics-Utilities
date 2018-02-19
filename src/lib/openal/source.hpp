@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cinttypes>
 #include <jpu/memory>
-#include "AL/al.h"
+#include <AL/al.h>
 #include <glm/glm.hpp>
 
 namespace al

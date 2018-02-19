@@ -24,7 +24,7 @@ namespace al
 
     private:
         float _gain{1.f};
-        glm::quat _orientation = glm::angleAxis(0.f, glm::vec3(0, 1, 0));
+        glm::quat _orientation{1, 0, 0, 0};
         glm::vec3 _position{0, 0, 0};
         glm::vec3 _velocity{0, 0, 0};
     };
