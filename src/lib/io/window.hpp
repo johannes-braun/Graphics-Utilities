@@ -1,22 +1,21 @@
 #pragma once
 
-#include "vulkan/vulkan.hpp"
-#include "vulkan/detail.hpp"
-#include "vulkan/device.hpp"
-#include "vulkan/swapchain.hpp"
-#include "vulkan/vulkan_ext.h"
-#include "glad/glad.h"
-#include "opengl/debug.hpp"
-#include "GLFW/glfw3.h"
+#include <vulkan/vulkan.hpp>
+#include <vulkan/device.hpp>
+#include <vulkan/swapchain.hpp>
+#include <vulkan/vulkan_ext.h>
+
+#include "cursor.hpp"
+#include "api.hpp"
+#include "gui_impl/gui.hpp"
+
+#include <GLFW/glfw3.h>
+
 #include <optional>
 #include <jpu/memory>
 #include <jpu/log>
 #include <filesystem>
 #include <functional>
-
-#include "cursor.hpp"
-#include "api.hpp"
-#include "gui_impl/gui.hpp"
 
 namespace io
 {
@@ -32,7 +31,7 @@ namespace io
         monitor();
         monitor(int index);
         const GLFWvidmode& video_mode() const;
-        operator GLFWmonitor*() const;
+        operator struct GLFWmonitor*() const;
 
     private:
         GLFWmonitor * _monitor;
@@ -46,7 +45,7 @@ namespace io
         window(api api, int width, int height, std::string_view title, window* share, std::optional<monitor> monitor = {});
         ~window();
 
-        operator GLFWwindow*() const;
+        operator struct GLFWwindow*() const;
         gui* gui() const;
 
         void load_icon(const std::experimental::filesystem::path& path);
@@ -55,12 +54,12 @@ namespace io
 
         bool update();
 
-        void set_swap_delay(double delay)
+        void set_swap_delay(const double delay)
         {
             _swap_delay = delay;
         }
 
-        void limit_framerate(double max_fps)
+        void limit_framerate(const double max_fps)
         {
             set_swap_delay(1 / max_fps);
         }
@@ -81,7 +80,7 @@ namespace io
         void rebuild_swapchain()
         {
             _device->waitIdle();
-            while (_swapchain->dec_ref() > 1);
+            while (_swapchain->dec_ref() > 1) void(0);
             _swapchain.reset();
             _swapchain = jpu::make_ref<vkn::swapchain>(_device.get(), _surface, 8);
             _gui->render_interface_vk().update_swapchain(_swapchain.get());
@@ -101,7 +100,8 @@ namespace io
     private:
         api _api;
         jpu::ref_ptr<io::gui> _gui;
-        struct freer {
+        struct freer
+        {
             void operator()(unsigned char* d) const;
         };
         std::unique_ptr<unsigned char[], freer> _icon_storage;
@@ -130,8 +130,7 @@ namespace io
         vk::DebugReportCallbackEXT _debug_callback;
 
         VKAPI_ATTR static vk::Bool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT obj_type,
-            uint64_t obj,
-            size_t location, int32_t code, const char* layer_prefix,
+            const uint64_t obj, const size_t location, const int32_t code, const char* layer_prefix,
             const char* msg, void* user_data)
         {
             return user_data ? (*reinterpret_cast<window::debug_callback*>(user_data))(static_cast<vk::DebugReportFlagBitsEXT>(flags),
@@ -139,6 +138,4 @@ namespace io
                 obj, location, code, layer_prefix, msg) : false;
         }
     };
-
-    
 }

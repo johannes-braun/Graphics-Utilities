@@ -1,5 +1,7 @@
 #include "gui.hpp"
 
+#include <vulkan/device.hpp>
+
 namespace io
 {
     void gui::init()
@@ -7,17 +9,17 @@ namespace io
         // Save the default ImGui context.
         // At execution termination, restore the default context and Shutdown ImGui.
         // This is needed because for some reason ImGui needs a valid context on ImGui::Shutdown().
-        static class ImGuiInit
+        static class gui_init
         {
         public:
-            ImGuiInit() : m_default_context(ImGui::GetCurrentContext()) {}
-            ~ImGuiInit()
+            gui_init() : _m_default_context(ImGui::GetCurrentContext()) {}
+            ~gui_init()
             {
-                ImGui::SetCurrentContext(m_default_context);
+                ImGui::SetCurrentContext(_m_default_context);
                 ImGui::Shutdown();
             }
         private:
-            ImGuiContext * m_default_context;
+            ImGuiContext * _m_default_context;
         } imgui_init;
 
         _context = ImGui::CreateContext();
@@ -261,6 +263,90 @@ namespace io
         style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
         style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
 
+    }
+
+    gui::gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window),
+        _vk_impl(impl::gui_vk(device, swapchain)),
+        _api(api::vulkan)
+    {
+        init();
+    }
+
+    gui::gui(GLFWwindow* window) : _window(window), _gl_impl(impl::gui_gl(true)), _api(api::opengl)
+    {
+        init();
+    }
+
+    impl::gui_gl& gui::render_interface_gl()
+    {
+        return _gl_impl;
+    }
+
+    const impl::gui_gl& gui::render_interface_gl() const
+    {
+        return _gl_impl;
+    }
+
+    impl::gui_vk& gui::render_interface_vk()
+    {
+        return _vk_impl;
+    }
+
+    const impl::gui_vk& gui::render_interface_vk() const
+    {
+        return _vk_impl;
+    }
+
+    void gui::init_atlas()
+    {
+        switch (_api)
+        {
+        case api::opengl: _gl_impl.build_font_atlas();
+            ImGui::GetIO().Fonts->TexID = _gl_impl.build_font_atlas();
+            break;
+        case api::vulkan:
+            ImGui::GetIO().Fonts->TexID = _vk_impl.build_font_atlas();
+            break;
+        }
+    }
+
+    void gui::pre_render(ImDrawData* draw_data)
+    {
+        switch (_api)
+        {
+        case api::opengl:
+            _gl_impl.pre_render(draw_data);
+            break;
+        case api::vulkan:
+            _vk_impl.pre_render(draw_data);
+            break;
+        }
+    }
+
+    void gui::mid_render(const ImDrawCmd& pcmd, const int idx_buffer_offset, const int vtx_buffer_offset)
+    {
+        switch (_api)
+        {
+        case api::opengl:
+            _gl_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+            break;
+        case api::vulkan:
+            _vk_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
+            break;
+        }
+    }
+
+    void gui::post_render()
+    {
+        switch (_api)
+        {
+        case api::opengl:
+            _gl_impl.post_render();
+            break;
+        case api::vulkan:
+            _vk_impl.post_render();
+            break;
+        }
     }
 
     gui::~gui()

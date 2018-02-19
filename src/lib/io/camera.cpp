@@ -1,4 +1,5 @@
 #include "camera.hpp"
+
 #include <glm/ext.hpp>
 
 namespace io
@@ -41,7 +42,7 @@ namespace io
             camera.transform.rotation *= glm::quat(glm::vec3(glm::radians(delta.y / 10) * rotation_speed, 0.f, 0.f));
         }
 
-        camera.transform.position += glm::rotate(camera.transform.rotation, glm::vec3{
+        camera.transform.position += rotate(camera.transform.rotation, glm::vec3{
             static_cast<float>(btn_right.state() == button_state::down) - static_cast<float>(btn_left.state() == button_state::down),
             static_cast<float>(btn_up.state() == button_state::down) - static_cast<float>(btn_down.state() == button_state::down),
             static_cast<float>(btn_backward.state() == button_state::down) - static_cast<float>(btn_forward.state() == button_state::down)

@@ -1,13 +1,17 @@
 #include "window.hpp"
-#include "stb_image.h"
+
+#include <stb_image.h>
+#include <vulkan/detail.hpp>
+#include <glad/glad.h>
+#include <opengl/debug.hpp>
 
 namespace io
 {
-    window::window(api api, int width, int height, std::string_view title, std::optional<monitor> monitor) : window(api,
+    window::window(const api api, const int width, const int height, const std::string_view title, const std::optional<monitor> monitor) : window(api,
         width, height, title, nullptr, monitor)
     {}
 
-    window::window(api api, int width, int height, std::string_view title, window* share, std::optional<monitor> monitor)
+    window::window(api api, const int width, const int height, std::string_view title, window* share, std::optional<monitor> monitor)
         : _api(api)
     {
         glfwWindowHint(GLFW_CLIENT_API, static_cast<int>(api));
@@ -23,7 +27,7 @@ namespace io
             auto extensions = vkn::detail::instance_extensions();
             auto layers = vkn::detail::instance_layers();
 
-            _instance = vk::createInstance(vk::InstanceCreateInfo({}, &application_info,
+            _instance = createInstance(vk::InstanceCreateInfo({}, &application_info,
                 static_cast<uint32_t>(layers.size()), layers.data(),
                 static_cast<uint32_t>(extensions.size()), extensions.data()));
             if (!_instance) throw std::runtime_error("Could not create instance.");
@@ -89,26 +93,26 @@ namespace io
                 switch (severity)
                 {
                 case gl::debug_severity::high:
-                    tlog_e("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                    tlog_e("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 case gl::debug_severity::medium:
-                    tlog_w("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                    tlog_w("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 case gl::debug_severity::low:
-                    tlog_d("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                    tlog_d("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 case gl::debug_severity::notification:
-                    tlog_v("OpenGL Debug") << "source=\"" << gl::get_debug_enum_desc(source) << "\", type=\"" << gl::
+                    tlog_v("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 default: break;
                 }
             });
-            gl::set_debug_callback_enabled(gl::debug_severity::notification, false);
-            gl::set_debug_callback_enabled(gl::debug_severity::low, false);
+            set_debug_callback_enabled(gl::debug_severity::notification, false);
+            set_debug_callback_enabled(gl::debug_severity::low, false);
             _gui = jpu::make_ref<io::gui>(_window);
         }
     }
@@ -126,6 +130,8 @@ namespace io
             _instance.destroySurfaceKHR(_surface);
             _instance.destroy();
             break;
+        case api::opengl: break;
+        default: break;
         };
         glfwDestroyWindow(_window);
     }
@@ -262,7 +268,7 @@ namespace io
     monitor::monitor() : monitor(0)
     {}
 
-    monitor::monitor(int index)
+    monitor::monitor(const int index)
     {
         int count;
         _monitor = glfwGetMonitors(&count)[index];

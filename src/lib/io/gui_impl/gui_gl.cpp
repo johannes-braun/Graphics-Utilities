@@ -1,8 +1,9 @@
 #include "gui_gl.hpp"
+#include <glm/glm.hpp>
 
 namespace io::impl
 {
-    gui_gl::gui_gl(bool init)
+    gui_gl::gui_gl(const bool init)
     {
         if (!init)
             return;

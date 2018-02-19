@@ -1,9 +1,10 @@
 #include "gui_vk.hpp"
-#include "vulkan/device.hpp"
-#include "vulkan/swapchain.hpp"
-#include "vulkan/shader.hpp"
-#include "vulkan/command.hpp"
-#include "glm/detail/type_vec2.hpp"
+
+#include <vulkan/device.hpp>
+#include <vulkan/swapchain.hpp>
+#include <vulkan/shader.hpp>
+#include <vulkan/command.hpp>
+#include <glm/vec2.hpp>
 
 namespace io::impl
 {
@@ -44,7 +45,7 @@ namespace io::impl
             .setPSubpasses(&simple_subpass)
             .setDependencyCount(1)
             .setPDependencies(&simple_dependency);
-        m_renderpass = _device->createRenderPass(simple_render_pass_info);
+        _renderpass = _device->createRenderPass(simple_render_pass_info);
 
         update_swapchain(_swapchain);
         create_device_objects();
@@ -55,24 +56,24 @@ namespace io::impl
         if (!_init)
             return;
 
-        for (auto&& info : m_frame_infos)
+        for (auto&& info : _frame_infos)
         {
             if (info.index_buffer) _device->destroyBuffer(info.index_buffer);
             if (info.vertex_buffer) _device->destroyBuffer(info.vertex_buffer);
             if (info.buffer_memory) _device->memory()->free(info.buffer_memory);
         }
 
-        _device->destroyImage(m_font_image);
-        _device->memory()->free(m_font_image_memory);
-        _device->destroyImageView(m_font_image_view);
+        _device->destroyImage(_font_image);
+        _device->memory()->free(_font_image_memory);
+        _device->destroyImageView(_font_image_view);
 
-        _device->destroySampler(m_font_sampler);
-        _device->destroyDescriptorSetLayout(m_descriptor_set_layout);
-        _device->destroyPipelineLayout(m_pipeline_layout);
-        _device->destroyPipeline(m_pipeline);
+        _device->destroySampler(_font_sampler);
+        _device->destroyDescriptorSetLayout(_descriptor_set_layout);
+        _device->destroyPipelineLayout(_pipeline_layout);
+        _device->destroyPipeline(_pipeline);
 
-        for (auto&& fbo : m_framebuffers) _device->destroyFramebuffer(fbo);
-        _device->destroyRenderPass(m_renderpass);
+        for (auto&& fbo : _framebuffers) _device->destroyFramebuffer(fbo);
+        _device->destroyRenderPass(_renderpass);
 
         _swapchain->dec_ref();
         _device->dec_ref();
@@ -96,20 +97,20 @@ namespace io::impl
                 .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
                 .setSharingMode(vk::SharingMode::eExclusive)
                 .setInitialLayout(vk::ImageLayout::eUndefined);
-            m_font_image = _device->createImage(image_info);
-            const auto image_requirements = _device->getImageMemoryRequirements(m_font_image);
-            m_font_image_memory = _device->memory()->allocate(image_requirements.size, image_requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-            _device->bindImageMemory(m_font_image, m_font_image_memory->memory, m_font_image_memory->offset);
+            _font_image = _device->createImage(image_info);
+            const auto image_requirements = _device->getImageMemoryRequirements(_font_image);
+            _font_image_memory = _device->memory()->allocate(image_requirements.size, image_requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+            _device->bindImageMemory(_font_image, _font_image_memory->memory, _font_image_memory->offset);
 
             vk::ImageViewCreateInfo image_view_info;
             image_view_info.setFormat(vk::Format::eR8G8B8A8Unorm)
-                .setImage(m_font_image)
+                .setImage(_font_image)
                 .setViewType(vk::ImageViewType::e2D)
                 .setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-            m_font_image_view = _device->createImageView(image_view_info);
+            _font_image_view = _device->createImageView(image_view_info);
 
-            m_font_descriptor_image = vk::DescriptorImageInfo(m_font_sampler, m_font_image_view, vk::ImageLayout::eShaderReadOnlyOptimal);
-            m_font_write_descriptor = vk::WriteDescriptorSet(nullptr, 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &m_font_descriptor_image);
+            _font_descriptor_image = vk::DescriptorImageInfo(_font_sampler, _font_image_view, vk::ImageLayout::eShaderReadOnlyOptimal);
+            _font_write_descriptor = vk::WriteDescriptorSet(nullptr, 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &_font_descriptor_image);
             //device->updateDescriptorSets({ m_font_write_descriptor }, nullptr);
 
             // Staging Buffer
@@ -126,25 +127,25 @@ namespace io::impl
 
             // Upload from staging buffer to image
             {
-                vkn::command::transform_image_layout(command_buffer, m_font_image, image_view_info.subresourceRange, vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer);
-                command_buffer.copyBufferToImage(staging_buffer, m_font_image, vk::ImageLayout::eTransferDstOptimal,
+                vkn::command::transform_image_layout(command_buffer, _font_image, image_view_info.subresourceRange, vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer);
+                command_buffer.copyBufferToImage(staging_buffer, _font_image, vk::ImageLayout::eTransferDstOptimal,
                     { vk::BufferImageCopy(0, 0, 0, vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),{}, vk::Extent3D(width, height, 1)) });
 
-                vkn::command::transform_image_layout(command_buffer, m_font_image, image_view_info.subresourceRange, vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
+                vkn::command::transform_image_layout(command_buffer, _font_image, image_view_info.subresourceRange, vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
             }
         });
-        return reinterpret_cast<void*>(static_cast<VkImageView>(m_font_image_view));
+        return reinterpret_cast<void*>(static_cast<VkImageView>(_font_image_view));
     }
 
     void gui_vk::pre_render(ImDrawData* draw_data)
     {
         const auto size = draw_data->TotalVtxCount * sizeof(ImDrawVert) + draw_data->TotalIdxCount * sizeof(ImDrawIdx);
-        auto&& frame_infos = m_frame_infos[(++_current_frame) %= queued_frames];
+        auto&& frame_infos = _frame_infos[(++_current_frame) %= queued_frames];
 
         auto&& command_buffer = _command_buffer;
 
         const vk::Rect2D scissor_rect({ 0, 0 }, { static_cast<uint32_t>(_swapchain->extent().width), static_cast<uint32_t>(_swapchain->extent().height) });
-        command_buffer.beginRenderPass(vk::RenderPassBeginInfo(m_renderpass, m_framebuffers[_swapchain->current_image()], scissor_rect, 0, nullptr), vk::SubpassContents::eInline);
+        command_buffer.beginRenderPass(vk::RenderPassBeginInfo(_renderpass, _framebuffers[_swapchain->current_image()], scissor_rect, 0, nullptr), vk::SubpassContents::eInline);
         if (frame_infos.last_size < size)
         {
             _device->waitIdle();
@@ -196,7 +197,7 @@ namespace io::impl
             _device->flushMappedMemoryRanges(mem_ranges);
         }
 
-        command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
+        command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipeline);
         command_buffer.bindVertexBuffers(0, { frame_infos.vertex_buffer }, { 0 });
         command_buffer.bindIndexBuffer(frame_infos.index_buffer, 0, vk::IndexType::eUint16);
 
@@ -205,17 +206,17 @@ namespace io::impl
 
         glm::vec2 scale(2.f / ImGui::GetIO().DisplaySize.x, 2.f / ImGui::GetIO().DisplaySize.y);
         glm::vec2 translate(-1.f);
-        command_buffer.pushConstants(m_pipeline_layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::vec2), &scale);
-        command_buffer.pushConstants(m_pipeline_layout, vk::ShaderStageFlagBits::eVertex, sizeof(glm::vec2), sizeof(glm::vec2), &translate);
+        command_buffer.pushConstants(_pipeline_layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::vec2), &scale);
+        command_buffer.pushConstants(_pipeline_layout, vk::ShaderStageFlagBits::eVertex, sizeof(glm::vec2), sizeof(glm::vec2), &translate);
     }
 
-    void gui_vk::render(const ImDrawCmd& cmd, int index_offset, int vertex_offset)
+    void gui_vk::render(const ImDrawCmd& cmd, const int index_offset, const int vertex_offset)
     {
         auto&& command_buffer = _command_buffer;
         if (cmd.TextureId)
         {
-            m_font_descriptor_image.imageView = static_cast<VkImageView>(cmd.TextureId);
-            command_buffer.pushDescriptorSetKHR(vk::PipelineBindPoint::eGraphics, m_pipeline_layout, 0, { m_font_write_descriptor });
+            _font_descriptor_image.imageView = static_cast<vk::ImageView>(reinterpret_cast<VkImageView>(cmd.TextureId));
+            command_buffer.pushDescriptorSetKHR(vk::PipelineBindPoint::eGraphics, _pipeline_layout, 0, { _font_write_descriptor });
         }
 
         vk::Rect2D scissor;
@@ -227,27 +228,27 @@ namespace io::impl
         command_buffer.drawIndexed(cmd.ElemCount, 1, index_offset, vertex_offset, 0);
     }
 
-    void gui_vk::post_render()
+    void gui_vk::post_render() const
     {
         _command_buffer.endRenderPass();
     }
 
     void gui_vk::update_swapchain(vkn::swapchain* swapchain)
     {
-        for (auto&& fbo : m_framebuffers) _device->destroyFramebuffer(fbo);
-        m_framebuffers.clear();
+        for (auto&& fbo : _framebuffers) _device->destroyFramebuffer(fbo);
+        _framebuffers.clear();
         _swapchain = swapchain;
         _swapchain->inc_ref();
-        vk::FramebufferCreateInfo framebuffer_info({}, m_renderpass, 1, nullptr, _swapchain->extent().width, _swapchain->extent().height, 1);
+        vk::FramebufferCreateInfo framebuffer_info({}, _renderpass, 1, nullptr, _swapchain->extent().width, _swapchain->extent().height, 1);
         for (auto i = 0u; i < static_cast<int32_t>(_swapchain->images().size()); ++i)
         {
             const std::array<vk::ImageView, 1> att = { *_swapchain->image_views()[i] };
             framebuffer_info.setPAttachments(std::data(att));
-            m_framebuffers.push_back(_device->createFramebuffer(framebuffer_info));
+            _framebuffers.push_back(_device->createFramebuffer(framebuffer_info));
         }
     }
 
-    void gui_vk::set_next_command_buffer(vk::CommandBuffer buffer)
+    void gui_vk::set_next_command_buffer(const vk::CommandBuffer buffer)
     {
         _command_buffer = buffer;
     }
@@ -266,19 +267,19 @@ namespace io::impl
                 .setMinLod(-1000)
                 .setMaxLod(1000)
                 .setMaxAnisotropy(1.f);
-            m_font_sampler = _device->createSampler(sampler_create_info);
+            _font_sampler = _device->createSampler(sampler_create_info);
         }
 
         // Descriptor Set Layout and the set itself
         {
-            vk::DescriptorSetLayoutBinding sampler_binding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, &m_font_sampler);
-            m_descriptor_set_layout = _device->createDescriptorSetLayout(vk::DescriptorSetLayoutCreateInfo(vk::DescriptorSetLayoutCreateFlagBits::ePushDescriptorKHR, 1, &sampler_binding));
+            vk::DescriptorSetLayoutBinding sampler_binding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, &_font_sampler);
+            _descriptor_set_layout = _device->createDescriptorSetLayout(vk::DescriptorSetLayoutCreateInfo(vk::DescriptorSetLayoutCreateFlagBits::ePushDescriptorKHR, 1, &sampler_binding));
         }
 
         // Pipeline Layout
         {
             vk::PushConstantRange push_constant_range(vk::ShaderStageFlagBits::eVertex, 0, sizeof(float) * 4);
-            m_pipeline_layout = _device->createPipelineLayout(vk::PipelineLayoutCreateInfo({}, 1, &m_descriptor_set_layout, 1, &push_constant_range));
+            _pipeline_layout = _device->createPipelineLayout(vk::PipelineLayoutCreateInfo({}, 1, &_descriptor_set_layout, 1, &push_constant_range));
         }
 
         const auto vs = jpu::make_ref<vkn::shader>(_device, "../shaders/gui/vk/imgui.vert");
@@ -324,7 +325,7 @@ namespace io::impl
         vk::PipelineDynamicStateCreateInfo dynamic_state({}, static_cast<uint32_t>(std::size(dynamic_states)), std::data(dynamic_states));
 
         vk::GraphicsPipelineCreateInfo pipeline_info;
-        pipeline_info.setLayout(m_pipeline_layout)
+        pipeline_info.setLayout(_pipeline_layout)
             .setPColorBlendState(&blending)
             .setPDepthStencilState(&depth_stencil)
             .setPDynamicState(&dynamic_state)
@@ -335,9 +336,9 @@ namespace io::impl
             .setStageCount(static_cast<uint32_t>(std::size(shader_stages)))
             .setPVertexInputState(&vertex_input)
             .setPViewportState(&viewport)
-            .setRenderPass(m_renderpass)
+            .setRenderPass(_renderpass)
             .setSubpass(0);
 
-        m_pipeline = _device->createGraphicsPipeline(nullptr, pipeline_info);
+        _pipeline = _device->createGraphicsPipeline(nullptr, pipeline_info);
     }
 }

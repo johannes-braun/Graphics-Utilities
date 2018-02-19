@@ -10,10 +10,10 @@ namespace io
     class cursor : public jpu::ref_count
     {
     public:
-        cursor(const std::experimental::filesystem::path& image, int hotspot_x, int hotspot_y)
+        cursor(const std::experimental::filesystem::path& image, const int hotspot_x, const int hotspot_y)
             : _hotspot_x(hotspot_x), _hotspot_y(hotspot_y)
         {
-            _image.pixels = stbi_load("../res/cursor.png", &_image.width, &_image.height, nullptr, STBI_rgb_alpha);
+            _image.pixels = stbi_load(image.string().c_str(), &_image.width, &_image.height, nullptr, STBI_rgb_alpha);
             _cursor = glfwCreateCursor(&_image, _hotspot_x, _hotspot_y);
         }
 

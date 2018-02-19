@@ -1,18 +1,14 @@
 #pragma once
 
-#include <array>
-#include <jpu/memory>
 #include "io/api.hpp"
-#include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
-#include "vulkan/device.hpp"
 #include "gui_vk.hpp"
 #include "gui_gl.hpp"
-#include "GLFW/glfw3.h"
 
-struct GLFWwindow;
-struct ImGuiContext;
-struct ImDrawData;
+#include <array>
+#include <jpu/memory>
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
+#include <GLFW/glfw3.h>
 
 namespace io
 {
@@ -25,18 +21,10 @@ namespace io
         constexpr static int font_large_light = 1;
         constexpr static int font_title = 2;
 
-        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain) : _window(window), _vk_impl(impl::gui_vk(device, swapchain)),
-            _api(api::vulkan)
-        {
-            init();
-        }
+        gui(GLFWwindow* window, vkn::device* device, vkn::swapchain* swapchain);
 
-        gui(GLFWwindow* window)
-            : _window(window), _gl_impl(impl::gui_gl(true)), _api(api::opengl)
-        {
-            init();
-        }
-      
+        gui(GLFWwindow* window);
+
         ~gui();
 
         // Is called each frame and resets the current input states.
@@ -58,59 +46,15 @@ namespace io
 
         void render();
 
-        auto&& render_interface_gl() { return _gl_impl; }
-        const auto& render_interface_gl() const { return _gl_impl; }
-
-        auto&& render_interface_vk() { return _vk_impl; }
-        const auto& render_interface_vk() const { return _vk_impl; }
-
     private:
 
-        void init_atlas(){
-            switch (_api)
-            {
-            case api::opengl:_gl_impl.build_font_atlas();
-                ImGui::GetIO().Fonts->TexID = _gl_impl.build_font_atlas();
-                break;
-            case api::vulkan:
-                ImGui::GetIO().Fonts->TexID = _vk_impl.build_font_atlas();
-                break;
-            }
-        }
+        void init_atlas();
         void init();
-        void pre_render(ImDrawData* draw_data){
-            switch (_api)
-            {
-            case api::opengl:
-                _gl_impl.pre_render(draw_data);
-                break;
-            case api::vulkan:
-                _vk_impl.pre_render(draw_data);
-                break;
-            }
-        }
-        void mid_render(const ImDrawCmd& pcmd, int idx_buffer_offset, int vtx_buffer_offset){
-            switch (_api)
-            {
-            case api::opengl:
-                _gl_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
-                break;
-            case api::vulkan:
-                _vk_impl.render(pcmd, idx_buffer_offset, vtx_buffer_offset);
-                break;
-            }
-        }
-        void post_render(){
-            switch (_api)
-            {
-            case api::opengl:
-                _gl_impl.post_render();
-                break;
-            case api::vulkan:
-                _vk_impl.post_render();
-                break;
-            }
-        }
+        void pre_render(ImDrawData* draw_data);
+
+        void mid_render(const ImDrawCmd& pcmd, const int idx_buffer_offset, const int vtx_buffer_offset);
+
+        void post_render();
         void render_data(ImDrawData* data);
         void apply_theme() const;
 
@@ -122,9 +66,15 @@ namespace io
         mutable std::array<bool, 3> _mouse_button_states;
         mutable float _mouse_wheel_delta = 0;
 
-        //std::any _impl;
         impl::gui_gl _gl_impl{ false };
         impl::gui_vk _vk_impl;
         api _api;
+
+    public:
+        impl::gui_gl& render_interface_gl();
+        const impl::gui_gl& render_interface_gl() const;
+
+        impl::gui_vk& render_interface_vk();
+        const impl::gui_vk& render_interface_vk() const;
     };
 }
