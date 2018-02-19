@@ -1,7 +1,6 @@
 #include "transform.hpp"
 #include <glm/ext.hpp>
 #include "glm/gtx/matrix_decompose.hpp"
-#include <utility>
 
 namespace res
 {
@@ -29,42 +28,42 @@ namespace res
     {
         glm::vec3 skew;
         glm::vec4 perspective;
-        glm::decompose(mat, scale, rotation, position, skew, perspective);
+        decompose(mat, scale, rotation, position, skew, perspective);
     }
 
     transform::operator glm::mat4() const
     {
-        return glm::translate(glm::mat4(1.f), position) * glm::toMat4(rotation) * glm::scale(glm::mat4(1.f), scale);
+        return translate(glm::mat4(1.f), position) * toMat4(rotation) * glm::scale(glm::mat4(1.f), scale);
     }
 
     glm::vec3 transform::up() const
     {
-        return glm::rotate(rotation, glm::vec3(0, 1, 0));
+        return rotate(rotation, glm::vec3(0, 1, 0));
     }
 
     glm::vec3 transform::down() const
     {
-        return glm::rotate(rotation, glm::vec3(0, -1, 0));
+        return rotate(rotation, glm::vec3(0, -1, 0));
     }
 
     glm::vec3 transform::left() const
     {
-        return glm::rotate(rotation, glm::vec3(1, 0, 0));
+        return rotate(rotation, glm::vec3(1, 0, 0));
     }
 
     glm::vec3 transform::right() const
     {
-        return glm::rotate(rotation, glm::vec3(-1, 0, 0));
+        return rotate(rotation, glm::vec3(-1, 0, 0));
     }
 
     glm::vec3 transform::forward() const
     {
-        return glm::rotate(rotation, glm::vec3(0, 0, -1));
+        return rotate(rotation, glm::vec3(0, 0, -1));
     }
 
     glm::vec3 transform::backward() const
     {
-        return glm::rotate(rotation, glm::vec3(0, 0, 1));
+        return rotate(rotation, glm::vec3(0, 0, 1));
     }
 
     transform transform::operator*(const transform& other) const

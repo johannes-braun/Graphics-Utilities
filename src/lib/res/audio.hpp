@@ -1,7 +1,7 @@
 #pragma once
 
-#include <experimental/filesystem>
-#include "AL/al.h"
+#include <filesystem>
+#include <AL/al.h>
 
 namespace res
 {

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <jpu/data>
 #include "vertex.hpp"
 #include "transform.hpp"
+
+#include <jpu/data>
 #include <filesystem>
 
 namespace res

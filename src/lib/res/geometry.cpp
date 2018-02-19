@@ -1,15 +1,16 @@
 #include "geometry.hpp"
-#include "assimp/Importer.hpp"
-#include "assimp/postprocess.h"
-#include "assimp/vector3.h"
-#include "assimp/scene.h"
+
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/vector3.h>
+#include <assimp/scene.h>
 #include <glm/glm.hpp>
 
 namespace res
 {
     void handle_node(geometry_file& file, aiNode* node, const glm::mat4& transform)
     {
-        glm::mat4 node_trafo = transform * transpose(reinterpret_cast<glm::mat4&>(node->mTransformation));
+        const glm::mat4 node_trafo = transform * transpose(reinterpret_cast<glm::mat4&>(node->mTransformation));
         
         for(uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
@@ -45,8 +46,8 @@ namespace res
         {
             const auto ai_material = scene->mMaterials[i];
             aiString name; 
-            ai_material->Get(AI_MATKEY_NAME, name);
-            material& current_material = result.materials.push(name.C_Str(), material());
+            [[maybe_unused]] aiReturn r = ai_material->Get(AI_MATKEY_NAME, name);
+            [[maybe_unused]] material& current_material = result.materials.push(name.C_Str(), material());
         }
 
         const auto to_vec3 = [](const aiVector3D& vec) { return glm::vec3(vec.x, vec.y, vec.z); };

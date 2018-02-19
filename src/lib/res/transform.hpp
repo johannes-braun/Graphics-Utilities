@@ -12,7 +12,7 @@ namespace res
 		transform(const transform& other) = default;
 		transform& operator=(transform&& other) noexcept = default;
 		transform& operator=(const transform& other) = default;
-        transform(glm::vec3 position, glm::vec3 scale = glm::vec3{1,1,1}, glm::quat rotation = glm::angleAxis(0.f, glm::vec3{0}));
+        transform(glm::vec3 position, glm::vec3 scale = glm::vec3{1,1,1}, glm::quat rotation = { 1, 0, 0, 0 });
 
 		bool operator==(const transform& other) const;
 		bool operator!=(const transform& other) const;
@@ -32,6 +32,6 @@ namespace res
 
 		glm::vec3 position{ 0, 0, 0 };
 		glm::vec3 scale{ 1, 1, 1 };
-		glm::quat rotation = glm::angleAxis(0.f, glm::vec3{0});
+		glm::quat rotation{1, 0, 0, 0};
 	};
 }

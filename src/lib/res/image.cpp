@@ -7,7 +7,7 @@
 
 namespace res
 {
-    image load_image(const filesystem::path& path, image_type type, image_components components)
+    image load_image(const filesystem::path& path, const image_type type, image_components components)
     {
         image img;
         img.data = type == image_type::signed_float ?
