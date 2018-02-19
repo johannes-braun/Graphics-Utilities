@@ -1,9 +1,10 @@
 #pragma once
 
+#include "definition.hpp"
+
 #include <experimental/filesystem>
 #include <map>
 #include <set>
-#include "definition.hpp"
 
 namespace glshader::preprocessor
 {

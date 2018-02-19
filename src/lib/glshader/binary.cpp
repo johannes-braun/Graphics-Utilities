@@ -1,13 +1,14 @@
 #include "binary.hpp"
+#include "preprocessor.hpp"
+#include "config.hpp"
+
 #include <iterator>
 #include <sstream>
 #include <tuple>
 #include <fstream>
 #include <glad/glad.h>
-#include "preprocessor.hpp"
-#include "jpu/impl/log/log.hpp"
+#include <jpu/log>
 #include <snappy.h>
-#include "config.hpp"
 
 namespace glshader
 {
@@ -56,7 +57,7 @@ namespace glshader
         std::string includes;
         for (auto&& inc : include_directories)
         {
-            includes += " -I" + fs::absolute(inc).string();
+            includes += " -I" + absolute(inc).string();
         }
         std::string defines;
         for (auto&& def : definitions)
@@ -78,7 +79,7 @@ namespace glshader
             }
             defines += "\' ";
         }
-        system(cmd(glslc_location, std::string(" -std=450core -o ") + glslc_temp_file_name + " -mfmt=bin" + includes + defines + " " + fs::absolute(file_path).string() + "").c_str());
+        system(cmd(glslc_location, std::string(" -std=450core -o ") + glslc_temp_file_name + " -mfmt=bin" + includes + defines + " " + absolute(file_path).string() + "").c_str());
         std::ifstream tmp(glslc_temp_file_name, std::ios::in | std::ios::binary);
         tmp.ignore(std::numeric_limits<std::streamsize>::max());
         const std::streamsize length = tmp.gcount();
@@ -101,7 +102,7 @@ namespace glshader
         auto src = opengl_prefix + proc.contents + opengl_postfix;
         auto src_ptr = src.data();
 
-        const auto shader_type = [&, extension = file_path.extension()] {
+        const auto shader_type = [&, extension = file_path.extension()]{
             if (extension == ".vert")
                 return GL_VERTEX_SHADER;
             if (extension == ".frag")
@@ -117,7 +118,7 @@ namespace glshader
             return 0;
         }();
 
-        auto id = glCreateShaderProgramv(shader_type, 1, &src_ptr);
+        const auto id = glCreateShaderProgramv(shader_type, 1, &src_ptr);
         if (int success = 0; glGetProgramiv(id, GL_LINK_STATUS, &success), !success)
         {
             int log_length;
@@ -145,15 +146,15 @@ namespace glshader
 
 
 
-    binary_shader load_binary_shader(shader_format type,
+    binary_shader load_binary_shader(const shader_format type,
         const std::experimental::filesystem::path& src,
         const std::vector<std::experimental::filesystem::path>& include_directories,
         const std::vector<definition>& definitions,
-        bool force)
+        const bool force)
     {
-        fs::path dst = fs::absolute(src);
+        fs::path dst = absolute(src);
         const auto hash = std::hash<std::string>()(dst.string());
-        if(!fs::exists(shader_cache_dir))
+        if (!fs::exists(shader_cache_dir))
         {
             fs::create_directories(shader_cache_dir);
         }
@@ -162,7 +163,7 @@ namespace glshader
         std::vector<uint8_t> bin;
 
         bool reload = false;
-        if (!force && fs::exists(dst))
+        if (!force && exists(dst))
         {
             shader_file_header header;
             std::ifstream input(dst, std::ios::binary);
@@ -211,7 +212,7 @@ namespace glshader
                     &com_size
                 );
                 bin.resize(com_size);
-                snappy::RawUncompress(compressed.data(), compressed.size(), reinterpret_cast< char*>(bin.data()));
+                snappy::RawUncompress(compressed.data(), compressed.size(), reinterpret_cast<char*>(bin.data()));
                 format = header.binary_format;
             }
         }
@@ -250,7 +251,7 @@ namespace glshader
             std::stringstream buf;
             for (auto dep : dependencies)
             {
-                std::time_t t = std::chrono::system_clock::to_time_t(fs::last_write_time(dep));
+                std::time_t t = std::chrono::system_clock::to_time_t(last_write_time(dep));
                 auto str = dep.string();
                 uint32_t len = static_cast<uint32_t>(str.length());
                 buf.write(reinterpret_cast<const char*>(&t), sizeof(t));

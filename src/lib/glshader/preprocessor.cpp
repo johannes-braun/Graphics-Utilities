@@ -1,11 +1,12 @@
 #include "preprocessor.hpp"
+#include "config.hpp"
+
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <stack>
 #include <cstring>
-#include "config.hpp"
 
 namespace glshader::preprocessor
 {
@@ -14,7 +15,7 @@ namespace glshader::preprocessor
 
     namespace glsl_impl
     {
-        void syntax_error(const fs::path& file, const int line, const std::string& reason);
+        void syntax_error(const fs::path& file, int line, const std::string& reason);
 
         bool is_new_line(const char* in);
         bool is_comment_begin(const char* in);
@@ -129,7 +130,7 @@ namespace glshader::preprocessor
         return in;
     }
 
-    const char* glsl_impl::skip_to_next_space_or(const char* in, char alt)
+    const char* glsl_impl::skip_to_next_space_or(const char* in, const char alt)
     {
         while (!is_space(in) && !is_new_line(in) && *in != '\0' && *in != alt)
             ++in;
@@ -385,7 +386,7 @@ namespace glshader::preprocessor
         return ptr;
     }
 
-    int glsl_impl::evaluate(const char* ptr, int length, const fs::path& current_file, int current_line)
+    int glsl_impl::evaluate(const char* ptr, const int length, const fs::path& current_file, const int current_line)
     {
         const auto start = ptr;
         const auto token_skipped = skip_eval_token(prefixes.count(*ptr) ? ptr + 1 : ptr, length, current_file,
@@ -611,7 +612,7 @@ namespace glshader::preprocessor
                     {
                         result << "#pragma ";
                     }
-                    // TODO: It is possible to add custom pragmas
+                    // It is possible to add custom pragmas
                 }
                 else if (is_token_same(directive_name, "define"))
                 {
@@ -637,7 +638,7 @@ namespace glshader::preprocessor
                             ++value_end;
                         }
 
-                        processed.definitions[{name_begin, text_ptr}] = { val.str() };
+                        processed.definitions[{name_begin, text_ptr}] = definition_info{ val.str() };
 
                         text_ptr = value_end;
                     }
@@ -948,6 +949,7 @@ namespace glshader::preprocessor
     processed_file preprocess_file(const fs::path& file_path, const std::vector<fs::path>& include_directories,
         const std::vector<definition>& definitions)
     {
+#if defined(glGetIntegerv) && defined(GL_NUM_EXTENSIONS) && defined(glGetStringi) && defined(GL_EXTENSIONS)
         [[maybe_unused]] const static auto ext = [] {
             int n;
             glGetIntegerv(GL_NUM_EXTENSIONS, &n);
@@ -955,6 +957,7 @@ namespace glshader::preprocessor
                 extensions.emplace(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
             return 0;
         }();
+#endif
 
         processed_file processed;
         processed.version = -1;

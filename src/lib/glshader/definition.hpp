@@ -8,7 +8,7 @@ namespace glshader
     struct definition_info
     {
         definition_info() = default;
-        definition_info(std::string value);
+        explicit definition_info(std::string value);
         definition_info(std::vector<std::string> parameters, std::string replacement);
 
         std::string replacement;

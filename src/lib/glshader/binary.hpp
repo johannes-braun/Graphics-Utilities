@@ -1,8 +1,9 @@
 #pragma once
-#include <string>
+
+#include "definition.hpp"
+
 #include <vector>
 #include <filesystem>
-#include "definition.hpp"
 
 namespace glshader
 {
