@@ -5,8 +5,7 @@
 #include "uniform.hpp"
 #include <any>
 #include <map>
-#include <optional>
-#include "glshader/binary.hpp"
+#include <glshader/binary.hpp>
 
 namespace gl
 {
@@ -30,7 +29,7 @@ namespace gl
     }
     
 
-    inline void setup_shader_paths(std::experimental::filesystem::path root, const std::vector<std::experimental::filesystem::path>& include_directories = {})
+    inline void setup_shader_paths(const std::experimental::filesystem::path root, const std::vector<std::experimental::filesystem::path>& include_directories = {})
     {
         shader_root_path = root;
         shader_include_directories.clear();
@@ -62,7 +61,7 @@ namespace gl
                 _uniforms.insert(p);
             }
                
-            return std::get<gl::uniform<T>>(_uniforms.at(name));
+            return std::get<uniform<T>>(_uniforms.at(name));
         }
 
     private:

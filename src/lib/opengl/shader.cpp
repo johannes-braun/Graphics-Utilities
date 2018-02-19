@@ -4,7 +4,7 @@
 
 namespace gl
 {
-    shader::shader(shader_type type, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions)
+    shader::shader(const shader_type type, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions)
         : _type(type), _path(path), _definitions(definitions)
     {
         reload(true);
@@ -20,13 +20,19 @@ namespace gl
     {
         log_i << "Load shader from " << _path;
 
-        if (glIsProgram(_id))
-            glDeleteProgram(_id);
-        _id = glCreateProgram();
-        glProgramParameteri(_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
-
-        auto bin = glshader::load_binary_shader(glshader::shader_format::gl_binary, _path, shader_include_directories, _definitions);
-        glProgramBinary(_id, bin.format, bin.data.data(), static_cast<int>(bin.data.size()));
+        try
+        {
+            auto bin = load_binary_shader(glshader::shader_format::gl_binary, _path, shader_include_directories, _definitions);
+            if (glIsProgram(_id))
+                glDeleteProgram(_id);
+            _id = glCreateProgram();
+            glProgramParameteri(_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+            glProgramBinary(_id, bin.format, bin.data.data(), static_cast<int>(bin.data.size()));
+        }
+        catch (const std::runtime_error& exception)
+        {
+            tlog_e("GL Shader") << "Shader compilation failed.";
+        }
 
         _uniforms.clear();
     }
