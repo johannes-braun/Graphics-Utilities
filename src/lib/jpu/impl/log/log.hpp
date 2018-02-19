@@ -63,15 +63,15 @@ namespace jpu::logging
 
 	// Wraps 3 chars into a uint32_t tag to be saved in log_data.
 	// This class is actually just for the convenience of the operator[] for log_text.
-	class Tag {
+	class tag {
 	public:
-		constexpr Tag(const char* tag) : m_tag(0 | (tag[0] << 0) | (tag[1] << 8) | (tag[2] << 16)) {}
-		constexpr Tag(const uint32_t tag) : m_tag(tag){}
-		constexpr char operator[](const int i) const { return (m_tag >> (i * 8)) & 0xff; }
-		constexpr operator uint32_t() const { return m_tag; }
+		constexpr tag(const char* tag) : _tag(0 | (tag[0] << 0) | (tag[1] << 8) | (tag[2] << 16)) {}
+		constexpr tag(const uint32_t tag) : _tag(tag){}
+		constexpr char operator[](const int i) const { return (_tag >> (i * 8)) & 0xff; }
+		constexpr operator uint32_t() const { return _tag; }
 
 	private:
-		uint32_t m_tag;
+		uint32_t _tag;
 	};
 
 	template<uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Bright>
@@ -84,16 +84,16 @@ namespace jpu::logging
 	template<uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Bright, uint32_t Tg> struct log_data
 	{
 		constexpr static auto coloring = logColor<Red, Green, Blue, Bright>();
-		constexpr static Tag short_form = Tg;
+		constexpr static tag short_form = Tg;
 	};
 
 	template<severity S> struct log_info;
-	template<> struct log_info<severity::verbose>	: log_data<1, 1, 1, 1, Tag("VRB")> {};
-	template<> struct log_info<severity::debug>	: log_data<0, 0, 1, 1, Tag("DBG")> {};
-	template<> struct log_info<severity::info>		: log_data<0, 1, 0, 0, Tag("INF")> {};
-	template<> struct log_info<severity::hint>		: log_data<1, 0, 1, 1, Tag("HNT")> {};
-	template<> struct log_info<severity::warning>	: log_data<1, 1, 0, 0, Tag("WRN")> {};
-	template<> struct log_info<severity::error>	: log_data<1, 0, 0, 1, Tag("ERR")> {};
+	template<> struct log_info<severity::verbose>	: log_data<1, 1, 1, 1, tag("VRB")> {};
+	template<> struct log_info<severity::debug>	: log_data<0, 0, 1, 1, tag("DBG")> {};
+	template<> struct log_info<severity::info>		: log_data<0, 1, 0, 0, tag("INF")> {};
+	template<> struct log_info<severity::hint>		: log_data<1, 0, 1, 1, tag("HNT")> {};
+	template<> struct log_info<severity::warning>	: log_data<1, 1, 0, 0, tag("WRN")> {};
+	template<> struct log_info<severity::error>	: log_data<1, 0, 0, 1, tag("ERR")> {};
 
 	// Creates a colored log prefix text for a given Severity using the according log_data struct.
 	template<severity S> constexpr std::array<char, 23> log_text{
@@ -123,7 +123,7 @@ namespace jpu::logging
 
 		template<typename T> log_channel& operator<<(T&& t)
 		{
-			m_stream << t;
+			_stream << t;
 			return *this;
 		}
 
@@ -131,11 +131,11 @@ namespace jpu::logging
 		{
 			static std::mutex stdout_mutex;
 			std::unique_lock<std::mutex> lock(stdout_mutex);
-			std::cout << m_stream.str();
+			std::cout << _stream.str();
 		}
 
 	private:
-		std::stringstream m_stream;
+		std::stringstream _stream;
 	};
 
 	// Start a log channel with a colored prefix and file/line info.
@@ -151,7 +151,7 @@ namespace jpu::logging
         {
             auto fname = std::experimental::filesystem::path(file).filename();
             auto stem = fname.stem().string();
-            std::string end(stem.end() - 3, stem.end());
+            const std::string end(stem.end() - 3, stem.end());
             if (stem.size() > 15)
             {
                 stem.resize(15);

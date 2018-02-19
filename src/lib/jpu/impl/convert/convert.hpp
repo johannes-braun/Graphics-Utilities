@@ -6,7 +6,7 @@
 
 namespace jpu
 {
-    std::wstring string_to_wstring(const std::string &input)
+    inline std::wstring string_to_wstring(const std::string &input)
 	{
 		//make text unsigned (const char* to const unsigned char*) as it's needed for conversion.
 		const unsigned char* ch_text = reinterpret_cast<const unsigned char*>(input.data());
@@ -14,7 +14,7 @@ namespace jpu
 	}
 
     template<typename T>
-	std::vector<T> string_to_vector(const std::string &input, char separator = ' ')
+	std::vector<T> string_to_vector(const std::string &input, const char separator = ' ')
 	{
 		std::vector<T> output;
 		std::stringstream stream(input);
@@ -32,7 +32,7 @@ namespace jpu
 	}
 
 	template<typename T, size_t Size>
-	std::array<T, Size> string_to_array(const std::string &input, char separator = ' ')
+	std::array<T, Size> string_to_array(const std::string &input, const char separator = ' ')
 	{
 		std::array<T, Size> output;
 		std::stringstream stream(input);

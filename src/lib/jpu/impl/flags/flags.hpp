@@ -48,7 +48,7 @@ namespace jpu
         explicit operator TBase() const;
 
     private:
-        TBase m_flags = 0;
+        TBase _flags = 0;
     };
 }
 

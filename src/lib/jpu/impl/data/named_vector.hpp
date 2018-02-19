@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <algorithm>
 
 namespace jpu
 {
@@ -15,7 +14,7 @@ namespace jpu
         TPayload& operator[](const TIdentifier& id);
         const TPayload& operator[](const TIdentifier& id) const;
 
-        void reserve(const size_t count);
+        void reserve(size_t count);
         size_t size() const;
         TPayload* data();
         const TPayload* data() const;
@@ -23,10 +22,10 @@ namespace jpu
         TPayload& get_by_id(const TIdentifier& id);
         const TPayload& get_by_id(const TIdentifier& id) const;
 
-        const TPayload& get_by_index(const int64_t index) const;
-        TPayload& get_by_index(const int64_t index);
+        const TPayload& get_by_index(int64_t index) const;
+        TPayload& get_by_index(int64_t index);
 
-        const TIdentifier& id_by_index(const int64_t index) const;
+        const TIdentifier& id_by_index(int64_t index) const;
 
         int64_t index_of(const TIdentifier& id) const;
 

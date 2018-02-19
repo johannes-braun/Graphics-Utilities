@@ -1,8 +1,6 @@
 #pragma once
 
 #include "xyzw.hpp"
-#include <limits>
-#include <algorithm>
 
 #ifndef JPU_BVH_INL
 #define JPU_BVH_INL

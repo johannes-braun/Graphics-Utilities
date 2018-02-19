@@ -16,7 +16,6 @@
 inline int omp_get_thread_num() { return 0; }
 #endif
 #include <atomic>
-#include <thread>
 #include <algorithm>
 #include "attr.hpp"
 
@@ -53,8 +52,8 @@ namespace jpu
                 float k = 0;
                 int axis = 0;
                 int plane = 0;
-                impl::bounds left_bounds;
-                impl::bounds right_bounds;
+                bounds left_bounds;
+                bounds right_bounds;
             };
 
             constexpr static int bin_count = Bins;
@@ -67,38 +66,38 @@ namespace jpu
         private:
             struct construction
             {
-                explicit construction(bvh_type& bvh, const size_t size);
+                explicit construction(bvh_type& bvh, size_t size);
 
                 struct element
                 {
                     element() = delete;
                     bvh_type& bvh;
                     int32_t current_node;
-                    impl::bounds current_centroid_bounds;
+                    bounds current_centroid_bounds;
                     typename bvh_type::range current_range;
-                    std::vector<impl::xyzw>& centroids;
-                    std::vector<impl::bounds>& centroid_bounds;
+                    std::vector<xyzw>& centroids;
+                    std::vector<bounds>& centroid_bounds;
                     std::vector<typename bvh_type::range>& ranges;
-                    std::vector<impl::bounds>& safe_centroid_bounds;
+                    std::vector<bounds>& safe_centroid_bounds;
                     std::vector<typename bvh_type::range>& safe_ranges;
                 };
 
-                element operator[](const int32_t gid);
+                element operator[](int32_t gid);
 
                 bvh_type& bvh;
 
-                std::vector<impl::bounds> centroid_bounds;
+                std::vector<bounds> centroid_bounds;
                 std::vector<typename bvh_type::range> ranges;
-                std::vector<impl::bounds> safe_centroid_bounds;
+                std::vector<bounds> safe_centroid_bounds;
                 std::vector<typename bvh_type::range> safe_ranges;
-                std::vector<impl::xyzw> centroids;
+                std::vector<xyzw> centroids;
             };
 
             template<typename Index>
             static const float* position_index(uint32_t object_id, uint32_t object_internal_offset, position_attribute p_attr, index_attribute<Index> i_attr, const void* pos_data, void* idx_data);
 
             template<typename Index>
-            static impl::xyzw position_xyzw(uint32_t object_id, uint32_t object_internal_offset, position_attribute p_attr, index_attribute<Index> i_attr, const void* pos_data, void* idx_data);
+            static xyzw position_xyzw(uint32_t object_id, uint32_t object_internal_offset, position_attribute p_attr, index_attribute<Index> i_attr, const void* pos_data, void* idx_data);
 
             template<typename Index>
             static int32_t sah_split(const position_attribute& p_attr, const index_attribute<Index>& i_attr, const void* pos_data, void* idx_data, const typename construction::element& element, std::atomic_int32_t& ranges_offset);
@@ -106,7 +105,7 @@ namespace jpu
             static bvh_best_sah sah_get_best(const typename construction::element& element);
 
             template<typename Index>
-            static std::tuple<typename bvh_type::range, typename bvh_type::range> sah_sort_best(const position_attribute& p_attr, const index_attribute<Index>& i_attr, const void* pos_data, void* idx_data, const typename construction::element& element, bvh_best_sah& best);
+            static std::tuple<typename bvh_type::range, typename bvh_type::range> sah_sort_best(const index_attribute<Index>& i_attr, void* idx_data, const typename construction::element& element, bvh_best_sah& best);
         };
     }
 

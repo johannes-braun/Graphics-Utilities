@@ -24,12 +24,12 @@ namespace jpu::impl
         i_attr.offset = 0;
 
         const int32_t concurrency = std::thread::hardware_concurrency();
-        std::vector<impl::bounds> bounds(concurrency);
+        std::vector<bounds> bounds(concurrency);
 
 #pragma omp parallel for schedule(static)
         for (auto obj = 0; obj < static_cast<int32_t>(i_attr.count); ++obj)
         {
-            impl::xyzw centroid(0);
+            xyzw centroid(0);
             for (uint32_t part = 0; part < i_attr.per_object; ++part)
             {
                 centroid = centroid + position_xyzw(obj, part, p_attr, i_attr, pos_data, idx_data);
@@ -91,8 +91,8 @@ namespace jpu::impl
 
     template <int Dim, int Bins>
     template <typename Index>
-    const float* bvh_creator<Dim, Bins>::position_index(uint32_t object_id, uint32_t object_internal_offset,
-        position_attribute p_attr, index_attribute<Index> i_attr,
+    const float* bvh_creator<Dim, Bins>::position_index(const uint32_t object_id, const uint32_t object_internal_offset,
+                                                        const position_attribute p_attr, index_attribute<Index> i_attr,
         const void* pos_data, void* idx_data)
     {
         return reinterpret_cast<const float*>(static_cast<const uint8_t*>(pos_data) + static_cast<Index*>(idx_data)[object_id*i_attr.per_object +
@@ -101,11 +101,11 @@ namespace jpu::impl
 
     template <int Dim, int Bins>
     template <typename Index>
-    impl::xyzw bvh_creator<Dim, Bins>::position_xyzw(uint32_t object_id, uint32_t object_internal_offset,
+    xyzw bvh_creator<Dim, Bins>::position_xyzw(uint32_t object_id, uint32_t object_internal_offset,
         position_attribute p_attr, index_attribute<Index> i_attr,
         const void* pos_data, void* idx_data)
     {
-        impl::xyzw vec = *reinterpret_cast<const impl::xyzw*>(position_index(object_id, object_internal_offset, p_attr, i_attr, pos_data, idx_data));
+        xyzw vec = *reinterpret_cast<const xyzw*>(position_index(object_id, object_internal_offset, p_attr, i_attr, pos_data, idx_data));
         return vec;
     }
 
@@ -125,7 +125,7 @@ namespace jpu::impl
             const int32_t range_index = ranges_offset.fetch_add(1);
 
             bvh_best_sah best = sah_get_best(element);
-            auto[left_range, right_range] = sah_sort_best(p_attr, i_attr, pos_data, idx_data, element, best);
+            auto[left_range, right_range] = sah_sort_best(i_attr, idx_data, element, best);
 
             left_range.parent = element.current_node;
             right_range.parent = element.current_node;
@@ -254,8 +254,8 @@ namespace jpu::impl
     template <int Dim, int Bins>
     template<typename Index>
     std::tuple<typename bvh<Dim, Bins>::range, typename bvh<Dim, Bins>::range> bvh_creator<Dim, Bins>::sah_sort_best(
-        const position_attribute& p_attr, const index_attribute<Index>& i_attr,
-        const void* pos_data, void* idx_data,
+        const index_attribute<Index>& i_attr,
+        void* idx_data,
         const typename construction::element& element, bvh_best_sah& best)
     {
 

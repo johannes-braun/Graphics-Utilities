@@ -38,8 +38,8 @@ namespace jpu
         template<typename P> constexpr col(col<P, 1> other) 
             : r(color_component_cast<T>(other.r)) {}
 
-        T& operator[](size_t i) { return data[i]; }
-        const T& operator[] (size_t i) const { return data[i]; }
+        T& operator[](const size_t i) { return data[i]; }
+        const T& operator[] (const size_t i) const { return data[i]; }
     };
 
     template<typename T>
@@ -65,8 +65,8 @@ namespace jpu
         template<typename P> constexpr col(col<P, 2> other) 
             : r(color_component_cast<T>(other.r)), g(color_component_cast<T>(other.g)) {}
 
-        T& operator[](size_t i) { return data[i]; }
-        const T& operator[] (size_t i) const { return data[i]; }
+        T& operator[](const size_t i) { return data[i]; }
+        const T& operator[] (const size_t i) const { return data[i]; }
         
         explicit operator col<T, 1>() const { return col<T, 1>(r); }
     };
@@ -100,8 +100,8 @@ namespace jpu
         template<typename P> constexpr col(col<P, 3> other) 
             : r(color_component_cast<T>(other.r)), g(color_component_cast<T>(other.g)), b(color_component_cast<T>(other.b)) {}
 
-        T& operator[](size_t i) { return data[i]; }
-        const T& operator[] (size_t i) const { return data[i]; }
+        T& operator[](const size_t i) { return data[i]; }
+        const T& operator[] (const size_t i) const { return data[i]; }
 
         explicit operator col<T, 2>() const { return col<T, 2>(r, g); }
         explicit operator col<T, 1>() const { return col<T, 1>(r); }
@@ -145,8 +145,8 @@ namespace jpu
         template<typename P> constexpr col(col<P, 4> other) 
             : r(color_component_cast<T>(other.r)), g(color_component_cast<T>(other.g)), b(color_component_cast<T>(other.b)), a(color_component_cast<T>(other.a)) {}
 
-        T& operator[](size_t i) { return data[i]; }
-        const T& operator[] (size_t i) const { return data[i]; }
+        T& operator[](const size_t i) { return data[i]; }
+        const T& operator[] (const size_t i) const { return data[i]; }
 
         explicit operator col<T, 3>() const { return col<T, 3>(r, g, b); }
         explicit operator col<T, 2>() const { return col<T, 2>(r, g); }
@@ -297,7 +297,7 @@ namespace jpu
         // "1,0.5,0.3,1"
         // etc.
         template<typename T>
-        std::enable_if_t<std::is_same<float, typename T::value_type>::value, T> from_array_string(const std::string &in, char separator = ' ')
+        std::enable_if_t<std::is_same<float, typename T::value_type>::value, T> from_array_string(const std::string &in, const char separator = ' ')
         {
             T result;
             std::istringstream ss(in);
@@ -305,7 +305,7 @@ namespace jpu
             unsigned index = 0;
             while (std::getline(ss, token, separator))
             {
-                if (index > static_cast<unsigned>(component_count_v<TIn> -1))
+                if (index > static_cast<unsigned>(component_count_v<T> -1))
                 {
                     break;
                 }
@@ -327,7 +327,7 @@ namespace jpu
         // "255,113,24,12"
         // etc.
         template<typename T>
-        std::enable_if_t<std::is_same<uint8_t, typename T::value_type>::value, T> from_array_string(const std::string &in, char separator = ' ')
+        std::enable_if_t<std::is_same<uint8_t, typename T::value_type>::value, T> from_array_string(const std::string &in, const char separator = ' ')
         {
             T result;
             std::istringstream ss(in);
@@ -335,7 +335,7 @@ namespace jpu
             unsigned index = 0;
             while (std::getline(ss, token, separator))
             {
-                if (index > unsigned(component_count_v<TIn> -1))
+                if (index > unsigned(component_count_v<T> -1))
                 {
                     break;
                 }
@@ -343,7 +343,7 @@ namespace jpu
                 result[index++] = static_cast<uint8_t>(std::clamp(atoi(token.c_str()), 0, 255));
             }
 
-            if (index < 3 && component_count_v<TIn> == 4)
+            if (index < 3 && component_count_v<T> == 4)
             {
                 result[3] = 255;
             }

@@ -2,27 +2,27 @@
 
 namespace jpu::impl
 {
-    JPU_BVH_INL xyzw::xyzw(float f) : x(f), y(f), z(f), w(f)
+    JPU_BVH_INL xyzw::xyzw(const float f) : x(f), y(f), z(f), w(f)
     {}
 
     JPU_BVH_INL xyzw::xyzw() : xyzw(0)
     {}
 
-    JPU_BVH_INL xyzw::xyzw(float x, float y) : x(x), y(y), z(0), w(0)
+    JPU_BVH_INL xyzw::xyzw(const float x, const float y) : x(x), y(y), z(0), w(0)
     {}
 
-    JPU_BVH_INL xyzw::xyzw(float x, float y, float z) : x(x), y(y), z(z), w(0)
+    JPU_BVH_INL xyzw::xyzw(const float x, const float y, const float z) : x(x), y(y), z(z), w(0)
     {}
 
-    JPU_BVH_INL xyzw::xyzw(float x, float y, float z, float w) : x(x), y(y), z(z), w(w)
+    JPU_BVH_INL xyzw::xyzw(const float x, const float y, const float z, const float w) : x(x), y(y), z(z), w(w)
     {}
 
-    JPU_BVH_INL float& xyzw::operator[](size_t i)
+    JPU_BVH_INL float& xyzw::operator[](const size_t i)
     {
         return data[i];
     }
 
-    JPU_BVH_INL const float& xyzw::operator[](size_t i) const
+    JPU_BVH_INL const float& xyzw::operator[](const size_t i) const
     {
         return data[i];
     }

@@ -36,7 +36,7 @@ namespace jpu
     }
 
     template<typename T>
-    constexpr index_attribute<T> make_index_attrib(uint32_t count, uint32_t per_object)
+    constexpr index_attribute<T> make_index_attrib(const uint32_t count, const uint32_t per_object)
     {
         index_attribute<T> attr;
         attr.count = count;

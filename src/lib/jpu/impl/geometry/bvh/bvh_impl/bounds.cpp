@@ -1,4 +1,6 @@
 #include "bounds.hpp"
+#include <limits>
+#include <algorithm>
 
 namespace jpu::impl
 {
@@ -6,7 +8,7 @@ namespace jpu::impl
     {
     }
 
-    JPU_BVH_INL bounds::bounds(xyzw min, xyzw max): min(min), max(max)
+    JPU_BVH_INL bounds::bounds(const xyzw min, const xyzw max): min(min), max(max)
     {
     }
 
@@ -32,12 +34,12 @@ namespace jpu::impl
         return *this;
     }
 
-    JPU_BVH_INL xyzw& bounds::operator[](size_t i)
+    JPU_BVH_INL xyzw& bounds::operator[](const size_t i)
     {
         return data[i];
     }
 
-    JPU_BVH_INL const xyzw& bounds::operator[](size_t i) const
+    JPU_BVH_INL const xyzw& bounds::operator[](const size_t i) const
     {
         return data[i];
     }
@@ -68,7 +70,7 @@ namespace jpu::impl
         return (s.x <= eps) || (s.y <= eps) || (s.z <= eps);
     }
 
-    JPU_BVH_INL void bounds::expand(xyzw other)
+    JPU_BVH_INL void bounds::expand(const xyzw other)
     {
         min = xyzw(std::min(min.x, other.x), std::min(min.y, other.y),
                    std::min(min.z, other.z), std::min(min.w, other.w));
