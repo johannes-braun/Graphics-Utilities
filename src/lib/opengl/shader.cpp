@@ -46,7 +46,7 @@ namespace gl
 
     void shader::reload(bool force)
     {
-        tlog_e("GL Shader") << "Load shader from " << _path;
+        tlog_i("GL Shader") << "Load shader from " << _path;
 
         try
         {
