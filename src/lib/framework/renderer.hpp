@@ -1,12 +1,12 @@
 #pragma once
 
 #include <array>
-#include "opengl/texture.hpp"
-#include "opengl/framebuffer.hpp"
-#include "opengl/pipeline.hpp"
-#include "jpu/data"
-#include "opengl/vertex_array.hpp"
-#include "opengl/buffer.hpp"
+#include <opengl/texture.hpp>
+#include <opengl/framebuffer.hpp>
+#include <opengl/pipeline.hpp>
+#include <opengl/vertex_array.hpp>
+#include <opengl/buffer.hpp>
+#include <glm/glm.hpp>
 
 namespace gfx
 {
@@ -21,10 +21,7 @@ namespace gfx
 
         void bind() const;
         void draw(double delta_time);
-        gl::texture* random_texture() const
-        {
-            return _random_texture;
-        }
+        gl::texture* random_texture() const;
 
     private:
 

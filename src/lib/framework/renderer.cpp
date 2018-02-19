@@ -1,12 +1,12 @@
 #include "renderer.hpp"
 #include <random>
 #include <numeric>
-#include "GLFW/glfw3.h"
-#include "jpu/log"
+#include <GLFW/glfw3.h>
+#include <jpu/log>
 
 namespace gfx
 {
-    renderer::renderer(int width, int height, uint32_t samples)
+    renderer::renderer(const int width, const int height, const uint32_t samples)
     {
         _main_framebuffer = jpu::make_ref<gl::framebuffer>();
         _pp_fullsize_framebuffer = jpu::make_ref<gl::framebuffer>();
@@ -57,7 +57,7 @@ namespace gfx
     renderer::~renderer()
     {}
 
-    void renderer::resize(int width, int height, uint32_t samples)
+    void renderer::resize(int width, int height, const uint32_t samples)
     {
         tlog_i("Renderer") << "Resizing to (" << width << " x " << height << " x " << (1 << samples) << ")";
         if (width * height * samples == 0)
@@ -132,7 +132,7 @@ namespace gfx
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    void renderer::draw(double delta_time)
+    void renderer::draw(const double delta_time)
     {
         _main_framebuffer->unbind();
 
@@ -231,5 +231,10 @@ namespace gfx
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y },
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y },
             GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    }
+
+    gl::texture* renderer::random_texture() const
+    {
+        return _random_texture;
     }
 }
