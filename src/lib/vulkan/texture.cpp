@@ -1,11 +1,23 @@
 #include "texture.hpp"
-#include <any>
-#include "command.hpp"
 #include "device.hpp"
-#include "stb_image.h"
+#include <any>
 
 namespace vkn
 {
+    namespace command
+    {
+        void transform_image_layout(const vk::CommandBuffer buffer,
+            const vk::Image image, vk::ImageSubresourceRange range,
+            const vk::AccessFlags source_access, const vk::AccessFlags destination_access,
+            const vk::ImageLayout source_layout, const vk::ImageLayout destination_layout,
+            const vk::PipelineStageFlags source_stage, const vk::PipelineStageFlags destination_stage)
+        {
+            buffer.pipelineBarrier(source_stage, destination_stage, {}, {}, {}, vk::ImageMemoryBarrier(
+                source_access, destination_access, source_layout, destination_layout, VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, image, range
+            ));
+        }
+    }
+
     texture::texture(device* device)
         : _device(device)
     {
@@ -19,7 +31,7 @@ namespace vkn
         _device->dec_ref();
     }
 
-    void texture::assign_2d(uint32_t width, uint32_t height, vk::Format format, size_t data_size, void* data, vk::QueueFlagBits transfer_queue_type)
+    void texture::assign_2d(const uint32_t width, const uint32_t height, const vk::Format format, const size_t data_size, void* data, const vk::QueueFlagBits transfer_queue_type)
     {
         auto&& transfer_queue = _device->queue(transfer_queue_type).queue;
         auto&& transfer_pool = _device->command_pool(transfer_queue_type);
@@ -174,7 +186,7 @@ namespace vkn
         return _image;
     }
 
-    texture_view::texture_view(texture* texture, vk::ImageSubresourceRange resource_range)
+    texture_view::texture_view(texture* texture, const vk::ImageSubresourceRange resource_range)
         : _texture(texture), _resource_range(resource_range), _image_view(_texture->create_image_view(_resource_range))
     {
         _texture->inc_ref();

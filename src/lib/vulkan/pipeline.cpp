@@ -16,7 +16,7 @@ namespace vkn
         _device->dec_ref();
     }
 
-    void pipeline_layout::add_push_constant_range(vk::PushConstantRange range)
+    void pipeline_layout::add_push_constant_range(const vk::PushConstantRange range)
     {
         _push_constant_range.push_back(range);
     }
@@ -50,7 +50,7 @@ namespace vkn
     }
 
     graphics_pipeline::
-        graphics_pipeline(device* device, pipeline_layout* layout, vk::RenderPass pass, uint32_t subpass) : layout(layout),
+        graphics_pipeline(device* device, pipeline_layout* layout, const vk::RenderPass pass, const uint32_t subpass) : layout(layout),
         renderpass(pass),
         subpass(subpass),
         _device(device)
@@ -149,7 +149,7 @@ namespace vkn
         _pipeline = _device->createGraphicsPipeline(nullptr, graphics_pipeline_info);
     }
 
-    void graphics_pipeline::reload_stages(bool force)
+    void graphics_pipeline::reload_stages(const bool force)
     {
         _device->waitIdle();
         if (_pipeline) _device->destroyPipeline(_pipeline);

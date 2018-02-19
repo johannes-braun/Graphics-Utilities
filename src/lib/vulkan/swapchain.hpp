@@ -1,7 +1,7 @@
 #pragma once
+#include "texture.hpp"
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include "texture.hpp"
 #include <jpu/memory>
 
 namespace vkn

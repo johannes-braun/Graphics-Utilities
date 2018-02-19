@@ -2,8 +2,8 @@
 
 namespace vkn
 {
-    descriptor_set_layout::descriptor_set_layout(device* device, std::vector<vk::DescriptorSetLayoutBinding> bindings,
-        vk::DescriptorSetLayoutCreateFlags flags) : _device(device),
+    descriptor_set_layout::descriptor_set_layout(device* device, const std::vector<vk::DescriptorSetLayoutBinding> bindings,
+        const vk::DescriptorSetLayoutCreateFlags flags) : _device(device),
         _flags(flags),
         _bindings(bindings)
     {
@@ -24,7 +24,7 @@ namespace vkn
         return _layout;
     }
 
-    descriptor_pool::descriptor_pool(device* device, uint32_t max_count, std::vector<vk::DescriptorPoolSize> sizes)
+    descriptor_pool::descriptor_pool(device* device, const uint32_t max_count, const std::vector<vk::DescriptorPoolSize> sizes)
         : _device(device), _max_count(max_count), _sizes(sizes)
     {
         _device->inc_ref();

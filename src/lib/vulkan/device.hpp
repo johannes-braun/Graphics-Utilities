@@ -1,9 +1,9 @@
 #pragma once
+#include "memory.hpp"
 #include <vulkan/vulkan.hpp>
+#include <jpu/memory>
 #include <map>
 #include <functional>
-#include "memory.hpp"
-#include <jpu/memory>
 
 namespace vkn
 {
@@ -65,9 +65,9 @@ namespace vkn
         const std::vector<vk::DeviceQueueCreateInfo>& create_infos() const;
 
     private:
-        std::map<uint32_t, std::tuple<uint32_t, std::vector<float>>> m_family_filter;
-        std::vector<uint32_t> m_families;
-        std::vector<uint32_t> m_unique_families;
-        std::vector<vk::DeviceQueueCreateInfo> m_queue_infos;
+        std::map<uint32_t, std::tuple<uint32_t, std::vector<float>>> _family_filter;
+        std::vector<uint32_t> _families;
+        std::vector<uint32_t> _unique_families;
+        std::vector<vk::DeviceQueueCreateInfo> _queue_infos;
     };
 }

@@ -2,7 +2,7 @@
 
 namespace vkn
 {
-    buffer::buffer(device* device, size_t size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memory_flags)
+    buffer::buffer(device* device, const size_t size, const vk::BufferUsageFlags usage, const vk::MemoryPropertyFlags memory_flags)
         : _device(device), _usage(usage), _buffer(_device->createBuffer(vk::BufferCreateInfo({}, size, _usage))),
         _memory_flags(memory_flags), _requirements(_device->getBufferMemoryRequirements(_buffer)),
         _memory_block(_device->memory()->allocate(_requirements.size, _requirements.memoryTypeBits, _memory_flags))
@@ -19,7 +19,7 @@ namespace vkn
     }
 
     // other, size, src_offset, dst_offset
-    void buffer::copy_to(buffer* other, size_t size, size_t src_offset, size_t dst_offset, vk::CommandBuffer cbuf)
+    void buffer::copy_to(buffer* other, size_t size, const size_t src_offset, const size_t dst_offset, vk::CommandBuffer cbuf) const
     {
         auto&& queue = _device->queue(vk::QueueFlagBits::eTransfer).queue;
         auto&& command_pool = _device->command_pool(vk::QueueFlagBits::eTransfer);
@@ -27,7 +27,7 @@ namespace vkn
         if (size == ~0)
             size = other->size();
 
-        bool passed_cbuf = cbuf;
+        const bool passed_cbuf = static_cast<bool>(cbuf);
         if (!passed_cbuf)
         {
             cbuf = _device->allocateCommandBuffers(vk::CommandBufferAllocateInfo(command_pool, vk::CommandBufferLevel::ePrimary, 1))[0];

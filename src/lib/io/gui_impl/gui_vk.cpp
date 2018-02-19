@@ -3,7 +3,6 @@
 #include <vulkan/device.hpp>
 #include <vulkan/swapchain.hpp>
 #include <vulkan/shader.hpp>
-#include <vulkan/command.hpp>
 #include <glm/vec2.hpp>
 
 namespace io::impl
@@ -124,14 +123,20 @@ namespace io::impl
             memcpy(staging_memory->data, pixels, image_size);
             _device->flushMappedMemoryRanges({ range });
             //_device->unmapMemory(range.memory);
-
             // Upload from staging buffer to image
             {
-                vkn::command::transform_image_layout(command_buffer, _font_image, image_view_info.subresourceRange, vk::AccessFlags(), vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer);
+                command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, vk::ImageMemoryBarrier(
+                    {}, vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 
+                    VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, _font_image, image_view_info.subresourceRange
+                ));
+
                 command_buffer.copyBufferToImage(staging_buffer, _font_image, vk::ImageLayout::eTransferDstOptimal,
                     { vk::BufferImageCopy(0, 0, 0, vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),{}, vk::Extent3D(width, height, 1)) });
 
-                vkn::command::transform_image_layout(command_buffer, _font_image, image_view_info.subresourceRange, vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader);
+                command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, vk::ImageMemoryBarrier(
+                    vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+                    VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, _font_image, image_view_info.subresourceRange
+                ));
             }
         });
         return reinterpret_cast<void*>(static_cast<VkImageView>(_font_image_view));

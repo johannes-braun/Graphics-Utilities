@@ -7,6 +7,7 @@
 #include <jpu/data>
 #include <stack>
 #include "opengl/query.hpp"
+#include <numeric>
 
 constexpr int Logn = 18;
 std::vector<float> data1(1 << Logn);

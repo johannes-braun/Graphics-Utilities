@@ -1,10 +1,11 @@
 #pragma once
 
-#include <jpu/memory>
-#include <vulkan/vulkan.hpp>
 #include "device.hpp"
 #include "shader.hpp"
 #include "descriptor.hpp"
+
+#include <jpu/memory>
+#include <vulkan/vulkan.hpp>
 
 namespace vkn
 {

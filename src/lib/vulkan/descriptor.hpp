@@ -1,8 +1,8 @@
 #pragma once
 
+#include "device.hpp"
 #include <vulkan/vulkan.hpp>
 #include <jpu/memory>
-#include "device.hpp"
 
 namespace vkn
 {

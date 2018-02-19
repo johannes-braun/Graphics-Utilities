@@ -5,7 +5,7 @@
 
 namespace vkn
 {
-    device::device(vk::PhysicalDevice gpu, vk::SurfaceKHR surface, vk::QueueFlags enabled_queues,
+    device::device(const vk::PhysicalDevice gpu, const vk::SurfaceKHR surface, const vk::QueueFlags enabled_queues,
         uint32_t memory_block_size)
         : _gpu(gpu), _surface(surface)
     {
@@ -73,12 +73,12 @@ namespace vkn
         destroy();
     }
 
-    const queue_info& device::queue(vk::QueueFlagBits type) const
+    const queue_info& device::queue(const vk::QueueFlagBits type) const
     {
         return _queues.at(type);
     }
 
-    const vk::CommandPool& device::command_pool(vk::QueueFlagBits type) const
+    const vk::CommandPool& device::command_pool(const vk::QueueFlagBits type) const
     {
         return _command_pools.at(type);
     }
@@ -88,8 +88,8 @@ namespace vkn
         return _unique_families;
     }
 
-    void device::unique_command(vk::QueueFlagBits queue_type, std::function<void(vk::CommandBuffer)> runnable,
-        vk::Fence fence) const
+    void device::unique_command(const vk::QueueFlagBits queue_type, const std::function<void(vk::CommandBuffer)> runnable,
+        const vk::Fence fence) const
     {
         auto cmdbuf = allocateCommandBuffers(vk::CommandBufferAllocateInfo(command_pool(queue_type), vk::CommandBufferLevel::ePrimary, 1));
         cmdbuf[0].begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
@@ -113,7 +113,7 @@ namespace vkn
 
     queue_creator::queue_creator(vk::PhysicalDevice physical_device, vk::ArrayProxy<const queue_filter> filters)
     {
-        m_families.resize(filters.size(), -1);
+        _families.resize(filters.size(), -1);
 
         auto family_properties = physical_device.getQueueFamilyProperties();
         for (int32_t family = 0; family < family_properties.size(); ++family)
@@ -122,36 +122,36 @@ namespace vkn
             for (size_t idx = 0; idx < filters.size(); ++idx)
             {
                 auto&& filter = filters.data()[idx];
-                if (m_families[idx] == -1 && filter.filter(family, properties))
+                if (_families[idx] == -1 && filter.filter(family, properties))
                 {
-                    auto&& tuple = m_family_filter[m_families[idx] = family];
+                    auto&& tuple = _family_filter[_families[idx] = family];
                     ++std::get<0>(tuple);
                     std::get<1>(tuple).push_back(filter.priority);
                 }
             }
         }
 
-        for (const auto& family : m_family_filter)
+        for (const auto& family : _family_filter)
         {
-            m_queue_infos.push_back(vk::DeviceQueueCreateInfo({}, family.first, std::get<0>(family.second),
+            _queue_infos.push_back(vk::DeviceQueueCreateInfo({}, family.first, std::get<0>(family.second),
                 std::get<1>(family.second).data()));
-            m_unique_families.push_back(family.first);
+            _unique_families.push_back(family.first);
         }
     }
 
     const std::vector<uint32_t>& queue_creator::families() const
     {
-        return m_families;
+        return _families;
     }
 
     const std::vector<uint32_t>& queue_creator::unique_families() const
     {
-        return m_unique_families;
+        return _unique_families;
     }
 
     const std::vector<vk::DeviceQueueCreateInfo>& queue_creator::create_infos() const
     {
-        return m_queue_infos;
+        return _queue_infos;
     }
 
     queue_filter::queue_filter(const float priority, const vk::QueueFlags flags)

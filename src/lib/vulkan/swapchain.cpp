@@ -1,12 +1,13 @@
-#include <algorithm>
 #include "swapchain.hpp"
-#include "GLFW/glfw3.h"
 #include "device.hpp"
+
+#include <GLFW/glfw3.h>
+#include <algorithm>
 
 namespace vkn
 {
-    swapchain::swapchain(device* device, vk::SurfaceKHR surface, uint32_t image_count, bool clipped,
-        vk::CompositeAlphaFlagBitsKHR composite_alpha)
+    swapchain::swapchain(device* device, const vk::SurfaceKHR surface, const uint32_t image_count, const bool clipped,
+        const vk::CompositeAlphaFlagBitsKHR composite_alpha)
         : _device(device), _surface(surface), _image_count(image_count), _clipped(clipped), _composite_alpha(composite_alpha)
     {
         _device->inc_ref();
@@ -88,7 +89,7 @@ namespace vkn
         return _swap_semaphore;
     }
 
-    vk::Result swapchain::swap(vk::Fence fence, uint64_t timeout)
+    vk::Result swapchain::swap(const vk::Fence fence, const uint64_t timeout)
     {
         const auto result = _device->acquireNextImageKHR(_swapchain, timeout, _swap_semaphore, fence);
         _last_image = result.value;

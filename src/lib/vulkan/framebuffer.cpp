@@ -3,11 +3,11 @@
 namespace vkn
 {
     framebuffer::
-        framebuffer(device* device, vk::RenderPass pass, uint32_t width, uint32_t height, uint32_t layers)
+        framebuffer(device* device, const vk::RenderPass pass, const uint32_t width, const uint32_t height, const uint32_t layers)
         : framebuffer(device, pass, vk::Extent2D(width, height), layers)
     {}
 
-    framebuffer::framebuffer(device* device, vk::RenderPass pass, vk::Extent2D extent, uint32_t layers) : _device(device),
+    framebuffer::framebuffer(device* device, const vk::RenderPass pass, const vk::Extent2D extent, const uint32_t layers) : _device(device),
         _pass(pass),
         _extent(extent),
         _layers(layers)
@@ -21,7 +21,7 @@ namespace vkn
         _device->dec_ref();
     }
 
-    void framebuffer::set_attachments(std::vector<jpu::ref_ptr<texture_view>> attachments)
+    void framebuffer::set_attachments(const std::vector<jpu::ref_ptr<texture_view>> attachments)
     {
         _attachments = attachments;
     }

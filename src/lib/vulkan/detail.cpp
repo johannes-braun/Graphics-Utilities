@@ -1,7 +1,7 @@
 
 #include "detail.hpp"
 #include <vulkan/vulkan.hpp>
-#include "GLFW/glfw3.h"
+#include <GLFW/glfw3.h>
 
 namespace vkn::detail
 {

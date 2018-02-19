@@ -1,9 +1,8 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include <numeric>
+#include <jpu/memory>
 #include <map>
 #include <list>
-#include <jpu/memory>
 
 namespace vkn
 {

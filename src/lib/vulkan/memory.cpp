@@ -122,7 +122,7 @@ namespace vkn
         return new_block;
     }
 
-    void memory_pool::free_block(std::list<memory_chunk>& chunk_list, std::list<memory_chunk>::iterator c,
+    void memory_pool::free_block(std::list<memory_chunk>& chunk_list, const std::list<memory_chunk>::iterator c,
         std::list<std::unique_ptr<memory_block>>::iterator block_position) const
     {
         block_position->get()->free = true;

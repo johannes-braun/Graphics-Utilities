@@ -1,22 +1,14 @@
 #pragma once
 
+#include "memory.hpp"
 #include <filesystem>
 #include <vulkan/vulkan.hpp>
-#include "memory.hpp"
 #include <jpu/memory>
 
 namespace vkn
 {
     class device;
-
-    enum class texture_data_type
-    {
-        eFloat = 0,
-        eUByte
-    };
-
     class texture_view;
-
     class texture : public jpu::ref_count
     {
         friend texture_view;
@@ -25,11 +17,10 @@ namespace vkn
         ~texture();
 
         void assign_2d(uint32_t width, uint32_t height, vk::Format format, size_t data_size, void* data, vk::QueueFlagBits transfer_queue_type = vk::QueueFlagBits::eTransfer);
-
         void create_empty(vk::ImageCreateInfo info);
 
         void generate_mipmaps() const;
-        void generate_mipmaps(const vk::CommandBuffer command_buffer) const;
+        void generate_mipmaps(vk::CommandBuffer command_buffer) const;
 
         vk::ImageView create_image_view(vk::ImageSubresourceRange resource_range = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 0, 0, 1)) const;
 
