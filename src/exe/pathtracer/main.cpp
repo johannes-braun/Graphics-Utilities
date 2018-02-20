@@ -1,6 +1,7 @@
 #include <random>
 #include <jpu/memory>
 #include <jpu/data>
+#include <jpu/log>
 #include "io/window.hpp"
 #include "opengl/framebuffer.hpp"
 #include "io/camera.hpp"
@@ -9,7 +10,6 @@
 #include "res/image.hpp"
 #include "opengl/query.hpp"
 
-#include "jpu/impl/log/log.hpp"
 #include "tinyfd/tinyfiledialogs.h"
 #include "opengl/pipeline.hpp"
 #include "opengl/texture.hpp"
@@ -77,13 +77,13 @@ private:
 
 struct mesh
 {
-    mesh(mesh_proxy* proxy, intptr_t material_addr, glm::mat4 model)
+    mesh(mesh_proxy* proxy, const intptr_t material_addr, const glm::mat4 model)
         : vertices(proxy->_vertex_buffer->address()), 
         elements(proxy->_index_buffer->address()),
         bvh(proxy->_bvh_buffer->address()),
         material(material_addr),
-        model(model),
-        inv_model(inverse(model)) {}
+        inv_model(inverse(model)),
+        model(model) {}
 
     intptr_t vertices;
     intptr_t elements;
@@ -103,17 +103,17 @@ bool intersect_bounds(
     const glm::vec3 bounds_max,
     const float max_distance)
 {
-    glm::vec3 inv_direction = 1.f / direction;
+    const glm::vec3 inv_direction = 1.f / direction;
 
     //intersections with box planes parallel to x, y, z axis
-    glm::vec3 t135 = (bounds_min - origin) * inv_direction;
-    glm::vec3 t246 = (bounds_max - origin) * inv_direction;
+    const glm::vec3 t135 = (bounds_min - origin) * inv_direction;
+    const glm::vec3 t246 = (bounds_max - origin) * inv_direction;
 
-    glm::vec3 min_values = min(t135, t246);
-    glm::vec3 max_values = max(t135, t246);
+    const glm::vec3 min_values = min(t135, t246);
+    const glm::vec3 max_values = max(t135, t246);
 
-    float tmin = glm::max(glm::max(min_values.x, min_values.y), min_values.z);
-    float tmax = glm::min(glm::min(max_values.x, max_values.y), max_values.z);
+    const float tmin = glm::max(glm::max(min_values.x, min_values.y), min_values.z);
+    const float tmax = glm::min(glm::min(max_values.x, max_values.y), max_values.z);
 
     return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
@@ -130,7 +130,7 @@ void resize()
     glViewport(0, 0, resolution.x, resolution.y);
 }
 
-int main(int argc, const char** args)
+int main()
 {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 8);
@@ -213,7 +213,7 @@ int main(int argc, const char** args)
 
     // Test out mesh
     auto geometry = res::load_geometry("../res/torusse.dae");
-    int idx = 0;
+    int idx = -1;
     if(const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you want to load.", "0"))
     {
         for (int i = 0; i < strlen(c_idx); ++i)
@@ -222,14 +222,15 @@ int main(int argc, const char** args)
                 idx = 0;
                 break;
             }
-        idx = atoi(c_idx);
+        if(idx == -1)
+            idx = atoi(c_idx);
     }
     meshes[geometry.meshes.id_by_index(idx)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(idx)), std::vector<mesh*>());
-    
-    auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
+
+    const auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
     material_buffer->data_as<material>()[0] = material();
 
-    auto meshes_buffer = jpu::make_ref<gl::buffer>(2*sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
+    const auto meshes_buffer = jpu::make_ref<gl::buffer>(2*sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
     meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, geometry.meshes.get_by_index(0).transform)));
     meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[1] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, geometry.meshes.get_by_index(0).transform)));
 
@@ -241,8 +242,8 @@ int main(int argc, const char** args)
     std::vector<uint16_t> gizmo_indices(3 * cube_icount);
     const glm::mat4 scale = glm::scale(glm::vec3(0.01f, 0.01f, 0.1f));
     const glm::mat4 translate = glm::translate(glm::vec3(0, 0, 1.f));
-    const glm::mat4 rot1 = glm::rotate(glm::radians(-90.f), glm::vec3(1, 0, 0));
-    const glm::mat4 rot2 = glm::rotate(glm::radians(90.f), glm::vec3(0, 1, 0));
+    const glm::mat4 rot1 = rotate(glm::radians(-90.f), glm::vec3(1, 0, 0));
+    const glm::mat4 rot2 = rotate(glm::radians(90.f), glm::vec3(0, 1, 0));
     int moving = -1;
     for(int i=0; i < cube_vcount; ++i)
     {
@@ -256,8 +257,8 @@ int main(int argc, const char** args)
         gizmo_indices[i + cube_icount] = cube_vcount + res::presets::cube::indices[i];
         gizmo_indices[i + 2 * cube_icount] = 2 * cube_vcount + res::presets::cube::indices[i];
     }
-    gl::buffer gizmo_index_buffer(gizmo_indices);
-    gl::buffer gizmo_vertex_buffer(gizmo_positions);
+    const gl::buffer gizmo_index_buffer(gizmo_indices);
+    const gl::buffer gizmo_vertex_buffer(gizmo_positions);
     gl::vertex_array gizmo_vao;
     gizmo_vao.set_element_buffer(gizmo_index_buffer);
     gizmo_vao.add_binding(gl::vertex_attribute_binding(0, gizmo_vertex_buffer, 0, 3, GL_FLOAT, sizeof(glm::vec3), 0, false));
@@ -268,7 +269,7 @@ int main(int argc, const char** args)
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
 
-        glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
+        const glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
 
         static int size = 4;
         static int frame = 0;
@@ -283,15 +284,15 @@ int main(int argc, const char** args)
         const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
 
         res::transform trafo = meshes.get_by_index(0).second.front()->model;
-        int selected = -1;
+        int selected;
         double mx, my;
         glfwGetCursorPos(*main_window, &mx, &my);
         glm::vec2 uv = (glm::vec2(mx, my) / glm::vec2(resolution) - 0.5f) * 2.f;
         uv.y = - uv.y;
-        glm::vec3 direction = glm::vec3(camera_matrix * glm::vec4(uv, 0, 1));
-        glm::vec3 origin = cam.transform.position;
-        glm::vec3 inv_origin = inverse(glm::translate(trafo.position)) * glm::vec4(origin, 1);
-        glm::vec3 inv_dir = inverse(transpose(inverse(glm::translate(trafo.position)))) * glm::vec4(direction, 0);
+        const glm::vec3 direction = glm::vec3(camera_matrix * glm::vec4(uv, 0, 1));
+        const glm::vec3 origin = cam.transform.position;
+        const glm::vec3 inv_origin = inverse(glm::translate(trafo.position)) * glm::vec4(origin, 1);
+        const glm::vec3 inv_dir = inverse(transpose(inverse(glm::translate(trafo.position)))) * glm::vec4(direction, 0);
         const float grip_width = 0.1f;
         if(!(moving+1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(-grip_width, -grip_width, 0.f), glm::vec3(grip_width, grip_width, 1.f), 100000000.f))
         {
@@ -313,8 +314,8 @@ int main(int argc, const char** args)
         if(selected+1 && glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
             moving = selected;
-            int mv = selected==0 ? 2 : (selected == 1 ? 1 : 0);
-            glm::vec3 plane_orig = trafo.position;
+            const int mv = selected==0 ? 2 : (selected == 1 ? 1 : 0);
+            const glm::vec3 plane_orig = trafo.position;
             glm::vec3 plane_norm(0.f);
             plane_norm[(mv+1)%3] = 1;
             trafo.position[(mv) % 3] = abs(dot(plane_norm, direction)) > 1e-6 ?
@@ -409,14 +410,14 @@ int main(int argc, const char** args)
             {
                 for (int y = 0; y < resolution.y; ++y)
                 {
-                    convert[y * resolution.x + x] = glm::clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0), glm::vec4(255.f));
+                    convert[y * resolution.x + x] = clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0), glm::vec4(255.f));
                 }
             }
 
-            constexpr const char *f2s[1] = {
+            constexpr const char *extensions[1] = {
                 "*.png"
             };
-            if (const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, f2s, "*.png"))
+            if (const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, extensions, "*.png"))
                 stbi_write_png(dst, resolution.x, resolution.y, 4, convert.data(), 0);
         }
         ImGui::SameLine();
@@ -427,7 +428,7 @@ int main(int argc, const char** args)
             };
             if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 6, fs, "mesh", false))
             {
-                idx = 0;
+                idx = -1;
                 if (const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you wnat to load.", "0"))
                 {
                     for (int i = 0; i < strlen(c_idx); ++i)
@@ -436,11 +437,11 @@ int main(int argc, const char** args)
                             idx = 0;
                             break;
                         }
-                    idx = atoi(c_idx);
+                    if(idx == -1)
+                        idx = atoi(c_idx);
                 }
                 meshes.clear();
                 geometry = res::load_geometry(src);
-                trafo = geometry.meshes.get_by_index(idx).transform;
                 meshes[geometry.meshes.id_by_index(idx)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(idx)), std::vector<mesh*>());
                 meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, glm::mat4(1.f))));
                 meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[1] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, glm::mat4(1.f))));

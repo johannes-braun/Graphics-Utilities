@@ -17,7 +17,7 @@ namespace res
             file.meshes.get_by_index(node->mMeshes[i]).transform = static_cast<res::transform>(node_trafo);
         }
 
-        for(int i=0; i<node->mNumChildren; ++i)
+        for(uint32_t i=0; i < node->mNumChildren; ++i)
         {
             handle_node(file, node->mChildren[i], node_trafo);
         }

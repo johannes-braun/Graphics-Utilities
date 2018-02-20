@@ -18,7 +18,7 @@ std::vector<res::vertex> floor_vertices;
 std::vector<uint32_t> floor_indices;
 void draw_gui();
 
-int main(int argc, const char** args)
+int main()
 {
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -85,9 +85,9 @@ int main(int argc, const char** args)
         infos[wall].idx = std::move(scene.meshes.get_by_index(0).indices);
     }
 
-    auto img = res::load_image("../res/grid/heightmap.png", res::image_type::signed_float, res::image_components::grey);
-    int width = img.width;
-    int height = img.height;
+    auto img = load_image("../res/grid/heightmap.png", res::image_type::signed_float, res::image_components::grey);
+    const int width = img.width;
+    const int height = img.height;
     std::vector<int32_t> heights(width * height);
     std::vector<bool> blocked(width * height);
 
@@ -159,7 +159,7 @@ int main(int argc, const char** args)
                     for (int h = 0; h < height_differences[shift] - 1   ; ++h)
                     {
                        // log_i << h << height_differences[shift];
-                        const glm::mat4 transform = glm::translate(glm::vec3(2.f*x, heights[z * width + x] - h, 2.f*z)) * glm::rotate(glm::radians(90.f) * static_cast<float>(rot), glm::vec3(0, 1, 0));
+                        const glm::mat4 transform = translate(glm::vec3(2.f*x, heights[z * width + x] - h, 2.f*z)) * rotate(glm::radians(90.f) * static_cast<float>(rot), glm::vec3(0, 1, 0));
                         const size_t old_vtx_size = floor_vertices.size();
                         const mesh_pos w = wall;
                         floor_vertices.resize(old_vtx_size + infos[w].vtx.size());
@@ -181,7 +181,7 @@ int main(int argc, const char** args)
                     }
                 }
                 
-                const glm::mat4 transform = glm::translate(glm::vec3(2.f*x, heights[z * width + x], 2.f*z)) * glm::rotate(glm::radians(90.f) * static_cast<float>(rot), glm::vec3(0, 1, 0));
+                const glm::mat4 transform = translate(glm::vec3(2.f*x, heights[z * width + x], 2.f*z)) * rotate(glm::radians(90.f) * static_cast<float>(rot), glm::vec3(0, 1, 0));
 
                 const size_t old_vtx_size = floor_vertices.size();
                 floor_vertices.resize(old_vtx_size + infos[pos].vtx.size());

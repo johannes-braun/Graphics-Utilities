@@ -25,7 +25,7 @@ struct pat_result
     glm::mat4 with_eigenvectors_pom_rgb;
 };
 
-pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
+pat_result principal_axis_transformation(glm::u8vec3* pixels, const size_t count)
 {
     using namespace glm;
 
@@ -40,7 +40,7 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
     }
     mu /= count;
     mu_pom /= count;
-    double inv = 1 / 255.0;
+    const double inv = 1 / 255.0;
 
     dmat4 tr0 = dmat4(1.0);
     tr0[3] = dvec4(-mu, 1);
@@ -54,8 +54,8 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
     dmat4 tr1_pom = dmat4(1.0);
     tr1_pom[3] = dvec4(normalize(vec3(0, 0, 1)) * length(mu_pom), 1);
 
-    log_i << glm::to_string(mu_pom) << " versus " << glm::to_string(pom_mat * mu);
-    log_i << glm::to_string(inverse(pom_mat) * mu_pom) << " versus " << glm::to_string(mu);
+    log_i << to_string(mu_pom) << " versus " << to_string(pom_mat * mu);
+    log_i << to_string(inverse(pom_mat) * mu_pom) << " versus " << to_string(mu);
 
     dmat3 rot_pom(0);
     dmat3 rot(0);
@@ -87,21 +87,21 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
     Eigen::Matrix3d pom_mat_eigen = reinterpret_cast<const Eigen::Matrix3d&>(pom_mat);
     solver.compute(pom_mat_eigen);
     Eigen::Matrix3d pom_eigen_mat = solver.eigenvectors().real();
-    dmat3 pom_eigen_mat_glm = reinterpret_cast<dmat3&>(pom_eigen_mat);
+    const dmat3 pom_eigen_mat_glm = reinterpret_cast<dmat3&>(pom_eigen_mat);
 
     solver.compute(cov_matrix_pom_ext);
     Eigen::Matrix3d evm_pom_next = solver.eigenvectors().real();
-    dmat3 eigenvectormatrix_pom_next = reinterpret_cast<dmat3&>(evm_pom_next);
+    const dmat3 eigenvectormatrix_pom_next = reinterpret_cast<dmat3&>(evm_pom_next);
 
     dmat3 eigenvectormatrix_construct;
     eigenvectormatrix_construct[0] = pom_mat * eigenvectormatrix[0];
     eigenvectormatrix_construct[1] = pom_mat * eigenvectormatrix[1];
     eigenvectormatrix_construct[2] = pom_mat * eigenvectormatrix[2];
 
-    log_i << "EVMP: " << glm::to_string(eigenvectormatrix_pom);
-    log_i << "EVMP: " << glm::to_string(eigenvectormatrix_pom_next);
-    log_i << "EVMP: " << glm::to_string(eigenvectormatrix_construct);
-    log_i << "EVMP: " << glm::to_string(pom_eigen_mat_glm);
+    log_i << "EVMP: " << to_string(eigenvectormatrix_pom);
+    log_i << "EVMP: " << to_string(eigenvectormatrix_pom_next);
+    log_i << "EVMP: " << to_string(eigenvectormatrix_construct);
+    log_i << "EVMP: " << to_string(pom_eigen_mat_glm);
 
     pat_result result;
 
@@ -118,8 +118,8 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
             ha = rot[2];
         }
         ha = normalize(ha);
-        double angle = dot(ha, normalize(dvec3(1)));
-        dvec3 axis = cross(ha, normalize(dvec3(1)));
+        const double angle = dot(ha, normalize(dvec3(1)));
+        const dvec3 axis = cross(ha, normalize(dvec3(1)));
         result.with_cov_columns = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
     }
 
@@ -136,8 +136,8 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
             ha = eigenvectormatrix[2];
         }
         ha = normalize(ha);
-        double angle = dot(ha, normalize(dvec3(1)));
-        dvec3 axis = cross(ha, normalize(dvec3(1)));
+        const double angle = dot(ha, normalize(dvec3(1)));
+        const dvec3 axis = cross(ha, normalize(dvec3(1)));
         result.with_eigenvectors = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
     }
 
@@ -154,9 +154,9 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
             ha = rot_pom[2];
         }
         ha = normalize(ha);
-        double angle = dot(ha, normalize(dvec3(0, 0, 1)));
-        dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
-        result.with_cov_columns_pom = glm::dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * glm::dmat4(pom_mat);
+        const double angle = dot(ha, normalize(dvec3(0, 0, 1)));
+        const dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
+        result.with_cov_columns_pom = dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * dmat4(pom_mat);
     }
 
     {
@@ -172,13 +172,13 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
             ha = eigenvectormatrix_pom[2];
         }
         ha = normalize(ha);
-        double angle = dot(ha, normalize(dvec3(0, 0, 1)));
-        dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
-        result.with_eigenvectors_pom = glm::dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * glm::dmat4(pom_mat);
+        const double angle = dot(ha, normalize(dvec3(0, 0, 1)));
+        const dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
+        result.with_eigenvectors_pom = dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * dmat4(pom_mat);
     }
 
     {
-        glm::dmat3 ppt = rot * pom_mat * transpose(pom_mat);
+        const dmat3 ppt = rot * pom_mat * transpose(pom_mat);
         dvec3 ha = normalize(ppt * eigenvectormatrix[0]);
         double len = length(ppt * eigenvectormatrix[0]);
         if (length(ppt * eigenvectormatrix[1]) > len)
@@ -191,15 +191,15 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, size_t count)
             ha = ppt * eigenvectormatrix[2];
         }
         ha = normalize(ha);
-        double angle = dot(ha, normalize(dvec3(1)));
-        dvec3 axis = cross(ha, normalize(dvec3(1)));
+        const double angle = dot(ha, normalize(dvec3(1)));
+        const dvec3 axis = cross(ha, normalize(dvec3(1)));
         result.with_eigenvectors_pom_rgb = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
     }
 
     return result;
 }
 
-int main(int argc, const char** argv)
+int main()
 {
     gl::setup_shader_paths("../shaders");
 
@@ -250,7 +250,7 @@ int main(int argc, const char** argv)
     constexpr const char *fs[2] = {
         "*.jpg", "*.png"
     };
-    auto src_data = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false);
+    const auto src_data = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false);
     if (!src_data) return 0;
     auto data = res::stbi_data(stbi_load(src_data, &iw, &ih, nullptr, 3));
     texture->storage_2d(iw, ih, GL_RGB8);
@@ -264,7 +264,7 @@ int main(int argc, const char** argv)
         mu += reinterpret_cast<glm::u8vec3*>(data.get())[i];
     mu /= iw * ih * 255;
 
-    auto grid_image = res::load_image("../res/grid.jpg", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    auto grid_image = load_image("../res/grid.jpg", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     const auto grid = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     grid->storage_2d(grid_image.width, grid_image.height, GL_RGBA8);
     grid->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
@@ -329,8 +329,6 @@ int main(int argc, const char** argv)
 
     while (main_window->update())
     {
-        static glm::vec3 color_offset{ 0, 0, 0 };
-        static glm::vec3 color_factor{ 1,1,1 };
         const auto id = sampler->sample_texture(texture.get());
         ImGui::Begin("Bla");
         ImGui::Value("DT", 1000.f * static_cast<float>(main_window->delta_time()));
@@ -344,7 +342,7 @@ int main(int argc, const char** argv)
 
         if(ImGui::Button("Load other"))
         {
-            if (auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
+            if (const auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
             {
                 data = res::stbi_data(stbi_load(src, &iw, &ih, nullptr, 3));
                 texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
@@ -368,6 +366,7 @@ int main(int argc, const char** argv)
         case 2: patmat = pat.with_cov_columns_pom; break;
         case 3: patmat = pat.with_eigenvectors_pom; break;
         case 4: patmat = pat.with_eigenvectors_pom_rgb; break;
+        default:;
         }
 
         if(ImGui::Button("Save..."))
@@ -378,14 +377,14 @@ int main(int argc, const char** argv)
             {
                 for (int y = 0; y<ih; ++y)
                 {
-                    auto idx = x + y * iw;
-                    new_img[idx] = glm::clamp(glm::vec3(patmat * glm::vec4(glm::vec3(data_cast[x + y * iw]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
+                    const auto idx = x + y * iw;
+                    new_img[idx] = clamp(glm::vec3(patmat * glm::vec4(glm::vec3(data_cast[x + y * iw]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
                 }
             }
-            constexpr const char *f2s[1] = {
+            constexpr const char *ext[1] = {
                 "*.png"
             };
-            if(auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, f2s, "PNG"))
+            if(const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, ext, "PNG"))
                 stbi_write_png(dst, iw, ih, 3, new_img.data(), 0);
         }
         ImGui::End();
@@ -419,18 +418,18 @@ int main(int argc, const char** argv)
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("tex") = sampler->sample_texture(grid.get());
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
         cube_vao->bind();
-        glDrawElements(GL_TRIANGLES, res::presets::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, static_cast<int>(res::presets::cube::indices.size()), GL_UNSIGNED_INT, nullptr);
         glFrontFace(GL_CCW);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
-        glDrawElements(GL_TRIANGLES, res::presets::cube::indices.size(), GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, static_cast<int>(res::presets::cube::indices.size()), GL_UNSIGNED_INT, nullptr);
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
-        glViewport(0, 0, texture->width() *scale, texture->height() *scale);
+        glViewport(0, 0, static_cast<int>(texture->width() *scale), static_cast<int>(texture->height() *scale));
         img_pipeline->bind();
         img_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         img_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("tex") = id;

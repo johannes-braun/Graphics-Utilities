@@ -215,7 +215,7 @@ namespace gfx
         _ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("albedo_texture") = _sampler->sample_texture(_full_size_attachments[0]);
         _ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("random_texture") = _sampler->sample_texture(_random_texture);
         _ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("normal_depth_texture") = _msaa_attachments[0]->address();
-        _ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("time") = glfwGetTime();
+        _ssao_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("time") = static_cast<float>(glfwGetTime());
         glDrawArrays(GL_TRIANGLES, 0, 3);
         _pp_fullsize_framebuffer->unbind();
 

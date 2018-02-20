@@ -1,13 +1,11 @@
 #include "io/window.hpp"
 
 #include <random>
-#include <numeric>
 
 #include <glm/ext.hpp>
 #include <jpu/memory>
 #include <jpu/data>
 #include <jpu/geometry>
-#include <jpu/log>
 
 #include "scene.hpp"
 
@@ -73,7 +71,7 @@ void resize(const int width, const int height, const int samples, const bool ful
     main_renderer->resize(width, height, samples);
 }
 
-int main(int count, const char** arguments)
+int main()
 {
     gl::setup_shader_paths("../shaders");
 
@@ -151,8 +149,8 @@ int main(int count, const char** arguments)
     };
 
     const auto mesh_buffer = jpu::make_ref<gl::buffer>(sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
-    mesh_buffer->at<mesh>(0).num_vertices = cylinder.meshes.get_by_index(0).vertices.size();
-    mesh_buffer->at<mesh>(0).num_elements = cylinder.meshes.get_by_index(0).indices.size();
+    mesh_buffer->at<mesh>(0).num_vertices = static_cast<uint32_t>(cylinder.meshes.get_by_index(0).vertices.size());
+    mesh_buffer->at<mesh>(0).num_elements = static_cast<uint32_t>(cylinder.meshes.get_by_index(0).indices.size());
     mesh_buffer->at<mesh>(0).elements = index_buffer->address();
     mesh_buffer->at<mesh>(0).vertices = vertex_buffer->address();
     mesh_buffer->at<mesh>(0).data = bvh_buffer->address();
@@ -216,10 +214,10 @@ int main(int count, const char** arguments)
         return texture;
     };
 
-    auto texture_col    = load_texture("../res/bricks/brick.png", GL_RGBA8, GL_RGBA, GL_FLOAT);
-    auto texture_dis    = load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
-    auto texture_nor    = load_texture("../res/bricks/brick_normal.png", GL_RGB16F, GL_RGB, GL_FLOAT);
-    auto logo           = load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+    const auto texture_col    = load_texture("../res/bricks/brick.png", GL_RGBA8, GL_RGBA, GL_FLOAT);
+    const auto texture_dis    = load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
+    const auto texture_nor    = load_texture("../res/bricks/brick_normal.png", GL_RGB16F, GL_RGB, GL_FLOAT);
+    const auto logo           = load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
     auto ic_image       = load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
     io::camera cam;
@@ -391,7 +389,7 @@ int main(int count, const char** arguments)
         //transform.rotation *= glm::angleAxis(glm::radians<float>(30.f * static_cast<float>(win->delta_time())), glm::vec3(0, 1, 0));
         graphics_pipeline->bind();
         graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_matrix") = transform;
-        graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(glm::transpose(glm::inverse(static_cast<glm::mat4>(transform)))));
+        graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("my_texture") = sampler->sample_texture(texture_col);
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_depth") = sampler->sample_texture(texture_dis);
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_normal") = sampler->sample_texture(texture_nor);
