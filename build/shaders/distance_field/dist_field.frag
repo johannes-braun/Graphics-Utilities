@@ -146,4 +146,6 @@ void main()
     {
         color = texture(cubemap, c_dir);
     }
+    
+    color = pow(color, vec4(1/2.2f));
 }
