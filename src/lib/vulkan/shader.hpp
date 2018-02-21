@@ -9,9 +9,12 @@
 
 namespace vkn
 {
-    inline std::experimental::filesystem::path shader_root_path = "../shaders";
-    inline std::vector<std::experimental::filesystem::path> shader_include_directories{ shader_root_path };
-    inline const std::experimental::filesystem::path& shader_root = shader_root_path;
+    namespace
+    {
+        std::experimental::filesystem::path shader_root_path = "../shaders";
+        std::vector<std::experimental::filesystem::path> shader_include_directories{ shader_root_path };
+        const std::experimental::filesystem::path& shader_root = shader_root_path;
+    }
     void setup_shader_paths(std::experimental::filesystem::path root, const std::vector<std::experimental::filesystem::path>& include_directories = {});
 
     class shader : public jpu::ref_count
