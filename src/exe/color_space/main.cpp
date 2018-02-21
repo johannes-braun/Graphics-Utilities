@@ -78,25 +78,29 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, const size_t count
 
     solver.compute(cov_matrix);
     Eigen::Matrix3d evm = solver.eigenvectors().real();
+    Eigen::Vector3d evm_val = solver.eigenvalues().real();
     dmat3 eigenvectormatrix = reinterpret_cast<dmat3&>(evm);
 
     solver.compute(cov_matrix_pom);
     Eigen::Matrix3d evm_pom = solver.eigenvectors().real();
+    Eigen::Vector3d evm_pom_val = solver.eigenvalues().real();
     dmat3 eigenvectormatrix_pom = reinterpret_cast<dmat3&>(evm_pom);
 
     Eigen::Matrix3d pom_mat_eigen = reinterpret_cast<const Eigen::Matrix3d&>(pom_mat);
     solver.compute(pom_mat_eigen);
     Eigen::Matrix3d pom_eigen_mat = solver.eigenvectors().real();
+    Eigen::Vector3d pom_eigen_mat_val = solver.eigenvalues().real();
     const dmat3 pom_eigen_mat_glm = reinterpret_cast<dmat3&>(pom_eigen_mat);
 
     solver.compute(cov_matrix_pom_ext);
     Eigen::Matrix3d evm_pom_next = solver.eigenvectors().real();
+    Eigen::Vector3d evm_pom_next_val = solver.eigenvalues().real();
     const dmat3 eigenvectormatrix_pom_next = reinterpret_cast<dmat3&>(evm_pom_next);
 
     dmat3 eigenvectormatrix_construct;
-    eigenvectormatrix_construct[0] = pom_mat * eigenvectormatrix[0];
-    eigenvectormatrix_construct[1] = pom_mat * eigenvectormatrix[1];
-    eigenvectormatrix_construct[2] = pom_mat * eigenvectormatrix[2];
+    eigenvectormatrix_construct[0] = transpose(inverse(pom_mat)) * eigenvectormatrix[0];
+    eigenvectormatrix_construct[1] = transpose(inverse(pom_mat)) * eigenvectormatrix[1];
+    eigenvectormatrix_construct[2] = transpose(inverse(pom_mat)) * eigenvectormatrix[2];
 
     log_i << "EVMP: " << to_string(eigenvectormatrix_pom);
     log_i << "EVMP: " << to_string(eigenvectormatrix_pom_next);
@@ -125,13 +129,13 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, const size_t count
 
     {
         dvec3 ha = normalize(eigenvectormatrix[0]);
-        double len = length(eigenvectormatrix[0]);
-        if (length(eigenvectormatrix[1]) > len)
+        double len = length(evm_val[0]);
+        if (length(evm_val[1]) > len)
         {
-            len = length(eigenvectormatrix[1]);
+            len = length(evm_val[1]);
             ha = eigenvectormatrix[1];
         }
-        if (length(eigenvectormatrix[2]) > len)
+        if (length(evm_val[2]) > len)
         {
             ha = eigenvectormatrix[2];
         }
@@ -154,45 +158,50 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, const size_t count
             ha = rot_pom[2];
         }
         ha = normalize(ha);
-        const double angle = dot(ha, normalize(dvec3(0, 0, 1)));
-        const dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
+        double angle = dot(ha, normalize(dvec3(1)));
+        const dvec3 axis = (angle>0) ? cross(ha, normalize(dvec3(0, 0, 1))) : cross(-ha, normalize(dvec3(0, 0, 1)));
+        angle = abs(angle);
         result.with_cov_columns_pom = dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * dmat4(pom_mat);
     }
 
     {
         dvec3 ha = normalize(eigenvectormatrix_pom[0]);
-        double len = length(eigenvectormatrix_pom[0]);
-        if (length(eigenvectormatrix_pom[1]) > len)
+        double len = length(evm_pom_val[0]);
+        if (length(evm_pom_val[1]) > len)
         {
-            len = length(eigenvectormatrix_pom[1]);
+            len = length(evm_pom_val[1]);
             ha = eigenvectormatrix_pom[1];
         }
-        if (length(eigenvectormatrix_pom[2]) > len)
+        if (length(evm_pom_val[2]) > len)
         {
             ha = eigenvectormatrix_pom[2];
         }
         ha = normalize(ha);
-        const double angle = dot(ha, normalize(dvec3(0, 0, 1)));
-        const dvec3 axis = cross(ha, normalize(dvec3(0, 0, 1)));
+        double angle = dot(ha, normalize(dvec3(0, 0, 1)));
+        const dvec3 axis = (angle>0) ? cross(ha, normalize(dvec3(0, 0, 1))) : cross(-ha, normalize(dvec3(0, 0, 1)));
+        angle = abs(angle);
+
         result.with_eigenvectors_pom = dmat4(inverse(pom_mat)) * tr1_pom * toMat4(angleAxis(angle, axis)) * tr0_pom * dmat4(pom_mat);
     }
 
     {
         const dmat3 ppt = rot * pom_mat * transpose(pom_mat);
         dvec3 ha = normalize(ppt * eigenvectormatrix[0]);
-        double len = length(ppt * eigenvectormatrix[0]);
-        if (length(ppt * eigenvectormatrix[1]) > len)
+        double len = length(ppt * eigenvectormatrix_construct[0]);
+        if (length(ppt * eigenvectormatrix_construct[1]) > len)
         {
-            len = length(ppt * eigenvectormatrix[1]);
+            len = length(ppt * eigenvectormatrix_construct[1]);
             ha = ppt * eigenvectormatrix[1];
         }
-        if (length(ppt * eigenvectormatrix[2]) > len)
+        if (length(ppt * eigenvectormatrix_construct[2]) > len)
         {
             ha = ppt * eigenvectormatrix[2];
         }
         ha = normalize(ha);
-        const double angle = dot(ha, normalize(dvec3(1)));
-        const dvec3 axis = cross(ha, normalize(dvec3(1)));
+        double angle = dot(ha, normalize(dvec3(1)));
+        const dvec3 axis = (angle>0) ? cross(ha, normalize(dvec3(1))) : cross(-ha, normalize(dvec3(1)));
+        angle = abs(angle);
+
         result.with_eigenvectors_pom_rgb = tr1 * toMat4(angleAxis(angle, axis)) * tr0;
     }
 
