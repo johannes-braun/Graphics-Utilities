@@ -47,7 +47,7 @@ namespace gl
         template<typename T>
         T* data_as() const;
 
-        void map();
+        void map(uint32_t map_access);
         void unmap() const;
         void flush(size_t size_bytes, size_t offset_bytes) const;
         void bind(uint32_t binding_point, GLenum type) const;

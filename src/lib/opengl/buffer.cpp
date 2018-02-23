@@ -26,16 +26,19 @@ namespace gl
         glClearNamedBufferData(_id, GL_R32F, GL_RED, GL_FLOAT, &value);
     }
 
-    void buffer::map()
+    void buffer::map(const uint32_t map_access)
     {
-        if (_mapped_data)
+        if (_mapped_data && map_access != _map_access)
             return;
+        if (_mapped_data)
+            unmap();
 
+        _map_access = map_access;
         if (_map_access == 0)
             throw std::runtime_error(
                 "Cannot Map this buffer without setting buffer_flag_bits::map_read or buffer_flag_bits::map_write.");
 
-        _mapped_data = glMapNamedBuffer(_id, _map_access);
+        _mapped_data = glMapNamedBufferRange(_id, 0, size(), _map_access);
     }
 
     void buffer::unmap() const

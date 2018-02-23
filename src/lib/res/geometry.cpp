@@ -59,6 +59,8 @@ namespace res
 #pragma omp parallel for schedule(static)
             for (auto i = 0; i < static_cast<int>(ai_mesh->mNumFaces); ++i)
             {
+                if (ai_mesh->mFaces[0].mNumIndices != 3)
+                    continue;
                 current_mesh.indices[3 * i] = ai_mesh->mFaces[i].mIndices[0];
                 current_mesh.indices[3 * i + 1] = ai_mesh->mFaces[i].mIndices[1];
                 current_mesh.indices[3 * i + 2] = ai_mesh->mFaces[i].mIndices[2];

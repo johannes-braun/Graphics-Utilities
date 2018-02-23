@@ -29,7 +29,7 @@ uniform int num_meshes = 0;
 uniform ivec2 offset;
 uniform int max_samples = 4;
 uniform int sample_blend_offset = 0;
-uniform float max_bounces = 8;
+uniform float max_bounces = 14;
 
 
 void init_random(ivec2 pixel, float seed)
@@ -120,7 +120,7 @@ void main()
 
                 random_sample = random_hammersley_2d(next_random() * count, 1/count);
 
-                const vec3 light_color = 10.0f*vec3(1.f, 1, 1);
+                const vec3 light_color = 35.0f*vec3(1.f, 1, 1);
                 const float light_radius = 0.4f;
                 const vec3 light_pos = vec3(0, 4, 0);
                 const vec3 light_offset_pos = light_pos + light_radius*uniform_sphere(random_sample);

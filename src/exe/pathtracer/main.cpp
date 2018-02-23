@@ -213,8 +213,9 @@ int main()
 
     // Test out mesh
     auto geometry = res::load_geometry("../res/scene.dae");
-    const auto material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
-    const auto meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
+    using namespace jpu::flags_operators;
+    auto material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+    auto meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
     for(int i=0; i<geometry.meshes.size(); ++i)
     {
         material_buffer->data_as<material>()[i] = material();
@@ -265,6 +266,7 @@ int main()
         static int sample_blend_offset = 0;
         static bool show_grid = true;
         static bool show_gizmo= true;
+        static bool show_renderchunk = true;
 
         const int size_x = pp_trace->work_group_sizes()[0] * size;
         const int size_y = pp_trace->work_group_sizes()[0] * size;
@@ -315,9 +317,6 @@ int main()
             moving = -1;
         }
 
-        meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(trafo);
-        meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(trafo));
-
         float t = 0.f;
         while (t < dt)
         {
@@ -343,13 +342,16 @@ int main()
         blit_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, 
             gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-        glLineWidth(2.f);
-        pp_chunk.bind();
-        vao.bind();
-        pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(resolution);
-        pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
-        pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("size") = glm::vec2(size_x, size_y);
-        glDrawArrays(GL_LINE_STRIP, 0, 5);
+        if (show_renderchunk)
+        {
+            glLineWidth(2.f);
+            pp_chunk.bind();
+            vao.bind();
+            pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(resolution);
+            pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("size") = glm::vec2(size_x, size_y);
+            glDrawArrays(GL_LINE_STRIP, 0, 5);
+        }
 
         glEnable(GL_DEPTH_TEST);
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -380,6 +382,8 @@ int main()
         }
         glDisable(GL_DEPTH_TEST);
 
+        meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(trafo);
+        meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(trafo));
         ImGui::Begin("Window");
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
         ImGui::DragInt("Size", &size, 0.1f, 1.f, 100.f);
@@ -387,6 +391,7 @@ int main()
         ImGui::DragInt("Sample Blend Offset", &sample_blend_offset, 0.01f, 1.f, 100.f);
         ImGui::Checkbox("Show Mesh", &show_grid);
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
+        ImGui::Checkbox("Show Chunk", &show_renderchunk);
         if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
@@ -416,23 +421,17 @@ int main()
             };
             if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 6, fs, "mesh", false))
             {
-                int idx = -1;
-                if (const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you wnat to load.", "0"))
-                {
-                    for (int i = 0; i < strlen(c_idx); ++i)
-                        if (!isdigit(c_idx[i]))
-                        {
-                            idx = 0;
-                            break;
-                        }
-                    if(idx == -1)
-                        idx = atoi(c_idx);
-                }
                 meshes.clear();
                 geometry = res::load_geometry(src);
-                meshes[geometry.meshes.id_by_index(idx)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(idx)), std::vector<mesh*>());
-                meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, glm::mat4(1.f))));
-                meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[1] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, glm::mat4(1.f))));
+                using namespace jpu::flags_operators;
+                material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+                meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+                for (int i = 0; i<geometry.meshes.size(); ++i)
+                {
+                    material_buffer->data_as<material>()[i] = material();
+                    meshes.push(geometry.meshes.id_by_index(i), std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>()));
+                    meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
+                }
             }
         }
 
