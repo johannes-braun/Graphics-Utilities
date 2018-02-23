@@ -19,8 +19,8 @@ float ggx_distribution(const in float cos_theta, const in float roughness)
 
 float ggx_partial_geometry(const in vec3 vector, const in vec3 normal, const in vec3 facet_normal, float roughness)
 {
-  float eye_dot_half2 = dot(vector, facet_normal);
-  float chi = ggx_chi(eye_dot_half2 / dot(vector, normal));
+  float eye_dot_half2 = (dot(vector, facet_normal));
+  float chi = ggx_chi(eye_dot_half2 / (dot(vector, normal)));
   eye_dot_half2 = eye_dot_half2 * eye_dot_half2;
   float tan2 = (1 - eye_dot_half2) / eye_dot_half2;
   return (chi*2) / (1 + sqrt(1 + roughness * roughness * tan2));

@@ -14,33 +14,26 @@ vec3 bsdf_local_to_world(const in vec3 vector, const in vec3 normal) {
 
 bsdf bsdf_reflection(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness)
 {
-    const float m_dot_in = dot(-view, facet_normal);
+    const float m_dot_in = abs(dot(-view, facet_normal)); 
+    const float n_dot_in = abs(dot(-view, normal)); 
+    const float m_dot_n = abs(dot(normal, facet_normal)); 
+
     const float geometry = ggx_geometry(view, outgoing, normal, facet_normal, roughness);
     bsdf result;
     result.irradiance = vec3(0);
-    result.radiance = 1 / m_dot_in;
+    result.radiance = m_dot_in * geometry / (n_dot_in * m_dot_n);
     return result;
 }
 
 bsdf bsdf_transmission(const in vec3 view, const in vec3 normal, const in vec3 facet_normal, const in vec3 outgoing, float roughness, float ior)
 {
-    const bool swap = dot(normal, view) > 0; // normal and view in the same direction -> outgoing
-    const float ior_in = swap ? ior : 1.f;
-    const float ior_out = swap ? 1.f : ior;
-    const float eta = ior_in / ior_out;
-    const float m_dot_in = dot(-view, facet_normal);
-    const float m_dot_out = dot(outgoing, facet_normal);
-    const float n_dot_in = dot(-view, normal);
-    const float n_dot_out = dot(outgoing, normal);
-	const float geometry = ggx_geometry(view, outgoing, faceforward(normal, view, normal), facet_normal, roughness);
-
-    float val1 = abs(ior_out * ior_out * m_dot_in * m_dot_out / n_dot_in * n_dot_out);
-    float den = pow(ior_in * m_dot_in, 2) + pow(ior_out * m_dot_out, 2);
-
+    const float m_dot_in = abs(dot(-view, facet_normal)); 
+    const float n_dot_in = abs(dot(-view, normal)); 
+    const float m_dot_n = abs(dot(normal, facet_normal)); 
+    const float geometry = ggx_geometry(view, outgoing, normal, facet_normal, roughness);
     bsdf result;
     result.irradiance = vec3(0);
-    result.radiance = val1 * geometry;
-    result.radiance = geometry;//val1 * geometry / den;
+    result.radiance = m_dot_in * geometry / (n_dot_in * m_dot_n);
     return result;
 }
 
@@ -74,6 +67,12 @@ float bsdf_fresnel_coefficient(const in vec3 view, const in vec3 normal, float i
     float nom = nm1 + fn1mcosth + c2;
     float den = np1 + c2;
     return nom / den;
+}
+
+bool bsdf_is_total_reflection(float ior_in, float ior_out, vec3 incoming, vec3 micro_normal)
+{
+	float c = abs(dot(incoming, micro_normal));
+	return c * c < -(ior_out / ior_in) + 1;
 }
 
 int bsdf_largest_component(const in vec3 vector)

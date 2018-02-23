@@ -212,27 +212,15 @@ int main()
     const std::uniform_real_distribution<float> dist(0.f, 1.f);
 
     // Test out mesh
-    auto geometry = res::load_geometry("../res/torusse.dae");
-    int idx = -1;
-    if(const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you want to load.", "0"))
+    auto geometry = res::load_geometry("../res/scene.dae");
+    const auto material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
+    const auto meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
+    for(int i=0; i<geometry.meshes.size(); ++i)
     {
-        for (int i = 0; i < strlen(c_idx); ++i)
-            if (!isdigit(c_idx[i]))
-            {
-                idx = 0;
-                break;
-            }
-        if(idx == -1)
-            idx = atoi(c_idx);
+        material_buffer->data_as<material>()[i] = material();
+        meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
+        meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
     }
-    meshes[geometry.meshes.id_by_index(idx)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(idx)), std::vector<mesh*>());
-
-    const auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_dynamic_persistent);
-    material_buffer->data_as<material>()[0] = material();
-
-    const auto meshes_buffer = jpu::make_ref<gl::buffer>(2*sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
-    meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, geometry.meshes.get_by_index(0).transform)));
-    meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[1] = mesh(meshes.get_by_index(0).first, material_buffer->address() + 0, geometry.meshes.get_by_index(0).transform)));
 
     gl::query query_time(GL_TIME_ELAPSED);
 
@@ -428,7 +416,7 @@ int main()
             };
             if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 6, fs, "mesh", false))
             {
-                idx = -1;
+                int idx = -1;
                 if (const char* c_idx = tinyfd_inputBox("Mesh index", "Type in the mesh index you wnat to load.", "0"))
                 {
                     for (int i = 0; i < strlen(c_idx); ++i)
@@ -448,17 +436,20 @@ int main()
             }
         }
 
-        if(ImGui::CollapsingHeader("Material"))
+        for (int i = 0; i < material_buffer->size() / sizeof(material); ++i)
         {
-            auto&& item = material_buffer->data_as<material>();
-            ImGui::DragFloat("Roughness", &item->roughness_sqrt, 0.01f, 0.f, 1.f);
-            ImGui::DragFloat("Glass", &item->glass, 0.01f, 0.f, 1.f);
-            ImGui::DragFloat("IOR", &item->ior, 0.01f, 0.f, 100.f);
-            ImGui::DragFloat("Ex. Coeff.", &item->extinction_coefficient, 0.01f, 0.f, 100.f);
-            ImGui::Spacing();
-            ImGui::ColorEdit3("Color", &item->base_color[0]);
-            ImGui::ColorEdit3("Reflection Tint", &item->reflection_tint[0]);
-            ImGui::ColorEdit3("Glass Tint", &item->glass_tint[0]);
+            if (ImGui::CollapsingHeader(("Material " + std::to_string(i)).c_str()))
+            {
+                auto&& item = material_buffer->data_as<material>() + i;
+                ImGui::DragFloat("Roughness", &item->roughness_sqrt, 0.01f, 0.f, 1.f);
+                ImGui::DragFloat("Glass", &item->glass, 0.01f, 0.f, 1.f);
+                ImGui::DragFloat("IOR", &item->ior, 0.01f, 0.f, 100.f);
+                ImGui::DragFloat("Ex. Coeff.", &item->extinction_coefficient, 0.01f, 0.f, 100.f);
+                ImGui::Spacing();
+                ImGui::ColorEdit3("Color", &item->base_color[0]);
+                ImGui::ColorEdit3("Reflection Tint", &item->reflection_tint[0]);
+                ImGui::ColorEdit3("Glass Tint", &item->glass_tint[0]);
+            }
         }
 
         ImGui::End();
