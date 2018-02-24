@@ -258,7 +258,7 @@ int main()
     auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
     ictex->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, logo.data.get());
-
+    
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
