@@ -35,4 +35,6 @@ namespace res
     };
 
     image load_image(const filesystem::path& path, image_type type, image_components components = image_components::automatic);
+
+    image load_svg_rasterized(const filesystem::path& path, float scale);
 }

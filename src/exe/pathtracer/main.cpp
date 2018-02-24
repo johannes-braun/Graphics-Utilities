@@ -254,6 +254,11 @@ int main()
     gl::graphics_pipeline gizmo_pipeline;
     gizmo_pipeline.use_stages(new gl::shader(gl::shader_root / "gizmo/gizmo.vert"), new gl::shader(gl::shader_root / "gizmo/gizmo.frag"));
 
+    res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 1.0f);
+    auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
+    ictex->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, logo.data.get());
+
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
@@ -385,6 +390,7 @@ int main()
         meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(trafo);
         meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(trafo));
         ImGui::Begin("Window");
+        ImGui::Image(reinterpret_cast<ImTextureID>(sampler->sample_texture(ictex)), ImVec2(logo.width, logo.height));
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
         ImGui::DragInt("Size", &size, 0.1f, 1.f, 100.f);
         ImGui::DragInt("Max. Samples", &max_samples, 0.01f, 1.f, 100.f);
