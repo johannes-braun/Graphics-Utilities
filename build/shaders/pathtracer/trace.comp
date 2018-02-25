@@ -13,13 +13,13 @@ const int bsdf_type_diffuse = 0;
 const int bsdf_type_glass = 1;
 const int bsdf_type_reflect = 2;
 
-const float origin_epsilon = 1e-4f;
+const float origin_epsilon = 1e-2f;
 const float sqr_rad_cutoff = 1e-5f;
 
 const float random_primes[6] = float[](69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f);
 
 const vec3 light_color = 65.0f*vec3(1.f, 1, 1);
-const float light_radius = 0.01f;
+const float light_radius = 0.2f;
 const vec3 light_pos = vec3(0, 8, 0);
 
 layout(rgba16f) uniform image2D target_image;
@@ -138,27 +138,28 @@ void main()
                 const int target_bsdf = next_random() > fresnel && !bsdf_is_total_reflection(ior_in, ior_out, direction, forward_normal) ? 
                         (next_random() > glass ? bsdf_type_diffuse : bsdf_type_glass) : bsdf_type_reflect;
 
+                float cos_light_angle = dot(to_light, target_point.normal.xyz);
+                float d = max(cos_light_angle, 0.0f);
+                        
+                bvh_state_set_mode(bvh_mode_any);
+                for(int m = 0; m < num_meshes && cos_light_angle > 0; ++m)
+                {
+                    mesh* test_mesh = mesh_buffer + m;
+                    vec4 tr_orig = test_mesh->inv_model * (target_point.position + target_point.normal * origin_epsilon);
+                    vec4 tr_dir = test_mesh->inv_model * vec4(to_light, 0);
+
+                    if(bvh_hit(tr_orig.xyz, tr_dir.xyz, test_mesh->bvh, 
+                        test_mesh->elements, test_mesh->vertices, 
+                        distance_to_light).hits) {
+                        d = 0;
+                        break;
+                    }
+                }
+
                 switch(target_bsdf) {
                     // ----------------------------------------------------------------------------------------------------------------
                     case bsdf_type_diffuse:
                     {
-                        float cos_light_angle = dot(to_light, target_point.normal.xyz);
-                        float d = max(cos_light_angle, 0.0f);
-                        
-                        bvh_state_set_mode(bvh_mode_any);
-                        for(int m = 0; m < num_meshes && cos_light_angle > 0; ++m)
-                        {
-                            mesh* test_mesh = mesh_buffer + m;
-                            vec4 tr_orig = test_mesh->inv_model * (target_point.position + target_point.normal * origin_epsilon);
-                            vec4 tr_dir = test_mesh->inv_model * vec4(to_light, 0);
-
-                            if(bvh_hit(tr_orig.xyz, tr_dir.xyz, test_mesh->bvh, 
-                                test_mesh->elements, test_mesh->vertices, 
-                                distance_to_light).hits) {
-                                d = 0;
-                                break;
-                            }
-                        }
                         color += rad * d * light_color * base_color / (1 + distance_to_light * distance_to_light);
                         rad *= base_color;
                         direction = bsdf_local_to_world(cosine_hemisphere(random_sample), target_point.normal.xyz);
@@ -182,7 +183,7 @@ void main()
                         rad *= reflection_tint;
 
                         vec3 d_rad = clamp(rad * distribution_light * max(dot(to_light, target_point.normal.xyz), 0.f), 0, 1.f);
-                        color += clamp(d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(60.f / (3.7f*i+1)), vec3(1.f)));
+                        color += d * clamp(d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(60.f / (3.7f*i+1)), vec3(1.f)));
 
                         direction = reflect(direction, forward_normal);
                         origin = target_point.position.xyz + origin_epsilon * direction;
