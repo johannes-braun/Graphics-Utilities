@@ -53,7 +53,7 @@ namespace gl
     template <>
     void uniform<uint64_t>::update() const
     {
-        glProgramUniform1ui64NV(_shader, _location, _value);
+        glProgramUniform1ui64ARB(_shader, _location, _value);
     }
 
     template <>
