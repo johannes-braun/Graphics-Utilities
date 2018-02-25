@@ -17,13 +17,17 @@
 #include "opengl/vertex_array.hpp"
 #include "stb_image_write.h"
 #include "res/presets.hpp"
+#include "framework/renderer.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipelines;
 uint32_t current_target = 0;
 jpu::ref_ptr<gl::texture> target_texture;
+jpu::ref_ptr<gl::texture> target_texture2;
+jpu::ref_ptr<gl::texture> target_texture3;
 jpu::ref_ptr<gl::image> target_image;
 jpu::ref_ptr<gl::framebuffer> blit_framebuffer;
+std::unique_ptr<gfx::renderer> main_renderer;
 float dt = 1 / 60.f;
 
 struct mesh;
@@ -78,12 +82,13 @@ private:
 struct mesh
 {
     mesh(mesh_proxy* proxy, const intptr_t material_addr, const glm::mat4 model)
-        : vertices(proxy->_vertex_buffer->address()), 
+        : vertices(proxy->_vertex_buffer->address()),
         elements(proxy->_index_buffer->address()),
         bvh(proxy->_bvh_buffer->address()),
         material(material_addr),
         inv_model(inverse(model)),
-        model(model) {}
+        model(model)
+    {}
 
     intptr_t vertices;
     intptr_t elements;
@@ -122,11 +127,18 @@ glm::ivec2 resolution{ 800, 800 };
 
 void resize()
 {
+    main_renderer->resize(resolution.x, resolution.y, 8);
     target_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     target_texture->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_texture2 = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_texture2->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_texture3 = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_texture3->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
     target_image = jpu::make_ref<gl::image>(target_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
     blit_framebuffer = jpu::make_ref<gl::framebuffer>();
     blit_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_texture);
+    blit_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_texture2);
+    blit_framebuffer->attach(GL_COLOR_ATTACHMENT2, target_texture3);
     glViewport(0, 0, resolution.x, resolution.y);
 }
 
@@ -139,6 +151,7 @@ int main()
     main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
     main_window->set_swap_delay(dt);
     gl::setup_shader_paths("../shaders");
+    main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
 
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
         if (main_window->gui()->key_action(key, action, mods))
@@ -162,8 +175,7 @@ int main()
             return;
     });
 
-    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h)
-    {
+    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h) {
         resolution = { w, h };
         resize();
     });
@@ -216,7 +228,7 @@ int main()
     using namespace jpu::flags_operators;
     auto material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
     auto meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-    for(int i=0; i<geometry.meshes.size(); ++i)
+    for (int i = 0; i < geometry.meshes.size(); ++i)
     {
         material_buffer->data_as<material>()[i] = material();
         meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
@@ -234,13 +246,13 @@ int main()
     const glm::mat4 rot1 = rotate(glm::radians(-90.f), glm::vec3(1, 0, 0));
     const glm::mat4 rot2 = rotate(glm::radians(90.f), glm::vec3(0, 1, 0));
     int moving = -1;
-    for(int i=0; i < cube_vcount; ++i)
+    for (int i = 0; i < cube_vcount; ++i)
     {
         gizmo_positions[i] = scale * translate * res::presets::cube::vertices[i].position;
         gizmo_positions[i + cube_vcount] = rot1 * scale * translate * res::presets::cube::vertices[i].position;
         gizmo_positions[i + 2 * cube_vcount] = rot2 * scale * translate * res::presets::cube::vertices[i].position;
     }
-    for(int i=0; i<cube_icount; ++i)
+    for (int i = 0; i < cube_icount; ++i)
     {
         gizmo_indices[i] = res::presets::cube::indices[i];
         gizmo_indices[i + cube_icount] = cube_vcount + res::presets::cube::indices[i];
@@ -258,7 +270,11 @@ int main()
     auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
     ictex->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, logo.data.get());
-    
+
+    gl::graphics_pipeline bilateral_pipeline;
+    bilateral_pipeline.use_stages(new gl::shader(gl::shader_root / "postprocess/screen.vert"), new gl::shader(gl::shader_root / "postprocess/filter/bilateral.frag"));
+    gl::vertex_array pp_vao;
+
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
@@ -270,8 +286,11 @@ int main()
         static int max_samples = 4;
         static int sample_blend_offset = 0;
         static bool show_grid = true;
-        static bool show_gizmo= true;
+        static bool show_gizmo = true;
         static bool show_renderchunk = true;
+        static bool show_bfilter = true;
+        static float gauss_sigma = 6.f;
+        static float gauss_bsigma = 0.1f;
 
         const int size_x = pp_trace->work_group_sizes()[0] * size;
         const int size_y = pp_trace->work_group_sizes()[0] * size;
@@ -283,13 +302,13 @@ int main()
         double mx, my;
         glfwGetCursorPos(*main_window, &mx, &my);
         glm::vec2 uv = (glm::vec2(mx, my) / glm::vec2(resolution) - 0.5f) * 2.f;
-        uv.y = - uv.y;
+        uv.y = -uv.y;
         const glm::vec3 direction = glm::vec3(camera_matrix * glm::vec4(uv, 0, 1));
         const glm::vec3 origin = cam.transform.position;
         const glm::vec3 inv_origin = inverse(glm::translate(trafo.position)) * glm::vec4(origin, 1);
         const glm::vec3 inv_dir = inverse(transpose(inverse(glm::translate(trafo.position)))) * glm::vec4(direction, 0);
         const float grip_width = 0.1f;
-        if(!(moving+1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(-grip_width, -grip_width, 0.f), glm::vec3(grip_width, grip_width, 1.f), 100000000.f))
+        if (!(moving + 1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(-grip_width, -grip_width, 0.f), glm::vec3(grip_width, grip_width, 1.f), 100000000.f))
         {
             selected = 0;
         }
@@ -306,18 +325,18 @@ int main()
             selected = moving;
         }
 
-        if(selected+1 && glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        if (selected + 1 && glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
             moving = selected;
-            const int mv = selected==0 ? 2 : (selected == 1 ? 1 : 0);
+            const int mv = selected == 0 ? 2 : (selected == 1 ? 1 : 0);
             const glm::vec3 plane_orig = trafo.position;
             glm::vec3 plane_norm(0.f);
-            plane_norm[(mv+1)%3] = 1;
+            plane_norm[(mv + 1) % 3] = 1;
             trafo.position[(mv) % 3] = abs(dot(plane_norm, direction)) > 1e-6 ?
                 (origin + direction * abs(dot(plane_orig - origin, plane_norm) / dot(plane_norm, direction)))[(mv) % 3] - 0.5f :
                 trafo.position[(mv) % 3];
         }
-        else if(moving + 1)
+        else if (moving + 1)
         {
             moving = -1;
         }
@@ -343,8 +362,27 @@ int main()
             t += query_time.get_uint64() / 1'000'000'000.f;
         }
 
-        blit_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT0);
-        blit_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, 
+        blit_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
+        blit_framebuffer->bind();
+        bilateral_pipeline.bind();
+        pp_vao.bind();
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_bsigma") = gauss_bsigma;
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_texture);
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_sigma") = show_bfilter ? gauss_sigma : 0;
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        blit_framebuffer->unbind();
+
+        blit_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT2 });
+        main_renderer->bind();
+        bilateral_pipeline.bind();
+        pp_vao.bind();
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_texture2);
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_sigma") = 0;
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        main_renderer->draw(main_window->delta_time(), blit_framebuffer);
+
+        blit_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT2);
+        blit_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y },
             gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         if (show_renderchunk)
@@ -364,12 +402,12 @@ int main()
         gizmo_vao.bind();
         gizmo_pipeline.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * glm::translate(trafo.position);
         gizmo_pipeline.stage(gl::shader_type::fragment)->get_uniform<int>("hovered") = selected;
-        if(show_gizmo)
+        if (show_gizmo)
             glDrawElements(GL_TRIANGLES, 3 * cube_icount, GL_UNSIGNED_SHORT, nullptr);
 
         if (show_grid)
         {
-            for(auto&& p : meshes)
+            for (auto&& p : meshes)
             {
                 glLineWidth(0.1f);
                 glPolygonMode(GL_FRONT, GL_LINE);
@@ -398,10 +436,19 @@ int main()
         ImGui::Checkbox("Show Mesh", &show_grid);
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
         ImGui::Checkbox("Show Chunk", &show_renderchunk);
-        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
+        ImGui::Checkbox("Enable Filtering", &show_bfilter);
+        if (show_bfilter)
+        {
+            ImGui::DragFloat("Gauss Sigma", &gauss_sigma);
+            ImGui::DragFloat("Gauss B-Sigma", &gauss_bsigma);
+        }
+
+        static bool with_bg_alpha = true;
+        ImGui::Checkbox("Enable Background Alpha", &with_bg_alpha);
+        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.25f, 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
-            target_texture->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
+            target_texture3->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
 
             glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
             std::vector<glm::u8vec4> convert(resolution.x * resolution.y);
@@ -409,7 +456,29 @@ int main()
             {
                 for (int y = 0; y < resolution.y; ++y)
                 {
-                    convert[y * resolution.x + x] = clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0), glm::vec4(255.f));
+                    convert[y * resolution.x + x] = clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0, 0, 0, with_bg_alpha ? 0 : 255.f), glm::vec4(255.f));
+                }
+            }
+
+            constexpr const char *extensions[1] = {
+                "*.png"
+            };
+            if (const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, extensions, "*.png"))
+                stbi_write_png(dst, resolution.x, resolution.y, 4, convert.data(), 0);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Save2", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.333333f, 0)))
+        {
+            res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
+            target_texture2->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
+
+            glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
+            std::vector<glm::u8vec4> convert(resolution.x * resolution.y);
+            for (int x = 0; x < resolution.x; ++x)
+            {
+                for (int y = 0; y < resolution.y; ++y)
+                {
+                    convert[y * resolution.x + x] = clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0, 0, 0, with_bg_alpha ? 0 : 255.f), glm::vec4(255.f));
                 }
             }
 
@@ -432,7 +501,7 @@ int main()
                 using namespace jpu::flags_operators;
                 material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
                 meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-                for (int i = 0; i<geometry.meshes.size(); ++i)
+                for (int i = 0; i < geometry.meshes.size(); ++i)
                 {
                     material_buffer->data_as<material>()[i] = material();
                     meshes.push(geometry.meshes.id_by_index(i), std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>()));
