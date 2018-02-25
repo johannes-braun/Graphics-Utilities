@@ -11,5 +11,8 @@ layout(location=0) out vec4 color;
 
 void main()
 {
-    color = vec4(factor_one*texture(this_texture, uv).rgb, 1) + vec4(factor_two*texture(other_texture, uv).rgb, 0);
+    const vec4 color_lhs = texture(this_texture, uv);
+    const vec4 color_rhs = texture(other_texture, uv);
+
+    color = vec4(factor_one*color_lhs.rgb, color_lhs.a) + vec4(factor_two*color_rhs.rgb, color_rhs.a);
 }

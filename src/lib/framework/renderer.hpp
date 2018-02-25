@@ -20,7 +20,7 @@ namespace gfx
         void reload_pipelines() const;
 
         void bind() const;
-        void draw(double delta_time);
+        void draw(double delta_time, gl::framebuffer* target_framebuffer = nullptr);
         gl::texture* random_texture() const;
 
     private:

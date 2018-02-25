@@ -24,7 +24,7 @@ void main()
 
     color = main_color;
 
-    const float centered_ness = 0.95f;
+    const float centered_ness = 0.90f;
 
     int idx1 = 0;
     int idx2 = 0;

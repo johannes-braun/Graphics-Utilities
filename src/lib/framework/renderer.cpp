@@ -74,27 +74,27 @@ namespace gfx
         {
             tlog_i("Renderer") << "Creating unsampled framebuffers";
             _quarter_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            _quarter_size_attachments[0]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_R11F_G11F_B10F, 1);
+            _quarter_size_attachments[0]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_RGBA16F, 1);
             _pp_quartersize_framebuffer->attach(GL_COLOR_ATTACHMENT0, _quarter_size_attachments[0]);
 
             _quarter_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            _quarter_size_attachments[1]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_R11F_G11F_B10F, 1);
+            _quarter_size_attachments[1]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_RGBA16F, 1);
             _pp_quartersize_framebuffer->attach(GL_COLOR_ATTACHMENT1, _quarter_size_attachments[1]);
 
             _full_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            _full_size_attachments[0]->storage_2d(_full_resolution.x, _full_resolution.y, GL_R11F_G11F_B10F, 3);
+            _full_size_attachments[0]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 3);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT0, _full_size_attachments[0]);
 
             _full_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            _full_size_attachments[1]->storage_2d(_full_resolution.x, _full_resolution.y, GL_R11F_G11F_B10F, 1);
+            _full_size_attachments[1]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT1, _full_size_attachments[1]);
 
             _full_size_attachments[2] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            _full_size_attachments[2]->storage_2d(_full_resolution.x, _full_resolution.y, GL_R11F_G11F_B10F, 1);
+            _full_size_attachments[2]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT2, _full_size_attachments[2]);
 
             _full_size_attachments[3] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-            _full_size_attachments[3]->storage_2d(_full_resolution.x, _full_resolution.y, GL_R11F_G11F_B10F, 1);
+            _full_size_attachments[3]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT3, _full_size_attachments[3]);
         }
 
@@ -132,7 +132,7 @@ namespace gfx
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    void renderer::draw(const double delta_time)
+    void renderer::draw(const double delta_time, gl::framebuffer* target_framebuffer)
     {
         _main_framebuffer->unbind();
 
@@ -170,7 +170,7 @@ namespace gfx
         _bright_spots_pipeline->bind();
         _bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = _sampler->sample_texture(_full_size_attachments[0]);
         _bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("threshold_lower") = 1.0f;
-        _bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("threshold_higher") = 1.75f;
+        _bright_spots_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("threshold_higher") = 1.45f;
         glDrawArrays(GL_TRIANGLES, 0, 3);
         _pp_quartersize_framebuffer->unbind();
 
@@ -205,7 +205,7 @@ namespace gfx
         _add_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = _sampler->sample_texture(_full_size_attachments[0]);
         _add_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[1]") = _sampler->sample_texture(_full_size_attachments[1]);
         _add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_one") = 1.f;
-        _add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_two") = 0.3f;
+        _add_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("factor_two") = 0.6f;
         glDrawArrays(GL_TRIANGLES, 0, 3);
         _pp_fullsize_framebuffer->unbind();
 
@@ -227,7 +227,7 @@ namespace gfx
         _pp_fullsize_framebuffer->unbind();
 
         _pp_fullsize_framebuffer->read_from_attachment(_temporal_target);
-        _pp_fullsize_framebuffer->blit(nullptr,
+        _pp_fullsize_framebuffer->blit(target_framebuffer,
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y },
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y },
             GL_COLOR_BUFFER_BIT, GL_NEAREST);

@@ -245,11 +245,11 @@ void main()
 {
 	vec2 resolution = textureSize(this_texture, 0);
 	
+    color = texture(this_texture, uv);
 	if(gl_FragCoord.x >= resolution.x-1 || gl_FragCoord.x <=1 || gl_FragCoord.y >= resolution.y-1 || gl_FragCoord.y <= 1){
 		//FXAA at the borders would look weird.
-		color = texture(this_texture, uv);
 		return;
 	}
 	
-	color = vec4(FxaaPixelShader(uv, this_texture, 1/resolution), 1);
+	color = vec4(FxaaPixelShader(uv, this_texture, 1/resolution), color.a);
 }

@@ -15,7 +15,7 @@ const float half_kernel[half_kernel_size+1] = float[](
 	0.074574,
 	0.118748,
 	0.156982,
-	0.172288
+	0.172286
 );
 
 layout(location=0) out vec4 color;
@@ -32,5 +32,5 @@ void main()
         color += half_kernel[i] * textureLod(this_texture, uv + (half_kernel_size - i) * axis_vector, level);
         color += half_kernel[i] * textureLod(this_texture, uv - (half_kernel_size - i) * axis_vector, level);
     }
-    color = vec4(vec3(color + half_kernel[half_kernel_size] * textureLod(this_texture, uv, level)), 1);
+    color = color + half_kernel[half_kernel_size] * textureLod(this_texture, uv, level);
 }

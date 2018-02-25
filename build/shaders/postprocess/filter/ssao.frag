@@ -60,5 +60,5 @@ void main()
     }    
     
     vec3 base = vec3(col);
-    color = (1.0 - 2.f*length(ao)/float(COUNT)) * vec4(vec3(base), 1.0);
+    color =  vec4((1.0 - 2.f*length(ao)/float(COUNT)) * vec3(base), col.a);
 }
