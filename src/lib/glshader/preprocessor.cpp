@@ -818,15 +818,23 @@ namespace glshader::preprocessor
                     }
                     else
                     {
+                        int nesting = 0;
                         while (true)
                         {
                             if (is_new_line(text_ptr))
                             {
                                 increment_line(current_line, processed);
                             }
-                            else if (is_directive_begin(text_ptr) && is_token_same(skip_space(text_ptr + 1), "endif"))
+                            else if (is_directive_begin(text_ptr))
                             {
-                                break;
+                                if (is_token_same(skip_space(text_ptr + 1), "if", true, false))
+                                    ++nesting;
+                                else if (is_token_same(skip_space(text_ptr + 1), "endif"))
+                                {
+                                    if (nesting == 0)
+                                        break;
+                                    else nesting--;
+                                }
                             }
                             else if (*text_ptr == '\0')
                             {
