@@ -8,9 +8,6 @@ namespace gfx
 {
     renderer::renderer(const int width, const int height, const uint32_t samples)
     {
-        _main_framebuffer = jpu::make_ref<gl::framebuffer>();
-        _pp_fullsize_framebuffer = jpu::make_ref<gl::framebuffer>();
-        _pp_quartersize_framebuffer = jpu::make_ref<gl::framebuffer>();
         resize(width, height, samples);
 
         _empty_vao = jpu::make_ref<gl::vertex_array>();
@@ -72,6 +69,9 @@ namespace gfx
 
         if (resolution_changed)
         {
+            _pp_fullsize_framebuffer = jpu::make_ref<gl::framebuffer>();
+            _pp_quartersize_framebuffer = jpu::make_ref<gl::framebuffer>();
+
             tlog_i("Renderer") << "Creating unsampled framebuffers";
             _quarter_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
             _quarter_size_attachments[0]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_RGBA16F, 1);
@@ -100,6 +100,8 @@ namespace gfx
 
         if (resolution_changed || samples_changed)
         {
+            _main_framebuffer = jpu::make_ref<gl::framebuffer>();
+
             tlog_i("Renderer") << "Creating sampled framebuffers";
             _msaa_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::multisample_2d);
             _msaa_attachments[0]->storage_2d_multisample(_full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
