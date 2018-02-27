@@ -218,7 +218,7 @@ namespace io
         free(d);
     }
 
-    window::operator struct GLFWwindow*() const
+    window::operator GLFWwindow*() const
     {
         return _window;
     }
@@ -280,7 +280,7 @@ namespace io
         return *_mode;
     }
 
-    monitor::operator struct GLFWmonitor*() const
+    monitor::operator GLFWmonitor*() const
     {
         return _monitor;
     }

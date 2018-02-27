@@ -19,16 +19,14 @@
 #include "res/presets.hpp"
 #include "framework/renderer.hpp"
 
+glm::ivec2 resolution{ 1280, 720 };
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipelines;
-uint32_t current_target = 0;
-jpu::ref_ptr<gl::texture> target_texture;
-jpu::ref_ptr<gl::texture> target_texture2;
-jpu::ref_ptr<gl::texture> target_texture3;
-jpu::ref_ptr<gl::image> target_image;
-jpu::ref_ptr<gl::framebuffer> blit_framebuffer;
 std::unique_ptr<gfx::renderer> main_renderer;
-float dt = 1 / 60.f;
+
+jpu::ref_ptr<gl::framebuffer> target_framebuffer;
+std::array<jpu::ref_ptr<gl::texture>, 3> target_textures;
+jpu::ref_ptr<gl::image> target_image;
 
 struct mesh;
 class mesh_proxy : public jpu::ref_count
@@ -178,22 +176,20 @@ bool intersect_bounds(
     return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
 
-glm::ivec2 resolution{ 1280/2, 720/2 };
-
 void resize()
 {
     main_renderer->resize(resolution.x, resolution.y, 8);
-    target_texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_texture->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_texture2 = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_texture2->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_texture3 = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_texture3->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_image = jpu::make_ref<gl::image>(target_texture, 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
-    blit_framebuffer = jpu::make_ref<gl::framebuffer>();
-    blit_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_texture);
-    blit_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_texture2);
-    blit_framebuffer->attach(GL_COLOR_ATTACHMENT2, target_texture3);
+    target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[1]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_textures[2] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[2]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_image = jpu::make_ref<gl::image>(target_textures[0], 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
+    target_framebuffer = jpu::make_ref<gl::framebuffer>();
+    target_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
+    target_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
+    target_framebuffer->attach(GL_COLOR_ATTACHMENT2, target_textures[2]);
     glViewport(0, 0, resolution.x, resolution.y);
 }
 
@@ -204,7 +200,7 @@ int main()
     main_window = jpu::make_ref<io::window>(io::api::opengl, resolution.x, resolution.y, "Grid");
     main_window->load_icon("../res/ui/logo.png");
     main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
-    main_window->set_swap_delay(dt);
+    main_window->limit_framerate(60.f);
     gl::setup_shader_paths("../shaders");
     main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
 
@@ -423,8 +419,8 @@ int main()
             moving = -1;
         }
 
-        float t = 0.f;
-        while (t < dt)
+        double t = 0.0;
+        while (t < main_window->get_swap_delay())
         {
             query_time.begin();
             pp_trace->bind();
@@ -441,30 +437,30 @@ int main()
             pp_trace->dispatch(size_x, size_y);
             frame = (frame + 1) % (count_x * count_y);
             query_time.end();
-            t += query_time.get_uint64() / 1'000'000'000.f;
+            t += query_time.get_uint64() / 1'000'000'000.0;
         }
 
-        blit_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-        blit_framebuffer->bind();
+        target_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
+        target_framebuffer->bind();
         bilateral_pipeline.bind();
         pp_vao.bind();
         bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_bsigma") = gauss_bsigma;
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_texture);
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_textures[0]);
         bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_sigma") = show_bfilter ? gauss_sigma : 0;
         glDrawArrays(GL_TRIANGLES, 0, 3);
-        blit_framebuffer->unbind();
+        target_framebuffer->unbind();
 
-        blit_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT2 });
+        target_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT2 });
         main_renderer->bind();
         bilateral_pipeline.bind();
         pp_vao.bind();
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_texture2);
+        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_textures[1]);
         bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_sigma") = 0;
         glDrawArrays(GL_TRIANGLES, 0, 3);
-        main_renderer->draw(main_window->delta_time(), blit_framebuffer);
+        main_renderer->draw(main_window->delta_time(), target_framebuffer);
 
-        blit_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT2);
-        blit_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y },
+        target_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT2);
+        target_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y },
             gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         if (show_renderchunk)
@@ -530,7 +526,7 @@ int main()
         if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
-            target_texture3->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
+            target_textures[2]->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
 
             glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
             std::vector<glm::u8vec4> convert(resolution.x * resolution.y);
@@ -552,7 +548,7 @@ int main()
         if (ImGui::Button("Save2", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
-            target_texture2->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
+            target_textures[1]->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
 
             glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
             std::vector<glm::u8vec4> convert(resolution.x * resolution.y);

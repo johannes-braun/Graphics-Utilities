@@ -31,7 +31,7 @@ namespace io
         monitor();
         monitor(int index);
         const GLFWvidmode& video_mode() const;
-        operator struct GLFWmonitor*() const;
+        operator GLFWmonitor*() const;
 
     private:
         GLFWmonitor * _monitor;
@@ -45,7 +45,7 @@ namespace io
         window(api api, int width, int height, std::string_view title, window* share, std::optional<monitor> monitor = {});
         ~window();
 
-        operator struct GLFWwindow*() const;
+        operator GLFWwindow*() const;
         gui* gui() const;
 
         void load_icon(const std::experimental::filesystem::path& path);
@@ -53,6 +53,8 @@ namespace io
         void set_cursor(cursor* cursor) { _cursor = cursor; glfwSetCursor(_window, *_cursor); }
 
         bool update();
+
+        double get_swap_delay() const { return _swap_delay; }
 
         void set_swap_delay(const double delay)
         {
