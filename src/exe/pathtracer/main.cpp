@@ -71,6 +71,7 @@ public:
                 vertices[base_offset + vtx].position = model * meshes[i].vertices[vtx].position;
                 vertices[base_offset + vtx].normal = normalize(normal_matrix * meshes[i].vertices[vtx].normal);
                 vertices[base_offset + vtx].uv = meshes[i].vertices[vtx].uv;
+                vertices[base_offset + vtx].uv.z = i;   // mesh material sub-index-offset
             }
 
 #pragma omp parallel for
@@ -278,27 +279,43 @@ int main()
     const std::uniform_real_distribution<float> dist(0.f, 1.f);
 
     // Test out mesh
-    auto geometry = res::load_geometry("../res/ruins/ruins.obj");
     
-#define WHOLE_SCENE
-#if defined(WHOLE_SCENE)
-    using namespace jpu::flags_operators;
-    auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-    auto meshes_buffer = jpu::make_ref<gl::buffer>(sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-    material_buffer->data_as<material>()[0] = material();
-    meshes[geometry.meshes.id_by_index(0)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.payloads()), std::vector<mesh*>());
-    meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address(), glm::mat4(1.f))));
-#else
-    using namespace jpu::flags_operators;
-    auto material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-    auto meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-    for (int i = 0; i < geometry.meshes.size(); ++i)
+    jpu::ref_ptr<gl::buffer> material_buffer;
+    jpu::ref_ptr<gl::buffer> meshes_buffer;
+
+    const auto load_mesh = [&](const auto& path, const bool combine)
     {
-        material_buffer->data_as<material>()[i] = material();
-        meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
-        meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
-    }
-#endif
+        auto geometry = res::load_geometry(path);
+        if(combine)
+        {
+            // Combine all vertex data into one object
+
+            using namespace jpu::flags_operators;
+            material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+            meshes_buffer = jpu::make_ref<gl::buffer>(sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+            for (int i = 0; i < geometry.meshes.size(); ++i)
+            {
+                material_buffer->data_as<material>()[i] = material();
+            }
+            meshes[geometry.meshes.id_by_index(0)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.payloads()), std::vector<mesh*>());
+            meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address(), glm::mat4(1.f))));
+        }
+        else
+        {
+            // Keep each object as it's own mesh
+
+            using namespace jpu::flags_operators;
+            material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+            meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+            for (int i = 0; i < geometry.meshes.size(); ++i)
+            {
+                material_buffer->data_as<material>()[i] = material();
+                meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
+                meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
+            }
+        }
+    };
+    load_mesh("../res/ruins/ruins.obj", true);
 
     gl::query query_time(GL_TIME_ELAPSED);
 
@@ -510,7 +527,7 @@ int main()
 
         static bool with_bg_alpha = true;
         ImGui::Checkbox("Enable Background Alpha", &with_bg_alpha);
-        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.25f, 0)))
+        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
             target_texture3->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
@@ -532,7 +549,7 @@ int main()
                 stbi_write_png(dst, resolution.x, resolution.y, 4, convert.data(), 0);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Save2", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.333333f, 0)))
+        if (ImGui::Button("Save2", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
             target_texture2->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
@@ -553,7 +570,8 @@ int main()
             if (const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, extensions, "*.png"))
                 stbi_write_png(dst, resolution.x, resolution.y, 4, convert.data(), 0);
         }
-        ImGui::SameLine();
+        static bool combine_mesh = true;
+        ImGui::Checkbox("Combine mesh when loading", &combine_mesh);
         if (ImGui::Button("Open", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
             constexpr const char *fs[6] = {
@@ -562,16 +580,7 @@ int main()
             if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 6, fs, "mesh", false))
             {
                 meshes.clear();
-                geometry = res::load_geometry(src);
-                using namespace jpu::flags_operators;
-                material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-                meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-                for (int i = 0; i < geometry.meshes.size(); ++i)
-                {
-                    material_buffer->data_as<material>()[i] = material();
-                    meshes.push(geometry.meshes.id_by_index(i), std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>()));
-                    meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
-                }
+                load_mesh(src, true);
             }
         }
 

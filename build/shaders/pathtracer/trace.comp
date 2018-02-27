@@ -16,11 +16,11 @@ const int bsdf_type_reflect = 2;
 const float origin_epsilon = 1e-2f;
 const float sqr_rad_cutoff = 1e-5f;
 
-const float random_primes[6] = float[](69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f);
+const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 
-const vec3 light_color = 550.0f*vec3(1.f, 1, 1);
-const float light_radius = 0.2f;
-const vec3 light_pos = vec3(0, 20, 0);
+const vec3 light_color = 55.0f*vec3(1.f, 1, 1);
+const float light_radius = 0.8f;
+const vec3 light_pos = vec3(0, 4, 0);
 
 layout(rgba16f) uniform image2D target_image;
 uniform samplerCube cubemap;
@@ -32,7 +32,7 @@ uniform int num_meshes = 0;
 uniform ivec2 offset;
 uniform int max_samples = 2;
 uniform int sample_blend_offset = 0;
-uniform float max_bounces = 3;
+uniform float max_bounces = 8;
 
 
 void init_random(ivec2 pixel, float seed)
@@ -112,6 +112,7 @@ void main()
                 target_point.normal = vec4(normalize((current_mesh->model * vec4(barycentric_resolve(normal).xyz, 0)).xyz), 0);
                 target_point.position = vec4((current_mesh->model * vec4(barycentric_resolve(position).xyz, 1)).xyz, 1);
                 target_point.uv.xy = barycentric_resolve(uv).xy;
+                mesh_material += uintptr_t(vertices[triangles->a].uv.z);
 
                 const float roughness = (1.2 - 0.2 * sqrt(abs(dot(direction, target_point.normal.xyz)))) * pow(mesh_material->roughness_sqrt, 2);
                 const float glass = mesh_material->glass;
