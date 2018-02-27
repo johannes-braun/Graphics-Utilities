@@ -24,6 +24,6 @@ namespace glshader
     )glsl";
 
     constexpr static const char* glslc_default_flags = " -std=450core ";
-    constexpr static const char* glslc_location = "glslc.exe";
+    constexpr static const char* glslc_location = "glslc";
     constexpr static const char* glslc_temp_file_name = "shader_temp";
 }
