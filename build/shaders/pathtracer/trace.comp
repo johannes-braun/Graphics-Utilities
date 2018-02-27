@@ -18,9 +18,9 @@ const float sqr_rad_cutoff = 1e-5f;
 
 const float random_primes[6] = float[](69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f);
 
-const vec3 light_color = 65.0f*vec3(1.f, 1, 1);
+const vec3 light_color = 550.0f*vec3(1.f, 1, 1);
 const float light_radius = 0.2f;
-const vec3 light_pos = vec3(0, 8, 0);
+const vec3 light_pos = vec3(0, 20, 0);
 
 layout(rgba16f) uniform image2D target_image;
 uniform samplerCube cubemap;
@@ -32,7 +32,7 @@ uniform int num_meshes = 0;
 uniform ivec2 offset;
 uniform int max_samples = 2;
 uniform int sample_blend_offset = 0;
-uniform float max_bounces = 7;
+uniform float max_bounces = 3;
 
 
 void init_random(ivec2 pixel, float seed)

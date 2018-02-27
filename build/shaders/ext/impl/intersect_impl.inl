@@ -23,6 +23,31 @@ bool intersect_bounds(
 	return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
 
+bool intersect_bounds(
+	const vec3 origin,
+	const vec3 direction,
+
+	const vec3 bounds_min,
+	const vec3 bounds_max,
+	const float max_distance,
+	inout float min_distance)
+{
+	vec3 inv_direction = 1.f / direction;
+
+	//intersections with box planes parallel to x, y, z axis
+	vec3 t135 = (bounds_min - origin) * inv_direction;
+	vec3 t246 = (bounds_max - origin) * inv_direction;
+
+	vec3 min_values = min(t135, t246);
+	vec3 max_values = max(t135, t246);
+
+	float tmin = max(max(min_values.x, min_values.y), min_values.z);
+	float tmax = min(min(max_values.x, max_values.y), max_values.z);
+
+	min_distance = min(tmin, tmax);
+	return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
+}
+
 bool intersect_triangle(
 	const vec3 origin,
 	const vec3 direction,

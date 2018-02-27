@@ -50,6 +50,60 @@ public:
         _idx_count = indices.size();
     }
 
+    mesh_proxy(const std::vector<res::mesh>& meshes)
+    {
+        std::vector<uint32_t> indices;
+        std::vector<res::vertex> vertices;
+
+        int base_offset = 0;
+        int index_offset = 0;
+        for(int i=0; i<meshes.size(); ++i)
+        {
+            indices.resize(meshes[i].indices.size() + indices.size());
+            vertices.resize(meshes[i].vertices.size() + vertices.size());
+
+            const glm::mat4 model = static_cast<glm::mat4>(meshes[i].transform);
+            const glm::mat4 normal_matrix = transpose(inverse(model));
+
+#pragma omp parallel for
+            for(int vtx = 0; vtx < meshes[i].vertices.size(); ++vtx)
+            {
+                vertices[base_offset + vtx].position = model * meshes[i].vertices[vtx].position;
+                vertices[base_offset + vtx].normal = normalize(normal_matrix * meshes[i].vertices[vtx].normal);
+                vertices[base_offset + vtx].uv = meshes[i].vertices[vtx].uv;
+            }
+
+#pragma omp parallel for
+            for(int idx = 0; idx < meshes[i].indices.size(); ++idx)
+            {
+                indices[idx + index_offset] = meshes[i].indices[idx] + base_offset;
+            }
+            index_offset += meshes[i].indices.size();
+            base_offset += meshes[i].vertices.size();
+        }
+
+        jpu::bvh<3> bvh;
+        bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
+
+
+        std::vector<res::vertex> opt_vertices(indices.size());
+#pragma omp parallel for
+        for(int i=0; i< opt_vertices.size(); ++i)
+        {
+            opt_vertices[i] = vertices[indices[i]];
+            indices[i] = i;
+        }
+
+        _vertex_buffer = jpu::make_ref<gl::buffer>(opt_vertices);
+        _index_buffer = jpu::make_ref<gl::buffer>(indices);
+        _bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
+        _vao = jpu::make_ref<gl::vertex_array>();
+        _vao->set_element_buffer(*_index_buffer);
+        _vao->add_binding(gl::vertex_attribute_binding(0, *_vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false));
+        _transform = glm::mat4(1.f);
+        _idx_count = indices.size();
+    }
+
     void draw() const
     {
         _vao->bind();
@@ -123,7 +177,7 @@ bool intersect_bounds(
     return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
 
-glm::ivec2 resolution{ 800, 800 };
+glm::ivec2 resolution{ 1280/2, 720/2 };
 
 void resize()
 {
@@ -224,7 +278,17 @@ int main()
     const std::uniform_real_distribution<float> dist(0.f, 1.f);
 
     // Test out mesh
-    auto geometry = res::load_geometry("../res/scene.dae");
+    auto geometry = res::load_geometry("../res/ruins/ruins.obj");
+    
+#define WHOLE_SCENE
+#if defined(WHOLE_SCENE)
+    using namespace jpu::flags_operators;
+    auto material_buffer = jpu::make_ref<gl::buffer>(sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+    auto meshes_buffer = jpu::make_ref<gl::buffer>(sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+    material_buffer->data_as<material>()[0] = material();
+    meshes[geometry.meshes.id_by_index(0)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.payloads()), std::vector<mesh*>());
+    meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address(), glm::mat4(1.f))));
+#else
     using namespace jpu::flags_operators;
     auto material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
     auto meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
@@ -234,6 +298,7 @@ int main()
         meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
         meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
     }
+#endif
 
     gl::query query_time(GL_TIME_ELAPSED);
 

@@ -33,15 +33,12 @@ struct bvh_result
     // The index of the nearest and farthest triangles. 
     // (multiply by 3 to get the element index)
     uint near_triangle;
-    uint far_triangle;
 
     float near_distance;
-    float far_distance;
 
     // Only two barycentric coordinates are needed.
     // Calculate the last one with z = 1 - bary.x - bary.y .
     vec2 near_barycentric;
-    vec2 far_barycentric;
 
     bool hits;
 };
