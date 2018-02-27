@@ -18,8 +18,8 @@ const float sqr_rad_cutoff = 1e-5f;
 
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 
-const vec3 light_color = 55.0f*vec3(1.f, 1, 1);
-const float light_radius = 0.8f;
+const vec3 light_color = 90.0f*vec3(1.f, 1, 1);
+const float light_radius = 0.1f;
 const vec3 light_pos = vec3(0, 4, 0);
 
 layout(rgba16f) uniform image2D target_image;
@@ -33,7 +33,6 @@ uniform ivec2 offset;
 uniform int max_samples = 2;
 uniform int sample_blend_offset = 0;
 uniform float max_bounces = 8;
-
 
 void init_random(ivec2 pixel, float seed)
 {
@@ -161,7 +160,7 @@ void main()
                     // ----------------------------------------------------------------------------------------------------------------
                     case bsdf_type_diffuse:
                     {
-                        color += rad * d * light_color * base_color / (1 + distance_to_light * distance_to_light);
+                        color += clamp(rad * d * light_color * base_color / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(30.f / (3.7f*i+1)), vec3(1.f)));
                         rad *= base_color;
                         direction = bsdf_local_to_world(cosine_hemisphere(random_sample), target_point.normal.xyz);
                         origin = target_point.position.xyz + origin_epsilon * direction;
@@ -180,11 +179,11 @@ void main()
                     case bsdf_type_reflect:
                     {
                         vec3 light_half_vector = normalize(-direction + normalize(to_light_full));
-                        float distribution_light = ggx_distribution(abs(dot(target_point.normal.xyz, light_half_vector)), roughness);
+                        float distribution_light = clamp(ggx_distribution(abs(dot(target_point.normal.xyz, light_half_vector)), roughness), 0.f, 1.f);
                         rad *= reflection_tint;
 
                         vec3 d_rad = clamp(rad * distribution_light * max(dot(to_light, target_point.normal.xyz), 0.f), 0, 1.f);
-                        color += d * clamp(d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(60.f / (3.7f*i+1)), vec3(1.f)));
+                        color += clamp(d * d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(30.f / (3.7f*i+1)), vec3(1.f)));
 
                         direction = reflect(direction, forward_normal);
                         origin = target_point.position.xyz + origin_epsilon * direction;
@@ -198,12 +197,13 @@ void main()
                 float first = float(i==0);
                 alpha = 1-first;
                 vec3 unclamped = rad * texture(cubemap, direction).rgb * 4.f;
-                color += clamp(unclamped, vec3(0), vec3(16.f));
+                color += clamp(unclamped, vec3(0), vec3(1.f + first * 10.f));
                 break;
             }
         }
 
         vec3 mapped = pow(color, vec3(1/1.5f));
+
         imageStore(target_image, pixel, mix(last_color, vec4(mapped, alpha), 1.f/(max_samples + sample_blend_offset)));
     }
 }
