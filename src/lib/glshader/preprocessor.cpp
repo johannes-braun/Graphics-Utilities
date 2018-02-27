@@ -472,7 +472,7 @@ namespace glshader::preprocessor
             else
             {
                 line.replace(line.begin() + static_cast<size_t>(begin - line.data()),
-                    line.begin() + static_cast<size_t>(text_ptr - line.data()), expanded_macro.begin(),
+                    line.begin() + static_cast<size_t>(text_ptr + params_length + 2 - line.data()), expanded_macro.begin(),
                     expanded_macro.end());
             }
 
@@ -491,6 +491,8 @@ namespace glshader::preprocessor
             if (line.empty() || text_ptr == &line[line.size() - 1])
                 break;
         }
+        if (line[line.size() - 1] == '\0')
+            line[line.size() - 1] = '\n';
         return line;
     }
 
@@ -665,6 +667,8 @@ namespace glshader::preprocessor
                                 definition_stream << *value_end;
                             if (is_new_line(value_end))
                                 increment_line(current_line, processed);
+                            if (*value_end == '\0')
+                                break;
                             ++value_end;
                         }
 
