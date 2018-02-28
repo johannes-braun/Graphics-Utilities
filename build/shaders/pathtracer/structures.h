@@ -18,9 +18,12 @@ struct material
     float glass;
     vec3 base_color;
     float ior;
-    float extinction_coefficient;
+    vec3 glass_scatter_color;
+    float glass_density;
 
-    float _p[3];
+    float glass_density_falloff;
+    float extinction_coefficient;
+    float _p[2];
 };
 
 struct vertex {

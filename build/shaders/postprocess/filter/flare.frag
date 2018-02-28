@@ -10,7 +10,7 @@ const vec3 colors[10] = vec3[](
     vec3(0.95f, 0.5f, 0.22f),
     vec3(0.8f, 0.6f, 0.4f),
     vec3(0.7f, 0.65f, 0.6f),
-    vec3(0.5f, 0.7f, 0.6f),
+    vec3(0.3f, 0.7f, 0.6f),
     vec3(0.4f, 0.9f, 0.5f),
     vec3(0.3f, 0.8f, 0.7f),
     vec3(0.25f, 0.65f, 0.85f),
@@ -24,7 +24,7 @@ void main()
 
     color = main_color;
 
-    const float centered_ness = 0.90f;
+    const float centered_ness = 0.95f;
 
     int idx1 = 0;
     int idx2 = 0;

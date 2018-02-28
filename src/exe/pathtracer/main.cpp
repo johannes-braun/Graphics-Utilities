@@ -120,16 +120,20 @@ private:
 
 struct material
 {
-    glm::vec3 glass_tint{ 0.4, 0.6, 0.1 };
-    float roughness_sqrt = 0.6f;
+    glm::vec3 glass_tint{ 1, 1, 1 };
+    float roughness_sqrt = 0.3f;
     glm::vec3 reflection_tint{ 1 };
-    float glass = 0.0f;
+    float glass = 1.0f;
     glm::vec3 base_color{ 0.4, 0.6, 0.1 };
     float ior = 1.5f;
-    float extinction_coefficient = 0.01f;
+    glm::vec3 glass_scatter_color = glm::vec3(0.7, 0.1, 0.5);
+    float glass_density = 8;
+
+    float glass_density_falloff = 8;
+    float extinction_coefficient = 1.01f;
 
 private:
-    float _p[3];
+    float _p[2];
 };
 
 struct mesh
@@ -263,12 +267,12 @@ int main()
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
 
     std::mt19937 gen;
@@ -582,8 +586,10 @@ int main()
 
         for (int i = 0; i < material_buffer->size() / sizeof(material); ++i)
         {
-            if (ImGui::CollapsingHeader(("Material " + std::to_string(i)).c_str()))
+            const auto id = ("Material " + std::to_string(i));
+            if (ImGui::CollapsingHeader(id.c_str()))
             {
+                ImGui::PushID(id.c_str());
                 auto&& item = material_buffer->data_as<material>() + i;
                 ImGui::DragFloat("Roughness", &item->roughness_sqrt, 0.01f, 0.f, 1.f);
                 ImGui::DragFloat("Glass", &item->glass, 0.01f, 0.f, 1.f);
@@ -593,6 +599,11 @@ int main()
                 ImGui::ColorEdit3("Color", &item->base_color[0]);
                 ImGui::ColorEdit3("Reflection Tint", &item->reflection_tint[0]);
                 ImGui::ColorEdit3("Glass Tint", &item->glass_tint[0]);
+                ImGui::ColorEdit3("Glass Scatter Tint", &item->glass_scatter_color[0]);
+                ImGui::Spacing();
+                ImGui::DragFloat("Glass Density", &item->glass_density, 0.01f, 0.f, 100.f);
+                ImGui::DragFloat("Glass Density Falloff", &item->glass_density_falloff, 0.01f, 0.f, 100.f);
+                ImGui::PopID();
             }
         }
 

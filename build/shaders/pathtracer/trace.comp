@@ -18,7 +18,7 @@ const float sqr_rad_cutoff = 1e-5f;
 
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 
-const vec3 light_color = 10.0f*vec3(1.f, 1, 1);
+const vec3 light_color = 50.0f*vec3(1.f, 1, 1);
 const float light_radius = 0.1f;
 const vec3 light_pos = vec3(0, 4, 0);
 
@@ -169,10 +169,15 @@ void main()
                     // ----------------------------------------------------------------------------------------------------------------
                     case bsdf_type_glass:
                     {
-                        rad *= pow(glass_tint, vec3(1/2.2f)); 
+                        float t = result.near_distance;
+                        bool outgoing = dot(forward_normal, facet_normal) < 0;
+                        float scatter_factor = (outgoing ? 1/abs(1.f+pow(mesh_material->glass_density*t, mesh_material->glass_density_falloff)) : 1);
+                        vec3 glass_color = pow(glass_tint, vec3(1/2.2f));
+                        color += rad * glass_color * (1-scatter_factor) * mesh_material->glass_scatter_color;
+                        rad *= scatter_factor * glass_color;
                         direction = refract(direction, forward_normal, ior_in / ior_out) - origin_epsilon * forward_normal;
                         origin = target_point.position.xyz + origin_epsilon * direction;
-                        --i;
+                        i = max(i-1, 1);
                     }
                     break;
                     // ----------------------------------------------------------------------------------------------------------------
@@ -197,7 +202,7 @@ void main()
                 float first = float(i==0);
                 alpha = 1-first;
                 vec3 unclamped = rad * texture(cubemap, direction).rgb * 4.f;
-                color += clamp(unclamped, vec3(0), vec3(1.f + first * 10.f));
+                color += clamp(unclamped, vec3(0), vec3(6.f + first * 10.f));
                 break;
             }
         }
