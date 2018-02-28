@@ -85,6 +85,8 @@ int main(int argc, const char** argv)
         gen_vao->bind();
         distance_field_pipeline->bind();
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("view_mat") = cam.view();
+        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec3>("cam_position") = cam.transform.position;
+        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("proj_mat") = cam.projection();
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view_mat") = inverse(cam.projection() * cam.view());
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
         glDrawArrays(GL_TRIANGLES, 0, 3);

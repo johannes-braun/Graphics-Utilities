@@ -4,7 +4,7 @@
 #define MAP_FUNCTION(pos) 0
 #endif
 
-const float step_epsilon = 0.0001f;
+const float step_epsilon = 0.001f;
 
 float march_cast_ray(vec3 origin, vec3 direction, float mint, float maxt, const int max_steps)
 {
@@ -39,11 +39,12 @@ float march_soft_shadow( in vec3 ro, in vec3 rd, float mint, float maxt, float k
     return res;
 }
 
-vec3 march_get_normal( vec3 pos )
+vec3 march_get_normal(vec3 pos)
 {
-    vec3 eps = vec3(step_epsilon, 0.0, 0.0);
-	vec3 nor = vec3(MAP_FUNCTION(pos + eps.xyy) - MAP_FUNCTION(pos - eps.xyy),
-                    MAP_FUNCTION(pos + eps.yxy) - MAP_FUNCTION(pos - eps.yxy),
-                    MAP_FUNCTION(pos + eps.yyx) - MAP_FUNCTION(pos - eps.yyx));
-	return normalize(nor); 
+    vec2 e = vec2(1, -1) * 0.5773 * step_epsilon;
+    vec3 nor = vec3(e.xyy * MAP_FUNCTION(pos + e.xyy) +
+        e.yyx * MAP_FUNCTION(pos + e.yyx) +
+        e.yxy * MAP_FUNCTION(pos + e.yxy) +
+        e.xxx * MAP_FUNCTION(pos + e.xxx));
+    return normalize(nor);
 }

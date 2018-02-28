@@ -8,8 +8,8 @@ layout(location=0) in vec2 uv;
 layout(location=0) out vec4 color;
 
 uniform float clip_near = 0.01f;
-uniform float clip_far = 1000.f;
-uniform int max_march_steps = 800;
+uniform float clip_far = 100.f;
+uniform int max_march_steps = 400;
 uniform mat4 view_mat;
 uniform mat4 inv_view_mat;
 uniform samplerCube cubemap;
@@ -17,8 +17,8 @@ uniform vec3 cam_position;
 
 float smin( float a, float b, float k )
 {
-    float res = exp( -k*a ) + exp( -k*b );
-    return -log( res )/k;
+    float h = clamp(0.5 + 0.5f * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k*h*(1.0 - h);
 }
 
 float opS( float d1, float d2 )
@@ -44,7 +44,7 @@ float opU( float d1, float d2 )
 
 float opBlend(float d1, float d2)
 {
-    return opU(d1, d2);// smin(d1, d2, 16);
+    return smin(d1, d2, 0.2);
 }
 
 float sdSphere( vec3 p, float s )
@@ -97,7 +97,7 @@ float map(vec3 pos)
 void main()
 {
     // Force Multisampling at every pixel
-    gl_SampleMask[0] = 0xf;
+   gl_SampleMask[0] = 0xf;
 
     vec3 cam_pos = inverse(view_mat)[3].xyz;
     vec4 draargh = (inv_view_mat * vec4(2.f*(uv + gl_SamplePosition.xy / vec2(1280, 720) -0.5f), 0, 1));
@@ -130,11 +130,11 @@ void main()
         if(dist_next > 0)
         {
             normal = march_get_normal(pt+dist_next * c_dir);
-            color = mix(color, texture(cubemap, reflect(c_dir, normal)), fresnel);
+            color = mix(color, textureLod(cubemap, reflect(c_dir, normal), 2), fresnel);
         }
         else
         {
-            color = mix(color, texture(cubemap, c_dir), fresnel);
+            color = mix(color, clamp(textureLod(cubemap, c_dir, 2), 0.f, 1.f), fresnel);
         }
     }
     else
