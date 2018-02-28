@@ -10,7 +10,7 @@
 #include <stb_image_write.h>
 #include <iostream>
 #include <jpu/log>
-#include "pugixml.hpp"
+#include "tinyfd/tinyfiledialogs.h"
 
 std::array<std::string, 6> sides {
 	"posx", "negx", "negy", "posy", "posz", "negz"
@@ -36,7 +36,6 @@ const glm::mat4 projection = glm::perspective(glm::radians(90.f), 1.f, 0.01f, 10
 namespace fs = std::experimental::filesystem;
 int main(int argc, char** argv)
 {
-    pugi::xml_document doc;
     int resolution = 1024;
     //if(!fs::exists("settings.xml"))
     //{
@@ -48,21 +47,36 @@ int main(int argc, char** argv)
     //resolution = doc.child("settings").child("resolution").attribute("value").as_int(resolution);
 
     fs::path path;
+    fs::path dest;
     if(argc < 2)
     {
-        log_i << "Please enter a file name.";
-        std::cout << "\nFile: ";
-        std::cin >> path;
+        constexpr const char *fs[1] = { "*.hdr" };
+        if (const auto src = tinyfd_openFileDialog("Open HDRI", "./", 1, fs, "HDRI", false))
+        {
+            path = src;
+        }
+        else
+        {
+            return 0;
+        }
     }
     else
     {
         path = argv[1];
     }
 
-	fs::path result_path = path;
-	result_path.replace_extension("");
-	fs::path ppng = result_path / "png";
-	fs::path phdr = result_path / "hdr";
+    if (const auto dst = tinyfd_selectFolderDialog("Select Target Folder", "."))
+    {
+        dest = dst;
+    }
+    else
+    {
+        dest = path;
+        dest.replace_extension("");
+    }
+
+	fs::path ppng = dest / "png";
+	fs::path phdr = dest / "hdr";
 	fs::create_directories(phdr);
 	fs::create_directories(ppng);
 
