@@ -4,17 +4,17 @@
 #define MAP_FUNCTION(pos) 0
 #endif
 
-const float step_epsilon = 0.001f;
+const float step_epsilon = 0.0001f;
 
-float march_cast_ray(const in vec3 origin, const in vec3 direction, float mint, float maxt, const int max_steps)
+float march_cast_ray(vec3 origin, vec3 direction, float mint, float maxt, const int max_steps)
 {
     float dist = mint;
     for(int i=0; i<max_steps; ++i)
     {
         float next = MAP_FUNCTION((origin + dist * direction));
-        if(next < step_epsilon)
+        if(next < step_epsilon * dist)
             break;
-        
+                
         dist += next;
         if(dist > maxt)
         {

@@ -56,7 +56,7 @@ namespace gfx
 
     void renderer::resize(int width, int height, const uint32_t samples)
     {
-        tlog_i("Renderer") << "Resizing to (" << width << " x " << height << " x " << (1 << samples) << ")";
+        tlog_i("Renderer") << "Resizing to (" << width << " x " << height << " x " << samples << ")";
         if (width * height * samples == 0)
             return;
 
@@ -145,7 +145,7 @@ namespace gfx
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         constexpr auto adaption_speed = 0.4f;
-        constexpr auto brightness = 5.0f;
+        constexpr auto brightness = 2.5f;
 
         const auto new_luma = std::accumulate(_luminance_sample_buffer->data_as<float>(), _luminance_sample_buffer->data_as<float>() + 32, 0.f) * (1 / 32.f);
         _luminance = glm::mix(glm::mix(_luminance, new_luma, adaption_speed * delta_time), new_luma, adaption_speed * delta_time);

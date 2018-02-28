@@ -7,13 +7,13 @@ float map(vec3 pos);
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 color;
 
-uniform float clip_near = 0.f;
+uniform float clip_near = 0.01f;
 uniform float clip_far = 1000.f;
-uniform int max_march_steps = 60;
+uniform int max_march_steps = 800;
 uniform mat4 view_mat;
-uniform mat4 proj_mat;
 uniform mat4 inv_view_mat;
 uniform samplerCube cubemap;
+uniform vec3 cam_position;
 
 float smin( float a, float b, float k )
 {
@@ -37,14 +37,14 @@ float sdTorus( vec3 p, vec2 t )
   return length(q)-t.y;
 }
 
-float opBlend(float d1, float d2)
-{
-    return smin( d1, d2, 16 );
-}
-
 float opU( float d1, float d2 )
 {
     return min(d1,d2);
+}
+
+float opBlend(float d1, float d2)
+{
+    return opU(d1, d2);// smin(d1, d2, 16);
 }
 
 float sdSphere( vec3 p, float s )
@@ -97,19 +97,14 @@ float map(vec3 pos)
 void main()
 {
     // Force Multisampling at every pixel
-    gl_SampleMask[0] = ~0;
+    gl_SampleMask[0] = 0xf;
 
-    vec3 cam_pos = inv_view_mat[3].xyz;
-    float aspect = proj_mat[1][1] / proj_mat[0][0];
-
-    vec3 pixel = vec3(gl_FragCoord.xyz);
-
-    vec2 scaled_uv = (uv + gl_SamplePosition.xy/vec2(1280, 720)) * 2 - 1;
-    scaled_uv.x *= aspect;
-    vec3 dir = mat3(inv_view_mat) * normalize(vec3(scaled_uv, -1.8));
-
-    vec3 c_dir = dir;
+    vec3 cam_pos = inverse(view_mat)[3].xyz;
+    vec4 draargh = (inv_view_mat * vec4(2.f*(uv + gl_SamplePosition.xy / vec2(1280, 720) -0.5f), 0, 1));
     vec3 c_pos = cam_pos;
+    vec3 c_dir = draargh.xyz / draargh.w;
+    c_dir.xyz = normalize(c_dir.xyz - c_pos);
+
     float dist_next = march_cast_ray(c_pos, c_dir, clip_near, clip_far, max_march_steps);
 
     if(dist_next > 0.f)
@@ -117,7 +112,7 @@ void main()
         vec3 pt = c_pos + c_dir * dist_next;
         vec3 normal = march_get_normal(pt);
         const float eps = 0.1f;
-        float shad = march_soft_shadow(pt + eps * normal, normalize(vec3(0.1f, 0.5, -1)), eps, 10.f, 16);
+        float shad = march_soft_shadow(pt + eps * normal, normalize(vec3(0.1f, 0.5, -1)), eps, 50.f, 3);
 
         float fresnel = bsdf_fresnel(c_dir, normal, 0.4f, 0.f);
 
@@ -130,7 +125,7 @@ void main()
         color *= textureLod(cubemap, normal, 16);
         
         c_dir = reflect(c_dir, normal);
-        dist_next = march_cast_ray(pt, c_dir, clip_near, clip_far, int(max_march_steps * 0.4f));
+        dist_next = march_cast_ray(pt, c_dir, clip_near, clip_far, int(max_march_steps * 0.8f));
 
         if(dist_next > 0)
         {
@@ -147,5 +142,5 @@ void main()
         color = texture(cubemap, c_dir);
     }
     
-    color = pow(color, vec4(1/2.2f));
+    color = pow(color, vec4(1/1.6f));
 }

@@ -311,7 +311,7 @@ int main()
             }
         }
     };
-    load_mesh("../res/ruins/ruins.obj", true);
+    load_mesh("../res/cube.dae", true);
 
     gl::query query_time(GL_TIME_ELAPSED);
 

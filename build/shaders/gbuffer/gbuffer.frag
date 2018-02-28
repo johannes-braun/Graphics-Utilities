@@ -71,7 +71,7 @@ void main()
 
 #ifdef USE_NORMAL_MAPPING    
     base_normal = (cot_frame * (texture(texture_normal, base_uv.xy).rgb * 2 - 0.5)); 
-    base_normal = bsdf_correct_facet_normal(camera_view, base_normal, normal.xyz);
+    base_normal = normalize(bsdf_correct_facet_normal(camera_view, base_normal, normal.xyz));
 #endif //USE_NORMAL_MAPPING
    
     const vec3 albedo = vec3(0.83f, 0.69f, 0.22f);//texture(my_texture, base_uv.xy).rgb;
@@ -93,7 +93,6 @@ void main()
     //out_color = vec4(dot(-camera_view, base_normal));
     //return;
 
-    //float fresnel = bsdf_fresnel_coefficient(camera_view, base_normal, 0.277f, 2.92f);
 
     out_color = vec4(environment.reflection_color * fresnel, 1);
     return;

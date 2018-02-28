@@ -47,7 +47,7 @@ float bsdf_normal_response(float ior, float metalness)
 float bsdf_fresnel(const in vec3 view, const in vec3 normal, float ior, float metalness)
 {
     float norm_response = bsdf_normal_response(ior, metalness); 
-    return clamp(norm_response + (1-norm_response) * pow(1 - max(dot(-view, normal), 0), 5), 0, 1);
+    return clamp(norm_response + (1-norm_response) * pow(1 - max(dot(-view, normal), 0), 3), 0, 1);
 }
 
 float bsdf_fresnel_coefficient(const in vec3 view, const in vec3 normal, float ior, float coefficient)
@@ -60,7 +60,7 @@ float bsdf_fresnel_coefficient(const in vec3 view, const in vec3 normal, float i
 
     float c2 = coefficient * coefficient;
 
-    float mcosth = 1 - abs(dot(-view, normal));
+    float mcosth = abs(1 - abs(dot(normalize(-view), normalize(normal))));
     float mcosth2 = mcosth * mcosth;
     float fn1mcosth = 4 * ior * mcosth2 * mcosth2 * mcosth;
 
