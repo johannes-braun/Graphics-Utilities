@@ -4,9 +4,11 @@
 #include "io/camera.hpp"
 #include "stb_image.h"
 #include "res/image.hpp"
+#include "framework/renderer.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
+std::unique_ptr<gfx::renderer> main_renderer;
 
 int main(int argc, const char** argv)
 {
@@ -16,6 +18,8 @@ int main(int argc, const char** argv)
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->load_icon("../res/ui/logo.png");
+
+    main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 
    // glfwSwapInterval(1);
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
@@ -51,14 +55,14 @@ int main(int argc, const char** argv)
     sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
-    int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
+    int w, h, c; stbi_info("../res/ven/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
 
     auto distance_field_pipeline = graphics_pipelines.push("Distance Field Pipeline", jpu::make_ref<gl::graphics_pipeline>());
@@ -81,6 +85,7 @@ int main(int argc, const char** argv)
 
         cam_controller.update(cam, *main_window, main_window->delta_time());
 
+        main_renderer->bind();
         glClear(GL_COLOR_BUFFER_BIT);
         gen_vao->bind();
         distance_field_pipeline->bind();
@@ -90,5 +95,6 @@ int main(int argc, const char** argv)
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view_mat") = inverse(cam.projection() * cam.view());
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
         glDrawArrays(GL_TRIANGLES, 0, 3);
+        main_renderer->draw(main_window->delta_time());
     }
 }
