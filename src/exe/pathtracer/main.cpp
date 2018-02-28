@@ -420,7 +420,7 @@ int main()
         }
 
         double t = 0.0;
-        while (t < main_window->get_swap_delay())
+        while (t < main_window->get_swap_delay() / 2.f)
         {
             query_time.begin();
             pp_trace->bind();
