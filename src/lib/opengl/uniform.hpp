@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <glm/ext.hpp>
 #include <variant>
+#include <memory>
 
 namespace gl
 {
@@ -19,18 +20,17 @@ namespace gl
         friend graphics_pipeline;
         friend compute_pipeline;
     public:
-
         uniform(uniform&&) = default;
         uniform(const uniform&) = default;
-        uniform(uint32_t location, uint32_t s);
         operator T() const;
         uniform& operator=(const T& value);
 
     protected:
+        uniform(uint32_t location, uint32_t s);
         void update() const;
 
         uint32_t _shader;
-        T _value;
+        std::shared_ptr<T> _value;
         uint32_t _location;
     };
     
