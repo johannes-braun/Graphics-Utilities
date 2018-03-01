@@ -9,7 +9,8 @@ namespace io
 {
     window::window(const api api, const int width, const int height, const std::string_view title, const std::optional<monitor> monitor) : window(api,
         width, height, title, nullptr, monitor)
-    {}
+    {
+    }
 
     window::window(api api, const int width, const int height, std::string_view title, window* share, std::optional<monitor> monitor)
         : _api(api)
@@ -19,7 +20,6 @@ namespace io
         _window = glfwCreateWindow(width, height, title.data(),
             monitor.has_value() ? static_cast<GLFWmonitor*>(*monitor) : nullptr,
             share ? static_cast<GLFWwindow*>(*share) : nullptr);
-        glfwMakeContextCurrent(_window);
 
         if (_api == api::vulkan)
         {
@@ -84,6 +84,7 @@ namespace io
         }
         else if (_api == api::opengl)
         {
+            glfwMakeContextCurrent(_window);
 
             gladLoadGLSimple(reinterpret_cast<GLADsimpleloadproc>(glfwGetProcAddress));
             glfwSwapInterval(0);
@@ -133,6 +134,7 @@ namespace io
         case api::opengl: break;
         default: break;
         };
+
         glfwDestroyWindow(_window);
     }
 
@@ -239,7 +241,7 @@ namespace io
             const GLFWvidmode* mode = glfwGetVideoMode(*monitor);
             glfwSetWindowMonitor(_window, *monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
         }
-        else
+        else if(glfwGetWindowMonitor(_window) != *monitor)
         {
             glfwSetWindowMonitor(_window, nullptr, _position_before_monitor_x, _position_before_monitor_y, _width_before_monitor, _height_before_monitor, GLFW_DONT_CARE);
         }

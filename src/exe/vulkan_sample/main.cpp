@@ -293,7 +293,6 @@ int main(int argc, const char** args)
         main_window->current_primary_command_buffer().executeCommands({ render_command_buffer });
         main_window->current_primary_command_buffer().endRenderPass();
     }
-
     return 0;
 }
 
