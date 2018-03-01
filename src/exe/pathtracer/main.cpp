@@ -184,12 +184,12 @@ void resize()
 {
     main_renderer->resize(resolution.x, resolution.y, 8);
     target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
+    target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA32F);
     target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     target_textures[1]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
     target_textures[2] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     target_textures[2]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_image = jpu::make_ref<gl::image>(target_textures[0], 0, false, 0, GL_RGBA16F, GL_READ_WRITE);
+    target_image = jpu::make_ref<gl::image>(target_textures[0], 0, false, 0, GL_RGBA32F, GL_READ_WRITE);
     target_framebuffer = jpu::make_ref<gl::framebuffer>();
     target_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
     target_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
@@ -265,14 +265,14 @@ int main()
     sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
-    int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
+    int w, h, c; stbi_info("../res/rtag/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/rtag/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/rtag/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/rtag/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/rtag/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/rtag/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/rtag/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
 
     std::mt19937 gen;
