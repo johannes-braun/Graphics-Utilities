@@ -67,7 +67,7 @@ namespace jpu
     template <typename TBase, typename TEnum>
     bool flags<TBase, TEnum>::operator!() const
     {
-        return static_cast<bool>(_flags);
+        return !static_cast<bool>(_flags);
     }
 
     template <typename TBase, typename TEnum>

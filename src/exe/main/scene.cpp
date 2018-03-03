@@ -12,7 +12,7 @@ namespace geo
 
     void scene::set_projection(glm::mat4 p)
     {
-        _projection = transpose(glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 1, 0, 0, 0, 1)) * p;
+        _projection = p;
         _view_projection = _projection * _view;
         _inverse_projection = glm::inverse(_projection);
         _inverse_view_projection = _inverse_view * _inverse_projection;

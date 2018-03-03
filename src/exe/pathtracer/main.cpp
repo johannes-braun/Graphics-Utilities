@@ -19,6 +19,7 @@
 #include "res/presets.hpp"
 #include "framework/renderer.hpp"
 #include <GLFW/glfw3.h>
+#include "gizmo.hpp"
 
 glm::ivec2 resolution{ 1280, 720 };
 jpu::ref_ptr<io::window> main_window;
@@ -301,34 +302,8 @@ int main()
 
     gl::query query_time(GL_TIME_ELAPSED);
 
-    const int cube_vcount = static_cast<int>(res::presets::cube::vertices.size());
-    const int cube_icount = static_cast<int>(res::presets::cube::indices.size());
-    std::vector<glm::vec3> gizmo_positions(3 * cube_vcount);
-    std::vector<uint16_t> gizmo_indices(3 * cube_icount);
-    const glm::mat4 scale = glm::scale(glm::vec3(0.01f, 0.01f, 0.1f));
-    const glm::mat4 translate = glm::translate(glm::vec3(0, 0, 1.f));
-    const glm::mat4 rot1 = rotate(glm::radians(-90.f), glm::vec3(1, 0, 0));
-    const glm::mat4 rot2 = rotate(glm::radians(90.f), glm::vec3(0, 1, 0));
-    int moving = -1;
-    for (int i = 0; i < cube_vcount; ++i)
-    {
-        gizmo_positions[i] = scale * translate * res::presets::cube::vertices[i].position;
-        gizmo_positions[i + cube_vcount] = rot1 * scale * translate * res::presets::cube::vertices[i].position;
-        gizmo_positions[i + 2 * cube_vcount] = rot2 * scale * translate * res::presets::cube::vertices[i].position;
-    }
-    for (int i = 0; i < cube_icount; ++i)
-    {
-        gizmo_indices[i] = res::presets::cube::indices[i];
-        gizmo_indices[i + cube_icount] = cube_vcount + res::presets::cube::indices[i];
-        gizmo_indices[i + 2 * cube_icount] = 2 * cube_vcount + res::presets::cube::indices[i];
-    }
-    const gl::buffer gizmo_index_buffer(gizmo_indices);
-    const gl::buffer gizmo_vertex_buffer(gizmo_positions);
-    gl::vertex_array gizmo_vao;
-    gizmo_vao.set_element_buffer(gizmo_index_buffer);
-    gizmo_vao.add_binding(gl::vertex_attribute_binding(0, gizmo_vertex_buffer, 0, 3, GL_FLOAT, sizeof(glm::vec3), 0, false));
-    gl::graphics_pipeline gizmo_pipeline;
-    gizmo_pipeline.use_stages(new gl::shader("gizmo/gizmo.vert"), new gl::shader("gizmo/gizmo.frag"));
+    gl::graphics_pipeline pp_mesh;
+    pp_mesh.use_stages(new gl::shader("pathtracer/mesh.vert"), new gl::shader("pathtracer/mesh.frag"));
 
     auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
@@ -342,6 +317,9 @@ int main()
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glClearColor(0.8f, 0.9f, 1.f, 0);
+    gfx::gizmo gizmo;
+    res::transform gizmo_transform(meshes.get_by_index(0).second.front()->model);
+    gizmo.transform = &gizmo_transform;
 
     while (main_window->update())
     {
@@ -364,50 +342,6 @@ int main()
         const int size_y = pp_trace->work_group_sizes()[0] * size;
         const int count_x = ceil(static_cast<float>(resolution.x) / size_x);
         const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
-
-        res::transform trafo = meshes.get_by_index(0).second.front()->model;
-        int selected;
-        double mx, my;
-        glfwGetCursorPos(*main_window, &mx, &my);
-        glm::vec2 uv = (glm::vec2(mx, my) / glm::vec2(resolution) - 0.5f) * 2.f;
-        uv.y = -uv.y;
-        const glm::vec3 direction = glm::vec3(camera_matrix * glm::vec4(uv, 0, 1));
-        const glm::vec3 origin = cam.transform.position;
-        const glm::vec3 inv_origin = inverse(glm::translate(trafo.position)) * glm::vec4(origin, 1);
-        const glm::vec3 inv_dir = inverse(transpose(inverse(glm::translate(trafo.position)))) * glm::vec4(direction, 0);
-        const float grip_width = 0.1f;
-        if (!(moving + 1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(-grip_width, -grip_width, 0.f), glm::vec3(grip_width, grip_width, 1.f), 100000000.f))
-        {
-            selected = 0;
-        }
-        else if (!(moving + 1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(-grip_width, 0.f, -grip_width), glm::vec3(grip_width, 1.f, grip_width), 100000000.f))
-        {
-            selected = 1;
-        }
-        else if (!(moving + 1) && intersect_bounds(inv_origin, inv_dir, glm::vec3(0.f, -grip_width, -grip_width), glm::vec3(1.f, grip_width, grip_width), 100000000.f))
-        {
-            selected = 2;
-        }
-        else
-        {
-            selected = moving;
-        }
-
-        if (selected + 1 && glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-        {
-            moving = selected;
-            const int mv = selected == 0 ? 2 : (selected == 1 ? 1 : 0);
-            const glm::vec3 plane_orig = trafo.position;
-            glm::vec3 plane_norm(0.f);
-            plane_norm[(mv + 1) % 3] = 1;
-            trafo.position[(mv) % 3] = abs(dot(plane_norm, direction)) > 1e-6 ?
-                (origin + direction * abs(dot(plane_orig - origin, plane_norm) / dot(plane_norm, direction)))[(mv) % 3] - 0.5f :
-                trafo.position[(mv) % 3];
-        }
-        else if (moving + 1)
-        {
-            moving = -1;
-        }
 
         double t = 0.0;
         while (t < main_window->get_swap_delay() / 2.f)
@@ -464,14 +398,9 @@ int main()
             glDrawArrays(GL_LINE_STRIP, 0, 5);
         }
 
-        glEnable(GL_DEPTH_TEST);
-        glClear(GL_DEPTH_BUFFER_BIT);
-        gizmo_pipeline.bind();
-        gizmo_vao.bind();
-        gizmo_pipeline.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * glm::translate(trafo.position);
-        gizmo_pipeline.stage(gl::shader_type::fragment)->get_uniform<int>("hovered") = selected;
-        if (show_gizmo)
-            glDrawElements(GL_TRIANGLES, 3 * cube_icount, GL_UNSIGNED_SHORT, nullptr);
+        double mx, my; glfwGetCursorPos(*main_window, &mx, &my);
+        gizmo.update(cam.view(), cam.projection(), glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / resolution.x, my / resolution.y);
+        if(show_gizmo) gizmo.render();
 
         if (show_grid)
         {
@@ -481,10 +410,10 @@ int main()
                 glPolygonMode(GL_FRONT, GL_LINE);
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                pp_mesh.bind();
                 for (auto&& s : p.second)
                 {
-                    gizmo_pipeline.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * s->model;
-                    gizmo_pipeline.stage(gl::shader_type::fragment)->get_uniform<int>("hovered") = -2;
+                    pp_mesh.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * s->model;
                     p.first->draw();
                 }
                 glPolygonMode(GL_FRONT, GL_FILL);
@@ -493,8 +422,8 @@ int main()
         }
         glDisable(GL_DEPTH_TEST);
 
-        meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(trafo);
-        meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(trafo));
+        meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(gizmo_transform);
+        meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
         ImGui::Begin("Window");
         ImGui::Image(reinterpret_cast<ImTextureID>(sampler->sample_texture(ictex)), ImVec2(logo.width, logo.height));
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));

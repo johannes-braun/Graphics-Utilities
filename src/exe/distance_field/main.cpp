@@ -5,6 +5,7 @@
 #include "stb_image.h"
 #include "res/image.hpp"
 #include "framework/renderer.hpp"
+#include "../pathtracer/gizmo.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
@@ -50,7 +51,7 @@ int main(int argc, const char** argv)
     io::camera cam;
     io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
-
+    
     glClearColor(1, 1, 1, 1);
     while(main_window->update())
     {
@@ -61,7 +62,7 @@ int main(int argc, const char** argv)
         cam_controller.update(cam, *main_window, main_window->delta_time());
 
         main_renderer->bind();
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         gen_vao->bind();
         distance_field_pipeline->bind();
         distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("view_mat") = cam.view();

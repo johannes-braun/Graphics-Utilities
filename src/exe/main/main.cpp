@@ -31,6 +31,7 @@
 #include "framework/renderer.hpp"
 
 #include <stb_image.h>
+#include "../pathtracer/gizmo.hpp"
 
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
@@ -78,6 +79,7 @@ int main()
     res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
 
+    glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
@@ -159,14 +161,14 @@ int main()
     res::transform transform;
     transform.position = glm::vec3(4.f, 4.f, 4.f);
 
+    gfx::gizmo gizmo;
+    gizmo.transform = &transform;
+
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     cubemap_pipeline->use_stages(new gl::shader("cubemap/cubemap.vert"), new gl::shader("cubemap/cubemap.frag"));
 
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_GEQUAL);
-    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
     glClearColor(0, 0, 0, 0);
-    glClearDepth(0);
 
     const auto sampler = jpu::make_ref<gl::sampler>();
 
@@ -197,6 +199,7 @@ int main()
     const auto logo           = load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
     io::camera cam;
+    cam.inverse_z = true;
     io::default_cam_controller cam_controller;
 
     // Init audio
@@ -374,6 +377,10 @@ int main()
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(cylinder.meshes.get_by_index(0).indices.size()), GL_UNSIGNED_INT, nullptr);
 
         main_renderer->draw(main_window->delta_time());
+
+        double mx, my; glfwGetCursorPos(*main_window, &mx, &my);
+        gizmo.update(cam.view(), cam.projection(), glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / full_resolution.x, my / full_resolution.y);
+        gizmo.render();
     }
 }
 
