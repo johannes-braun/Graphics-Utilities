@@ -75,19 +75,6 @@ namespace gl
     class sampler : public jpu::ref_count
     {
     public:
-        static jpu::ref_ptr<sampler> make_default()
-        {
-            const auto sampler = jpu::make_ref<gl::sampler>();
-            sampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            sampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            sampler->set(GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
-            sampler->set(GL_TEXTURE_CUBE_MAP_SEAMLESS, true);
-            sampler->set(GL_TEXTURE_WRAP_R, GL_MIRRORED_REPEAT);
-            sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-            sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-            return sampler;
-        }
-
         sampler();
         ~sampler();
         operator unsigned() const;

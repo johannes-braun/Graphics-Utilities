@@ -220,13 +220,7 @@ int main()
         jpu::make_ref<gl::shader>("cubemap/cubemap.frag")
     );
     const auto sampler = jpu::make_ref<gl::sampler>();
-    sampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    sampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    sampler->set(GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
-    sampler->set(GL_TEXTURE_CUBE_MAP_SEAMLESS, 16);
-    sampler->set(GL_TEXTURE_WRAP_R, GL_MIRRORED_REPEAT);
-    sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);

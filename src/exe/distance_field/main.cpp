@@ -30,7 +30,7 @@ int main(int argc, const char** argv)
     });
     main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 
-    const auto sampler = gl::sampler::make_default();
+    const auto sampler = jpu::make_ref<gl::sampler>();
 
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     int w, h, c; stbi_info("../res/ven/hdr/posx.hdr", &w, &h, &c);

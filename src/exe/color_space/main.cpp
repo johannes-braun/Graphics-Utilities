@@ -227,7 +227,7 @@ int main()
                 p->reload_stages();
     });
 
-    const auto sampler = gl::sampler::make_default();
+    const auto sampler = jpu::make_ref<gl::sampler>();
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
