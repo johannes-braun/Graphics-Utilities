@@ -9,7 +9,7 @@
 #include <numeric>
 #include <res/image.hpp>
 
-constexpr int logn = 18;
+constexpr int logn = 20;
 std::vector<float> data1(1 << logn);
 std::vector<float> data2(1 << logn);
 
@@ -40,7 +40,7 @@ jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pip
 
 int main()
 {
-    gl::setup_shader_paths("../shaders");
+    gl::shader::set_include_directories("../shaders");
 
    // glfwWindowHint(GLFW_SAMPLES, 8);
    // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -84,9 +84,9 @@ int main()
     glFinish();
 
     auto rdx_bckt = jpu::make_ref<gl::compute_pipeline>(
-        jpu::make_ref<gl::shader>(gl::shader_root_path / "sort/radix_bucket.comp"));
+        jpu::make_ref<gl::shader>("sort/radix_bucket.comp"));
     auto cmp = jpu::make_ref<gl::compute_pipeline>(
-        jpu::make_ref<gl::shader>(gl::shader_root_path / "sort/bitonic.comp"));
+        jpu::make_ref<gl::shader>("sort/bitonic.comp"));
     log_i << data1.size();
     auto&& stage = cmp->stage(gl::shader_type::compute);
 

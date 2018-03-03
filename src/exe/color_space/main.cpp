@@ -210,7 +210,7 @@ pat_result principal_axis_transformation(glm::u8vec3* pixels, const size_t count
 
 int main()
 {
-    gl::setup_shader_paths("../shaders");
+    gl::shader::set_include_directories("../shaders");
 
     res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
@@ -221,38 +221,13 @@ int main()
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(60.0);
-
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
-            return;
-
+    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
             for (auto&& p : graphics_pipelines)
                 p->reload_stages();
     });
 
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
-    });
-
-    const auto sampler = jpu::make_ref<gl::sampler>();
-    sampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    sampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    sampler->set(GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
-    sampler->set(GL_TEXTURE_CUBE_MAP_SEAMLESS, 16);
-    sampler->set(GL_TEXTURE_WRAP_R, GL_MIRRORED_REPEAT);
-    sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    const auto sampler = gl::sampler::make_default();
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);

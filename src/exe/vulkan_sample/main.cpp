@@ -43,17 +43,15 @@ void rebuildSwapchain()
 
 int main(int argc, const char** args)
 {
-    full_resolution = { 1280, 720 };
-    main_window = jpu::make_ref<io::window>(io::api::vulkan, full_resolution.x, full_resolution.y, "My Window");
-
     res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
 
+    full_resolution = { 1280, 720 };
+    main_window = jpu::make_ref<io::window>(io::api::vulkan, full_resolution.x, full_resolution.y, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(max_framerate);
-
-    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow* w, int x, int y)
+    main_window->callbacks->framebuffer_size_callback.add([](GLFWwindow* w, int x, int y)
     {
         full_resolution = { x, y };
         rebuildSwapchain();
@@ -144,7 +142,7 @@ int main(int argc, const char** args)
     while (main_window->update())
     {
         ImGui::Begin("Window", nullptr, ImGuiWindowFlags_NoTitleBar);
-        ImGui::Image(static_cast<VkImageView>(static_cast<vk::ImageView>(*logo_view)), ImVec2(32, 32));
+        ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<VkImageView>(static_cast<vk::ImageView>(*logo_view))), ImVec2(32, 32));
         ImGui::SameLine();
         const auto cur_pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(ImVec2(cur_pos.x, cur_pos.y + 6));

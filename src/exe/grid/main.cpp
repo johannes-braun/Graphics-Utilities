@@ -20,38 +20,27 @@ void draw_gui();
 
 int main()
 {
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "Grid");
+    gl::shader::set_include_directories("../shaders");
 
     res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
 
+    glfwWindowHint(GLFW_SAMPLES, 8);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "Grid");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(60.f);
-    gl::setup_shader_paths("../shaders");
     main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
+    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
+        if (ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantTextInput)
             return;
 
         if (key == GLFW_KEY_P && action == GLFW_PRESS)
         {
             floor_pipeline->reload_stages();
         }
-    });
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
     });
 
     glEnable(GL_DEPTH_TEST);
@@ -221,14 +210,14 @@ int main()
     // Load simple mesh shader
     floor_pipeline = jpu::make_ref<gl::graphics_pipeline>();
     floor_pipeline->use_stages(
-        new gl::shader(gl::shader_root_path / "grid/vs.vert"),
-        new gl::shader(gl::shader_root_path / "grid/fs.frag")
+        new gl::shader("grid/vs.vert"),
+        new gl::shader("grid/fs.frag")
     );
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     cubemap_pipeline->use_stages(
-        jpu::make_ref<gl::shader>(gl::shader_root / "cubemap/cubemap.vert"),
-        jpu::make_ref<gl::shader>(gl::shader_root / "cubemap/cubemap.frag")
+        jpu::make_ref<gl::shader>("cubemap/cubemap.vert"),
+        jpu::make_ref<gl::shader>("cubemap/cubemap.frag")
     );
     const auto sampler = jpu::make_ref<gl::sampler>();
     sampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);

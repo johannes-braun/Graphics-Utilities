@@ -30,25 +30,25 @@ namespace gfx
 
         _temporal_target = GL_COLOR_ATTACHMENT0;
 
-        _luminance_compute_pipeline = jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "postprocess/tonemap/sample_luminance.comp"));
+        _luminance_compute_pipeline = jpu::make_ref<gl::compute_pipeline>(new gl::shader("postprocess/tonemap/sample_luminance.comp"));
         _luminance_sample_buffer = jpu::make_ref<gl::buffer>(std::array<float, 32>{}, gl::buffer_flag_bits::map_dynamic_persistent_read);
         _luminance = 0;
 
-        const auto screen_vertex_shader = jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/screen.vert");
+        const auto screen_vertex_shader = jpu::make_ref<gl::shader>("postprocess/screen.vert");
         _tonemap_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _tonemap_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/const_multiply.frag"));
+        _tonemap_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/const_multiply.frag"));
         _blur_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _blur_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/blur.frag"));
+        _blur_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/blur.frag"));
         _fxaa_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _fxaa_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/fxaa.frag"));
+        _fxaa_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/fxaa.frag"));
         _flare_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _flare_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/flare.frag"));
+        _flare_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/flare.frag"));
         _bright_spots_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _bright_spots_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/bright_spots.frag"));
+        _bright_spots_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/bright_spots.frag"));
         _add_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _add_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/add.frag"));
+        _add_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/add.frag"));
         _ssao_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _ssao_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/filter/ssao.frag"));
+        _ssao_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/ssao.frag"));
     }
 
     renderer::~renderer()

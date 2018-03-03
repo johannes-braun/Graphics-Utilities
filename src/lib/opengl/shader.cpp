@@ -4,21 +4,7 @@
 
 namespace gl
 {
-    void setup_shader_paths(const std::experimental::filesystem::path root,
-                            const std::vector<std::experimental::filesystem::path>& include_directories)
-    {
-        shader_root_path = root;
-        shader_include_directories.clear();
-        shader_include_directories.push_back(root);
-        shader_include_directories.insert(shader_include_directories.end(), include_directories.begin(),
-                                          include_directories.end());
-    }
-
-    shader::shader(const shader_type type, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions)
-        : _type(type), _path(path), _definitions(definitions)
-    {
-        reload(true);
-    }
+    std::vector<std::experimental::filesystem::path> shader::_include_directories = { "../shaders" };
 
     void shader::reload(const std::vector<glshader::definition>& definitions)
     {
@@ -50,7 +36,7 @@ namespace gl
 
         try
         {
-            auto bin = load_binary_shader(glshader::shader_format::gl_binary, _path, shader_include_directories, _definitions);
+            auto bin = load_binary_shader(glshader::shader_format::gl_binary, _path, _include_directories, _definitions);
             if (glIsProgram(_id))
                 glDeleteProgram(_id);
             _id = glCreateProgram();
@@ -65,10 +51,31 @@ namespace gl
         _uniforms.clear();
     }
 
-    shader::shader(const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions)
-        : shader(type_of(path.extension()), path, definitions)
+    void shader::set_include_directories(const std::vector<std::experimental::filesystem::path> include_directories)
     {
+        _include_directories = include_directories;
+    }
 
+    void shader::set_include_directories(std::experimental::filesystem::path include_directories)
+    {
+        _include_directories = { include_directories };
+    }
+
+    shader::shader(const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions)
+        : _type(type_of(path.extension())), _path(path), _definitions(definitions)
+    {
+        if(!_path.is_absolute())
+        {
+            for(auto&& inc : _include_directories)
+            {
+                if(exists(inc / _path))
+                {
+                    _path = inc / _path;
+                    break;
+                }
+            }
+        }
+        reload(true);
     }
 
     shader::~shader()

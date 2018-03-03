@@ -32,6 +32,7 @@ namespace jpu
         bool exists(const TIdentifier& id) const;
 
         TPayload& push(const TIdentifier& id, const TPayload& payload);
+
         template<typename... Args> TPayload& emplace(const TIdentifier& id, Args&&... args) { return push(std::forward<const TIdentifier&>(id), TPayload(std::forward<Args&&>(args)...)); }
         void erase(const TIdentifier& id);
         void erase_exact(const TIdentifier& id, const TPayload& payload);

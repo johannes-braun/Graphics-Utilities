@@ -201,7 +201,7 @@ void resize(GLFWwindow*, int w, int h)
 
 int main()
 {
-    gl::setup_shader_paths("../shaders");
+    gl::shader::set_include_directories("../shaders");
 
     res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 1.0f);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
@@ -226,9 +226,9 @@ int main()
     main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
     resize(*main_window, resolution.x, resolution.y);
 
-    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/trace.comp")));
+    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader("pathtracer/trace.comp")));
     gl::graphics_pipeline pp_chunk;
-    pp_chunk.use_stages(new gl::shader(gl::shader_root / "pathtracer/chunk.vert"), new gl::shader(gl::shader_root / "pathtracer/chunk.frag"));
+    pp_chunk.use_stages(new gl::shader("pathtracer/chunk.vert"), new gl::shader("pathtracer/chunk.frag"));
     gl::vertex_array vao;
 
     io::camera cam;
@@ -335,14 +335,14 @@ int main()
     gizmo_vao.set_element_buffer(gizmo_index_buffer);
     gizmo_vao.add_binding(gl::vertex_attribute_binding(0, gizmo_vertex_buffer, 0, 3, GL_FLOAT, sizeof(glm::vec3), 0, false));
     gl::graphics_pipeline gizmo_pipeline;
-    gizmo_pipeline.use_stages(new gl::shader(gl::shader_root / "gizmo/gizmo.vert"), new gl::shader(gl::shader_root / "gizmo/gizmo.frag"));
+    gizmo_pipeline.use_stages(new gl::shader("gizmo/gizmo.vert"), new gl::shader("gizmo/gizmo.frag"));
 
     auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
     ictex->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, logo.data.get());
 
     gl::graphics_pipeline bilateral_pipeline;
-    bilateral_pipeline.use_stages(new gl::shader(gl::shader_root / "postprocess/screen.vert"), new gl::shader(gl::shader_root / "postprocess/filter/bilateral.frag"));
+    bilateral_pipeline.use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("postprocess/filter/bilateral.frag"));
     gl::vertex_array pp_vao;
 
     glEnable(GL_DEPTH_TEST);

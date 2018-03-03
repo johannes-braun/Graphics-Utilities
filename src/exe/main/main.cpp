@@ -73,22 +73,21 @@ void resize(const int width, const int height, const int samples, const bool ful
 
 int main()
 {
-    gl::setup_shader_paths("../shaders");
-
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
+    gl::shader::set_include_directories("../shaders");
 
     res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
 
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
+    main_window->set_max_framerate(60.f);
     main_renderer = std::make_unique<gfx::renderer>(full_resolution.x, full_resolution.y, current_samples);
     resize(1280, 720, 1 << 2, false);
 
-    glfwSwapInterval(1);
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
+    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
+        if (ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantTextInput)
             return;
 
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
@@ -98,31 +97,14 @@ int main()
                 p->reload_stages();
         }
     });
-
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
-    });
-
-    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h) {
+    main_window->callbacks->framebuffer_size_callback.add([](GLFWwindow*, int w, int h) {
         resize(w, h, current_samples, is_fullscreen);
     });
 
-
-
     auto graphics_pipeline = graphics_pipelines.push("Default Graphics Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     graphics_pipeline->use_stages(
-        jpu::make_ref<gl::shader>(gl::shader_root / "gbuffer/gbuffer.vert"),
-        jpu::make_ref<gl::shader>(gl::shader_root / "gbuffer/gbuffer.frag")
+        jpu::make_ref<gl::shader>("gbuffer/gbuffer.vert"),
+        jpu::make_ref<gl::shader>("gbuffer/gbuffer.frag")
     );
 
     auto cylinder = res::load_geometry("../res/bunny.dae");
@@ -178,10 +160,7 @@ int main()
     transform.position = glm::vec3(4.f, 4.f, 4.f);
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    cubemap_pipeline->use_stages(
-        jpu::make_ref<gl::shader>(gl::shader_root / "cubemap/cubemap.vert"),
-        jpu::make_ref<gl::shader>(gl::shader_root / "cubemap/cubemap.frag")
-    );
+    cubemap_pipeline->use_stages(new gl::shader("cubemap/cubemap.vert"), new gl::shader("cubemap/cubemap.frag"));
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_GEQUAL);
@@ -223,7 +202,6 @@ int main()
     const auto texture_dis    = load_texture("../res/bricks/brick_bump.png", GL_R32F, GL_RED, GL_FLOAT);
     const auto texture_nor    = load_texture("../res/bricks/brick_normal.png", GL_RGB16F, GL_RGB, GL_FLOAT);
     const auto logo           = load_texture("../res/ui/logo.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
-    auto ic_image       = load_texture("../res/ui/icons/ic_image.png", GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
     io::camera cam;
     io::default_cam_controller cam_controller;

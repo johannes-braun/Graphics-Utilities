@@ -12,52 +12,25 @@ std::unique_ptr<gfx::renderer> main_renderer;
 
 int main(int argc, const char** argv)
 {
-    gl::setup_shader_paths("../shaders");
-
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
+    gl::shader::set_include_directories("../shaders");
 
     res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
 
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
-
-    main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
-
-   // glfwSwapInterval(1);
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
-            return;
-
+    main_window->set_max_framerate(60.f);
+    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
             for (auto&& p : graphics_pipelines)
                 p->reload_stages();
     });
+    main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
-    });
-
-    const auto sampler = jpu::make_ref<gl::sampler>();
-    sampler->set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    sampler->set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    sampler->set(GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
-    sampler->set(GL_TEXTURE_CUBE_MAP_SEAMLESS, 16);
-    sampler->set(GL_TEXTURE_WRAP_R, GL_MIRRORED_REPEAT);
-    sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    const auto sampler = gl::sampler::make_default();
 
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     int w, h, c; stbi_info("../res/ven/hdr/posx.hdr", &w, &h, &c);
@@ -71,17 +44,14 @@ int main(int argc, const char** argv)
     cubemap->generate_mipmaps();
 
     auto distance_field_pipeline = graphics_pipelines.push("Distance Field Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    distance_field_pipeline->use_stages(
-        jpu::make_ref<gl::shader>(gl::shader_root / "postprocess/screen.vert"),
-        jpu::make_ref<gl::shader>(gl::shader_root / "distance_field/dist_field.frag")
-    );
+    distance_field_pipeline->use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("distance_field/dist_field.frag"));
     const auto gen_vao = jpu::make_ref<gl::vertex_array>();
-    glClearColor(1, 1, 1, 1);
 
     io::camera cam;
     io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
 
+    glClearColor(1, 1, 1, 1);
     while(main_window->update())
     {
         ImGui::Begin("Bla");

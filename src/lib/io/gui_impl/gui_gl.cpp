@@ -9,8 +9,8 @@ namespace io::impl
             return;
         _graphics_pipeline = jpu::make_ref<gl::graphics_pipeline>();
         _graphics_pipeline->use_stages(
-            jpu::make_ref<gl::shader>(gl::shader_root / "gui/gui.vert"),
-            jpu::make_ref<gl::shader>(gl::shader_root / "gui/gui.frag")
+            jpu::make_ref<gl::shader>("gui/gui.vert"),
+            jpu::make_ref<gl::shader>("gui/gui.frag")
         );
     }
 
