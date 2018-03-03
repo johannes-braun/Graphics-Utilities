@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <jpu/memory>
+#include <stb_image.h>
 
 namespace res
 {

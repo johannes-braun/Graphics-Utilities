@@ -17,7 +17,12 @@ int main(int argc, const char** argv)
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
-    main_window->load_icon("../res/ui/logo.png");
+
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+
+    main_window->set_icon(icon.width, icon.height, icon.data.get());
+    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
 
     main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 

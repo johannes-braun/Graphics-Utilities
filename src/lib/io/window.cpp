@@ -9,8 +9,7 @@ namespace io
 {
     window::window(const api api, const int width, const int height, const std::string_view title, const std::optional<monitor> monitor) : window(api,
         width, height, title, nullptr, monitor)
-    {
-    }
+    {}
 
     window::window(api api, const int width, const int height, std::string_view title, window* share, std::optional<monitor> monitor)
         : _api(api)
@@ -20,6 +19,19 @@ namespace io
         _window = glfwCreateWindow(width, height, title.data(),
             monitor.has_value() ? static_cast<GLFWmonitor*>(*monitor) : nullptr,
             share ? static_cast<GLFWwindow*>(*share) : nullptr);
+        callbacks = std::make_unique<io::callbacks>(_window);
+        callbacks->key_callback.add([this](GLFWwindow*, int key, int, int action, int mods) {
+            gui()->key_action(key, action, mods);
+        });
+        callbacks->scroll_callback.add([this](GLFWwindow*, double x, double y) {
+            gui()->scrolled(y);
+        });
+        callbacks->char_callback.add([this](GLFWwindow*, unsigned c) {
+            gui()->char_input(static_cast<wchar_t>(c));
+        });
+        callbacks->mouse_button_callback.add([this](GLFWwindow*, int key, int action, int mods) {
+            gui()->mouse_button_action(key, action, mods);
+        });
 
         if (_api == api::vulkan)
         {
@@ -94,19 +106,19 @@ namespace io
                 switch (severity)
                 {
                 case gl::debug_severity::high:
-                    tlog_e("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
+                    tlog_e("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 case gl::debug_severity::medium:
-                    tlog_w("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
+                    tlog_w("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 case gl::debug_severity::low:
-                    tlog_d("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
+                    tlog_d("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 case gl::debug_severity::notification:
-                    tlog_v("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" << 
+                    tlog_v("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
                         get_debug_enum_desc(type) << "\" -- " << message;
                     break;
                 default: break;
@@ -115,6 +127,9 @@ namespace io
             set_debug_callback_enabled(gl::debug_severity::notification, false);
             set_debug_callback_enabled(gl::debug_severity::low, false);
             _gui = jpu::make_ref<io::gui>(_window);
+            glDepthFunc(GL_GEQUAL);
+            glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+            glClearDepth(0);
         }
     }
 
@@ -213,11 +228,6 @@ namespace io
         _delta_time = (glfwGetTime() - _last_time);
         _last_time = glfwGetTime();
         return is_open;
-}
-
-    void window::freer::operator()(unsigned char* d) const
-    {
-        free(d);
     }
 
     window::operator GLFWwindow*() const
@@ -225,11 +235,17 @@ namespace io
         return _window;
     }
 
-    void window::load_icon(const std::experimental::filesystem::path& path)
+    void window::set_icon(const int w, const int h, const void* data) const
     {
-        _icon_storage = decltype(_icon_storage)(stbi_load(path.string().c_str(), &_icon_image.width, &_icon_image.height, nullptr, STBI_rgb_alpha));
-        _icon_image.pixels = _icon_storage.get();
-        glfwSetWindowIcon(_window, 1, &_icon_image);
+        struct img {
+            int width;
+            int height;
+            const unsigned char* pixels;
+        } icon_image;
+        icon_image.width = w;
+        icon_image.height = h;
+        icon_image.pixels = static_cast<const unsigned char*>(data);
+        glfwSetWindowIcon(_window, 1, reinterpret_cast<const GLFWimage*>(&icon_image));
     }
 
     void window::set_monitor(std::optional<monitor> monitor)
@@ -241,7 +257,7 @@ namespace io
             const GLFWvidmode* mode = glfwGetVideoMode(*monitor);
             glfwSetWindowMonitor(_window, *monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
         }
-        else if(glfwGetWindowMonitor(_window) != *monitor)
+        else if (glfwGetWindowMonitor(_window) != *monitor)
         {
             glfwSetWindowMonitor(_window, nullptr, _position_before_monitor_x, _position_before_monitor_y, _width_before_monitor, _height_before_monitor, GLFW_DONT_CARE);
         }

@@ -45,35 +45,21 @@ int main(int argc, const char** args)
 {
     full_resolution = { 1280, 720 };
     main_window = jpu::make_ref<io::window>(io::api::vulkan, full_resolution.x, full_resolution.y, "My Window");
-    main_window->load_icon("../res/ui/logo.png");
-    main_window->limit_framerate(max_framerate);
+
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+
+    main_window->set_icon(icon.width, icon.height, icon.data.get());
+    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
+    main_window->set_max_framerate(max_framerate);
 
     glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow* w, int x, int y)
     {
         full_resolution = { x, y };
         rebuildSwapchain();
     });
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
-            return;
-    });
-
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
-    });
 
     createMultisampleRenderpass();
-    //rebuildSwapchain();
     createMultisampleFramebuffers();
 
     const auto clear_values = {
@@ -233,10 +219,10 @@ int main(int argc, const char** args)
                 ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth());
                 ImGui::DragFloat("##LimitFPS", &max_framerate, 0.1f, 20.f, 9999999.f, "%.1f fps");
                 ImGui::PopItemWidth();
-                main_window->limit_framerate(max_framerate);
+                main_window->set_max_framerate(max_framerate);
             }
             else
-                main_window->limit_framerate(std::numeric_limits<float>::max());
+                main_window->set_max_framerate(std::numeric_limits<float>::max());
 
             ImGui::Spacing();
             ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);

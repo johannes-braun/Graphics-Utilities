@@ -7,6 +7,7 @@
 #include <stack>
 #include "opengl/query.hpp"
 #include <numeric>
+#include <res/image.hpp>
 
 constexpr int logn = 18;
 std::vector<float> data1(1 << logn);
@@ -44,7 +45,12 @@ int main()
    // glfwWindowHint(GLFW_SAMPLES, 8);
    // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
-    main_window->load_icon("../res/ui/logo.png");
+
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+
+    main_window->set_icon(icon.width, icon.height, icon.data.get());
+    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     glfwSwapInterval(0);
     // glfwSwapInterval(1);
     glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {

@@ -18,6 +18,7 @@
 #include "stb_image_write.h"
 #include "res/presets.hpp"
 #include "framework/renderer.hpp"
+#include <GLFW/glfw3.h>
 
 glm::ivec2 resolution{ 1280, 720 };
 jpu::ref_ptr<io::window> main_window;
@@ -180,8 +181,9 @@ bool intersect_bounds(
     return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
 
-void resize()
+void resize(GLFWwindow*, int w, int h)
 {
+    resolution = { w, h };
     main_renderer->resize(resolution.x, resolution.y, 8);
     target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA32F);
@@ -199,17 +201,20 @@ void resize()
 
 int main()
 {
+    gl::setup_shader_paths("../shaders");
+
+    res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 1.0f);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 8);
     main_window = jpu::make_ref<io::window>(io::api::opengl, resolution.x, resolution.y, "Grid");
-    main_window->load_icon("../res/ui/logo.png");
-    main_window->set_cursor(new io::cursor("../res/cursor.png", 0, 0));
-    main_window->limit_framerate(60.f);
-    gl::setup_shader_paths("../shaders");
-    main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
-
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
+    main_window->set_icon(logo.width, logo.height, logo.data.get());
+    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
+    main_window->set_max_framerate(60.f);
+    main_window->callbacks->framebuffer_size_callback.add(&resize);
+    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
+        if (ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantTextInput)
             return;
 
         if (key == GLFW_KEY_P && action == GLFW_PRESS)
@@ -218,32 +223,8 @@ int main()
                 pipeline->reload_stages();
         }
     });
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
-    });
-
-    glfwSetFramebufferSizeCallback(*main_window, [](GLFWwindow*, int w, int h) {
-        resolution = { w, h };
-        resize();
-    });
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glDepthFunc(GL_GEQUAL);
-    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
-    glClearColor(0.8f, 0.9f, 1.f, 0);
-    glClearDepth(0);
-
-    resize();
+    main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
+    resize(*main_window, resolution.x, resolution.y);
 
     const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader(gl::shader_root / "pathtracer/trace.comp")));
     gl::graphics_pipeline pp_chunk;
@@ -265,21 +246,29 @@ int main()
     sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
     auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
-    int w, h, c; stbi_info("../res/ven/hdr/posx.hdr", &w, &h, &c);
+    std::vector<res::image> cubemap_images;
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::signed_float, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negx.hdr", res::image_type::signed_float, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posy.hdr", res::image_type::signed_float, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negy.hdr", res::image_type::signed_float, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posz.hdr", res::image_type::signed_float, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negz.hdr", res::image_type::signed_float, res::image_components::rgb));
+
+    const int w = cubemap_images[0].width;
+    const int h = cubemap_images[0].height;
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
+    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
+    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
+    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[3].data.get());
+    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[4].data.get());
+    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[5].data.get());
     cubemap->generate_mipmaps();
+    cubemap_images.clear();
 
     std::mt19937 gen;
     const std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    // Test out mesh
-    
     jpu::ref_ptr<gl::buffer> material_buffer;
     jpu::ref_ptr<gl::buffer> meshes_buffer;
 
@@ -348,7 +337,6 @@ int main()
     gl::graphics_pipeline gizmo_pipeline;
     gizmo_pipeline.use_stages(new gl::shader(gl::shader_root / "gizmo/gizmo.vert"), new gl::shader(gl::shader_root / "gizmo/gizmo.frag"));
 
-    res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 1.0f);
     auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
     ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
     ictex->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, logo.data.get());
@@ -357,15 +345,20 @@ int main()
     bilateral_pipeline.use_stages(new gl::shader(gl::shader_root / "postprocess/screen.vert"), new gl::shader(gl::shader_root / "postprocess/filter/bilateral.frag"));
     gl::vertex_array pp_vao;
 
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glClearColor(0.8f, 0.9f, 1.f, 0);
+
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
 
         const glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
 
-        static int size = 4;
+        static int size = 12;
         static int frame = 0;
-        static int max_samples = 4;
+        static int max_samples = 2;
         static int sample_blend_offset = 0;
         static bool show_grid = true;
         static bool show_gizmo = true;

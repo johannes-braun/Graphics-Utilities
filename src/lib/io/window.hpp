@@ -16,6 +16,7 @@
 #include <jpu/log>
 #include <filesystem>
 #include <functional>
+#include "callbacks.hpp"
 
 namespace io
 {
@@ -48,7 +49,7 @@ namespace io
         operator GLFWwindow*() const;
         gui* gui() const;
 
-        void load_icon(const std::experimental::filesystem::path& path);
+        void set_icon(int w, int h, const void* data) const;
         void set_monitor(std::optional<monitor> monitor);
         void set_cursor(cursor* cursor) { _cursor = cursor; glfwSetCursor(_window, *_cursor); }
 
@@ -61,7 +62,7 @@ namespace io
             _swap_delay = delay;
         }
 
-        void limit_framerate(const double max_fps)
+        void set_max_framerate(const double max_fps)
         {
             set_swap_delay(1 / max_fps);
         }
@@ -99,15 +100,11 @@ namespace io
         }
 #endif
 
+        std::unique_ptr<callbacks> callbacks;
+
     private:
         api _api;
         jpu::ref_ptr<io::gui> _gui;
-        struct freer
-        {
-            void operator()(unsigned char* d) const;
-        };
-        std::unique_ptr<unsigned char[], freer> _icon_storage;
-        GLFWimage _icon_image;
         int _width_before_monitor{ 0 };
         int _height_before_monitor{ 0 };
         int _position_before_monitor_x{ 0 };

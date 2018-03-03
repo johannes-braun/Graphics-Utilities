@@ -1,25 +1,30 @@
 #pragma once
 
-#include <filesystem>
 #include <GLFW/glfw3.h>
 #include <jpu/memory>
-#include <stb_image.h>
 
 namespace io
 {
     class cursor : public jpu::ref_count
     {
     public:
-        cursor(const std::experimental::filesystem::path& image, const int hotspot_x, const int hotspot_y)
+        cursor(const int w, const int h, const void* data, const int hotspot_x, const int hotspot_y)
             : _hotspot_x(hotspot_x), _hotspot_y(hotspot_y)
         {
-            _image.pixels = stbi_load(image.string().c_str(), &_image.width, &_image.height, nullptr, STBI_rgb_alpha);
-            _cursor = glfwCreateCursor(&_image, _hotspot_x, _hotspot_y);
+            struct img
+            {
+                int width;
+                int height;
+                const unsigned char* pixels;
+            } icon_image;
+            icon_image.width = w;
+            icon_image.height = h;
+            icon_image.pixels = static_cast<const unsigned char*>(data);
+            _cursor = glfwCreateCursor(reinterpret_cast<const GLFWimage*>(&icon_image), _hotspot_x, _hotspot_y);
         }
 
         ~cursor()
         {
-            free(_image.pixels);
             glfwDestroyCursor(_cursor);
         }
 
@@ -28,7 +33,6 @@ namespace io
     private:
         int _hotspot_x;
         int _hotspot_y;
-        GLFWimage _image;
         GLFWcursor* _cursor;
     };
 }
