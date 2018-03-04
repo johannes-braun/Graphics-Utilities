@@ -14,7 +14,6 @@
 #include "opengl/pipeline.hpp"
 #include "opengl/texture.hpp"
 #include "opengl/buffer.hpp"
-#include "opengl/vertex_array.hpp"
 #include "stb_image_write.h"
 #include "res/presets.hpp"
 #include "framework/renderer.hpp"
@@ -43,9 +42,6 @@ public:
         _vertex_buffer = jpu::make_ref<gl::buffer>(mesh.vertices);
         _index_buffer = jpu::make_ref<gl::buffer>(indices);
         _bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
-        _vao = jpu::make_ref<gl::vertex_array>();
-        _vao->set_element_buffer(*_index_buffer);
-        _vao->add_binding(gl::vertex_attribute_binding(0, *_vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false));
         _transform = mesh.transform;
         _idx_count = indices.size();
     }
@@ -98,17 +94,15 @@ public:
         _vertex_buffer = jpu::make_ref<gl::buffer>(opt_vertices);
         _index_buffer = jpu::make_ref<gl::buffer>(indices);
         _bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
-        _vao = jpu::make_ref<gl::vertex_array>();
-        _vao->set_element_buffer(*_index_buffer);
-        _vao->add_binding(gl::vertex_attribute_binding(0, *_vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false));
         _transform = glm::mat4(1.f);
         _idx_count = indices.size();
     }
 
-    void draw() const
+    void draw(const gl::graphics_pipeline& p) const
     {
-        _vao->bind();
-        glDrawElements(GL_TRIANGLES, _idx_count, GL_UNSIGNED_INT, nullptr);
+        p.set_input_buffer(0, _vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
+        p.set_index_buffer(_index_buffer, gl::index_type::u32);
+        p.draw_indexed(gl::primitive::triangles, _idx_count);
     }
 
 private:
@@ -116,23 +110,22 @@ private:
     jpu::ref_ptr<gl::buffer> _vertex_buffer;
     jpu::ref_ptr<gl::buffer> _index_buffer;
     jpu::ref_ptr<gl::buffer> _bvh_buffer;
-    jpu::ref_ptr<gl::vertex_array> _vao;
     res::transform _transform;
 };
 
 struct material
 {
     glm::vec3 glass_tint{ 1, 1, 1 };
-    float roughness_sqrt = 0.3f;
+    float roughness_sqrt = 1.0f;
     glm::vec3 reflection_tint{ 1 };
-    float glass = 1.0f;
-    glm::vec3 base_color{ 0.4, 0.6, 0.1 };
+    float glass = 0.0f;
+    glm::vec3 base_color{ 1, 1, 1 };
     float ior = 1.5f;
-    glm::vec3 glass_scatter_color = glm::vec3(0.7, 0.1, 0.5);
-    float glass_density = 8;
+    glm::vec3 glass_scatter_color = glm::vec3(1, 1, 1);
+    float glass_density = 4;
  
-    float glass_density_falloff = 8;
-    float extinction_coefficient = 1.01f;
+    float glass_density_falloff = 4;
+    float extinction_coefficient = 0.01f;
 
 private:
     float _p[2];
@@ -160,38 +153,15 @@ struct mesh
 jpu::named_vector<std::string, std::pair<jpu::ref_ptr<mesh_proxy>, std::vector<mesh*>>> meshes;
 int selected_mesh = 0;
 
-bool intersect_bounds(
-    const glm::vec3 origin,
-    const glm::vec3 direction,
-
-    const glm::vec3 bounds_min,
-    const glm::vec3 bounds_max,
-    const float max_distance)
-{
-    const glm::vec3 inv_direction = 1.f / direction;
-
-    //intersections with box planes parallel to x, y, z axis
-    const glm::vec3 t135 = (bounds_min - origin) * inv_direction;
-    const glm::vec3 t246 = (bounds_max - origin) * inv_direction;
-
-    const glm::vec3 min_values = min(t135, t246);
-    const glm::vec3 max_values = max(t135, t246);
-
-    const float tmin = glm::max(glm::max(min_values.x, min_values.y), min_values.z);
-    const float tmax = glm::min(glm::min(max_values.x, max_values.y), max_values.z);
-
-    return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
-}
-
 void resize(GLFWwindow*, int w, int h)
 {
     resolution = { w, h };
     main_renderer->resize(resolution.x, resolution.y, 8);
-    target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
     target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA32F);
-    target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
     target_textures[1]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_textures[2] = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    target_textures[2] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
     target_textures[2]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
     target_image = jpu::make_ref<gl::image>(target_textures[0], 0, false, 0, GL_RGBA32F, GL_READ_WRITE);
     target_framebuffer = jpu::make_ref<gl::framebuffer>();
@@ -206,7 +176,7 @@ int main()
     gl::shader::set_include_directories("../shaders");
 
     res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 1.0f);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 8);
@@ -218,41 +188,32 @@ int main()
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantTextInput)
             return;
-
         if (key == GLFW_KEY_P && action == GLFW_PRESS)
-        {
             for (auto&& pipeline : compute_pipelines)
                 pipeline->reload_stages();
-        }
         if (key == GLFW_KEY_TAB && action == GLFW_PRESS)
             ++selected_mesh;
     });
     main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
     resize(*main_window, resolution.x, resolution.y);
 
-    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader("pathtracer/trace.comp")));
-    gl::graphics_pipeline pp_chunk;
-    pp_chunk.use_stages(new gl::shader("pathtracer/chunk.vert"), new gl::shader("pathtracer/chunk.frag"));
-    gl::vertex_array vao;
-
     io::camera cam;
-    cam.inverse_z = true;
-    cam.transform.position = glm::vec3(0, 0, 4);
     io::default_cam_controller ctrl;
+    cam.transform.position = glm::vec3(0, 0, 4);
 
     const auto sampler = jpu::make_ref<gl::sampler>();
 
-    auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     std::vector<res::image> cubemap_images;
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::signed_float, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negx.hdr", res::image_type::signed_float, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posy.hdr", res::image_type::signed_float, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negy.hdr", res::image_type::signed_float, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posz.hdr", res::image_type::signed_float, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negz.hdr", res::image_type::signed_float, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::f32, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negx.hdr", res::image_type::f32, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posy.hdr", res::image_type::f32, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negy.hdr", res::image_type::f32, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posz.hdr", res::image_type::f32, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negz.hdr", res::image_type::f32, res::image_components::rgb));
 
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;
+    auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
     cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
     cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
@@ -305,28 +266,22 @@ int main()
 
     gl::query query_time(GL_TIME_ELAPSED);
 
-    gl::graphics_pipeline pp_mesh;
-    pp_mesh.use_stages(new gl::shader("pathtracer/mesh.vert"), new gl::shader("pathtracer/mesh.frag"));
+    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader("pathtracer/trace.comp")));
+    gl::graphics_pipeline pp_chunk; pp_chunk.use_stages(new gl::shader("pathtracer/chunk.vert"), new gl::shader("pathtracer/chunk.frag"));
+    gl::graphics_pipeline pp_mesh; pp_mesh.use_stages(new gl::shader("pathtracer/mesh.vert"), new gl::shader("pathtracer/mesh.frag"));
+    pp_mesh.set_input_format(0, 3, GL_FLOAT, false);
+    gl::graphics_pipeline bilateral_pipeline; bilateral_pipeline.use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("postprocess/filter/bilateral.frag"));
 
-    auto ictex = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
-    ictex->storage_2d(logo.width, logo.height, GL_RGBA8);
-    ictex->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, logo.data.get());
+    gfx::gizmo gizmo;
 
-    gl::graphics_pipeline bilateral_pipeline;
-    bilateral_pipeline.use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("postprocess/filter/bilateral.frag"));
-    gl::vertex_array pp_vao;
-
-    glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    glClearColor(0.8f, 0.9f, 1.f, 0);
-    gfx::gizmo gizmo;
 
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
 
-        const glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
+        const glm::mat4 camera_matrix = inverse(cam.projection() * glm::mat4(glm::mat3(cam.view())));
 
         selected_mesh = selected_mesh % meshes.size();
         res::transform gizmo_transform = meshes.get_by_index(selected_mesh).second.front()->model;
@@ -340,6 +295,7 @@ int main()
         static bool show_gizmo = true;
         static bool show_renderchunk = true;
         static bool show_bfilter = true;
+        static bool enable_continuous_improvement = false;
         static float gauss_sigma = 6.f;
         static float gauss_bsigma = 0.1f;
 
@@ -353,59 +309,45 @@ int main()
         {
             query_time.begin();
             pp_trace->bind();
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("target_image") = *target_image;
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<float>("random_gen") = dist(gen);
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<int>("sample_blend_offset") = sample_blend_offset;
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<int>("max_samples") = max_samples;
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::mat4>("camera_matrix") = camera_matrix;
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<uintptr_t>("meshes") = meshes_buffer->address();
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<int>("num_meshes") = meshes_buffer->size() / sizeof(mesh);
-            pp_trace->stage(gl::shader_type::compute)->get_uniform<glm::ivec2>("offset") = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pp_trace->get_uniform<uint64_t>("target_image") = *target_image;
+            pp_trace->get_uniform<float>("random_gen") = dist(gen);
+            pp_trace->get_uniform<int>("sample_blend_offset") = sample_blend_offset;
+            pp_trace->get_uniform<int>("max_samples") = max_samples;
+            pp_trace->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
+            pp_trace->get_uniform<glm::mat4>("camera_matrix") = camera_matrix;
+            pp_trace->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
+            pp_trace->get_uniform<uintptr_t>("meshes") = meshes_buffer->address();
+            pp_trace->get_uniform<int>("num_meshes") = meshes_buffer->size() / sizeof(mesh);
+            pp_trace->get_uniform<glm::ivec2>("offset") = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
             pp_trace->dispatch(size_x, size_y);
             frame = (frame + 1) % (count_x * count_y);
+            if (frame == 0 && enable_continuous_improvement)
+                ++sample_blend_offset;
             query_time.end();
             t += query_time.get_uint64() / 1'000'000'000.0;
         }
 
         target_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-        target_framebuffer->bind();
-        bilateral_pipeline.bind();
-        pp_vao.bind();
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_bsigma") = gauss_bsigma;
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_textures[0]);
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_sigma") = show_bfilter ? gauss_sigma : 0;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        target_framebuffer->unbind();
-
-        target_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT2 });
         main_renderer->bind();
         bilateral_pipeline.bind();
-        pp_vao.bind();
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<uint64_t>("src_textures[0]") = sampler->sample_texture(target_textures[1]);
-        bilateral_pipeline.stage(gl::shader_type::fragment)->get_uniform<float>("gauss_sigma") = 0;
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        main_renderer->draw(main_window->delta_time(), target_framebuffer);
+        bilateral_pipeline.get_uniform<float>(gl::shader_type::fragment, "gauss_bsigma") = gauss_bsigma;
+        bilateral_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler->sample_texture(target_textures[0]);
+        bilateral_pipeline.get_uniform<float>(gl::shader_type::fragment, "gauss_sigma") = show_bfilter ? gauss_sigma : 0;
+        bilateral_pipeline.draw(gl::primitive::triangles, 3);
+        main_renderer->draw(main_window->delta_time(), *target_framebuffer);
 
-        target_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT2);
-        target_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y },
-            gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        target_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT1);
+        target_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         if (show_renderchunk)
         {
             glLineWidth(2.f);
             pp_chunk.bind();
-            vao.bind();
-            pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(resolution);
-            pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
-            pp_chunk.stage(gl::shader_type::vertex)->get_uniform<glm::vec2>("size") = glm::vec2(size_x, size_y);
-            glDrawArrays(GL_LINE_STRIP, 0, 5);
+            pp_chunk.get_uniform<glm::vec2>(gl::shader_type::vertex, "inv_resolution") = 1.f / glm::vec2(resolution);
+            pp_chunk.get_uniform<glm::vec2>(gl::shader_type::vertex, "offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pp_chunk.get_uniform<glm::vec2>(gl::shader_type::vertex, "size") = glm::vec2(size_x, size_y);
+            pp_chunk.draw(gl::primitive::line_strip, 5);
         }
-
-        double mx, my; glfwGetCursorPos(*main_window, &mx, &my);
-        gizmo.update(cam.view(), cam.projection(), glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / resolution.x, my / resolution.y);
-        if(show_gizmo) gizmo.render();
 
         if (show_grid)
         {
@@ -418,19 +360,21 @@ int main()
                 pp_mesh.bind();
                 for (auto&& s : p.second)
                 {
-                    pp_mesh.stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * s->model;
-                    p.first->draw();
+                    pp_mesh.get_uniform<glm::mat4>(gl::shader_type::vertex, "model_view_projection") = cam.projection() * cam.view() * s->model;
+                    p.first->draw(pp_mesh);
                 }
                 glPolygonMode(GL_FRONT, GL_FILL);
                 glDisable(GL_BLEND);
             }
         }
-        glDisable(GL_DEPTH_TEST);
 
+        double mx, my; glfwGetCursorPos(*main_window, &mx, &my);
+        gizmo.update(cam.view(), cam.projection(), glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / resolution.x, my / resolution.y);
+        if (show_gizmo) gizmo.render();
         meshes.get_by_index(selected_mesh).second.front()->model = static_cast<glm::mat4>(gizmo_transform);
         meshes.get_by_index(selected_mesh).second.front()->inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
+
         ImGui::Begin("Window");
-        ImGui::Image(reinterpret_cast<ImTextureID>(sampler->sample_texture(ictex)), ImVec2(logo.width, logo.height));
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
         ImGui::DragInt("Size", &size, 0.1f, 1.f, 100.f);
         ImGui::DragInt("Max. Samples", &max_samples, 0.01f, 1.f, 100.f);
@@ -438,6 +382,11 @@ int main()
         ImGui::Checkbox("Show Mesh", &show_grid);
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
         ImGui::Checkbox("Show Chunk", &show_renderchunk);
+        if(ImGui::Checkbox("Continuous Improvement", &enable_continuous_improvement) && enable_continuous_improvement)
+        {
+            sample_blend_offset = 0;
+        }
+        ImGui::Checkbox("Enable PostProcess", &main_renderer->enabled);
         ImGui::Checkbox("Enable Filtering", &show_bfilter);
         if (show_bfilter)
         {
@@ -447,29 +396,7 @@ int main()
 
         static bool with_bg_alpha = true;
         ImGui::Checkbox("Enable Background Alpha", &with_bg_alpha);
-        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
-        {
-            res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
-            target_textures[2]->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
-
-            glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
-            std::vector<glm::u8vec4> convert(resolution.x * resolution.y);
-            for (int x = 0; x < resolution.x; ++x)
-            {
-                for (int y = 0; y < resolution.y; ++y)
-                {
-                    convert[y * resolution.x + x] = clamp(ic[(resolution.y - 1 - y) * resolution.x + x] * 255.f, glm::vec4(0, 0, 0, with_bg_alpha ? 0 : 255.f), glm::vec4(255.f));
-                }
-            }
-
-            constexpr const char *extensions[1] = {
-                "*.png"
-            };
-            if (const auto dst = tinyfd_saveFileDialog("Save output", "../res/", 1, extensions, "*.png"))
-                stbi_write_png(dst, resolution.x, resolution.y, 4, convert.data(), 0);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Save2", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
             target_textures[1]->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());

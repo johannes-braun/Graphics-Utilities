@@ -18,10 +18,14 @@ namespace gfx
 
         void resize(int width, int height, uint32_t samples);
         void reload_pipelines() const;
+        void set_clear_color(glm::vec4 color);
+        void set_clear_depth(float depth);
 
         void bind() const;
-        void draw(double delta_time, gl::framebuffer* target_framebuffer = nullptr);
+        void draw(double delta_time, const gl::framebuffer& target_framebuffer = gl::framebuffer::default_fbo());
         gl::texture* random_texture() const;
+
+        bool enabled = true;
 
     private:
 
@@ -36,10 +40,11 @@ namespace gfx
         std::array<jpu::ref_ptr<gl::texture>, 4> _full_size_attachments;
         std::array<jpu::ref_ptr<gl::texture>, 2> _msaa_attachments;
 
-        jpu::ref_ptr<gl::vertex_array> _empty_vao;
         jpu::ref_ptr<gl::sampler> _sampler;
         jpu::ref_ptr<gl::texture> _random_texture;
 
+        glm::vec4 _clear_color{0, 0, 0, 1};
+        float _clear_depth = 0.f;
         uint32_t _temporal_target;
 
         jpu::ref_ptr<gl::compute_pipeline> _luminance_compute_pipeline;

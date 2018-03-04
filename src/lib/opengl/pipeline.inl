@@ -23,4 +23,16 @@ namespace gl
             throw std::runtime_error("Program pipeline validation failed: " + log);
         }
     }
+
+    template <typename T>
+    uniform<T> graphics_pipeline::get_uniform(const shader_type s, const char* name)
+    {
+        return stage(s)->get_uniform<T>(name);
+    }
+
+    template <typename T>
+    uniform<T> compute_pipeline::get_uniform(const char* name)
+    {
+        return stage(shader_type::compute)->get_uniform<T>(name);
+    }
 }

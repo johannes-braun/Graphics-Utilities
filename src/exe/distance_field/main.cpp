@@ -7,20 +7,20 @@
 #include "framework/renderer.hpp"
 #include "framework/gizmo.hpp"
 
-jpu::ref_ptr<io::window> main_window;
-jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 std::unique_ptr<gfx::renderer> main_renderer;
+std::unique_ptr<io::window> main_window;
+jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 int main(int argc, const char** argv)
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
+    main_window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(60.f);
@@ -46,13 +46,11 @@ int main(int argc, const char** argv)
 
     auto distance_field_pipeline = graphics_pipelines.push("Distance Field Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     distance_field_pipeline->use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("distance_field/dist_field.frag"));
-    const auto gen_vao = jpu::make_ref<gl::vertex_array>();
 
     io::camera cam;
     io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
     
-    glClearColor(1, 1, 1, 1);
     while(main_window->update())
     {
         ImGui::Begin("Bla");
@@ -62,15 +60,13 @@ int main(int argc, const char** argv)
         cam_controller.update(cam, *main_window, main_window->delta_time());
 
         main_renderer->bind();
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        gen_vao->bind();
         distance_field_pipeline->bind();
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("view_mat") = cam.view();
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec3>("cam_position") = cam.transform.position;
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("proj_mat") = cam.projection();
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view_mat") = inverse(cam.projection() * cam.view());
-        distance_field_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        distance_field_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "view_mat") = cam.view();
+        distance_field_pipeline->get_uniform<glm::vec3>(gl::shader_type::fragment, "cam_position") = cam.transform.position;
+        distance_field_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "proj_mat") = cam.projection();
+        distance_field_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view_mat") = inverse(cam.projection() * cam.view());
+        distance_field_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler->sample_texture(cubemap);
+        distance_field_pipeline->draw(gl::primitive::triangles, 3);
         main_renderer->draw(main_window->delta_time());
     }
 }

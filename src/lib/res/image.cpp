@@ -15,7 +15,7 @@ namespace res
     image load_image(const filesystem::path& path, const image_type type, image_components components)
     {
         image img;
-        img.data = type == image_type::signed_float ?
+        img.data = type == image_type::f32 ?
             stbi_data(static_cast<void*>(stbi_loadf(path.string().c_str(), &img.width, &img.height, &img.components, static_cast<int>(components)))) :
             stbi_data(static_cast<void*>(stbi_load(path.string().c_str(), &img.width, &img.height, &img.components, static_cast<int>(components))));
         img.components = std::max(img.components, static_cast<int>(components));
@@ -38,12 +38,13 @@ namespace res
         NSVGimage* parsed = nsvgParseFromFile(path.string().c_str(), "px", 96);
         
         image image;
-        image.data = stbi_data(malloc(scale*scale*parsed->width*parsed->height * 4));
+        image.data = stbi_data(malloc(static_cast<size_t>(scale*scale*parsed->width*parsed->height * 4)));
         image.components = 4;
-        image.type = image_type::unsigned_byte;
-        image.width = scale*parsed->width;
-        image.height = scale*parsed->height;
-        nsvgRasterize(rasterizer.get(), parsed, 0, 0, scale, static_cast<uint8_t*>(image.data.get()), scale*parsed->width, scale*parsed->height, scale*parsed->width * 4);
+        image.type = image_type::u8;
+        image.width = static_cast<int>(scale*parsed->width);
+        image.height = static_cast<int>(scale*parsed->height);
+        nsvgRasterize(rasterizer.get(), parsed, 0, 0, scale, static_cast<uint8_t*>(image.data.get()), 
+            static_cast<int>(scale*parsed->width), static_cast<int>(scale*parsed->height), static_cast<int>(scale*parsed->width) * 4);
         nsvgDelete(parsed);
         return image;
     }

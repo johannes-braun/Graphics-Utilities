@@ -12,6 +12,9 @@ namespace io::impl
             jpu::make_ref<gl::shader>("gui/gui.vert"),
             jpu::make_ref<gl::shader>("gui/gui.frag")
         );
+        _graphics_pipeline->set_input_format(0, 2, GL_FLOAT, false);
+        _graphics_pipeline->set_input_format(1, 2, GL_FLOAT, false);
+        _graphics_pipeline->set_input_format(2, 4, GL_UNSIGNED_BYTE, true);
     }
 
     ImTextureID gui_gl::build_font_atlas()
@@ -19,7 +22,7 @@ namespace io::impl
         unsigned char* pixels;
         int width, height;
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        _fonts_atlas = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+        _fonts_atlas = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
         _fonts_atlas->storage_2d(width, height, GL_RGBA8, 1);
         _fonts_atlas->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
@@ -36,7 +39,6 @@ namespace io::impl
         const auto index_count = draw_data->TotalIdxCount;
         if (vertex_count > _last_vertex_buffer_size || index_count > _last_index_buffer_size)
         {
-            _vertex_array = jpu::make_ref<gl::vertex_array>();
             _last_vertex_buffer_size = std::max<size_t>(1, _last_vertex_buffer_size);
             _last_index_buffer_size = std::max<size_t>(1, _last_index_buffer_size);
 
@@ -45,13 +47,6 @@ namespace io::impl
 
             _vertex_buffer = jpu::make_ref<gl::buffer>(_last_vertex_buffer_size * sizeof(ImDrawVert), gl::buffer_flag_bits::dynamic_storage);
             _index_buffer = jpu::make_ref<gl::buffer>(_last_index_buffer_size * sizeof(ImDrawIdx), gl::buffer_flag_bits::dynamic_storage);
-
-            _vertex_array->add_bindings({
-                gl::vertex_attribute_binding(0, *_vertex_buffer, 0, 2, GL_FLOAT, sizeof(ImDrawVert), offsetof(ImDrawVert, pos), false),
-                gl::vertex_attribute_binding(1, *_vertex_buffer, 0, 2, GL_FLOAT, sizeof(ImDrawVert), offsetof(ImDrawVert, uv), false),
-                gl::vertex_attribute_binding(2, *_vertex_buffer, 0, 4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), offsetof(ImDrawVert, col), true)
-                });
-            _vertex_array->set_element_buffer(*_index_buffer);
         }
 
         for (int list = 0, vtx = 0, idx = 0; list < draw_data->CmdListsCount;
@@ -100,19 +95,21 @@ namespace io::impl
         ortho_projection[1][1] = -2.0f / io.DisplaySize.y;
         ortho_projection[2] = glm::vec4{ 0.0f, 0.0f, -1.0f, 0.0f };
         ortho_projection[3] = glm::vec4{ -1.0f, 1.0f, 0.0f, 1.0f };
-        _vertex_array->bind();
         _graphics_pipeline->bind();
-        _graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("projection") = ortho_projection;
+        _graphics_pipeline->set_input_buffer(0, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, pos));
+        _graphics_pipeline->set_input_buffer(1, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, uv));
+        _graphics_pipeline->set_input_buffer(2, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, col));
+        _graphics_pipeline->set_index_buffer(_index_buffer, gl::index_type(GL_UNSIGNED_BYTE + sizeof(ImDrawIdx)));
+        _graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "projection") = ortho_projection;
     }
 
     void gui_gl::render(const ImDrawCmd& cmd, const int index_offset, const int vertex_offset) const
     {
         assert(GL_UNSIGNED_INT == GL_UNSIGNED_BYTE + 4 && GL_UNSIGNED_SHORT == GL_UNSIGNED_BYTE + 2);
-        _graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("img") = reinterpret_cast<uint64_t>(cmd.TextureId);
+        _graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "img") = reinterpret_cast<uint64_t>(cmd.TextureId);
         glScissor(static_cast<int>(cmd.ClipRect.x), static_cast<int>(static_cast<int>(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
             static_cast<int>(cmd.ClipRect.z - cmd.ClipRect.x), static_cast<int>(cmd.ClipRect.w - cmd.ClipRect.y));
-        glDrawElementsBaseVertex(GL_TRIANGLES, static_cast<GLsizei>(cmd.ElemCount), GL_UNSIGNED_BYTE + sizeof(ImDrawIdx),
-            reinterpret_cast<const void*>(index_offset * sizeof(ImDrawIdx)), static_cast<int>(vertex_offset));
+        _graphics_pipeline->draw_indexed(gl::primitive::triangles, cmd.ElemCount, index_offset, vertex_offset);
     }
 
     void gui_gl::post_render()

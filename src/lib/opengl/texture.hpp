@@ -7,17 +7,17 @@ namespace gl
 {
     enum class texture_type
     {
-        def_1d = GL_TEXTURE_1D,
-        def_2d = GL_TEXTURE_2D, 
-        def_3d = GL_TEXTURE_3D, 
-        array_1d = GL_TEXTURE_1D_ARRAY, 
-        array_2d = GL_TEXTURE_2D_ARRAY, 
+        simple1d = GL_TEXTURE_1D,
+        simple2d = GL_TEXTURE_2D, 
+        simple3d = GL_TEXTURE_3D, 
+        array1d = GL_TEXTURE_1D_ARRAY, 
+        array2d = GL_TEXTURE_2D_ARRAY, 
         rectangle = GL_TEXTURE_RECTANGLE, 
         cube_map = GL_TEXTURE_CUBE_MAP,
         cube_map_array = GL_TEXTURE_CUBE_MAP_ARRAY, 
         buffer = GL_TEXTURE_BUFFER, 
-        multisample_2d = GL_TEXTURE_2D_MULTISAMPLE,
-        multisample_array_2d = GL_TEXTURE_2D_MULTISAMPLE_ARRAY
+        ms2d = GL_TEXTURE_2D_MULTISAMPLE,
+        msarray2d = GL_TEXTURE_2D_MULTISAMPLE_ARRAY
     };
 
     class texture : public jpu::ref_count

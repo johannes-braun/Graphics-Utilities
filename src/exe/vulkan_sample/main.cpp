@@ -43,8 +43,8 @@ void rebuildSwapchain()
 
 int main(int argc, const char** args)
 {
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     full_resolution = { 1280, 720 };
     main_window = jpu::make_ref<io::window>(io::api::vulkan, full_resolution.x, full_resolution.y, "My Window");

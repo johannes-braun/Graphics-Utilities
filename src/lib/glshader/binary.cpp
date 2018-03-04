@@ -119,15 +119,15 @@ namespace glshader
         }();
 
         const auto id = glCreateShaderProgramv(shader_type, 1, &src_ptr);
-        if (int success = 0; glGetProgramiv(id, GL_LINK_STATUS, &success), !success)
+        int success = 0; glGetProgramiv(id, GL_LINK_STATUS, &success);
+        if (!success)
         {
             int log_length;
             glGetProgramiv(id, GL_INFO_LOG_LENGTH, &log_length);
             std::string log(log_length, ' ');
             glGetProgramInfoLog(id, log_length, &log_length, log.data());
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, id, GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
             glDeleteProgram(id);
-
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, success ? GL_DEBUG_TYPE_ERROR : GL_DEBUG_TYPE_OTHER, id, GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
             throw std::runtime_error("Program linking failed: " + log);
         }
 

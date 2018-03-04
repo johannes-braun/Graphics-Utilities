@@ -12,28 +12,16 @@ namespace gl
         glDeleteVertexArrays(1, &_id);
     }
 
-    vertex_array::operator bool() const
+    void vertex_array::set_format(const uint32_t attribute, const int components, const uint32_t type, const bool normalized) const
     {
-        return _id != 0;
+        glVertexArrayAttribFormat(_id, attribute, components, type, normalized, 0);
+        glVertexArrayAttribBinding(_id, attribute, attribute);
     }
 
-    vertex_array::operator unsigned() const
+    void vertex_array::set_vertex_buffer(const uint32_t attribute, const uint32_t buffer, const size_t stride, const size_t offset) const
     {
-        return _id;
-    }
-
-    void vertex_array::add_binding(const vertex_attribute_binding& binding)
-    { 
-        glEnableVertexArrayAttrib(_id, _attributes);
-		glVertexArrayVertexBuffer(_id, _attributes, binding.buffer_id, binding.offset, binding.stride);
-		glVertexArrayAttribFormat(_id, _attributes, binding.components, binding.type, binding.normalized, binding.member_offset);
-		glVertexArrayAttribBinding(_id, _attributes++, 0);
-    }
-
-    void vertex_array::add_bindings(const std::vector<vertex_attribute_binding>& bindings)
-    {
-        for(const auto& binding : bindings)
-            add_binding(binding);
+        glEnableVertexArrayAttrib(_id, attribute);
+        glVertexArrayVertexBuffer(_id, attribute, buffer, static_cast<GLintptr>(offset), static_cast<int>(stride));
     }
 
     void vertex_array::set_element_buffer(const uint32_t buffer) const
@@ -41,8 +29,18 @@ namespace gl
         glVertexArrayElementBuffer(_id, buffer);
     }
 
+    void vertex_array::set_element_buffer(const uint32_t buffer, const uint32_t type, const size_t stride, const size_t offset) const
+    {
+        glVertexArrayIndexOffsetEXT(_id, buffer, type, static_cast<int>(offset), static_cast<int>(stride));
+    }
+
     void vertex_array::bind() const
     {
-		glBindVertexArray(_id);
+        glBindVertexArray(_id);
+    }
+
+    vertex_array::operator unsigned() const
+    {
+        return _id;
     }
 }

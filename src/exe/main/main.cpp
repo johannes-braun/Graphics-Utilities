@@ -9,7 +9,6 @@
 
 #include "scene.hpp"
 
-#include "opengl/vertex_array.hpp"
 #include "opengl/buffer.hpp"
 #include "opengl/shader.hpp"
 #include "opengl/pipeline.hpp"
@@ -76,8 +75,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -104,10 +103,10 @@ int main()
     });
 
     auto graphics_pipeline = graphics_pipelines.push("Default Graphics Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    graphics_pipeline->use_stages(
-        jpu::make_ref<gl::shader>("gbuffer/gbuffer.vert"),
-        jpu::make_ref<gl::shader>("gbuffer/gbuffer.frag")
-    );
+    graphics_pipeline->use_stages(new gl::shader("gbuffer/gbuffer.vert"), new gl::shader("gbuffer/gbuffer.frag"));
+    graphics_pipeline->set_input_format(0, 4, GL_FLOAT, false);
+    graphics_pipeline->set_input_format(1, 4, GL_FLOAT, false);
+    graphics_pipeline->set_input_format(2, 4, GL_FLOAT, true);
 
     auto cylinder = res::load_geometry("../res/bunny.dae");
     jpu::bvh<3> obj_bvh;
@@ -145,47 +144,6 @@ int main()
     mesh_buffer->at<mesh>(0).data = bvh_buffer->address();
     mesh_buffer->bind(8, GL_SHADER_STORAGE_BUFFER);
 
-    GLint numUniforms = 0;
-    glGetProgramInterfaceiv(*(graphics_pipeline->stage(gl::shader_type::vertex)), GL_PROGRAM_INPUT, GL_ACTIVE_RESOURCES, &numUniforms);
-    const GLenum properties[3] = { GL_TYPE, GL_NAME_LENGTH, GL_LOCATION };
-
-    for (int unif = 0; unif < numUniforms; ++unif)
-    {
-        std::vector<GLint> values(3);
-        glGetProgramResourceiv(*(graphics_pipeline->stage(gl::shader_type::vertex)), GL_PROGRAM_INPUT, unif, 3, properties, values.size(), NULL, values.data());
-
-        // Skip any uniforms that are in a block.
-        /*if (values[0] != -1)
-            continue;*/
-
-        // Get the name. Must use a std::vector rather than a std::string for C++03 standards issues.
-        // C++11 would let you use a std::string directly.
-        std::vector<char> nameData(values[1]);
-        glGetProgramResourceName(*(graphics_pipeline->stage(gl::shader_type::vertex)), GL_PROGRAM_INPUT, unif, nameData.size(), NULL, &nameData[0]);
-        std::string name(nameData.begin(), nameData.end() - 1);
-        log_i << name;
-    }
-
-    auto vertex_array = jpu::make_ref<gl::v2::vertex_array>();
-    vertex_array->set_format(0, 4, GL_FLOAT, false);
-    vertex_array->set_format(1, 4, GL_FLOAT, false);
-    vertex_array->set_format(2, 4, GL_FLOAT, true);
-
-    vertex_array->set_vertex_buffer(0, *vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
-    vertex_array->set_vertex_buffer(1, *vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
-    vertex_array->set_vertex_buffer(2, *vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
-    vertex_array->set_element_buffer(*index_buffer);
-
-   /* auto vertex_vao = jpu::make_ref<gl::vertex_array>();
-    vertex_vao->add_bindings({
-        gl::vertex_attribute_binding(0, *vertex_buffer, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false),
-        gl::vertex_attribute_binding(1, *vertex_buffer, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, uv), false),
-        gl::vertex_attribute_binding(2, *vertex_buffer, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, normal), true)
-        });
-    vertex_vao->set_element_buffer(*index_buffer);*/
-
-    const auto generic_vao = jpu::make_ref<gl::vertex_array>();
-
     const auto scene_buffer = jpu::make_ref<gl::buffer>(sizeof(geo::scene), gl::buffer_flag_bits::map_dynamic_persistent);
     scene_buffer->bind(0, GL_UNIFORM_BUFFER);
 
@@ -216,9 +174,9 @@ int main()
 
     const auto load_texture = [&](auto path, auto internal_format, auto format, auto type)
     {
-        auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::signed_float : res::image_type::unsigned_byte,
+        auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::f32 : res::image_type::u8,
             format == GL_RED ? res::image_components::grey : (format == GL_RG ? res::image_components::grey_alpha : (format == GL_RGB ? res::image_components::rgb : res::image_components::rgb_alpha)));
-        auto texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+        auto texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
         texture->storage_2d(image.width, image.height, internal_format);
         texture->assign_2d(format, type, image.data.get());
         return texture;
@@ -384,27 +342,27 @@ int main()
 
         main_renderer->bind();
 
-        cubemap_pipeline->bind();
-        cubemap_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("cubemap_matrix") =
-            glm::mat4(glm::mat3(scene.get_inv_view())) * scene.get_inv_projection();
-        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("map") = sampler->sample_texture(cubemap);
-        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
-        generic_vao->bind();
-        int mask;
-        glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
+        int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
         glDepthMask(GL_FALSE);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        cubemap_pipeline->bind();
+        cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = glm::mat4(glm::mat3(scene.get_inv_view())) * scene.get_inv_projection();
+        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
+        cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);
 
         graphics_pipeline->bind();
-        graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_matrix") = transform;
-        graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("my_texture") = sampler->sample_texture(texture_col);
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_depth") = sampler->sample_texture(texture_dis);
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_normal") = sampler->sample_texture(texture_nor);
-        graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cube_map") = sampler->sample_texture(cubemap);
-        vertex_array->bind();
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(cylinder.meshes.get_by_index(0).indices.size()), GL_UNSIGNED_INT, nullptr);
+        graphics_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
+        graphics_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
+        graphics_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        graphics_pipeline->set_index_buffer(index_buffer, gl::index_type::u32);
+        graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "model_matrix") = transform;
+        graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "my_texture") = sampler->sample_texture(texture_col);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_depth") = sampler->sample_texture(texture_dis);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_normal") = sampler->sample_texture(texture_nor);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cube_map") = sampler->sample_texture(cubemap);
+        graphics_pipeline->draw_indexed(gl::primitive::triangles, cylinder.meshes.get_by_index(0).indices.size());
 
         main_renderer->draw(main_window->delta_time());
 

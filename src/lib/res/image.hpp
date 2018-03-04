@@ -13,8 +13,8 @@ namespace res
 
     enum class image_type
     {
-        unsigned_byte = 0,
-        signed_float
+        u8 = 0,
+        f32
     };
 
     enum class image_components
@@ -31,7 +31,7 @@ namespace res
         int width{ 0 };
         int height{ 0 };
         int components{ 0 };
-        image_type type{ image_type::unsigned_byte };
+        image_type type{ image_type::u8 };
         stbi_data data;
     };
 

@@ -4,6 +4,7 @@
 #include <vector>
 #include <jpu/memory>
 #include <map>
+#include <glm/detail/type_vec4.hpp>
 
 namespace gl
 {
@@ -21,9 +22,10 @@ namespace gl
         };
 
     public:
+        static framebuffer default_fbo() { return nullptr; }
+        framebuffer(nullptr_t);
         framebuffer();
         ~framebuffer();
-        operator bool() const;
         operator unsigned() const;
 
         void use_renderbuffer(GLenum attachment, GLenum internal_format, int width, int height);
@@ -37,7 +39,12 @@ namespace gl
         void unbind() const;
 
         struct blit_rect { int x0, y0, x1, y1; };
-        void blit(framebuffer* other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter) const;
+        void blit(const framebuffer& other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter) const;
+        void blit(const framebuffer& other, blit_rect src_and_dst, GLbitfield buffers, GLenum filter) const;
+
+        void clear_color(int attachment, const glm::vec4& color) const;
+        void clear_depth(float depth) const;
+        void clear_stencil(int stencil) const;
 
     private:
         void check_complete() const;

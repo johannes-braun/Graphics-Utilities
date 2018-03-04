@@ -46,8 +46,8 @@ int main()
    // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
@@ -88,7 +88,6 @@ int main()
     auto cmp = jpu::make_ref<gl::compute_pipeline>(
         jpu::make_ref<gl::shader>("sort/bitonic.comp"));
     log_i << data1.size();
-    auto&& stage = cmp->stage(gl::shader_type::compute);
 
     gl::query query(GL_TIME_ELAPSED);
 
@@ -116,9 +115,9 @@ int main()
         buf->bind(0, GL_SHADER_STORAGE_BUFFER);
         glFinish();
         const int trg = data1.size() >> 1;
-        auto puni = stage->get_uniform<int>("p");
-        auto quni = stage->get_uniform<int>("q");
-        auto duni = stage->get_uniform<int>("d");
+        auto puni = cmp->get_uniform<int>("p");
+        auto quni = cmp->get_uniform<int>("q");
+        auto duni = cmp->get_uniform<int>("d");
 
         cmp->bind();
         query.begin();

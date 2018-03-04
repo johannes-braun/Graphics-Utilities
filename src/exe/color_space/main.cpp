@@ -9,6 +9,7 @@
 #include "tinyfd/tinyfiledialogs.h"
 
 #include "eigen3/Eigen/Eigenvalues"
+#include <opengl/framebuffer.hpp>
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
@@ -212,8 +213,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -232,7 +233,7 @@ int main()
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    auto texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    auto texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
     int iw, ih;
     constexpr const char *fs[2] = {
         "*.jpg", "*.png"
@@ -251,8 +252,8 @@ int main()
         mu += reinterpret_cast<glm::u8vec3*>(data.get())[i];
     mu /= iw * ih * 255;
 
-    auto grid_image = load_image("../res/grid.jpg", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    const auto grid = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+    auto grid_image = load_image("../res/grid.jpg", res::image_type::u8, res::image_components::rgb_alpha);
+    const auto grid = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
     grid->storage_2d(grid_image.width, grid_image.height, GL_RGBA8);
     grid->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
     grid->generate_mipmaps();
@@ -275,45 +276,39 @@ int main()
         new gl::shader("../shaders/color_space/gizmo.frag")
     );
 
-    auto cube_pipeline = graphics_pipelines.push("Cube Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    cube_pipeline->use_stages(
-        new gl::shader("../shaders/color_space/cube.vert"),
-        new gl::shader("../shaders/color_space/cube.frag")
-    );
-
     auto img_pipeline = graphics_pipelines.push("Image Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     img_pipeline->use_stages(
         new gl::shader("../shaders/postprocess/screen.vert"),
         new gl::shader("../shaders/color_space/image.frag")
     );
 
+    auto cube_pipeline = graphics_pipelines.push("Cube Pipeline", jpu::make_ref<gl::graphics_pipeline>());
+    cube_pipeline->use_stages(
+        new gl::shader("../shaders/color_space/cube.vert"),
+        new gl::shader("../shaders/color_space/cube.frag")
+    );
+    cube_pipeline->set_input_format(0, 4, GL_FLOAT, false);
+    cube_pipeline->set_input_format(1, 2, GL_FLOAT, false);
+
     const auto vbo = jpu::make_ref<gl::buffer>(res::presets::cube::vertices);
     const auto ibo = jpu::make_ref<gl::buffer>(res::presets::cube::indices);
-    const auto cube_vao = jpu::make_ref<gl::vertex_array>();
-    cube_vao->add_bindings({
-        gl::vertex_attribute_binding(0, *vbo, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false),
-        gl::vertex_attribute_binding(0, *vbo, 0, 2, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, uv), false),
-    });
-    cube_vao->set_element_buffer(*ibo);
-
-    log_i << "Reached here";
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    glClearColor(0.2f, 0.2f, 0.2f, 1.f);
     io::camera cam;
     cam.inverse_z = true;
     io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
-    const auto vao = jpu::make_ref<gl::vertex_array>();
-    const auto line_vao = jpu::make_ref<gl::vertex_array>();
     
     glLineWidth(4.f);
-
+    
     while (main_window->update())
     {
+        gl::framebuffer::default_fbo().clear_color(0, { 0.2f, 0.2f, 0.2f, 1.f });
+        gl::framebuffer::default_fbo().clear_depth(0.f);
+
         const auto id = sampler->sample_texture(texture.get());
         ImGui::Begin("Bla");
         ImGui::Value("DT", 1000.f * static_cast<float>(main_window->delta_time()));
@@ -330,7 +325,7 @@ int main()
             if (const auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
             {
                 data = res::stbi_data(stbi_load(src, &iw, &ih, nullptr, 3));
-                texture = jpu::make_ref<gl::texture>(gl::texture_type::def_2d);
+                texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
                 texture->storage_2d(iw, ih, GL_RGB8);
                 texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
                 texture->generate_mipmaps();
@@ -375,51 +370,45 @@ int main()
         ImGui::End();
 
         cam_controller.update(cam, *main_window, main_window->delta_time());
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         points_pipeline->bind();
-        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<uint64_t>("picture") = id;
-        points_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
-        vao->bind();
-        glDrawArrays(GL_POINTS, 0, texture->width() * texture->height());
+        points_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
+        points_pipeline->get_uniform<uint64_t>(gl::shader_type::vertex, "picture") = id;
+        points_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = cam.projection() * cam.view();
+        points_pipeline->draw(gl::primitive::points, texture->width() * texture->height());
 
         glDisable(GL_DEPTH_TEST);
         center_pipeline->bind();
-        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
-        center_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::vec3>("center") = mu;
-        glDrawArrays(GL_POINTS, 0, 1);
+        center_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
+        center_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = cam.projection() * cam.view();
+        center_pipeline->get_uniform<glm::vec3>(gl::shader_type::vertex, "center") = mu;
+        center_pipeline->draw(gl::primitive::points, 1);
         glEnable(GL_DEPTH_TEST);
 
         gizmo_pipeline->bind();
-        gizmo_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
-        vao->bind();
-        glDrawArrays(GL_LINES, 0, 6);
+        gizmo_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = cam.projection() * cam.view();
+        gizmo_pipeline->draw(gl::primitive::lines, 6);
 
         glFrontFace(GL_CW);
         cube_pipeline->bind();
-        cube_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
-        cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("tex") = sampler->sample_texture(grid.get());
-        cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
-        cube_vao->bind();
-        glDrawElements(GL_TRIANGLES, static_cast<int>(res::presets::cube::indices.size()), GL_UNSIGNED_INT, nullptr);
-        glFrontFace(GL_CCW);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        cube_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
-        glDrawElements(GL_TRIANGLES, static_cast<int>(res::presets::cube::indices.size()), GL_UNSIGNED_INT, nullptr);
+        cube_pipeline->set_input_buffer(0, vbo, sizeof(res::vertex), offsetof(res::vertex, position));
+        cube_pipeline->set_input_buffer(1, vbo, sizeof(res::vertex), offsetof(res::vertex, uv));
+        cube_pipeline->set_index_buffer(ibo, gl::index_type::u32);
+        cube_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = cam.projection() * cam.view();
+        cube_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "tex") = sampler->sample_texture(grid.get());
+        cube_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(1, 1, 1, 1);
+        cube_pipeline->draw_indexed(gl::primitive::triangles, res::presets::cube::indices.size());
+        glFrontFace(GL_CCW); glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        cube_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(1, 1, 1, -1);
+        cube_pipeline->draw_indexed(gl::primitive::triangles, res::presets::cube::indices.size());
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
         glViewport(0, 0, static_cast<int>(texture->width() *scale), static_cast<int>(texture->height() *scale));
         img_pipeline->bind();
-        img_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        img_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("tex") = id;
-        vao->bind();
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        img_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
+        img_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "tex") = id;
+        img_pipeline->draw(gl::primitive::triangles, 3);
 
         int w, h;
         glfwGetFramebufferSize(*main_window, &w, &h);

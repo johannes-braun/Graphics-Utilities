@@ -206,7 +206,7 @@ void main()
             {
                 float first = float(i==0);
                 alpha = 1-first;
-                vec3 unclamped = rad * textureLod(cubemap, direction, 10).rgb * 4.f;
+                vec3 unclamped = rad * texture(cubemap, direction).rgb * 4.f;
                 color += clamp(unclamped, vec3(0), vec3(6.f + first * 10.f));
                 break;
             }

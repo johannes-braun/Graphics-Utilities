@@ -70,6 +70,5 @@ namespace gfx
         jpu::ref_ptr<gl::graphics_pipeline> _translate_pipeline;
         jpu::ref_ptr<gl::buffer> _vertex_buffer;
         jpu::ref_ptr<gl::buffer> _index_buffer;
-        jpu::ref_ptr<gl::vertex_array> _vertex_array;
     };
 }

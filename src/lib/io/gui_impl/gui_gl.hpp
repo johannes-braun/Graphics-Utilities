@@ -19,7 +19,6 @@ namespace io::impl
 
     private:
         jpu::ref_ptr<gl::graphics_pipeline> _graphics_pipeline;
-        jpu::ref_ptr<gl::vertex_array> _vertex_array;
         jpu::ref_ptr<gl::buffer> _vertex_buffer;
         jpu::ref_ptr<gl::buffer> _index_buffer;
         jpu::ref_ptr<gl::texture> _fonts_atlas;

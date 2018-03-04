@@ -93,14 +93,8 @@ namespace gfx
             indices[last_size + i] = i;
         _index_buffer = jpu::make_ref<gl::buffer>(indices);
 
-        _vertex_array = jpu::make_ref<gl::vertex_array>();
-        _vertex_array->set_element_buffer(*_index_buffer);
-        _vertex_array->add_bindings({
-            gl::vertex_attribute_binding(0, *_vertex_buffer, 0, 3, GL_FLOAT, sizeof(vertex), offsetof(vertex, position),
-                                         false),
-            gl::vertex_attribute_binding(1, *_vertex_buffer, 0, 4, GL_UNSIGNED_BYTE, sizeof(vertex),
-                                         offsetof(vertex, color), true),
-            });
+        _translate_pipeline->set_input_format(0, 3, GL_FLOAT, false);
+        _translate_pipeline->set_input_format(1, 4, GL_UNSIGNED_BYTE, true);
     }
 
     void gizmo::reassign_vertices(std::initializer_list<size_t> indices, const bool to_default)
@@ -166,7 +160,7 @@ namespace gfx
         trn_only[3] = glm::vec4(transform->position, 1);
 
         const glm::mat4 scaled_mvp_tr = projection * view * trn_only * glm::scale(glm::vec3(scale));
-        _translate_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_view_projection") =
+        _translate_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "model_view_projection") =
             scaled_mvp_tr;
 
         glm::vec2 uv = (glm::vec2(mouse_x, mouse_y) - 0.5f) * 2.f;
@@ -382,22 +376,22 @@ namespace gfx
         glCullFace(GL_BACK);
 
         _translate_pipeline->bind();
-        _vertex_array->bind();
-        const index* const begin = nullptr;
+        _translate_pipeline->set_input_buffer(0, _vertex_buffer, sizeof(vertex), offsetof(vertex, position));
+        _translate_pipeline->set_input_buffer(1, _vertex_buffer, sizeof(vertex), offsetof(vertex, color));
+        _translate_pipeline->set_index_buffer(_index_buffer, gl::index_type::u16);
+
         glDisable(GL_CULL_FACE);
-        glDrawElementsBaseVertex(GL_TRIANGLES, 9, GL_UNSIGNED_SHORT, begin, 0);
+        _translate_pipeline->draw_indexed(gl::primitive::triangles, 9, 0, 0);
         glLineWidth(2.f);
-        glDrawElementsBaseVertex(GL_LINES, 6, GL_UNSIGNED_SHORT, begin + 9, 9);
+        _translate_pipeline->draw_indexed(gl::primitive::lines, 6, 9, 9);
         glLineWidth(6.f);
-        glDrawElementsBaseVertex(GL_LINES, 6, GL_UNSIGNED_SHORT, begin + 9, 15);
+        _translate_pipeline->draw_indexed(gl::primitive::lines, 6, 9, 15);
         glPointSize(12.f);
-        glDrawElementsBaseVertex(GL_POINTS, 3, GL_UNSIGNED_SHORT, begin + 15, 15);
+        _translate_pipeline->draw_indexed(gl::primitive::points, 3, 15, 15);
         glLineWidth(3.f);
-        glDrawElementsBaseVertex(GL_LINE_LOOP, circle_resolution, GL_UNSIGNED_SHORT, begin + 18, 21);
-        glDrawElementsBaseVertex(GL_LINE_LOOP, circle_resolution, GL_UNSIGNED_SHORT, begin + 18,
-            21 + circle_resolution);
-        glDrawElementsBaseVertex(GL_LINE_LOOP, circle_resolution, GL_UNSIGNED_SHORT, begin + 18,
-            21 + 2 * circle_resolution);
+        _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21);
+        _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21 + circle_resolution);
+        _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21 + 2 * circle_resolution);
 
         glUseProgram(last_program);
         glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);

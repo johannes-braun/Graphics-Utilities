@@ -47,7 +47,7 @@ namespace gl
 
     void pipeline::set_stages_enabled(const std::vector<shader_type>& stages, const bool enable)
     {
-        for(auto stage : stages)
+        for (auto stage : stages)
             set_stage_enabled(stage, enable);
 
         validate();
@@ -122,6 +122,51 @@ namespace gl
 
             throw std::runtime_error("Program pipeline validation failed: " + log);
         }
+    }
+
+    void graphics_pipeline::set_input_format(const uint32_t attribute, const int components, const uint32_t type, const bool normalized) const
+    {
+        _vertex_array.set_format(attribute, components, type, normalized);
+    }
+
+    void graphics_pipeline::disable_input(const uint32_t attribute) const
+    {
+        glDisableVertexArrayAttrib(_vertex_array, attribute);
+    }
+
+    void graphics_pipeline::set_input_buffer(const uint32_t attribute, const buffer* buffer, const size_t stride, const size_t offset) const
+    {
+        _vertex_array.set_vertex_buffer(attribute, *buffer, stride, offset);
+    }
+
+    void graphics_pipeline::set_index_buffer(const buffer* buffer, const index_type elem_type) const
+    {
+        _elem_type = elem_type;
+        _vertex_array.set_element_buffer(*buffer);
+    }
+
+    void graphics_pipeline::set_index_buffer(const buffer* buffer, index_type elem_type, const size_t stride, const size_t offset) const
+    {
+        _elem_type = elem_type;
+        _vertex_array.set_element_buffer(*buffer, static_cast<uint32_t>(elem_type), stride, offset);
+    }
+
+    void graphics_pipeline::draw_indexed(const primitive p, const size_t elem_count, const size_t base_index, const uint32_t base_vertex,
+        const uint32_t instance_count, const uint32_t base_instance) const
+    {
+        _vertex_array.bind();
+        glDrawElementsInstancedBaseVertexBaseInstance(static_cast<uint32_t>(p), static_cast<uint32_t>(elem_count),
+            static_cast<uint32_t>(_elem_type),
+            reinterpret_cast<const void*>(base_index * std::max(
+                static_cast<uint32_t>(_elem_type) - GL_UNSIGNED_BYTE, 1u)),
+            static_cast<int>(instance_count), static_cast<int>(base_vertex), base_instance);
+    }
+
+    void graphics_pipeline::draw(const primitive p, const size_t vertex_count, const size_t first, const uint32_t instance_count,
+        const uint32_t base_instance) const
+    {
+        _vertex_array.bind();
+        glDrawArraysInstancedBaseInstance(static_cast<uint32_t>(p), static_cast<int>(first), static_cast<int>(vertex_count), static_cast<int>(instance_count), base_instance);
     }
 
     compute_pipeline::compute_pipeline(shader* shader) : pipeline()

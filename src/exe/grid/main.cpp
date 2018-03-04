@@ -22,8 +22,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::unsigned_byte, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -75,7 +75,7 @@ int main()
         infos[wall].idx = std::move(scene.meshes.get_by_index(0).indices);
     }
 
-    auto img = load_image("../res/grid/heightmap.png", res::image_type::signed_float, res::image_components::grey);
+    auto img = load_image("../res/grid/heightmap.png", res::image_type::f32, res::image_components::grey);
     const int width = img.width;
     const int height = img.height;
     std::vector<int32_t> heights(width * height);
@@ -199,13 +199,6 @@ int main()
     //floor_indices = { res::presets::cube::indices.begin(), res::presets::cube::indices.end() };
     const auto vertex_buffer = jpu::make_ref<gl::buffer>(floor_vertices);
     const auto element_buffer = jpu::make_ref<gl::buffer>(floor_indices);
-    const auto vertex_array = jpu::make_ref<gl::vertex_array>();
-    vertex_array->add_bindings({
-        gl::vertex_attribute_binding(0, *vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false),
-        gl::vertex_attribute_binding(1, *vertex_buffer, 0, 2, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, uv), false),
-        gl::vertex_attribute_binding(2, *vertex_buffer, 0, 3, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, normal), true)
-        });
-    vertex_array->set_element_buffer(*element_buffer);
 
     // Load simple mesh shader
     floor_pipeline = jpu::make_ref<gl::graphics_pipeline>();
@@ -213,6 +206,9 @@ int main()
         new gl::shader("grid/vs.vert"),
         new gl::shader("grid/fs.frag")
     );
+    floor_pipeline->set_input_format(0, 3, GL_FLOAT, false);
+    floor_pipeline->set_input_format(1, 2, GL_FLOAT, false);
+    floor_pipeline->set_input_format(2, 3, GL_FLOAT, true);
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     cubemap_pipeline->use_stages(
@@ -231,7 +227,6 @@ int main()
     cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap->generate_mipmaps();
-    const auto generic_vao = jpu::make_ref<gl::vertex_array>();
 
     while (main_window->update())
     {
@@ -241,24 +236,24 @@ int main()
 
         main_renderer->bind();
         floor_pipeline->bind();
-        floor_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
-        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::mat4>("inv_view") = inverse(camera.view());
-        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<float>("time") = glfwGetTime();
-        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
-        floor_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("random") = sampler->sample_texture(main_renderer->random_texture());
-        vertex_array->bind();
-        glDrawElements(GL_TRIANGLES, floor_indices.size(), GL_UNSIGNED_INT, nullptr);
+        floor_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
+        floor_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
+        floor_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        floor_pipeline->set_index_buffer(element_buffer, gl::index_type::u32);
+        floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = camera.projection() * camera.view();
+        floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view") = inverse(camera.view());
+        floor_pipeline->get_uniform<float>(gl::shader_type::fragment, "time") = glfwGetTime();
+        floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler->sample_texture(cubemap);
+        floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random") = sampler->sample_texture(main_renderer->random_texture());
+        floor_pipeline->draw_indexed(gl::primitive::triangles, floor_indices.size());
 
-        cubemap_pipeline->bind();
-        cubemap_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("cubemap_matrix") =
-            glm::mat4(glm::mat3(inverse(camera.view()))) * inverse(camera.projection());
-        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("map") = sampler->sample_texture(cubemap);
-        cubemap_pipeline->stage(gl::shader_type::fragment)->get_uniform<glm::vec4>("tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
-        generic_vao->bind();
-        int mask;
-        glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
+        int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
         glDepthMask(GL_FALSE);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        cubemap_pipeline->bind();
+        cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
+        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
+        cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);
         main_renderer->draw(main_window->delta_time());
     }
