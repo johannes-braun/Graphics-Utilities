@@ -1,4 +1,4 @@
-#include "io/window.hpp"
+﻿#include "io/window.hpp"
 
 #include <random>
 
@@ -31,7 +31,7 @@
 #include "framework/renderer.hpp"
 
 #include <stb_image.h>
-#include "../pathtracer/gizmo.hpp"
+#include "framework/gizmo.hpp"
 
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
@@ -145,13 +145,44 @@ int main()
     mesh_buffer->at<mesh>(0).data = bvh_buffer->address();
     mesh_buffer->bind(8, GL_SHADER_STORAGE_BUFFER);
 
-    auto vertex_vao = jpu::make_ref<gl::vertex_array>();
+    GLint numUniforms = 0;
+    glGetProgramInterfaceiv(*(graphics_pipeline->stage(gl::shader_type::vertex)), GL_PROGRAM_INPUT, GL_ACTIVE_RESOURCES, &numUniforms);
+    const GLenum properties[3] = { GL_TYPE, GL_NAME_LENGTH, GL_LOCATION };
+
+    for (int unif = 0; unif < numUniforms; ++unif)
+    {
+        std::vector<GLint> values(3);
+        glGetProgramResourceiv(*(graphics_pipeline->stage(gl::shader_type::vertex)), GL_PROGRAM_INPUT, unif, 3, properties, values.size(), NULL, values.data());
+
+        // Skip any uniforms that are in a block.
+        /*if (values[0] != -1)
+            continue;*/
+
+        // Get the name. Must use a std::vector rather than a std::string for C++03 standards issues.
+        // C++11 would let you use a std::string directly.
+        std::vector<char> nameData(values[1]);
+        glGetProgramResourceName(*(graphics_pipeline->stage(gl::shader_type::vertex)), GL_PROGRAM_INPUT, unif, nameData.size(), NULL, &nameData[0]);
+        std::string name(nameData.begin(), nameData.end() - 1);
+        log_i << name;
+    }
+
+    auto vertex_array = jpu::make_ref<gl::v2::vertex_array>();
+    vertex_array->set_format(0, 4, GL_FLOAT, false);
+    vertex_array->set_format(1, 4, GL_FLOAT, false);
+    vertex_array->set_format(2, 4, GL_FLOAT, true);
+
+    vertex_array->set_vertex_buffer(0, *vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
+    vertex_array->set_vertex_buffer(1, *vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
+    vertex_array->set_vertex_buffer(2, *vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+    vertex_array->set_element_buffer(*index_buffer);
+
+   /* auto vertex_vao = jpu::make_ref<gl::vertex_array>();
     vertex_vao->add_bindings({
         gl::vertex_attribute_binding(0, *vertex_buffer, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, position), false),
         gl::vertex_attribute_binding(1, *vertex_buffer, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, uv), false),
         gl::vertex_attribute_binding(2, *vertex_buffer, 0, 4, GL_FLOAT, sizeof(res::vertex), offsetof(res::vertex, normal), true)
         });
-    vertex_vao->set_element_buffer(*index_buffer);
+    vertex_vao->set_element_buffer(*index_buffer);*/
 
     const auto generic_vao = jpu::make_ref<gl::vertex_array>();
 
@@ -365,7 +396,6 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glDepthMask(mask);
 
-        //transform.rotation *= glm::angleAxis(glm::radians<float>(30.f * static_cast<float>(win->delta_time())), glm::vec3(0, 1, 0));
         graphics_pipeline->bind();
         graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("model_matrix") = transform;
         graphics_pipeline->stage(gl::shader_type::vertex)->get_uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
@@ -373,7 +403,7 @@ int main()
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_depth") = sampler->sample_texture(texture_dis);
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("texture_normal") = sampler->sample_texture(texture_nor);
         graphics_pipeline->stage(gl::shader_type::fragment)->get_uniform<uint64_t>("cube_map") = sampler->sample_texture(cubemap);
-        vertex_vao->bind();
+        vertex_array->bind();
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(cylinder.meshes.get_by_index(0).indices.size()), GL_UNSIGNED_INT, nullptr);
 
         main_renderer->draw(main_window->delta_time());

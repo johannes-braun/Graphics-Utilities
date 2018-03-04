@@ -23,11 +23,11 @@ namespace gl
     }
 
     void vertex_array::add_binding(const vertex_attribute_binding& binding)
-    {
+    { 
         glEnableVertexArrayAttrib(_id, _attributes);
 		glVertexArrayVertexBuffer(_id, _attributes, binding.buffer_id, binding.offset, binding.stride);
 		glVertexArrayAttribFormat(_id, _attributes, binding.components, binding.type, binding.normalized, binding.member_offset);
-		glVertexArrayAttribBinding(_id, _attributes++, binding.binding);
+		glVertexArrayAttribBinding(_id, _attributes++, 0);
     }
 
     void vertex_array::add_bindings(const std::vector<vertex_attribute_binding>& bindings)

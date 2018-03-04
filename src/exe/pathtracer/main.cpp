@@ -19,7 +19,7 @@
 #include "res/presets.hpp"
 #include "framework/renderer.hpp"
 #include <GLFW/glfw3.h>
-#include "gizmo.hpp"
+#include "framework/gizmo.hpp"
 
 glm::ivec2 resolution{ 1280, 720 };
 jpu::ref_ptr<io::window> main_window;
@@ -158,6 +158,7 @@ struct mesh
 };
 
 jpu::named_vector<std::string, std::pair<jpu::ref_ptr<mesh_proxy>, std::vector<mesh*>>> meshes;
+int selected_mesh = 0;
 
 bool intersect_bounds(
     const glm::vec3 origin,
@@ -223,6 +224,8 @@ int main()
             for (auto&& pipeline : compute_pipelines)
                 pipeline->reload_stages();
         }
+        if (key == GLFW_KEY_TAB && action == GLFW_PRESS)
+            ++selected_mesh;
     });
     main_renderer = std::make_unique<gfx::renderer>(resolution.x, resolution.y, 8);
     resize(*main_window, resolution.x, resolution.y);
@@ -318,14 +321,16 @@ int main()
     glCullFace(GL_BACK);
     glClearColor(0.8f, 0.9f, 1.f, 0);
     gfx::gizmo gizmo;
-    res::transform gizmo_transform(meshes.get_by_index(0).second.front()->model);
-    gizmo.transform = &gizmo_transform;
 
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
 
         const glm::mat4 camera_matrix = glm::mat4(glm::mat3(inverse(cam.view()))) * inverse(cam.projection());
+
+        selected_mesh = selected_mesh % meshes.size();
+        res::transform gizmo_transform = meshes.get_by_index(selected_mesh).second.front()->model;
+        gizmo.transform = &gizmo_transform;
 
         static int size = 12;
         static int frame = 0;
@@ -422,8 +427,8 @@ int main()
         }
         glDisable(GL_DEPTH_TEST);
 
-        meshes.get_by_index(0).second.front()->model = static_cast<glm::mat4>(gizmo_transform);
-        meshes.get_by_index(0).second.front()->inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
+        meshes.get_by_index(selected_mesh).second.front()->model = static_cast<glm::mat4>(gizmo_transform);
+        meshes.get_by_index(selected_mesh).second.front()->inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
         ImGui::Begin("Window");
         ImGui::Image(reinterpret_cast<ImTextureID>(sampler->sample_texture(ictex)), ImVec2(logo.width, logo.height));
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
@@ -495,7 +500,7 @@ int main()
             if (const auto src = tinyfd_openFileDialog("Open Mesh", "../res/", 6, fs, "mesh", false))
             {
                 meshes.clear();
-                load_mesh(src, true);
+                load_mesh(src, combine_mesh);
             }
         }
 

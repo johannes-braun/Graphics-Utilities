@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <vector>
 #include <jpu/memory>
+#include <map>
 
 namespace gl
 {
@@ -63,4 +64,46 @@ namespace gl
         uint32_t _attributes{ 0 };
         uint32_t _id{ 0 };
     };
+
+    namespace v2
+    {
+        class vertex_array : public jpu::ref_count
+        {
+        public:
+            vertex_array()
+            {
+                glCreateVertexArrays(1, &_id);
+            }
+            ~vertex_array()
+            {
+                glDeleteVertexArrays(1, &_id);
+            }
+
+            void set_format(uint32_t attribute, int components, uint32_t type, bool normalized)
+            {
+                glEnableVertexArrayAttrib(_id, attribute);
+                glVertexArrayAttribFormat(_id, attribute, components, type, normalized, 0);
+                glVertexArrayAttribBinding(_id, attribute, attribute);
+            }
+
+            void set_vertex_buffer(uint32_t attribute, uint32_t buffer, size_t stride, size_t offset = 0)
+            {
+                glVertexArrayVertexBuffer(_id, attribute, buffer, offset, stride);
+            }
+
+            void set_element_buffer(uint32_t buffer)
+            {
+                glVertexArrayElementBuffer(_id, buffer);
+            }
+
+            void bind()
+            {
+                glBindVertexArray(_id);
+            }
+
+        private:
+
+            uint32_t _id{ 0 };
+        };
+    }
 }

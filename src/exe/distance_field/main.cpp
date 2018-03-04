@@ -5,7 +5,7 @@
 #include "stb_image.h"
 #include "res/image.hpp"
 #include "framework/renderer.hpp"
-#include "../pathtracer/gizmo.hpp"
+#include "framework/gizmo.hpp"
 
 jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
