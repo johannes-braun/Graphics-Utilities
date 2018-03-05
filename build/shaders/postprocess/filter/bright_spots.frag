@@ -12,6 +12,6 @@ layout(location=0) out vec4 color;
 void main()
 {
     vec4 in_color = texture(this_texture, uv);
-    const vec3 tex_color = pow(in_color.rgb, vec3(1/2.2f));
+    const vec3 tex_color = in_color.rgb;
     color = smoothstep(threshold_lower, threshold_higher, dot(luma, tex_color)) * vec4(tex_color, in_color.a);
 }

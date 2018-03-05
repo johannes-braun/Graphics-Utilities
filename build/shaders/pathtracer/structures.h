@@ -27,9 +27,12 @@ struct material
 };
 
 struct vertex {
-    vec4 position;
-    vec4 uv;
-    vec4 normal;
+    vec3 position;
+    uint meta;
+    vec3 normal;
+    uint meta1;
+    vec2 uv;
+    uintptr_t meta2;
 };
 
 struct triangle {

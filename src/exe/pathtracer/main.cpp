@@ -53,7 +53,7 @@ public:
 
         int base_offset = 0;
         int index_offset = 0;
-        for(int i=0; i<meshes.size(); ++i)
+        for (int i = 0; i < meshes.size(); ++i)
         {
             indices.resize(meshes[i].indices.size() + indices.size());
             vertices.resize(meshes[i].vertices.size() + vertices.size());
@@ -62,16 +62,16 @@ public:
             const glm::mat4 normal_matrix = transpose(inverse(model));
 
 #pragma omp parallel for
-            for(int vtx = 0; vtx < meshes[i].vertices.size(); ++vtx)
+            for (int vtx = 0; vtx < meshes[i].vertices.size(); ++vtx)
             {
-                vertices[base_offset + vtx].position = model * meshes[i].vertices[vtx].position;
-                vertices[base_offset + vtx].normal = normalize(normal_matrix * meshes[i].vertices[vtx].normal);
+                vertices[base_offset + vtx].position = model * glm::vec4(meshes[i].vertices[vtx].position, 1);
+                vertices[base_offset + vtx].normal = normalize(normal_matrix * glm::vec4(meshes[i].vertices[vtx].normal, 0));
                 vertices[base_offset + vtx].uv = meshes[i].vertices[vtx].uv;
-                vertices[base_offset + vtx].uv.z = i;   // mesh material sub-index-offset
+                vertices[base_offset + vtx].meta = i;   // mesh material sub-index-offset
             }
 
 #pragma omp parallel for
-            for(int idx = 0; idx < meshes[i].indices.size(); ++idx)
+            for (int idx = 0; idx < meshes[i].indices.size(); ++idx)
             {
                 indices[idx + index_offset] = meshes[i].indices[idx] + base_offset;
             }
@@ -85,7 +85,7 @@ public:
 
         std::vector<res::vertex> opt_vertices(indices.size());
 #pragma omp parallel for
-        for(int i=0; i< opt_vertices.size(); ++i)
+        for (int i = 0; i < opt_vertices.size(); ++i)
         {
             opt_vertices[i] = vertices[indices[i]];
             indices[i] = i;
@@ -123,12 +123,10 @@ struct material
     float ior = 1.5f;
     glm::vec3 glass_scatter_color = glm::vec3(1, 1, 1);
     float glass_density = 4;
- 
-    float glass_density_falloff = 4;
+
+    alignas(16) float glass_density_falloff = 4;
     float extinction_coefficient = 0.01f;
 
-private:
-    float _p[2];
 };
 
 struct mesh
@@ -230,10 +228,9 @@ int main()
     jpu::ref_ptr<gl::buffer> material_buffer;
     jpu::ref_ptr<gl::buffer> meshes_buffer;
 
-    const auto load_mesh = [&](const auto& path, const bool combine)
-    {
+    const auto load_mesh = [&](const auto& path, const bool combine) {
         auto geometry = res::load_geometry(path);
-        if(combine)
+        if (combine)
         {
             // Combine all vertex data into one object
 
@@ -277,6 +274,24 @@ int main()
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
+    struct pathtracer_info
+    {
+        alignas(16) uint64_t target_image;
+        alignas(16) glm::ivec2 offset;
+        alignas(8)  uint64_t cubemap;
+        alignas(4)  float random_gen;
+        alignas(4)  int num_meshes;
+        alignas(16) glm::mat4 camera_matrix;
+        alignas(16) uint64_t meshes;
+        alignas(16) glm::vec3 camera_position;
+        alignas(4)  int max_samples;
+        alignas(4)  int sample_blend_offset;
+        alignas(4)  float max_bounces;
+    };
+    log_i << sizeof(pathtracer_info);
+    gl::buffer pathtracer_info_buffer(sizeof(pathtracer_info), gl::buffer_flag_bits::dynamic_storage);
+    reinterpret_cast<void(*)(GLenum)>(glfwGetProcAddress("glEnableClientState"))(GL_UNIFORM_BUFFER_UNIFIED_NV);
+
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
@@ -304,21 +319,27 @@ int main()
         const int count_x = ceil(static_cast<float>(resolution.x) / size_x);
         const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
 
+
         double t = 0.0;
+        glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, pathtracer_info_buffer.address(), pathtracer_info_buffer.size());
+
         while (t < main_window->get_swap_delay() / 2.f)
         {
             query_time.begin();
             pp_trace->bind();
-            pp_trace->get_uniform<uint64_t>("target_image") = *target_image;
-            pp_trace->get_uniform<float>("random_gen") = dist(gen);
-            pp_trace->get_uniform<int>("sample_blend_offset") = sample_blend_offset;
-            pp_trace->get_uniform<int>("max_samples") = max_samples;
-            pp_trace->get_uniform<glm::vec3>("camera_position") = cam.transform.position;
-            pp_trace->get_uniform<glm::mat4>("camera_matrix") = camera_matrix;
-            pp_trace->get_uniform<uint64_t>("cubemap") = sampler->sample_texture(cubemap);
-            pp_trace->get_uniform<uintptr_t>("meshes") = meshes_buffer->address();
-            pp_trace->get_uniform<int>("num_meshes") = meshes_buffer->size() / sizeof(mesh);
-            pp_trace->get_uniform<glm::ivec2>("offset") = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pathtracer_info info;
+            info.target_image = *target_image;
+            info.random_gen = dist(gen);
+            info.sample_blend_offset = sample_blend_offset;
+            info.max_samples = max_samples;
+            info.camera_position = cam.transform.position;
+            info.camera_matrix = camera_matrix;
+            info.cubemap = sampler->sample_texture(cubemap);
+            info.meshes = meshes_buffer->address();
+            info.num_meshes = meshes_buffer->size() / sizeof(mesh);
+            info.max_bounces = 8;
+            info.offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pathtracer_info_buffer.assign(&info, 1);
             pp_trace->dispatch(size_x, size_y);
             frame = (frame + 1) % (count_x * count_y);
             if (frame == 0 && enable_continuous_improvement)
@@ -382,7 +403,7 @@ int main()
         ImGui::Checkbox("Show Mesh", &show_grid);
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
         ImGui::Checkbox("Show Chunk", &show_renderchunk);
-        if(ImGui::Checkbox("Continuous Improvement", &enable_continuous_improvement) && enable_continuous_improvement)
+        if (ImGui::Checkbox("Continuous Improvement", &enable_continuous_improvement) && enable_continuous_improvement)
         {
             sample_blend_offset = 0;
         }

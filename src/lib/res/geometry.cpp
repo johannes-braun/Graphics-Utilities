@@ -70,9 +70,11 @@ namespace res
 #pragma omp parallel for schedule(static)
             for (auto i = 0; i < static_cast<int>(ai_mesh->mNumVertices); ++i)
             {
-                current_mesh.vertices[i].position = glm::vec4(to_vec3(ai_mesh->mVertices[i]), 1);
-                current_mesh.vertices[i].normal = glm::vec4(to_vec3(ai_mesh->mNormals[i]), 0);
-                current_mesh.vertices[i].uv = glm::vec4(ai_mesh->HasTextureCoords(0) ? glm::vec2(to_vec3(ai_mesh->mTextureCoords[0][i])) : glm::vec2(0), 0, 0);
+                current_mesh.vertices[i] = vertex(
+                    to_vec3(ai_mesh->mVertices[i]),
+                    ai_mesh->HasTextureCoords(0) ? glm::vec2(to_vec3(ai_mesh->mTextureCoords[0][i])) : glm::vec2(0),
+                    to_vec3(ai_mesh->mNormals[i])
+                );
             }
             
             current_mesh.material = result.materials.data() + ai_mesh->mMaterialIndex;

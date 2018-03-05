@@ -104,9 +104,9 @@ int main()
 
     auto graphics_pipeline = graphics_pipelines.push("Default Graphics Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     graphics_pipeline->use_stages(new gl::shader("gbuffer/gbuffer.vert"), new gl::shader("gbuffer/gbuffer.frag"));
-    graphics_pipeline->set_input_format(0, 4, GL_FLOAT, false);
-    graphics_pipeline->set_input_format(1, 4, GL_FLOAT, false);
-    graphics_pipeline->set_input_format(2, 4, GL_FLOAT, true);
+    graphics_pipeline->set_input_format(0, 3, GL_FLOAT, false);
+    graphics_pipeline->set_input_format(1, 3, GL_FLOAT, false);
+    graphics_pipeline->set_input_format(2, 2, GL_FLOAT, false);
 
     auto cylinder = res::load_geometry("../res/bunny.dae");
     jpu::bvh<3> obj_bvh;
@@ -353,8 +353,8 @@ int main()
 
         graphics_pipeline->bind();
         graphics_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
-        graphics_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
-        graphics_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        graphics_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        graphics_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
         graphics_pipeline->set_index_buffer(index_buffer, gl::index_type::u32);
         graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "model_matrix") = transform;
         graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));

@@ -22,17 +22,20 @@ const vec3 light_color = 70.0f*vec3(1.f, 1, 1);
 const float light_radius = 0.01f;
 const vec3 light_pos =3.f*vec3(-5, 4, 2);
 
-layout(rgba32f) uniform image2D target_image;
-uniform samplerCube cubemap;
-uniform float random_gen;
-uniform vec3 camera_position;
-uniform mat4 camera_matrix;
-uniform uintptr_t meshes;
-uniform int num_meshes = 0;
-uniform ivec2 offset;
-uniform int max_samples = 2;
-uniform int sample_blend_offset = 0;
-uniform float max_bounces = 8;
+layout(binding = 0, std140) uniform Infos
+{
+    layout(rgba32f) image2D target_image;
+    ivec2 offset;
+    samplerCube cubemap;
+    float random_gen;
+    int num_meshes;
+    mat4 camera_matrix;
+    uintptr_t meshes;
+    vec3 camera_position;
+    int max_samples;
+    int sample_blend_offset;
+    float max_bounces;
+};
 
 void init_random(ivec2 pixel, float seed)
 {
@@ -45,6 +48,12 @@ float next_random()
     return random_value(_current_prime = (_current_prime + 1) % 6);
 }
 
+struct resolve_vertex
+{
+    vec4 position;
+    vec4 normal;
+    vec2 uv;
+};
 
 layout(local_size_x = 16, local_size_y = 16) in; 
 void main()
@@ -52,7 +61,7 @@ void main()
     ivec2 target_size = imageSize(target_image);
     float count = target_size.x * target_size.y;
     vec2 inv_target_size = 1.f / target_size;
-    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy)+offset;
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy) + offset;
 
     if(any(greaterThanEqual(pixel, target_size)))
         return;
@@ -107,11 +116,13 @@ void main()
                     vertices[triangles->c].param * result.near_barycentric.y + \
                     vertices[triangles->a].param * (1-result.near_barycentric.x-result.near_barycentric.y))
 
-                vertex target_point;
-                target_point.normal = vec4(normalize((current_mesh->model * vec4(barycentric_resolve(normal).xyz, 0)).xyz), 0);
-                target_point.position = vec4((current_mesh->model * vec4(barycentric_resolve(position).xyz, 1)).xyz, 1);
-                target_point.uv.xy = barycentric_resolve(uv).xy;
-                mesh_material += uintptr_t(vertices[triangles->a].uv.z);
+                const vec3 resolved_normal = barycentric_resolve(normal);
+
+                resolve_vertex target_point;
+                target_point.normal = vec4(normalize((current_mesh->model * vec4(resolved_normal, 0)).xyz), 0);
+                target_point.position = vec4((current_mesh->model * vec4(barycentric_resolve(position), 1)).xyz, 1);
+                target_point.uv = barycentric_resolve(uv);
+                mesh_material += uintptr_t(vertices[triangles->a].meta);
 
                 const float roughness = (1.2 - 0.2 * sqrt(abs(dot(direction, target_point.normal.xyz)))) * pow(mesh_material->roughness_sqrt, 2);
                 const float glass = mesh_material->glass;
@@ -212,8 +223,7 @@ void main()
             }
         }
 
-        vec3 mapped = color;// pow(color, vec3(1 / 1.5f));
-
+        vec3 mapped = color;
         imageStore(target_image, pixel, mix(last_color, vec4(mapped, alpha), 1.f/(max_samples + sample_blend_offset)));
     }
 }

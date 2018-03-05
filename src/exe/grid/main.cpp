@@ -156,7 +156,7 @@ int main()
                         for (int i = 0; i < infos[w].vtx.size(); ++i)
                         {
                             auto vertex = infos[w].vtx[i];
-                            vertex.position = transform * vertex.position;
+                            vertex.position = transform * glm::vec4(vertex.position, 1);
                             floor_vertices[old_vtx_size + i] = vertex;
                         }
 
@@ -178,7 +178,7 @@ int main()
                 for (int i = 0; i < infos[pos].vtx.size(); ++i)
                 {
                     auto vertex = infos[pos].vtx[i];
-                    vertex.position = transform * vertex.position;
+                    vertex.position = transform * glm::vec4(vertex.position, 1);
                     floor_vertices[old_vtx_size + i] = vertex;
                 }
 
@@ -207,8 +207,8 @@ int main()
         new gl::shader("grid/fs.frag")
     );
     floor_pipeline->set_input_format(0, 3, GL_FLOAT, false);
-    floor_pipeline->set_input_format(1, 2, GL_FLOAT, false);
-    floor_pipeline->set_input_format(2, 3, GL_FLOAT, true);
+    floor_pipeline->set_input_format(1, 3, GL_FLOAT, false);
+    floor_pipeline->set_input_format(2, 2, GL_FLOAT, false);
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     cubemap_pipeline->use_stages(
@@ -237,8 +237,8 @@ int main()
         main_renderer->bind();
         floor_pipeline->bind();
         floor_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
-        floor_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
-        floor_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        floor_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        floor_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
         floor_pipeline->set_index_buffer(element_buffer, gl::index_type::u32);
         floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = camera.projection() * camera.view();
         floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view") = inverse(camera.view());

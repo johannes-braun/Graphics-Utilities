@@ -90,11 +90,15 @@ int main(int argc, const char** args)
         jpu::make_ref<vkn::shader>(main_window->device(), vkn::shader_root / "simple_vk/simple.frag")
     );
     pipeline->set_vertex_attributes({
-        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(res::vertex, position)),
-        vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32Sfloat, offsetof(res::vertex, uv)),
-        vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32B32A32Sfloat, offsetof(res::vertex, normal))
+        vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat),
+        vk::VertexInputAttributeDescription(1, 1, vk::Format::eR32G32B32Sfloat),
+        vk::VertexInputAttributeDescription(2, 2, vk::Format::eR32G32Sfloat)
     });
-    pipeline->set_vertex_bindings({ vk::VertexInputBindingDescription(0, sizeof(res::vertex)) });
+    pipeline->set_vertex_bindings({ 
+        vk::VertexInputBindingDescription(0, sizeof(res::vertex)), 
+        vk::VertexInputBindingDescription(1, sizeof(res::vertex)), 
+        vk::VertexInputBindingDescription(2, sizeof(res::vertex)) 
+    });
     pipeline->multisample.setRasterizationSamples(sample_count);
     pipeline->finalize();
     
@@ -264,7 +268,9 @@ int main(int argc, const char** args)
         });
 
         // Draw mesh
-        render_command_buffer.bindVertexBuffers(0, static_cast<vk::Buffer>(*vtxbuffer), 0ui64);
+        render_command_buffer.bindVertexBuffers(0, static_cast<vk::Buffer>(*vtxbuffer), offsetof(res::vertex, position));
+        render_command_buffer.bindVertexBuffers(1, static_cast<vk::Buffer>(*vtxbuffer), offsetof(res::vertex, normal));
+        render_command_buffer.bindVertexBuffers(2, static_cast<vk::Buffer>(*vtxbuffer), offsetof(res::vertex, uv));
         render_command_buffer.bindIndexBuffer(*idxbuffer, 0, vk::IndexType::eUint32);
         render_command_buffer.drawIndexed(idx.size(), 1, 0, 0, 0);
         render_command_buffer.end();

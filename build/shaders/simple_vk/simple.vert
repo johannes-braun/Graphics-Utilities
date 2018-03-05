@@ -1,6 +1,6 @@
-layout(location = 0) in vec4 position;
-layout(location = 1) in vec2 texcoords;
-layout(location = 2) in vec4 normal;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 texcoords;
 
 layout(push_constant) uniform uPushConstant
 {
@@ -24,8 +24,8 @@ layout(location = 0) out struct
 void main()
 {
     vertex_output.cam_position = inv_view[3];
-    vertex_output.position = position;
+    vertex_output.position = vec4(position, 1);
     vertex_output.texcoords = texcoords;
-    vertex_output.normal = normal;
-    gl_Position = view_projection * position;
+    vertex_output.normal = vec4(normal, 0);
+    gl_Position = view_projection * vertex_output.position;
 }

@@ -23,7 +23,8 @@ namespace gl
         performance = GL_DEBUG_TYPE_PERFORMANCE,
         marker = GL_DEBUG_TYPE_MARKER,
         push_group = GL_DEBUG_TYPE_PUSH_GROUP,
-        pop_group = GL_DEBUG_TYPE_POP_GROUP
+        pop_group = GL_DEBUG_TYPE_POP_GROUP,
+        other = GL_DEBUG_TYPE_OTHER,
     };
 
     enum class debug_severity

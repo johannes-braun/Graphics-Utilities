@@ -13,6 +13,5 @@ void main()
 {
     const vec4 color_lhs = texture(this_texture, uv);
     const vec4 color_rhs = texture(other_texture, uv);
-
     color = vec4(factor_one*color_lhs.rgb, color_lhs.a) + vec4(factor_two*color_rhs.rgb, color_rhs.a);
 }

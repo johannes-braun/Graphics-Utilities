@@ -29,6 +29,16 @@ namespace gl
         patches = GL_PATCHES
     };
 
+    enum class basic_primitive
+    {
+        points = GL_POINTS,
+        lines = GL_LINES,
+        lines_adj = GL_LINES_ADJACENCY,
+        triangles = GL_TRIANGLES,
+        triangles_adj = GL_TRIANGLES_ADJACENCY,
+        patches = GL_PATCHES
+    };
+
     enum class index_type
     {
         u8 = GL_UNSIGNED_BYTE, 

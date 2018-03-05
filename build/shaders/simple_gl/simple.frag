@@ -1,16 +1,22 @@
+#extension GL_NV_command_list : require
+
 // Inputs
+layout(origin_upper_left) in vec4 gl_FragCoord;
 layout(location = 0) in vec4 position;
-layout(location = 1) in vec2 uv;
-layout(location = 2) in vec4 normal;
+layout(location = 1) in vec4 normal;
+layout(location = 2) in vec2 uv;
 
 // Outputs
 layout(location = 0) out vec4 color;
 
 // Uniforms
-uniform sampler2D image_texture;
-uniform vec3 light_position;
-uniform vec3 light_color;
-uniform vec3 background;
+layout(binding = 0, std140) uniform Data
+{
+    sampler2D image_texture;
+    vec3 light_position;
+    vec3 light_color;
+    vec3 background;
+};
 
 void main()
 {
@@ -20,3 +26,4 @@ void main()
 
     color = vec4(light_tint + background, 1) * texture(image_texture, uv);
 }
+layout(commandBindableNV) uniform;

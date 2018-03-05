@@ -26,6 +26,10 @@ namespace gfx
         gl::texture* random_texture() const;
 
         bool enabled = true;
+        gl::framebuffer* main_framebuffer() const
+        {
+            return _main_framebuffer;
+        }
 
     private:
 

@@ -1,8 +1,8 @@
 #include "scene.h"
 
-layout(location = 0) in vec4 position;
-layout(location = 1) in vec4 uv;
-layout(location = 2) in vec4 normal;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 uv;
 
 uniform mat4 model_matrix;
 uniform mat4 normal_matrix;
@@ -20,9 +20,9 @@ out gl_PerVertex
 
 void main()
 { 
-    out_position = model_matrix * position;
-    out_uv = uv;
-    out_normal = normalize(normal_matrix * normal);
+    out_position = model_matrix * vec4(position, 1);
+    out_uv = vec4(uv, 0, 0);
+    out_normal = normalize(normal_matrix * vec4(normal, 0));
     gl_Position = current_scene.view_projection * out_position;
 }
  
