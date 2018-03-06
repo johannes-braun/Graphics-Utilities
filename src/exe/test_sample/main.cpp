@@ -5,7 +5,7 @@
 #include <io/window.hpp>
 #include <jpu/data>
 #include <stack>
-#include "opengl/query.hpp"
+#include <opengl/query.hpp>
 #include <numeric>
 #include <res/image.hpp>
 

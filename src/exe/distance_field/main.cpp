@@ -11,8 +11,60 @@ std::unique_ptr<gfx::renderer> main_renderer;
 std::unique_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
+struct v;
+struct fa;
+struct he
+{
+    v* t;
+    fa* f;
+    he* next;
+    he* opp;
+    he* prev;
+};
+
+struct fa
+{
+    he* h;
+};
+
+struct v
+{
+    he* h;
+};
+
 int main(int argc, const char** argv)
 {
+    /*
+    
+    for(triangle t)
+    {
+        fa& f = faces.emplace_back();
+
+        he* h = nullptr;
+        for(index i : t)
+        {
+            vertex& v = vertices[i];
+
+            he& newhe = hes.emplace_back();
+            v.h = newhe;
+            
+            if(i == t.a)
+            {
+                f.h = &newhe;
+                newhe.f = &f;
+            }
+            else
+            {
+                newhe.prev = h;
+            }
+            h.next = &newhe;
+            h = &newhe;
+        }
+
+    }    
+    
+    */
+
     gl::shader::set_include_directories("../shaders");
 
     res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
