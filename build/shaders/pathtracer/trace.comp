@@ -13,7 +13,7 @@ const int bsdf_type_diffuse = 0;
 const int bsdf_type_glass = 1;
 const int bsdf_type_reflect = 2;
 
-const float origin_epsilon = 1e-2f;
+const float origin_epsilon = 1e-5f;
 const float sqr_rad_cutoff = 1e-5f;
 
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
@@ -24,17 +24,18 @@ const vec3 light_pos =3.f*vec3(-5, 4, 2);
 
 layout(binding = 0, std140) uniform Infos
 {
-    layout(rgba32f) image2D target_image;
     ivec2 offset;
-    samplerCube cubemap;
     float random_gen;
     int num_meshes;
+    layout(rgba32f) image2D target_image;
+    samplerCube cubemap;
     mat4 camera_matrix;
-    uintptr_t meshes;
-    vec3 camera_position;
-    int max_samples;
+    mesh* meshes;    
     int sample_blend_offset;
     float max_bounces;
+    vec3 camera_position;
+    int max_samples;
+
 };
 
 void init_random(ivec2 pixel, float seed)
@@ -79,10 +80,11 @@ void main()
         vec3 direction = normalize(vec3(camera_matrix * vec4(uv*2.f, 0, 1)));
         vec3 origin = camera_position;
 
-        mesh* mesh_buffer = (mesh*)meshes;
+        mesh* mesh_buffer = meshes;
         mesh* current_mesh;
 
         vec3 rad = vec3(1);
+        float inside_depth = 0;
         for(int i=0; i < max_bounces && dot(rad, rad) > sqr_rad_cutoff; ++i)
         {
             direction = normalize(direction);
@@ -168,7 +170,7 @@ void main()
                 }
 
                 bool outgoing = dot(forward_normal, facet_normal) < 0;
-                const float inside_depth = result.near_distance * float(outgoing);
+                inside_depth += result.near_distance * float(outgoing);
                 float scatter_factor = (outgoing ? 1 / abs(1.f + pow(mesh_material->glass_density*inside_depth, mesh_material->glass_density_falloff)) : 1);
 
                 switch(target_bsdf) {

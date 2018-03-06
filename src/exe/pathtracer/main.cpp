@@ -113,6 +113,30 @@ private:
     res::transform _transform;
 };
 
+struct test
+{
+    struct {
+        alignas(16) glm::vec3 scatter_color;
+        alignas(4)  float value;
+        alignas(16) glm::vec3 absorbtion_color;
+        alignas(4)  float density;
+        alignas(16) float density_falloff;
+        alignas(4)  float roughness;
+    } transmission;
+
+    struct {
+        alignas(4)  float roughness;
+        alignas(4)  float extinction;
+        alignas(16) glm::vec3 scatter_color;
+    } reflection;
+
+    struct {
+        alignas(16) glm::vec3 scatter_color;
+    } diffusion;
+
+    alignas(4) float ior;
+};
+
 struct material
 {
     glm::vec3 glass_tint{ 1, 1, 1 };
@@ -126,7 +150,6 @@ struct material
 
     alignas(16) float glass_density_falloff = 4;
     float extinction_coefficient = 0.01f;
-
 };
 
 struct mesh
@@ -270,28 +293,42 @@ int main()
     gl::graphics_pipeline bilateral_pipeline; bilateral_pipeline.use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("postprocess/filter/bilateral.frag"));
 
     gfx::gizmo gizmo;
-
+    
+    uint32_t bID = glGetUniformBlockIndex(*pp_trace->stage(gl::shader_type::compute), "Infos");
+    int size = -1; glGetActiveUniformBlockiv(*pp_trace->stage(gl::shader_type::compute), bID, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
+    int c; glGetActiveUniformBlockiv(*pp_trace->stage(gl::shader_type::compute), bID, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &c);
+    for (uint32_t i = 0; i < c; ++i)
+    {
+        int len; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_NAME_LENGTH, &len);
+        std::string str(len, ' '); glGetActiveUniformName(*pp_trace->stage(gl::shader_type::compute), i, len, &len, str.data());
+        int offsets; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_OFFSET, &offsets);
+        int strides; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_ARRAY_STRIDE, &strides);
+        int sizes; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_SIZE, &sizes);
+        log_i << str << ": " << offsets << ", " << strides << ", " << sizes;
+    }
+    
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
     struct pathtracer_info
     {
-        alignas(16) uint64_t target_image;
         alignas(16) glm::ivec2 offset;
-        alignas(8)  uint64_t cubemap;
         alignas(4)  float random_gen;
         alignas(4)  int num_meshes;
+        alignas(16) uint64_t target_image;
+        alignas(16) uint64_t cubemap;
         alignas(16) glm::mat4 camera_matrix;
         alignas(16) uint64_t meshes;
-        alignas(16) glm::vec3 camera_position;
-        alignas(4)  int max_samples;
         alignas(4)  int sample_blend_offset;
         alignas(4)  float max_bounces;
+        alignas(16) glm::vec3 camera_position;
+        alignas(4)  int max_samples;
     };
-    log_i << sizeof(pathtracer_info);
+    
     gl::buffer pathtracer_info_buffer(sizeof(pathtracer_info), gl::buffer_flag_bits::dynamic_storage);
     reinterpret_cast<void(*)(GLenum)>(glfwGetProcAddress("glEnableClientState"))(GL_UNIFORM_BUFFER_UNIFIED_NV);
-
+    
+    pathtracer_info info;
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
@@ -327,7 +364,6 @@ int main()
         {
             query_time.begin();
             pp_trace->bind();
-            pathtracer_info info;
             info.target_image = *target_image;
             info.random_gen = dist(gen);
             info.sample_blend_offset = sample_blend_offset;

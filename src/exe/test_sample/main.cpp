@@ -42,74 +42,23 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-   // glfwWindowHint(GLFW_SAMPLES, 8);
-   // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
-
     res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
     res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
 
+    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
-    glfwSwapInterval(0);
-    // glfwSwapInterval(1);
-    glfwSetKeyCallback(*main_window, [](GLFWwindow*, int key, int, int action, int mods) {
-        if (main_window->gui()->key_action(key, action, mods))
-            return;
+    main_window->set_max_framerate(60.f);
 
-        if (action == GLFW_PRESS && key == GLFW_KEY_P)
-            for (auto&& p : graphics_pipelines)
-                p->reload_stages();
-    });
-
-    glfwSetScrollCallback(*main_window, [](GLFWwindow*, double x, double y) {
-        main_window->gui()->scrolled(y);
-    });
-
-    glfwSetCharCallback(*main_window, [](GLFWwindow*, uint32_t ch) {
-        if (main_window->gui()->char_input(static_cast<wchar_t>(ch)))
-            return;
-    });
-
-    glfwSetMouseButtonCallback(*main_window, [](GLFWwindow*, int btn, int action, int mods) {
-        if (main_window->gui()->mouse_button_action(btn, action, mods))
-            return;
-    });
     data2 = data1;
-
 
     std::generate(data1.begin(), data1.end(), []() { return static_cast<float>(rand()); });
     auto buf = jpu::make_ref<gl::buffer>(data1);
     buf->bind(0, GL_SHADER_STORAGE_BUFFER);
     glFinish();
 
-    auto rdx_bckt = jpu::make_ref<gl::compute_pipeline>(
-        jpu::make_ref<gl::shader>("sort/radix_bucket.comp"));
-    auto cmp = jpu::make_ref<gl::compute_pipeline>(
-        jpu::make_ref<gl::shader>("sort/bitonic.comp"));
-    log_i << data1.size();
-
-    gl::query query(GL_TIME_ELAPSED);
-
-    query.begin();
-    rdx_bckt->bind();
-    rdx_bckt->dispatch(data1.size());
-    query.end();
-    log_i << query.get_uint64();
-
-    query.begin();
-    rdx_bckt->bind();
-    rdx_bckt->dispatch(data1.size());
-    query.end();
-    log_i << query.get_uint64();
-
-    query.begin();
-    rdx_bckt->bind();
-    rdx_bckt->dispatch(data1.size());
-    query.end();
-    log_i << query.get_uint64();
-    
-    const auto run = [&]() {
+    const auto sort_bitonic = [&]() {
+        auto cmp = jpu::make_ref<gl::compute_pipeline>(new gl::shader("sort/bitonic.comp"));
         std::generate(data1.begin(), data1.end(), []() { return rand(); });
         buf = jpu::make_ref<gl::buffer>(data1);
         buf->bind(0, GL_SHADER_STORAGE_BUFFER);
@@ -119,6 +68,7 @@ int main()
         auto quni = cmp->get_uniform<int>("q");
         auto duni = cmp->get_uniform<int>("d");
 
+        gl::query query(GL_TIME_ELAPSED);
         cmp->bind();
         query.begin();
         for (int p = 0; p < logn; ++p)
@@ -138,30 +88,12 @@ int main()
         log_i << time / 1000000.f;
     };
 
-    run();
-    run();
-    run();
-    run();
+    std::string bla = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+    std::string blu = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+    std::string bli = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    run();
-    run();
-    run();
-    run();
+    log_i << bla << ", " << blu << ", " << bli;
 
-    run();
-    run();
-    run();
-    run();
-
-
-    const auto t = std::chrono::steady_clock::now();
-    // bitonic(Logn, reinterpret_cast<uint32_t*>(data2.data()), data2.size());
-    std::sort(data2.begin(), data2.end());
-    log_i << (std::chrono::steady_clock::now() - t).count();
-
-
-   // std::vector<uint32_t> out(buf->data_as<uint32_t>(), buf->data_as<uint32_t>() + buf->size() / sizeof(uint32_t));
-    log_i << "";
     system("pause");
     return 0;
 }

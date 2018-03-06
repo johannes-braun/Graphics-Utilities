@@ -64,7 +64,7 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction,
 
             if(!hits_left && !hits_right)
                 break;
-
+            
             bool nrm = min_left < min_right;
             bvh_node* first = nrm ? left : right;
             bvh_node* second = nrm ? right : left;
@@ -121,6 +121,5 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction,
             (root_node + current_node->parent)->left);
         bitstack = bitstack ^ 1;
     }
-
     return result;
 }

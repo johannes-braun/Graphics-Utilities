@@ -1,8 +1,10 @@
 #pragma once
 
+#include <array>
 #include <glad/glad.h>
 #include <jpu/memory>
 #include <jpu/flags>
+#include <jpu/log>
 
 namespace gl
 {
@@ -23,10 +25,17 @@ namespace gl
     class buffer : public jpu::ref_count
     {
     public:
-        explicit buffer(size_t size, buffer_flags flags = {});
-        
-        template<typename TContainer, typename = decltype(std::data(std::declval<TContainer>()))>
-        explicit buffer(TContainer data, buffer_flags flags = {});
+        template<typename... T>
+        explicit buffer(const std::vector<T...>& data, buffer_flags flags = {});
+
+        template<typename T, size_t S>
+        explicit buffer(const std::array<T, S>& data, buffer_flags flags = {});
+
+        template<typename T, typename = std::enable_if_t<!std::is_arithmetic_v<T>>>
+        explicit buffer(const T& object, buffer_flags flags = {}) : buffer(&object, 1, flags) {}
+
+        template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+        explicit buffer(T size, buffer_flags flags = {}) : buffer(static_cast<uint8_t*>(nullptr), size, flags) {};
 
         template<typename TValue>
         buffer(TValue* data, size_t count, buffer_flags flags = {});

@@ -12,8 +12,8 @@
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
 
-constexpr int start_width = 480;
-constexpr int start_height = 320;
+constexpr int start_width = 1280;
+constexpr int start_height = 720;
 constexpr int start_samples = 8;
 constexpr float start_framerate = 120.f;
 const glm::vec3 background = { 0.8f, 0.94f, 1.f };
@@ -73,8 +73,8 @@ int main()
         alignas(16) glm::vec3 background;
     };
 
-    gl::buffer uniform_buffer1(sizeof(uniforms_1), gl::buffer_flag_bits::map_dynamic_persistent_write);
-    gl::buffer uniform_buffer2(sizeof(uniforms_1), gl::buffer_flag_bits::map_dynamic_persistent_write);
+    gl::buffer uniform_buffer1(uniforms_1{}, gl::buffer_flag_bits::map_dynamic_persistent_write);
+    gl::buffer uniform_buffer2(uniforms_2{}, gl::buffer_flag_bits::map_dynamic_persistent_write);
     uniforms_1* u_data1 = uniform_buffer1.data_as<uniforms_1>();
     uniforms_2* u_data2 = uniform_buffer2.data_as<uniforms_2>();
 

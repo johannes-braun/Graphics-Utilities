@@ -3,9 +3,20 @@
 
 namespace gl
 {
-    template <typename TContainer, typename>
-    buffer::buffer(TContainer data, const buffer_flags flags) : buffer(std::data(data), std::size(data), flags)
-    {}
+
+    template<typename... T>
+    buffer::buffer(const std::vector<T...>& data, const buffer_flags flags)
+        : buffer(std::data(data), std::size(data), flags)
+    {
+
+    }
+
+    template<typename T, size_t S>
+    buffer::buffer(const std::array<T, S>& data, const buffer_flags flags)
+        : buffer(std::data(data), std::size(data), flags)
+    {
+
+    }
 
     template <typename TValue>
     buffer::buffer(TValue* data, const size_t count, const buffer_flags flags) : _size(count * sizeof(TValue)),

@@ -2,10 +2,6 @@
 
 namespace gl
 {
-    buffer::buffer(const size_t size, const buffer_flags flags): buffer(static_cast<uint8_t*>(nullptr), size, flags)
-    {
-    }
-
     buffer::~buffer()
     {
         glDeleteBuffers(1, &_id);

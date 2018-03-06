@@ -219,7 +219,7 @@ namespace gfx
             _add_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_full_size_attachments[0]);
             _add_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[1]") = _sampler->sample_texture(_full_size_attachments[1]);
             _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_one") = 1.f;
-            _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_two") = 0.6f;
+            _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_two") = 0.3f;
             _add_pipeline->draw(gl::primitive::triangles, 3);
             _pp_fullsize_framebuffer->unbind();
 

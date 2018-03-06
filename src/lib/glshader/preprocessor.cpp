@@ -193,7 +193,7 @@ namespace glshader::preprocessor
     {
         if (memcmp(text_ptr, "//", 2) == 0)
         {
-            while (!is_new_line(text_ptr))
+            while (!is_new_line(text_ptr) && *text_ptr != '\0')
                 ++text_ptr;
         }
         else if (memcmp(text_ptr, "/*", 2) == 0)
@@ -218,7 +218,7 @@ namespace glshader::preprocessor
     bool glsl_impl::is_macro(const char* text_ptr, processed_file& processed)
     {
         const auto begin = text_ptr;
-        while (isalnum(*text_ptr) || *text_ptr == '_')
+        while ((isalnum(*text_ptr) || *text_ptr == '_'))
             ++text_ptr;
 
         const std::string str(begin, text_ptr);
@@ -511,6 +511,10 @@ namespace glshader::preprocessor
         fs::path current_file = file_path;
         processed.definitions["__FILE__"] = { {}, current_file.string() };
         int current_line = 1;
+        std::string curr = current_file.filename().string();
+        std::replace(curr.begin(), curr.end(), '\\', '/');
+        if(processed.dependencies.empty())
+            result << "#line " << current_line-1 << " \"" << curr << "\"\n";
 
         // There is no way you could put a macro starting from the first character of the shader.
         // Set to true if the current text_ptr may point to the start of a macro name.
@@ -634,9 +638,12 @@ namespace glshader::preprocessor
                             if (*value_end != '\\')
                                 val << *value_end;
                             else
+                            {
                                 value_end = skip_to_line_end(value_end) + 1;
-                            if (is_new_line(value_end))
                                 increment_line(current_line, processed);
+                            }
+                          /*  if (is_new_line(value_end))
+                                increment_line(current_line, processed);*/
                             ++value_end;
                         }
 
@@ -665,12 +672,17 @@ namespace glshader::preprocessor
                         {
                             if (*value_end != '\\')
                                 definition_stream << *value_end;
-                            if (is_new_line(value_end))
+                            else
+                            {
                                 increment_line(current_line, processed);
+                            }
+                           /* if (is_new_line(value_end))
+                                increment_line(current_line, processed);*/
                             if (*value_end == '\0')
                                 break;
                             ++value_end;
                         }
+                        --current_line;
 
                         std::string parameter;
                         std::vector<std::string> parameters;
@@ -696,7 +708,7 @@ namespace glshader::preprocessor
                         text_ptr = value_end;
                     }
 
-                    result << line_directive(current_file, current_line);
+                    result << line_directive(current_file, current_line-1);
                 }
                 else if (is_token_same(directive_name, "undef"))
                 {
@@ -927,9 +939,10 @@ namespace glshader::preprocessor
 
                     if (unique_includes.count(file) == 0)
                     {
+                        result << line_directive(current_file, current_line);
                         result << line_directive(file, 1);
-                        process_impl(file, include_directories, processed, unique_includes, result);
                         processed.dependencies.emplace(file);
+                        process_impl(file, include_directories, processed, unique_includes, result);
                     }
                     text_ptr = skip_to_line_end(include_begin);
 
