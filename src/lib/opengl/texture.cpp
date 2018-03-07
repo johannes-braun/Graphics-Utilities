@@ -13,12 +13,7 @@ namespace gl
         glDeleteTextures(1, &_id);
     }
 
-    texture::operator bool() const
-    {
-        return _id != 0;
-    }
-
-    texture::operator unsigned() const
+    texture::operator gl_texture_t() const
     {
         return _id;
     }
@@ -141,12 +136,12 @@ namespace gl
         glGenerateTextureMipmap(_id);
     }
 
-    void texture::set_buffer(const uint32_t buffer, const uint32_t internal_format) const
+    void texture::set_buffer(const gl_buffer_t buffer, const GLenum internal_format) const
     {
         glTextureBuffer(_id, internal_format, buffer);
     }
 
-    void texture::set_buffer(const uint32_t buffer, const uint32_t internal_format, const size_t size, const size_t offset) const
+    void texture::set_buffer(const gl_buffer_t buffer, const GLenum internal_format, const size_t size, const size_t offset) const
     {
         glTextureBufferRange(_id, internal_format, buffer, size, offset);
     }
@@ -226,7 +221,7 @@ namespace gl
         return _handle;
     }
 
-    sampler::operator unsigned() const
+    sampler::operator gl_sampler_t() const
     {
         return _id;
     }

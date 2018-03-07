@@ -6,7 +6,6 @@
 #include <sstream>
 #include <tuple>
 #include <fstream>
-#include <glad/glad.h>
 #include <jpu/log>
 #include <snappy.h>
 
@@ -115,7 +114,7 @@ namespace glshader
                 return GL_TESS_EVALUATION_SHADER;
             if (extension == ".comp")
                 return GL_COMPUTE_SHADER;
-            return 0;
+            return GLenum(0);
         }();
 
         const auto id = glCreateShaderProgramv(shader_type, 1, &src_ptr);
@@ -127,7 +126,7 @@ namespace glshader
             std::string log(log_length, ' ');
             glGetProgramInfoLog(id, log_length, &log_length, log.data());
             glDeleteProgram(id);
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, success ? GL_DEBUG_TYPE_ERROR : GL_DEBUG_TYPE_OTHER, id, GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, success ? GL_DEBUG_TYPE_ERROR : GL_DEBUG_TYPE_OTHER, static_cast<uint32_t>(id), GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
             throw std::runtime_error("Program linking failed: " + log);
         }
 

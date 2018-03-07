@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <glm/ext.hpp>
 #include <variant>
 #include <memory>
@@ -26,10 +26,10 @@ namespace gl
         uniform& operator=(const T& value);
 
     protected:
-        uniform(uint32_t location, uint32_t s);
+        uniform(uint32_t location, gl_shader_program_t s);
         void update() const;
 
-        uint32_t _shader;
+        gl_shader_program_t _shader;
         std::shared_ptr<T> _value;
         uint32_t _location;
     };

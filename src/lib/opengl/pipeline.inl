@@ -18,7 +18,7 @@ namespace gl
             glGetProgramPipelineiv(_id, GL_INFO_LOG_LENGTH, &log_length);
             std::string log(log_length, ' ');
             glGetProgramPipelineInfoLog(_id, log_length, &log_length, log.data());
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<GLenum>(_id), GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
 
             throw std::runtime_error("Program pipeline validation failed: " + log);
         }

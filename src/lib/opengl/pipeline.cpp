@@ -1,5 +1,4 @@
 #include "pipeline.hpp"
-#include <glad/glad.h>
 
 namespace gl
 {
@@ -13,14 +12,9 @@ namespace gl
         glDeleteProgramPipelines(1, &_id);
     }
 
-    pipeline::operator unsigned() const
+    pipeline::operator gl_program_pipeline_t() const
     {
         return _id;
-    }
-
-    int pipeline::location(std::string_view name) const
-    {
-        return glGetUniformLocation(_id, name.data());
     }
 
     shader* pipeline::stage(const shader_type s) const
@@ -70,7 +64,7 @@ namespace gl
                 return;
 
             _disabled_stages.emplace(stage);
-            glUseProgramStages(_id, stage_bits(stage), 0);
+            glUseProgramStages(_id, stage_bits(stage), gl_shader_program_t(0));
         }
     }
 
@@ -118,13 +112,13 @@ namespace gl
             glGetProgramPipelineiv(_id, GL_INFO_LOG_LENGTH, &log_length);
             std::string log(log_length, ' ');
             glGetProgramPipelineInfoLog(_id, log_length, &log_length, log.data());
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
 
             throw std::runtime_error("Program pipeline validation failed: " + log);
         }
     }
 
-    void graphics_pipeline::set_input_format(const uint32_t attribute, const int components, const uint32_t type, const bool normalized) const
+    void graphics_pipeline::set_input_format(const uint32_t attribute, const int components, const GLenum type, const bool normalized) const
     {
         _vertex_array.set_format(attribute, components, type, normalized);
     }
@@ -145,18 +139,12 @@ namespace gl
         _vertex_array.set_element_buffer(*buffer);
     }
 
-    void graphics_pipeline::set_index_buffer(const buffer* buffer, index_type elem_type, const size_t stride, const size_t offset) const
-    {
-        _elem_type = elem_type;
-        _vertex_array.set_element_buffer(*buffer, static_cast<uint32_t>(elem_type), stride, offset);
-    }
-
     void graphics_pipeline::draw_indexed(const primitive p, const size_t elem_count, const size_t base_index, const uint32_t base_vertex,
         const uint32_t instance_count, const uint32_t base_instance) const
     {
         _vertex_array.bind();
-        glDrawElementsInstancedBaseVertexBaseInstance(static_cast<uint32_t>(p), static_cast<uint32_t>(elem_count),
-            static_cast<uint32_t>(_elem_type),
+        glDrawElementsInstancedBaseVertexBaseInstance(static_cast<GLenum>(p), static_cast<uint32_t>(elem_count),
+            static_cast<GLenum>(_elem_type),
             reinterpret_cast<const void*>(base_index * std::max(
                 static_cast<uint32_t>(_elem_type) - GL_UNSIGNED_BYTE, 1u)),
             static_cast<int>(instance_count), static_cast<int>(base_vertex), base_instance);
@@ -166,7 +154,7 @@ namespace gl
         const uint32_t base_instance) const
     {
         _vertex_array.bind();
-        glDrawArraysInstancedBaseInstance(static_cast<uint32_t>(p), static_cast<int>(first), static_cast<int>(vertex_count), static_cast<int>(instance_count), base_instance);
+        glDrawArraysInstancedBaseInstance(static_cast<GLenum>(p), static_cast<int>(first), static_cast<int>(vertex_count), static_cast<int>(instance_count), base_instance);
     }
 
     compute_pipeline::compute_pipeline(shader* shader) : pipeline()
@@ -177,7 +165,7 @@ namespace gl
 
         glGetProgramiv(*shader, GL_COMPUTE_WORK_GROUP_SIZE, _group_sizes.data());
         if (_group_sizes[0] * _group_sizes[1] * _group_sizes[2] > 32)
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PERFORMANCE, _id, GL_DEBUG_SEVERITY_LOW, -1,
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PERFORMANCE, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_LOW, -1,
                 "Group sizes result in a group invocation count higher than the pre-defined wave size. This might lead to a slower dispatch. Consider using smaller group sizes.");
     }
 

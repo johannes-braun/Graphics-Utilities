@@ -13,9 +13,9 @@ namespace gl
 
         void capture(basic_primitive primitive) const;
 
-        operator uint32_t() const { return _id; }
+        operator gl_state_nv_t() const { return _id; }
 
     private:
-        uint32_t _id;
+        gl_state_nv_t _id;
     };
 }

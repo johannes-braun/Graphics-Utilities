@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <jpu/memory>
 
 namespace gl
@@ -21,6 +21,6 @@ namespace gl
 
     private:
         GLenum _type;
-        uint32_t _id;
+        gl_query_t _id;
     };
 }

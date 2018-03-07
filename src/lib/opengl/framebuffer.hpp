@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <vector>
 #include <jpu/memory>
 #include <map>
@@ -16,9 +16,9 @@ namespace gl
         {
             render_buffer();
             ~render_buffer();
-            operator unsigned() const;
+            operator gl_renderbuffer_t() const;
         private:
-            uint32_t _id;
+            gl_renderbuffer_t _id;
         };
 
     public:
@@ -26,7 +26,7 @@ namespace gl
         framebuffer(nullptr_t);
         framebuffer();
         ~framebuffer();
-        operator unsigned() const;
+        operator gl_framebuffer_t() const;
 
         void use_renderbuffer(GLenum attachment, GLenum internal_format, int width, int height);
         void use_renderbuffer_multisample(GLenum attachment, GLenum internal_format, int width, int height, int samples);
@@ -39,8 +39,8 @@ namespace gl
         void unbind() const;
 
         struct blit_rect { int x0, y0, x1, y1; };
-        void blit(const framebuffer& other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter) const;
-        void blit(const framebuffer& other, blit_rect src_and_dst, GLbitfield buffers, GLenum filter) const;
+        void blit(const framebuffer& other, blit_rect src, blit_rect dst, uint32_t buffers, GLenum filter) const;
+        void blit(const framebuffer& other, blit_rect src_and_dst, uint32_t buffers, GLenum filter) const;
 
         void clear_color(int attachment, const glm::vec4& color) const;
         void clear_depth(float depth) const;
@@ -49,9 +49,9 @@ namespace gl
     private:
         void check_complete() const;
 
-        uint32_t _id;
+        gl_framebuffer_t _id;
         std::map<GLenum, jpu::ref_ptr<texture>> _attachments;
         std::map<GLenum, render_buffer> _render_buffers;
-        uint32_t _last_bound_framebuffer { 0 };
+        gl_framebuffer_t _last_bound_framebuffer { 0 };
     };
 }

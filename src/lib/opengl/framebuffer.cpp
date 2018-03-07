@@ -13,13 +13,13 @@ namespace gl
         glDeleteRenderbuffers(1, &_id);
     }
 
-    framebuffer::render_buffer::operator unsigned() const
+    framebuffer::render_buffer::operator gl_renderbuffer_t() const
     {
         return _id;
     }
 
     framebuffer::framebuffer(nullptr_t)
-        : _id(0)
+        : _id(gl_framebuffer_t(0))
     {
     }
 
@@ -30,20 +30,20 @@ namespace gl
 
     framebuffer::~framebuffer()
     {
-        if(_id)
+        if(_id != gl_framebuffer_t(0))
             glDeleteFramebuffers(1, &_id);
     }
 
-    framebuffer::operator unsigned() const
+    framebuffer::operator gl_framebuffer_t() const
     {
         return _id;
     }
 
     void framebuffer::use_renderbuffer(const GLenum attachment, const GLenum internal_format, const int width, const int height)
     {
-        if(_id == 0)
+        if(_id == gl_framebuffer_t(0))
         {
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a renderbuffer to the default framebuffer.");
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a renderbuffer to the default framebuffer.");
             return;
         }
 
@@ -61,9 +61,9 @@ namespace gl
     void framebuffer::use_renderbuffer_multisample(const GLenum attachment, const GLenum internal_format, const int width, const int height,
         const int samples)
     {
-        if (_id == 0)
+        if (_id == gl_framebuffer_t(0))
         {
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a renderbuffer to the default framebuffer.");
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a renderbuffer to the default framebuffer.");
             return;
         }
 
@@ -80,9 +80,9 @@ namespace gl
 
     void framebuffer::attach(const GLenum attachment, texture* texture, const int level)
     {
-        if (_id == 0)
+        if (_id == gl_framebuffer_t(0))
         {
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a texture to the default framebuffer.");
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a texture to the default framebuffer.");
             return;
         }
 
@@ -107,7 +107,7 @@ namespace gl
     {
         int val;
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &val);
-        _last_bound_framebuffer = static_cast<uint32_t>(val);
+        _last_bound_framebuffer = static_cast<gl_framebuffer_t>(val);
         glBindFramebuffer(GL_FRAMEBUFFER, _id);
 
     }
@@ -117,7 +117,7 @@ namespace gl
         glBindFramebuffer(GL_FRAMEBUFFER, _last_bound_framebuffer);
     }
 
-    void framebuffer::blit(const framebuffer& other, const blit_rect src, const blit_rect dst, const GLbitfield buffers, const GLenum filter) const
+    void framebuffer::blit(const framebuffer& other, const blit_rect src, const blit_rect dst, const uint32_t buffers, const GLenum filter) const
     {
         int read, draw, fbo;
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
@@ -128,12 +128,12 @@ namespace gl
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, other._id);
         glBlitFramebuffer(src.x0, src.y0, src.x1, src.y1, dst.x0, dst.y0, dst.x1, dst.y1, buffers, filter);
 
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, read);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_framebuffer_t(read));
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_framebuffer_t(draw));
+        glBindFramebuffer(GL_FRAMEBUFFER, gl_framebuffer_t(fbo));
     }
 
-    void framebuffer::blit(const framebuffer& other, const blit_rect src_and_dst, const GLbitfield buffers, const GLenum filter) const
+    void framebuffer::blit(const framebuffer& other, const blit_rect src_and_dst, const uint32_t buffers, const GLenum filter) const
     {
         blit(other, src_and_dst, src_and_dst, buffers, filter);
     }
@@ -156,7 +156,7 @@ namespace gl
     void framebuffer::check_complete() const
     {
         if (glCheckNamedFramebufferStatus(*this, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, _id, GL_DEBUG_SEVERITY_HIGH, -1,
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, -1,
                 "Framebuffer is incomplete!");
     }
 }

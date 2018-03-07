@@ -49,7 +49,7 @@ namespace gfx
 
         glm::vec4 _clear_color{0, 0, 0, 1};
         float _clear_depth = 0.f;
-        uint32_t _temporal_target;
+        GLenum _temporal_target;
 
         jpu::ref_ptr<gl::compute_pipeline> _luminance_compute_pipeline;
         jpu::ref_ptr<gl::buffer> _luminance_sample_buffer;

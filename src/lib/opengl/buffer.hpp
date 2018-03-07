@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <jpu/memory>
 #include <jpu/flags>
 #include <jpu/log>
@@ -41,7 +41,7 @@ namespace gl
         buffer(TValue* data, size_t count, buffer_flags flags = {});
 
         ~buffer();
-        operator unsigned() const;
+        operator gl_buffer_t() const;
 
         template<typename TContainer, typename = decltype(std::data(std::declval<TContainer>()))>
         void assign(TContainer data, size_t offset_bytes = 0) const;
@@ -56,7 +56,7 @@ namespace gl
         template<typename T>
         T* data_as() const;
 
-        void map(uint32_t map_access);
+        void map(GLenum map_access);
         void unmap() const;
         void flush(size_t size_bytes, size_t offset_bytes) const;
         void bind(uint32_t binding_point, GLenum type) const;
@@ -69,11 +69,11 @@ namespace gl
         void map_if_needed();
         void make_persistent_address();
 
-        uint32_t _id;
+        gl_buffer_t _id;
         size_t _size;
         void* _mapped_data = nullptr;
         buffer_flags _flags;
-        uint32_t _map_access{ 0 };
+        GLenum _map_access{ GLenum(0) };
         uint64_t _persistent_address;
     };
 }

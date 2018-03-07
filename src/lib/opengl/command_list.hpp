@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <cstdint>
 #include <opengl/shader.hpp>
 #include <opengl/buffer.hpp>
@@ -8,7 +8,7 @@
 namespace gl
 {
 #pragma pack(1)
-    template<uint32_t Token, class Command>
+    template<GLenum Token, class Command>
     struct command
     {
         using u16 = uint16_t;
@@ -86,7 +86,7 @@ namespace gl
     struct cmd_uniform_address : command<GL_UNIFORM_ADDRESS_COMMAND_NV, cmd_uniform_address>
     {
         cmd_uniform_address(const u16 index, const gl::shader_type stage, const u64 address)
-            : index(index), stage_id(glGetStageIndexNV(static_cast<u32>(stage))), address(address)
+            : index(index), stage_id(glGetStageIndexNV(static_cast<GLenum>(stage))), address(address)
         {}
         u16 index;
         u16 stage_id;

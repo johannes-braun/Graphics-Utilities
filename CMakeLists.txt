@@ -116,6 +116,10 @@ set(EXT_LIB_ARGS -DSNAPPY_BUILD_TESTS=OFF)
 load_git_library(snappy "https://github.com/google/snappy.git" snappy.lib master)
 load_git_library(pugixml "https://github.com/zeux/pugixml.git" pugixml.lib master)
 
+ExternalProject_Add(mygl-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/mygl GIT_REPOSITORY "https://gitlab.uni-koblenz.de/johannesbraun/mygl.git" GIT_TAG master UPDATE_COMMAND "" 
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/mygl -DCMAKE_INSTALL_MESSAGE=NEVER -DMYGL_SETTINGS_PATH="\"${PROJECT_SOURCE_DIR}/src/res/mygl_settings.xml\"")
+list(APPEND DEPENDENCIES mygl-external)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/mygl/include)
 
 ExternalProject_Add(eigen-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/eigen GIT_REPOSITORY "https://github.com/eigenteam/eigen-git-mirror.git" GIT_TAG master UPDATE_COMMAND "" 
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/eigen -DCMAKE_INSTALL_MESSAGE=NEVER -DBUILD_TESTING=OFF)
@@ -132,7 +136,7 @@ list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/lib/vulkan-1.lib
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/include)
 file(COPY ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/bin/glslc.exe DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 list(APPEND LIBRARIES opengl32)  
-list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/glad/include)
+#list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/glad/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/stb/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/tinyfd/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/nanosvg/include)

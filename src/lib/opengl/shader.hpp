@@ -2,7 +2,7 @@
 
 #include "uniform.hpp"
 
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <filesystem>
 #include <jpu/memory>
 #include <any>
@@ -30,8 +30,7 @@ namespace gl
         explicit shader(const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
 
         ~shader();
-        operator bool() const;
-        operator unsigned() const;
+        operator gl_shader_program_t() const;
         shader_type type() const;
 
         void reload(bool force = false);
@@ -44,7 +43,7 @@ namespace gl
         static std::vector<std::experimental::filesystem::path> _include_directories;
         static shader_type type_of(const std::experimental::filesystem::path& extension);
 
-        uint32_t _id;
+        gl_shader_program_t _id;
         shader_type _type;
         std::map<std::string_view, all_uniform_types> _uniforms;
         std::experimental::filesystem::path _path;

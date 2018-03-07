@@ -7,7 +7,7 @@ namespace gl
         glDeleteBuffers(1, &_id);
     }
 
-    buffer::operator unsigned() const
+    buffer::operator gl_buffer_t() const
     {
         return _id;
     }
@@ -22,7 +22,7 @@ namespace gl
         glClearNamedBufferData(_id, GL_R32F, GL_RED, GL_FLOAT, &value);
     }
 
-    void buffer::map(const uint32_t map_access)
+    void buffer::map(const GLenum map_access)
     {
         if (_mapped_data && map_access != _map_access)
             return;

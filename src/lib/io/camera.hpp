@@ -5,7 +5,7 @@
 
 #include <glm/glm.hpp>
 #include <res/transform.hpp>
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <GLFW/glfw3.h>
 
 namespace io
@@ -16,7 +16,7 @@ namespace io
 
         glm::mat4 projection() const
         {
-            GLint last_viewport[4];
+            int last_viewport[4];
             glGetIntegerv(GL_VIEWPORT, last_viewport);
             return projection(last_viewport[2], last_viewport[3]);
         }

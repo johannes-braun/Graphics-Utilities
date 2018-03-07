@@ -393,13 +393,13 @@ namespace gfx
         _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21 + circle_resolution);
         _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21 + 2 * circle_resolution);
 
-        glUseProgram(last_program);
-        glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);
-        glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha);
+        glUseProgram(gl_shader_program_t(last_program));
+        glBlendEquationSeparate(GLenum(last_blend_equation_rgb), GLenum(last_blend_equation_alpha));
+        glBlendFuncSeparate(GLenum(last_blend_src_rgb), GLenum(last_blend_dst_rgb), GLenum(last_blend_src_alpha), GLenum(last_blend_dst_alpha));
         last_enable_blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
         last_enable_cull_face ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
         last_enable_depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
-        glPolygonMode(GL_FRONT_AND_BACK, last_polygon_mode[0]);
+        glPolygonMode(GL_FRONT_AND_BACK, GLenum(last_polygon_mode[0]));
     }
 
     bool gizmo::intersect_bounds(const glm::vec3 origin, const glm::vec3 direction, const glm::vec3 bounds_min,

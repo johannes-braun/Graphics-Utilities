@@ -1,6 +1,6 @@
 #pragma once
 #include <jpu/memory>
-#include "glad/glad.h"
+#include <mygl/gl.hpp>
 #include <stdexcept>
 
 namespace gl
@@ -25,8 +25,7 @@ namespace gl
     public:
         explicit texture(texture_type type);
         ~texture();
-        operator bool() const;
-        operator unsigned() const;
+        operator gl_texture_t() const;
 
         void storage_1d(int width, GLenum internal_format, int levels = -1);
         void storage_2d(int width, int height, GLenum internal_format, int levels = -1);
@@ -54,8 +53,8 @@ namespace gl
         uint64_t address() const;
         void generate_mipmaps() const;
 
-        void set_buffer(uint32_t buffer, uint32_t internal_format) const;
-        void set_buffer(uint32_t buffer, uint32_t internal_format, size_t size, size_t offset) const;
+        void set_buffer(gl_buffer_t buffer, GLenum internal_format) const;
+        void set_buffer(gl_buffer_t buffer, GLenum internal_format, size_t size, size_t offset) const;
 
         int width() const;
         int height() const;
@@ -65,7 +64,7 @@ namespace gl
     private:
         static int max_levels(int width, int height, int depth);
 
-        uint32_t _id;
+        gl_texture_t _id;
         texture_type _type;
         int _width{0};
         int _height{0};
@@ -77,7 +76,7 @@ namespace gl
     public:
         sampler();
         ~sampler();
-        operator unsigned() const;
+        operator gl_sampler_t() const;
 
         void set(GLenum name, int value) const;
         void set(GLenum name, float value) const;
@@ -85,7 +84,7 @@ namespace gl
         uint64_t sample_texture(texture* t) const;
 
     private:
-        uint32_t _id;
+        gl_sampler_t _id;
     };
 
     class image : public jpu::ref_count

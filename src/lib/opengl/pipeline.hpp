@@ -52,10 +52,9 @@ namespace gl
         pipeline();
         virtual ~pipeline();
 
-        operator unsigned() const;
+        operator gl_program_pipeline_t() const;
 
         void bind() const;
-        int location(std::string_view name) const;
         shader* stage(shader_type s) const;
         void reload_stages(bool force = false) const;
         
@@ -67,7 +66,7 @@ namespace gl
         static uint32_t stage_bits(shader_type t);
         void validate() const;
 
-        uint32_t _id;
+        gl_program_pipeline_t _id;
         std::map<shader_type, jpu::ref_ptr<shader>> _shaders;
         std::set<shader_type> _disabled_stages;
     };
@@ -81,10 +80,9 @@ namespace gl
         uniform<T> get_uniform(shader_type s, const char* name);
 
         void disable_input(uint32_t attribute) const;
-        void set_input_format(uint32_t attribute, int components, uint32_t type, bool normalized) const;
+        void set_input_format(uint32_t attribute, int components, GLenum type, bool normalized) const;
         void set_input_buffer(uint32_t attribute, const buffer* buffer, size_t stride, size_t offset = 0) const;
         void set_index_buffer(const buffer* buffer, index_type elem_type) const;
-        void set_index_buffer(const buffer* buffer, index_type elem_type, size_t stride, size_t offset = 0) const;
 
         void draw_indexed(primitive p, size_t elem_count, size_t base_index = 0, uint32_t base_vertex = 0,
                           uint32_t instance_count = 1, uint32_t base_instance = 0) const;

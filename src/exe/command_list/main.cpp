@@ -84,12 +84,12 @@ int main()
     glViewport(0, 0, start_width, start_height);
     glScissor(0, 0, start_width, start_height);
     glEnable(GL_DEPTH_TEST);
-    const auto add_attrib = [](uint32_t a, uint32_t c, uint32_t t, bool n, size_t s)
+    const auto add_attrib = [](uint32_t a, uint32_t c, GLenum t, bool n, size_t s)
     {
         glEnableVertexAttribArray(a); 
         glVertexAttribFormat(a, c, t, n, 0); 
         glVertexAttribBinding(a, a);
-        glBindVertexBuffer(a, 0, 0, s);
+        glBindVertexBuffer(a, gl_buffer_t(0), 0, s);
     };
     add_attrib(0, 3, GL_FLOAT, false, sizeof(res::vertex));
     add_attrib(1, 3, GL_FLOAT, false, sizeof(res::vertex));
@@ -129,8 +129,8 @@ int main()
         u_data2->light_color = light_color;
 
         renderer->bind();
-        uint32_t fbos = *renderer->main_framebuffer();
-        uint32_t states = state;
+        gl_framebuffer_t fbos = *renderer->main_framebuffer();
+        gl_state_nv_t states = state;
         glDrawCommandsStatesAddressNV(&command_buffer.indirect, &command_buffer.size, &states, &fbos, 1);
         renderer->draw(window->delta_time());
 

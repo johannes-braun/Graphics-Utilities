@@ -16,7 +16,7 @@ namespace gl
     void state::capture(basic_primitive primitive) const
     {
         set_debug_callback_enabled(gl::debug_type::other, false);
-        glStateCaptureNV(_id, static_cast<uint32_t>(primitive));
+        glStateCaptureNV(_id, static_cast<GLenum>(primitive));
         set_debug_callback_enabled(gl::debug_type::other, true);
     }
 }

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <functional>
-#include <glad/glad.h>
+#define MYGL_IMPLEMENTATION
+#include <mygl/gl.hpp>
 
 namespace gl
 {

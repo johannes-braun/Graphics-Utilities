@@ -41,7 +41,7 @@ namespace gl
                 glDeleteProgram(_id);
             _id = glCreateProgram();
             glProgramParameteri(_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
-            glProgramBinary(_id, bin.format, bin.data.data(), static_cast<int>(bin.data.size()));
+            glProgramBinary(_id, GLenum(bin.format), bin.data.data(), static_cast<int>(bin.data.size()));
         }
         catch (const std::runtime_error& exception)
         {
@@ -83,12 +83,7 @@ namespace gl
         glDeleteProgram(_id);
     }
 
-    shader::operator bool() const
-    {
-        return _id != 0;
-    }
-
-    shader::operator unsigned() const
+    shader::operator gl_shader_program_t() const
     {
         return _id;
     }

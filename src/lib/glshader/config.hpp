@@ -1,7 +1,7 @@
 #pragma once
 
-#if __has_include(<glad/glad.h>)
-#   include <glad/glad.h>
+#if __has_include(<mygl/gl.hpp>)
+#   include <mygl/gl.hpp>
 #else
 #   error "GLAD not found. Please include your own extension loader header if you are using a different one."
 #endif

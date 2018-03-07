@@ -2,7 +2,7 @@
 
 #include <stb_image.h>
 #include <vulkan/detail.hpp>
-#include <glad/glad.h>
+#include <mygl/gl.hpp>
 #include <opengl/debug.hpp>
 
 namespace io
@@ -98,7 +98,7 @@ namespace io
         {
             glfwMakeContextCurrent(_window);
 
-            gladLoadGLSimple(reinterpret_cast<GLADsimpleloadproc>(glfwGetProcAddress));
+            mygl_load_gl();
             glfwSwapInterval(0);
 
             gl::set_debug_callback([](gl::debug_source source, gl::debug_type type, uint32_t id,
@@ -208,7 +208,7 @@ namespace io
         if (_api == api::opengl)
         {
             glfwSwapBuffers(_window);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, gl_framebuffer_t(0));
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
         else if (_api == api::vulkan)

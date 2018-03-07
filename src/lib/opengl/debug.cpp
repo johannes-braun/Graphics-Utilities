@@ -1,6 +1,4 @@
 #include "debug.hpp"
-#define GLAD_GL_IMPLEMENTATION
-#include <glad/glad.h>
 
 namespace gl
 {
@@ -42,7 +40,7 @@ namespace gl
         }
     }
 
-    void debug_callback(GLenum source, GLenum type, const GLuint id, const GLenum severity, GLsizei /*length*/, const GLchar* message, const void* user_param)
+    void debug_callback(GLenum source, GLenum type, const uint32_t id, const GLenum severity, int /*length*/, const char* message, const void* user_param)
     {
         if (user_param)
             (*static_cast<const debug_function*>(user_param))(

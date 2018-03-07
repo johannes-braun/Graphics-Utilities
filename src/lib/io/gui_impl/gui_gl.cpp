@@ -88,7 +88,7 @@ namespace io::impl
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glClipControl(GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
 
-        glViewport(0, 0, static_cast<GLsizei>(fb_width), static_cast<GLsizei>(fb_height));
+        glViewport(0, 0, static_cast<int>(fb_width), static_cast<int>(fb_height));
 
         glm::mat4 ortho_projection = glm::mat4(1.f);
         ortho_projection[0][0] = 2.0f / io.DisplaySize.x;
@@ -114,16 +114,16 @@ namespace io::impl
 
     void gui_gl::post_render()
     {
-        glClipControl(_last_clip_origin, _last_clip_depth_mode);
-        glUseProgram(_last_program);
-        glBlendEquationSeparate(_last_blend_equation_rgb, _last_blend_equation_alpha);
-        glBlendFuncSeparate(_last_blend_src_rgb, _last_blend_dst_rgb, _last_blend_src_alpha, _last_blend_dst_alpha);
+        glClipControl(GLenum(_last_clip_origin), GLenum(_last_clip_depth_mode));
+        glUseProgram(gl_shader_program_t(_last_program));
+        glBlendEquationSeparate(GLenum(_last_blend_equation_rgb), GLenum(_last_blend_equation_alpha));
+        glBlendFuncSeparate(GLenum(_last_blend_src_rgb), GLenum(_last_blend_dst_rgb), GLenum(_last_blend_src_alpha), GLenum(_last_blend_dst_alpha));
         _last_enable_blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
         _last_enable_cull_face ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
         _last_enable_depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
         _last_enable_scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
-        glPolygonMode(GL_FRONT_AND_BACK, _last_polygon_mode[0]);
-        glViewport(_last_viewport[0], _last_viewport[1], static_cast<GLsizei>(_last_viewport[2]), static_cast<GLsizei>(_last_viewport[3]));
-        glScissor(_last_scissor_box[0], _last_scissor_box[1], static_cast<GLsizei>(_last_scissor_box[2]), static_cast<GLsizei>(_last_scissor_box[3]));
+        glPolygonMode(GL_FRONT_AND_BACK, GLenum(_last_polygon_mode[0]));
+        glViewport(_last_viewport[0], _last_viewport[1], static_cast<int>(_last_viewport[2]), static_cast<int>(_last_viewport[3]));
+        glScissor(_last_scissor_box[0], _last_scissor_box[1], static_cast<int>(_last_scissor_box[2]), static_cast<int>(_last_scissor_box[3]));
     }
 }
