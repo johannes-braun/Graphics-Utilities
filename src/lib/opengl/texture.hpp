@@ -5,7 +5,7 @@
 
 namespace gl
 {
-    enum class texture_type
+    /*enum class texture_type
     {
         simple1d = GL_TEXTURE_1D,
         simple2d = GL_TEXTURE_2D, 
@@ -18,12 +18,12 @@ namespace gl
         buffer = GL_TEXTURE_BUFFER, 
         ms2d = GL_TEXTURE_2D_MULTISAMPLE,
         msarray2d = GL_TEXTURE_2D_MULTISAMPLE_ARRAY
-    };
+    };*/
 
     class texture : public jpu::ref_count
     {
     public:
-        explicit texture(texture_type type);
+        explicit texture(GLenum type);
         ~texture();
         operator gl_texture_t() const;
 
@@ -65,7 +65,7 @@ namespace gl
         static int max_levels(int width, int height, int depth);
 
         gl_texture_t _id;
-        texture_type _type;
+        GLenum _type;
         int _width{0};
         int _height{0};
         int _depth{0};

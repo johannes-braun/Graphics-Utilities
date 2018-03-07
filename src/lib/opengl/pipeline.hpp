@@ -63,7 +63,7 @@ namespace gl
     protected:
         void set_stage_enabled(shader_type stage, bool enable);
         void use_shader(shader* s);
-        static uint32_t stage_bits(shader_type t);
+        static GLbitfield stage_bits(shader_type t);
         void validate() const;
 
         gl_program_pipeline_t _id;

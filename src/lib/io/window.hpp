@@ -8,6 +8,7 @@
 #include "cursor.hpp"
 #include "api.hpp"
 #include "gui_impl/gui.hpp"
+#include <mygl/gl.hpp>
 
 #include <GLFW/glfw3.h>
 

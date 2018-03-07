@@ -17,12 +17,12 @@ constexpr int start_height = 720;
 constexpr int start_samples = 8;
 constexpr float start_framerate = 120.f;
 const glm::vec3 background = { 0.8f, 0.94f, 1.f };
-
+ 
 int main()
 {
     const res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 10.f);
     const res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
-
+    
     gl::shader::set_include_directories("../shaders");
     glfwWindowHint(GLFW_SAMPLES, start_samples);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
@@ -46,7 +46,7 @@ int main()
     const auto pipeline = jpu::make_ref<gl::graphics_pipeline>();
     pipeline->use_stages(new gl::shader("simple_gl/simple.vert"), new gl::shader("simple_gl/simple.frag"));
 
-    const auto image_texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+    const auto image_texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     const res::image image_texture_content = load_image("../res/bricks/brick.png", res::image_type::u8, res::image_components::rgb_alpha);
     image_texture->storage_2d(image_texture_content.width, image_texture_content.height, GL_RGBA8);
     image_texture->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.data.get());

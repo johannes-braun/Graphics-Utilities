@@ -117,7 +117,7 @@ namespace gl
         glBindFramebuffer(GL_FRAMEBUFFER, _last_bound_framebuffer);
     }
 
-    void framebuffer::blit(const framebuffer& other, const blit_rect src, const blit_rect dst, const uint32_t buffers, const GLenum filter) const
+    void framebuffer::blit(const framebuffer& other, const blit_rect src, const blit_rect dst, const GLbitfield buffers, const GLenum filter) const
     {
         int read, draw, fbo;
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
@@ -133,7 +133,7 @@ namespace gl
         glBindFramebuffer(GL_FRAMEBUFFER, gl_framebuffer_t(fbo));
     }
 
-    void framebuffer::blit(const framebuffer& other, const blit_rect src_and_dst, const uint32_t buffers, const GLenum filter) const
+    void framebuffer::blit(const framebuffer& other, const blit_rect src_and_dst, const GLbitfield buffers, const GLenum filter) const
     {
         blit(other, src_and_dst, src_and_dst, buffers, filter);
     }

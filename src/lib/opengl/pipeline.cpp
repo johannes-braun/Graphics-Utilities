@@ -75,9 +75,9 @@ namespace gl
         _shaders[s->type()] = s;
     }
 
-    uint32_t pipeline::stage_bits(const shader_type t)
+    GLbitfield pipeline::stage_bits(const shader_type t)
     {
-        uint32_t stage_bits = 0;
+        GLbitfield stage_bits = GL_ZERO;
         switch (t)
         {
         case shader_type::vertex:

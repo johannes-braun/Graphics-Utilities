@@ -19,7 +19,7 @@ namespace gfx
         _sampler->set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
         _sampler->set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 
-        _random_texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+        _random_texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
         _random_texture->storage_2d(512, 512, GL_RGBA16F, 1);
         std::vector<float> random_pixels(512 * 512 * 4);
         std::generate(random_pixels.begin(), random_pixels.end(),
@@ -72,27 +72,27 @@ namespace gfx
             _pp_quartersize_framebuffer = jpu::make_ref<gl::framebuffer>();
 
             tlog_i("Renderer") << "Creating unsampled framebuffers";
-            _quarter_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+            _quarter_size_attachments[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _quarter_size_attachments[0]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_RGBA16F, 1);
             _pp_quartersize_framebuffer->attach(GL_COLOR_ATTACHMENT0, _quarter_size_attachments[0]);
 
-            _quarter_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+            _quarter_size_attachments[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _quarter_size_attachments[1]->storage_2d(_quarter_resolution.x, _quarter_resolution.y, GL_RGBA16F, 1);
             _pp_quartersize_framebuffer->attach(GL_COLOR_ATTACHMENT1, _quarter_size_attachments[1]);
 
-            _full_size_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+            _full_size_attachments[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _full_size_attachments[0]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 3);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT0, _full_size_attachments[0]);
 
-            _full_size_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+            _full_size_attachments[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _full_size_attachments[1]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT1, _full_size_attachments[1]);
 
-            _full_size_attachments[2] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+            _full_size_attachments[2] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _full_size_attachments[2]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT2, _full_size_attachments[2]);
 
-            _full_size_attachments[3] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+            _full_size_attachments[3] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _full_size_attachments[3]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT3, _full_size_attachments[3]);
         }
@@ -102,11 +102,11 @@ namespace gfx
             _main_framebuffer = jpu::make_ref<gl::framebuffer>();
 
             tlog_i("Renderer") << "Creating sampled framebuffers";
-            _msaa_attachments[0] = jpu::make_ref<gl::texture>(gl::texture_type::ms2d);
+            _msaa_attachments[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE);
             _msaa_attachments[0]->storage_2d_multisample(_full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
             _main_framebuffer->attach(GL_COLOR_ATTACHMENT0, _msaa_attachments[0]);
 
-            _msaa_attachments[1] = jpu::make_ref<gl::texture>(gl::texture_type::ms2d);
+            _msaa_attachments[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE);
             _msaa_attachments[1]->storage_2d_multisample(_full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
             _main_framebuffer->attach(GL_COLOR_ATTACHMENT1, _msaa_attachments[1]);
 

@@ -233,7 +233,7 @@ int main()
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    auto texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+    auto texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     int iw, ih;
     constexpr const char *fs[2] = {
         "*.jpg", "*.png"
@@ -253,7 +253,7 @@ int main()
     mu /= iw * ih * 255;
 
     auto grid_image = load_image("../res/grid.jpg", res::image_type::u8, res::image_components::rgb_alpha);
-    const auto grid = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+    const auto grid = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     grid->storage_2d(grid_image.width, grid_image.height, GL_RGBA8);
     grid->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
     grid->generate_mipmaps();
@@ -325,7 +325,7 @@ int main()
             if (const auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
             {
                 data = res::stbi_data(stbi_load(src, &iw, &ih, nullptr, 3));
-                texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+                texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
                 texture->storage_2d(iw, ih, GL_RGB8);
                 texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, data.get());
                 texture->generate_mipmaps();

@@ -178,11 +178,11 @@ void resize(GLFWwindow*, int w, int h)
 {
     resolution = { w, h };
     main_renderer->resize(resolution.x, resolution.y, 8);
-    target_textures[0] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+    target_textures[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA32F);
-    target_textures[1] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+    target_textures[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     target_textures[1]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_textures[2] = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+    target_textures[2] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     target_textures[2]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
     target_image = jpu::make_ref<gl::image>(target_textures[0], 0, false, 0, GL_RGBA32F, GL_READ_WRITE);
     target_framebuffer = jpu::make_ref<gl::framebuffer>();
@@ -234,7 +234,7 @@ int main()
 
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;
-    auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
+    auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
     cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
     cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());

@@ -161,7 +161,7 @@ int main()
 
     const auto sampler = jpu::make_ref<gl::sampler>();
 
-    auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
+    auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
     cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
@@ -176,7 +176,7 @@ int main()
     {
         auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::f32 : res::image_type::u8,
             format == GL_RED ? res::image_components::grey : (format == GL_RG ? res::image_components::grey_alpha : (format == GL_RGB ? res::image_components::rgb : res::image_components::rgb_alpha)));
-        auto texture = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+        auto texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
         texture->storage_2d(image.width, image.height, internal_format);
         texture->assign_2d(format, type, image.data.get());
         return texture;

@@ -217,7 +217,7 @@ int main()
     );
     const auto sampler = jpu::make_ref<gl::sampler>();
 
-    auto cubemap = jpu::make_ref<gl::texture>(gl::texture_type::cube_map);
+    auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
     cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
     cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());

@@ -62,7 +62,7 @@ namespace gl
 
     void buffer::allocate(const size_t size, const void* data, const buffer_flags flags) const
     {
-        glNamedBufferStorage(_id, size, data, static_cast<uint32_t>(flags));
+        glNamedBufferStorage(_id, size, data, static_cast<GLbitfield>(static_cast<uint32_t>(flags)));
     }
 
     void buffer::map_if_needed()

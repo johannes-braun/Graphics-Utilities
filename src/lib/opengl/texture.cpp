@@ -3,9 +3,9 @@
 
 namespace gl
 {
-    texture::texture(texture_type type): _type(type)
+    texture::texture(GLenum type): _type(type)
     {
-        glCreateTextures(static_cast<GLenum>(type), 1, &_id);
+        glCreateTextures(_type, 1, &_id);
     }
 
     texture::~texture()

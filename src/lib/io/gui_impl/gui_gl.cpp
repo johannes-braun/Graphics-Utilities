@@ -22,7 +22,7 @@ namespace io::impl
         unsigned char* pixels;
         int width, height;
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        _fonts_atlas = jpu::make_ref<gl::texture>(gl::texture_type::simple2d);
+        _fonts_atlas = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
         _fonts_atlas->storage_2d(width, height, GL_RGBA8, 1);
         _fonts_atlas->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
