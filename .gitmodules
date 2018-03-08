@@ -18,4 +18,4 @@
 	url = https://github.com/kcat/openal-soft.git
 [submodule "submodules/mygl"]
 	path = submodules/mygl
-	url = https://gitlab.uni-koblenz.de/johannesbraun/mygl.git
+	url = git@gitlab.uni-koblenz.de:johannesbraun/mygl.git
