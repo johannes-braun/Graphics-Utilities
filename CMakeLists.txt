@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.9)
 project(Graphics)
 
 add_compile_options(/std:c++latest /MP /openmp /permissive- /Zc:twoPhase-)
@@ -24,7 +24,10 @@ set(EXT_LIB_DEFAULTS -DCMAKE_VERBOSE_MAKEFILE=OFF
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>)
 
-include(${PROJECT_SOURCE_DIR}/add_libraries.cmake)
+#if(NOT UPDATE_BUILD_DEPENDENCIES)
+    include(${PROJECT_SOURCE_DIR}/add_libraries.cmake)
+    #set(UPDATE_BUILD_DEPENDENCIES TRUE CACHE BOOL "Has the download happened?" FORCE)
+#endif()
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glfw3/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/glfw3/lib/glfw3.lib)
 
@@ -32,7 +35,7 @@ list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/openal-soft/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/openal-soft/lib/OpenAL32.lib)
 
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/include)
-list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/lib/assimp.lib)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/lib/assimp-vc140-mt.lib)
 
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/snappy/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/snappy/lib/snappy.lib)
