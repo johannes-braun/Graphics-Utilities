@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 project(Graphics)
 
 add_compile_options(/std:c++latest /MP /openmp /permissive- /Zc:twoPhase-)
@@ -19,124 +19,36 @@ file(REMOVE_RECURSE ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY} ${CMAKE_LIBRARY_OUTPUT_DIR
 file(MAKE_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${EXT_CACHE_PATH})
 
 set(CMAKE_INSTALL_MESSAGE NEVER CACHE STRING "Set the verbosity level for the install messages")
-include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 set(EXT_LIB_DEFAULTS -DCMAKE_VERBOSE_MAKEFILE=OFF
     -DCMAKE_INSTALL_MESSAGE=NEVER 
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>)
-macro(load_git_library lib_name lib_repo lib_file git_tag)
-    file(REMOVE_RECURSE ${EXT_EXTERNAL_LIBRARIES}/cached/${lib_name})
-    ExternalProject_Add(${lib_name}-external
-        GIT_REPOSITORY ${lib_repo}
-        GIT_TAG ${git_tag}
-        UPDATE_COMMAND "" 
-        INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/${lib_name}
-        BUILD_BYPRODUCTS <INSTALL_DIR>/lib/${lib_file}
-        BUILD_ALWAYS 0
-        LOG_DOWNLOAD 0
-        LOG_UPDATE 0
-        LOG_DOWNLOAD LOG_DOWNLOAD  0
-        LOG_BUILD 0
-        LOG_TEST 0
-        LOG_INSTALL 0
-        CMAKE_ARGS ${EXT_LIB_DEFAULTS} ${EXT_LIB_ARGS})
-    add_library(lib${lib_name} STATIC IMPORTED)
-    add_dependencies(lib${lib_name} ${lib_name}-external)
-    set_target_properties(lib${lib_name} PROPERTIES IMPORTED_LOCATION ${EXT_EXTERNAL_LIBRARIES}/cached/${lib_name}/lib/${lib_file})
 
-    set(EXT_LIB_ARGS "")
-    list(APPEND DEPENDENCIES ${lib_name}-external)
-    list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/${lib_name}/include)
-    list(APPEND LIBRARIES lib${lib_name})
-endmacro()
+include(${PROJECT_SOURCE_DIR}/add_libraries.cmake)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glfw3/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/glfw3/lib/glfw3.lib)
 
-set(EXT_LIB_ARGS 
-    -DGLFW_BUILD_TESTS=OFF 
-    -DGLFW_BUILD_DOCS=OFF 
-    -DGLFW_BUILD_EXAMPLES=OFF
-)
-load_git_library(glfw3 "https://github.com/glfw/glfw.git" glfw3.lib master)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/openal-soft/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/openal-soft/lib/OpenAL32.lib)
 
-set(EXT_LIB_ARGS 
-    -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
-    -DALSOFT_UTILS=OFF 
-    -DALSOFT_EXAMPLES=OFF 
-    -DALSOFT_TESTS=OFF
-)
-load_git_library(openal-soft "https://github.com/kcat/openal-soft.git" OpenAL32.lib master)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/lib/assimp.lib)
 
-string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_uppercase)
-IF(${CMAKE_BUILD_TYPE_uppercase} MATCHES "DEBUG")
-    set(ASSIMP_LIB_FILE "assimp-vc140-mt.lib")
-else()
-    set(ASSIMP_LIB_FILE "assimp-vc140-mt.lib")
-ENDIF()
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/snappy/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/snappy/lib/snappy.lib)
 
-set(ASSIMP_CXX_FLAGS 
-    /bigobj 
-    /DASSIMP_BUILD_NO_EXPORT 
-    /DASSIMP_BUILD_NO_AMF_IMPORTER 
-    /DASSIMP_BUILD_NO_AC_IMPORTER 
-    /DASSIMP_BUILD_NO_ASE_IMPORTER 
-    /DASSIMP_BUILD_NO_ASSBIN_IMPORTER 
-    /DASSIMP_BUILD_NO_ASSXML_IMPORTER 
-    /DASSIMP_BUILD_NO_B3D_IMPORTER 
-    /DASSIMP_BUILD_NO_BVH_IMPORTER 
-    /DASSIMP_BUILD_NO_DXF_IMPORTER 
-    /DASSIMP_BUILD_NO_CSM_IMPORTER 
-    /DASSIMP_BUILD_NO_HMP_IMPORTER 
-    /DASSIMP_BUILD_NO_IRRMESH_IMPORTER 
-    /DASSIMP_BUILD_NO_IRR_IMPORTER 
-    /DASSIMP_BUILD_NO_LWO_IMPORTER 
-    /DASSIMP_BUILD_NO_LWS_IMPORTER 
-    /DASSIMP_BUILD_NO_NFF_IMPORTER 
-    /DASSIMP_BUILD_NO_NDO_IMPORTER 
-    /DASSIMP_BUILD_NO_OFF_IMPORTER 
-    /DASSIMP_BUILD_NO_MS3D_IMPORTER 
-    /DASSIMP_BUILD_NO_COB_IMPORTER 
-    /DASSIMP_BUILD_NO_IFC_IMPORTER 
-    /DASSIMP_BUILD_NO_XGL_IMPORTER 
-    /DASSIMP_BUILD_NO_SIB_IMPORTER 
-    /DASSIMP_BUILD_NO_3D_IMPORTER 
-    /DASSIMP_BUILD_NO_X_IMPORTER 
-    /DASSIMP_BUILD_NO_X3D_IMPORTER 
-    /DASSIMP_BUILD_NO_GLTF_IMPORTER 
-    /DASSIMP_BUILD_NO_3MF_IMPORTER 
-    /DASSIMP_BUILD_NO_MMD_IMPORTER)
-set(EXT_LIB_ARGS 
-    -DCMAKE_CXX_FLAGS=${ASSIMP_CXX_FLAGS}
-    -DASSIMP_BUILD_ASSIMP_TOOLS=OFF 
-    -DASSIMP_BUILD_TESTS=OFF
-    -DCMAKE_BUILD_TYPE=Release
-    -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-)
-load_git_library(assimp "https://github.com/assimp/assimp.git" ${ASSIMP_LIB_FILE} master)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/pugixml/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/pugixml/lib/pugixml.lib)
 
-set(EXT_LIB_ARGS -DSNAPPY_BUILD_TESTS=OFF)
-load_git_library(snappy "https://github.com/google/snappy.git" snappy.lib master)
-load_git_library(pugixml "https://github.com/zeux/pugixml.git" pugixml.lib master)
-
-ExternalProject_Add(mygl-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/mygl GIT_REPOSITORY "https://gitlab.uni-koblenz.de/johannesbraun/mygl.git" GIT_TAG master UPDATE_COMMAND "" 
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/mygl -DCMAKE_INSTALL_MESSAGE=NEVER -DMYGL_SETTINGS_PATH="\"${PROJECT_SOURCE_DIR}/src/res/mygl_settings.xml\"")
-list(APPEND DEPENDENCIES mygl-external)
-list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/mygl/include)
-
-ExternalProject_Add(eigen-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/eigen GIT_REPOSITORY "https://github.com/eigenteam/eigen-git-mirror.git" GIT_TAG master UPDATE_COMMAND "" 
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/eigen -DCMAKE_INSTALL_MESSAGE=NEVER -DBUILD_TESTING=OFF)
-list(APPEND DEPENDENCIES eigen-external)
-list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/eigen/include)
-
-ExternalProject_Add(glm-external INSTALL_DIR ${EXT_EXTERNAL_LIBRARIES}/cached/glm GIT_REPOSITORY "https://github.com/g-truc/glm.git" GIT_TAG master UPDATE_COMMAND "" 
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXT_EXTERNAL_LIBRARIES}/cached/glm -DCMAKE_INSTALL_MESSAGE=NEVER)
-list(APPEND DEPENDENCIES glm-external)
-list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glm/include)
-
-list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/asio/include)
-list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/lib/vulkan-1.lib)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/lib/vulkan-1.lib)
 file(COPY ${EXT_EXTERNAL_LIBRARIES}/vulkan_external/bin/glslc.exe DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
 list(APPEND LIBRARIES opengl32)  
-#list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/glad/include)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/mygl/include)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glm/include)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/eigen/include)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/asio/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/stb/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/tinyfd/include)
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/nanosvg/include)
@@ -159,7 +71,6 @@ foreach(subdir ${children})
         else()
             add_library(${subdir} ${SRC_SOURCE} ${SRC_HEADERS})
             list(APPEND LIBRARIES ${subdir})
-            add_dependencies(${subdir} ${DEPENDENCIES})
             set_target_properties(${subdir} PROPERTIES LINKER_LANGUAGE CXX)
             target_include_directories(${subdir} PUBLIC ${INCLUDES})
         endif()
@@ -175,7 +86,6 @@ foreach(subdir ${children})
         file(GLOB_RECURSE SRC_H "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.h")
         file(GLOB_RECURSE SRC_HPP "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.hpp")
         add_executable(${subdir} ${SRC_C} ${SRC_CPP} ${SRC_H} ${SRC_HPP} "${PROJECT_SOURCE_DIR}/src/res/default_app.rc")
-        add_dependencies(${subdir} ${DEPENDENCIES})
         target_link_libraries(${subdir} ${LIBRARIES})
         set_target_properties(${subdir} PROPERTIES LINKER_LANGUAGE CXX)
         target_include_directories(${subdir} PUBLIC ${INCLUDES})
