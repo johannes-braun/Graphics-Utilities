@@ -39,7 +39,7 @@ int main()
     io::camera camera;
     io::default_cam_controller controller;
 
-    const auto scene = res::load_geometry("../res/bunny.dae");
+    const auto scene = res::load_geometry("../res/bunny.obj");
     const auto vbo = jpu::make_ref<gl::buffer>(scene.meshes.get_by_index(0).vertices);
     const auto ibo = jpu::make_ref<gl::buffer>(scene.meshes.get_by_index(0).indices);
 

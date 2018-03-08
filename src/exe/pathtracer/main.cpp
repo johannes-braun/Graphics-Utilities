@@ -326,7 +326,8 @@ int main()
     };
     
     gl::buffer pathtracer_info_buffer(sizeof(pathtracer_info), gl::buffer_flag_bits::dynamic_storage);
-    reinterpret_cast<void(*)(GLenum)>(glfwGetProcAddress("glEnableClientState"))(GL_UNIFORM_BUFFER_UNIFIED_NV);
+    
+    glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
     
     pathtracer_info info;
     while (main_window->update())
