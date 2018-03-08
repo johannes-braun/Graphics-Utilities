@@ -28,6 +28,7 @@ namespace res
 
     struct image
     {
+        int num_pixels() const { return width * height; }
         int width{ 0 };
         int height{ 0 };
         int components{ 0 };
