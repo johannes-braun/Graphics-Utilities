@@ -5,6 +5,7 @@
 #include <assimp/vector3.h>
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
+#include <jpu/log>
 
 namespace res
 {
@@ -25,6 +26,13 @@ namespace res
 
     geometry_file load_geometry(const std::experimental::filesystem::path& path)
     {
+        geometry_file result;
+        if (!exists(path))
+        {
+            log_e << "File cannot be opened: " << path;
+            return result;
+        }
+
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(path.string(),
             aiProcess_GenSmoothNormals |
@@ -38,7 +46,6 @@ namespace res
             aiProcess_FindDegenerates |
             aiProcess_FindInvalidData);
 
-        geometry_file result;
         result.meshes.reserve(scene->mNumMeshes);
         result.materials.reserve(scene->mNumMaterials);
 

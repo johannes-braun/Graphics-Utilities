@@ -4,6 +4,7 @@
 #include <opengl/pipeline.hpp>
 #include <opengl/buffer.hpp>
 #include <opengl/vertex_array.hpp>
+#include <GLFW/glfw3.h>
 
 namespace gfx
 {
@@ -42,8 +43,7 @@ namespace gfx
 
         void reassign_vertices(std::initializer_list<size_t> indices, bool to_default);
         void change_hover_state(gizmo_state_flags new_state);
-        void update(const glm::mat4& view, const glm::mat4& projection, bool mouse_button_down,
-                    float mouse_x, float mouse_y);
+        void update(GLFWwindow* window, const glm::mat4& view, const glm::mat4& projection);
         void render() const;
 
         gizmo(const gizmo& other) = default;

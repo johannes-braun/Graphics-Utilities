@@ -89,7 +89,7 @@ int main()
         glEnableVertexAttribArray(a); 
         glVertexAttribFormat(a, c, t, n, 0); 
         glVertexAttribBinding(a, a);
-        glBindVertexBuffer(a, gl_buffer_t(0), 0, s);
+        glBindVertexBuffer(a, gl_buffer_t::zero, 0, s);
     };
     add_attrib(0, 3, GL_FLOAT, false, sizeof(res::vertex));
     add_attrib(1, 3, GL_FLOAT, false, sizeof(res::vertex));
@@ -116,9 +116,7 @@ int main()
         ImGui::Value("Time", 1 / static_cast<float>(window->delta_time()));
         ImGui::End();
 
-        double mx, my; glfwGetCursorPos(*window, &mx, &my);
-        int sx, sy; glfwGetFramebufferSize(*window, &sx, &sy);
-        gizmo.update(camera.view(), camera.projection(), glfwGetMouseButton(*window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / sx, my / sy);
+        gizmo.update(*window, camera.view(), camera.projection());
 
         u_data1->view_projection = camera.projection() * camera.view();
         u_data1->model = glm::mat4(1.f);

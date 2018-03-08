@@ -426,8 +426,7 @@ int main()
             }
         }
 
-        double mx, my; glfwGetCursorPos(*main_window, &mx, &my);
-        gizmo.update(cam.view(), cam.projection(), glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / resolution.x, my / resolution.y);
+        gizmo.update(*main_window, cam.view(), cam.projection());
         if (show_gizmo) gizmo.render();
         meshes.get_by_index(selected_mesh).second.front()->model = static_cast<glm::mat4>(gizmo_transform);
         meshes.get_by_index(selected_mesh).second.front()->inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));

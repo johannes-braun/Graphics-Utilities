@@ -73,7 +73,7 @@ namespace gl
         size_t _size;
         void* _mapped_data = nullptr;
         buffer_flags _flags;
-        GLenum _map_access{ GLenum(0) };
+        GLenum _map_access{ GL_ZERO };
         uint64_t _persistent_address;
     };
 }

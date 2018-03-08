@@ -366,8 +366,7 @@ int main()
 
         main_renderer->draw(main_window->delta_time());
 
-        double mx, my; glfwGetCursorPos(*main_window, &mx, &my);
-        gizmo.update(cam.view(), cam.projection(), glfwGetMouseButton(*main_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS, mx / full_resolution.x, my / full_resolution.y);
+        gizmo.update(*main_window, cam.view(), cam.projection());
         gizmo.render();
     }
 }

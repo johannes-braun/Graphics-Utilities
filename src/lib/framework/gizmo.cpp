@@ -147,11 +147,17 @@ namespace gfx
         _last_hover_state = new_state;
     }
 
-    void gizmo::update(const glm::mat4& view, const glm::mat4& projection, const bool mouse_button_down,
-        const float mouse_x, const float mouse_y)
+    void gizmo::update(GLFWwindow* window, const glm::mat4& view, const glm::mat4& projection)
     {
         if (!transform)
             return;
+
+        double mx, my; glfwGetCursorPos(window, &mx, &my);
+        int fbx, fby; glfwGetFramebufferSize(window, &fbx, &fby);
+        float mouse_x = mx / fbx;
+        float mouse_y = my / fby;
+        bool mouse_button_down = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
         const glm::mat4 mvp = projection * view * static_cast<glm::mat4>(*transform);
         const float aspect = projection[1][1] / projection[0][0];
         const float scale = (mvp * glm::vec4(0, 0, 0, 1)).w * 0.015f;

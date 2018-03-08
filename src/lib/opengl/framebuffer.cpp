@@ -19,7 +19,7 @@ namespace gl
     }
 
     framebuffer::framebuffer(nullptr_t)
-        : _id(gl_framebuffer_t(0))
+        : _id(gl_framebuffer_t::zero)
     {
     }
 
@@ -30,7 +30,7 @@ namespace gl
 
     framebuffer::~framebuffer()
     {
-        if(_id != gl_framebuffer_t(0))
+        if(_id != gl_framebuffer_t::zero)
             glDeleteFramebuffers(1, &_id);
     }
 
@@ -41,7 +41,7 @@ namespace gl
 
     void framebuffer::use_renderbuffer(const GLenum attachment, const GLenum internal_format, const int width, const int height)
     {
-        if(_id == gl_framebuffer_t(0))
+        if(_id == gl_framebuffer_t::zero)
         {
             glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a renderbuffer to the default framebuffer.");
             return;
@@ -61,7 +61,7 @@ namespace gl
     void framebuffer::use_renderbuffer_multisample(const GLenum attachment, const GLenum internal_format, const int width, const int height,
         const int samples)
     {
-        if (_id == gl_framebuffer_t(0))
+        if (_id == gl_framebuffer_t::zero)
         {
             glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a renderbuffer to the default framebuffer.");
             return;
@@ -80,7 +80,7 @@ namespace gl
 
     void framebuffer::attach(const GLenum attachment, texture* texture, const int level)
     {
-        if (_id == gl_framebuffer_t(0))
+        if (_id == gl_framebuffer_t::zero)
         {
             glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<uint32_t>(_id), GL_DEBUG_SEVERITY_HIGH, 0, "Cannot attach a texture to the default framebuffer.");
             return;
