@@ -14,8 +14,8 @@ namespace glshader
         #version 450 core
         #extension GL_ARB_separate_shader_objects : require
         #extension GL_ARB_bindless_texture : require
-        #extension GL_NV_shader_buffer_load : require
         #extension GL_ARB_shading_language_420pack : require
+        #extension GL_NV_shader_buffer_load : require
     )glsl";
 
     constexpr const char* opengl_postfix = R"glsl(

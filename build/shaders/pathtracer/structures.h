@@ -12,18 +12,19 @@ struct mesh
 
 struct material
 {
-    vec3 glass_tint;
-    float roughness_sqrt;
-    vec3 reflection_tint;
-    float glass;
-    vec3 base_color;
-    float ior;
-    vec3 glass_scatter_color;
-    float glass_density;
+    vec3 ground_scatter_color;
+    float ground_transmissiveness;
+    vec3 ground_density_color;
+    float ground_density;
+    vec3 ground_reflection_color;
+    float ground_density_falloff;
+    float ground_roughness;
 
-    float glass_density_falloff;
-    float extinction_coefficient;
-    float _p[2];
+    float extinction;
+    float ior;
+
+    float surface_roughness;
+    vec3 surface_reflection_color;
 };
 
 struct vertex {

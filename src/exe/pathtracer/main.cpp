@@ -113,43 +113,27 @@ private:
     res::transform _transform;
 };
 
-struct test
-{
-    struct {
-        alignas(16) glm::vec3 scatter_color;
-        alignas(4)  float value;
-        alignas(16) glm::vec3 absorbtion_color;
-        alignas(4)  float density;
-        alignas(16) float density_falloff;
-        alignas(4)  float roughness;
-    } transmission;
-
-    struct {
-        alignas(4)  float roughness;
-        alignas(4)  float extinction;
-        alignas(16) glm::vec3 scatter_color;
-    } reflection;
-
-    struct {
-        alignas(16) glm::vec3 scatter_color;
-    } diffusion;
-
-    alignas(4) float ior;
-};
-
 struct material
 {
-    glm::vec3 glass_tint{ 1, 1, 1 };
-    float roughness_sqrt = 1.0f;
-    glm::vec3 reflection_tint{ 1 };
-    float glass = 0.0f;
-    glm::vec3 base_color{ 1, 1, 1 };
-    float ior = 1.5f;
-    glm::vec3 glass_scatter_color = glm::vec3(1, 1, 1);
-    float glass_density = 4;
+    alignas(16) struct {
+        glm::vec3 scatter_color{ 1, 1, 1 };
+        float transmissiveness{ 0 };
+        glm::vec3 density_color{ 1, 1, 1 };
+        float density{ 0 };
+        glm::vec3 reflection_color{ 1, 1, 1 };
+        float density_falloff{ 1 };
 
-    alignas(16) float glass_density_falloff = 4;
-    float extinction_coefficient = 0.01f;
+        float roughness{ 0.95f };
+    } ground;
+
+    float extinction{ 1 };
+    float ior{ 1.5f };
+
+    struct
+    {
+        float roughness{ 0.1f };
+        glm::vec3 reflection_color{ 1, 1, 1 };
+    } surface;
 };
 
 struct mesh
@@ -326,9 +310,7 @@ int main()
     };
     
     gl::buffer pathtracer_info_buffer(sizeof(pathtracer_info), gl::buffer_flag_bits::dynamic_storage);
-    
-    glEnableClientState(GL_UNIFORM_BUFFER_UNIFIED_NV);
-    
+        
     pathtracer_info info;
     while (main_window->update())
     {
@@ -357,10 +339,8 @@ int main()
         const int count_x = ceil(static_cast<float>(resolution.x) / size_x);
         const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
 
-
+        pathtracer_info_buffer.bind(0, GL_UNIFORM_BUFFER);
         double t = 0.0;
-        glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, 0, pathtracer_info_buffer.address(), pathtracer_info_buffer.size());
-
         while (t < main_window->get_swap_delay() / 2.f)
         {
             query_time.begin();
@@ -495,18 +475,42 @@ int main()
             {
                 ImGui::PushID(id.c_str());
                 auto&& item = material_buffer->data_as<material>() + i;
-                ImGui::DragFloat("Roughness", &item->roughness_sqrt, 0.01f, 0.f, 1.f);
-                ImGui::DragFloat("Glass", &item->glass, 0.01f, 0.f, 1.f);
+
+                ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
+                ImGui::PushStyleColor(ImGuiCol_Text, 0xff87f100);
+                ImGui::Text("Ground");
+                ImGui::PopStyleColor();
+                ImGui::PopFont();
+                ImGui::PushID("Ground");
+                ImGui::ColorEdit3("Scatter Color", &item->ground.scatter_color[0]);
+                ImGui::ColorEdit3("Density Color", &item->ground.density_color[0]);
+                ImGui::ColorEdit3("Reflect Color", &item->ground.reflection_color[0]);
+                ImGui::DragFloat("Roughness", &item->ground.roughness, 0.01f, 0.f, 1.f);
+                ImGui::DragFloat("Transmissiveness", &item->ground.transmissiveness, 0.01f, 0.f, 1.f);
+                ImGui::DragFloat("Density", &item->ground.density, 0.01f, 0.f, 100.f);
+                ImGui::DragFloat("Density Falloff", &item->ground.density_falloff, 0.01f, 0.f, 100.f);
+                ImGui::Spacing();
+                ImGui::PopID();
+
+                ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
+                ImGui::PushStyleColor(ImGuiCol_Text, 0xff87f100);
+                ImGui::Text("Surface");
+                ImGui::PopStyleColor();
+                ImGui::PopFont();
+                ImGui::PushID("Surface");
+                ImGui::ColorEdit3("Reflect Color", &item->surface.reflection_color[0]);
+                ImGui::DragFloat("Roughness", &item->surface.roughness, 0.01f, 0.f, 1.f);
+                ImGui::PopID();
+
+                ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
+                ImGui::PushStyleColor(ImGuiCol_Text, 0xff87f100);
+                ImGui::Text("General");
+                ImGui::PopStyleColor();
+                ImGui::PopFont();
+                ImGui::PushID("General");
+                ImGui::DragFloat("Extinction Coeff.", &item->extinction, 0.01f, 0.f, 100.f);
                 ImGui::DragFloat("IOR", &item->ior, 0.01f, 0.f, 100.f);
-                ImGui::DragFloat("Ex. Coeff.", &item->extinction_coefficient, 0.01f, 0.f, 100.f);
-                ImGui::Spacing();
-                ImGui::ColorEdit3("Color", &item->base_color[0]);
-                ImGui::ColorEdit3("Reflection Tint", &item->reflection_tint[0]);
-                ImGui::ColorEdit3("Glass Tint", &item->glass_tint[0]);
-                ImGui::ColorEdit3("Glass Scatter Tint", &item->glass_scatter_color[0]);
-                ImGui::Spacing();
-                ImGui::DragFloat("Glass Density", &item->glass_density, 0.01f, 0.f, 100.f);
-                ImGui::DragFloat("Glass Density Falloff", &item->glass_density_falloff, 0.01f, 0.f, 100.f);
+                ImGui::PopID();
                 ImGui::PopID();
             }
         }

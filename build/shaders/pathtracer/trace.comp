@@ -9,18 +9,18 @@
 #define INV_PI 0.31830988618
 #define TAU 6.282185317
 
-const int bsdf_type_diffuse = 0;
-const int bsdf_type_glass = 1;
-const int bsdf_type_reflect = 2;
+const int bsdf_type_glass = 0;
+const int bsdf_type_reflect = 1;
+const int bsdf_type_surface = 2;
 
 const float origin_epsilon = 1e-5f;
 const float sqr_rad_cutoff = 1e-5f;
 
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 
-const vec3 light_color = 70.0f*vec3(1.f, 1, 1);
+const vec3 light_color = 160.0f*vec3(1.f, 1, 1);
 const float light_radius = 0.01f;
-const vec3 light_pos =3.f*vec3(-5, 4, 2);
+const vec3 light_pos =vec3(-5, 4, 2);
 
 layout(binding = 0, std140) uniform Infos
 {
@@ -126,13 +126,14 @@ void main()
                 target_point.uv = barycentric_resolve(uv);
                 mesh_material += uintptr_t(vertices[triangles->a].meta);
 
-                const float roughness = (1.2 - 0.2 * sqrt(abs(dot(direction, target_point.normal.xyz)))) * pow(mesh_material->roughness_sqrt, 2);
-                const float glass = mesh_material->glass;
-                const float ior = mesh_material->ior;
-                const float extinction_coefficient = mesh_material->extinction_coefficient;
-                const vec3 glass_tint = mesh_material->glass_tint;
-                const vec3 reflection_tint = mesh_material->reflection_tint;
-                const vec3 base_color = mesh_material->base_color;
+                const float roughness = (1.2 - 0.2 * sqrt(abs(dot(direction, target_point.normal.xyz)))) * pow(mesh_material->ground_roughness, 2);
+                const float surface_roughness = (1.2 - 0.2 * sqrt(abs(dot(direction, target_point.normal.xyz)))) * pow(mesh_material->surface_roughness, 2);
+                // const float glass = mesh_material->glass;
+                // const float ior = mesh_material->ior;
+                // const float extinction_coefficient = mesh_material->extinction_coefficient;
+                // const vec3 glass_tint = mesh_material->glass_tint;
+                // const vec3 reflection_tint = mesh_material->reflection_tint;
+                // const vec3 base_color = mesh_material->base_color;
 
                 random_sample = random_hammersley_2d(next_random() * count, 1/count);
 
@@ -143,13 +144,15 @@ void main()
 
                 const vec3 facet_normal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_sample, roughness)), target_point.normal.xyz);
                 const vec3 forward_normal = faceforward(facet_normal, direction, facet_normal);
+                const vec3 facet_normal_surface = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_sample, surface_roughness)), target_point.normal.xyz);
+                const vec3 forward_normal_surface = faceforward(facet_normal_surface, direction, facet_normal_surface);
 
                 const bool swap = dot(direction, target_point.normal.xyz) > 0;
-                const float ior_in = swap ? ior : 1.f;
-                const float ior_out = swap ? 1.f : ior;
-                const float fresnel = bsdf_fresnel_coefficient(direction, target_point.normal.xyz, ior, extinction_coefficient);
+                const float ior_in = swap ? mesh_material->ior : 1.f;
+                const float ior_out = swap ? 1.f : mesh_material->ior;
+                const float fresnel = bsdf_fresnel_coefficient(direction, target_point.normal.xyz, mesh_material->ior, mesh_material->extinction);
                 const int target_bsdf = next_random() > fresnel && !bsdf_is_total_reflection(ior_in, ior_out, direction, forward_normal) ? 
-                        (next_random() > glass ? bsdf_type_diffuse : bsdf_type_glass) : bsdf_type_reflect;
+                        (next_random() > mesh_material->ground_transmissiveness ? bsdf_type_reflect : bsdf_type_glass) : (swap ? bsdf_type_reflect : bsdf_type_surface);
 
                 float cos_light_angle = dot(to_light, target_point.normal.xyz);
                 float d = max(cos_light_angle, 0.0f);
@@ -171,23 +174,14 @@ void main()
 
                 bool outgoing = dot(forward_normal, facet_normal) < 0;
                 inside_depth += result.near_distance * float(outgoing);
-                float scatter_factor = (outgoing ? 1 / abs(1.f + pow(mesh_material->glass_density*inside_depth, mesh_material->glass_density_falloff)) : 1);
+                float scatter_factor = (outgoing ? 1 / abs(1.f + pow(mesh_material->ground_density*inside_depth, mesh_material->ground_density_falloff)) : 1);
 
                 switch(target_bsdf) {
                     // ----------------------------------------------------------------------------------------------------------------
-                    case bsdf_type_diffuse:
-                    {
-                        color += clamp(rad * d * light_color * base_color / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(30.f / (3.7f*i+1)), vec3(1.f)));
-                        rad *= base_color;
-                        direction = bsdf_local_to_world(cosine_hemisphere(random_sample), target_point.normal.xyz);
-                        origin = target_point.position.xyz + origin_epsilon * direction;
-                    }
-                    break;
-                    // ----------------------------------------------------------------------------------------------------------------
                     case bsdf_type_glass:
                     {
-                        vec3 glass_color = pow(glass_tint, vec3(1/2.2f));
-                        color += rad * glass_color * (1-scatter_factor) * mesh_material->glass_scatter_color;
+                        vec3 glass_color = pow(mesh_material->ground_scatter_color, vec3(1/2.2f));
+                        color += rad * glass_color * (1-scatter_factor) * mesh_material->ground_density_color;
                         rad *= scatter_factor * glass_color;
                         direction = refract(direction, forward_normal, ior_in / ior_out) - origin_epsilon * forward_normal;
                         origin = target_point.position.xyz + origin_epsilon * direction;
@@ -197,12 +191,12 @@ void main()
                     // ----------------------------------------------------------------------------------------------------------------
                     case bsdf_type_reflect:
                     {
-                        vec3 ref_color = reflection_tint;
+                        vec3 ref_color = mesh_material->ground_reflection_color;
 
                         vec3 light_half_vector = normalize(-direction + normalize(to_light_full));
                         float distribution_light = clamp(ggx_distribution(abs(dot(target_point.normal.xyz, light_half_vector)), roughness), 0.f, 1.f);
 
-                        color += rad * ref_color * (1 - scatter_factor) * mesh_material->glass_scatter_color;
+                        color += rad * ref_color * (1 - scatter_factor) * mesh_material->ground_density_color;
                         rad *= scatter_factor * ref_color;
 
                         vec3 d_rad = clamp(rad * distribution_light * max(dot(to_light, target_point.normal.xyz), 0.f), 0, 1.f);
@@ -213,6 +207,22 @@ void main()
                     }
                     break;
                     // ----------------------------------------------------------------------------------------------------------------
+                    case bsdf_type_surface:
+                    {
+                        vec3 ref_color = mesh_material->surface_reflection_color;
+
+                        vec3 light_half_vector = normalize(-direction + normalize(to_light_full));
+                        float distribution_light = clamp(ggx_distribution(abs(dot(target_point.normal.xyz, light_half_vector)), surface_roughness), 0.f, 1.f);
+
+                        color += rad * ref_color * (1 - scatter_factor) * mesh_material->ground_density_color;
+                        rad *= scatter_factor * ref_color;
+
+                        vec3 d_rad = clamp(rad * distribution_light * max(dot(to_light, target_point.normal.xyz), 0.f), 0, 1.f);
+                        color += clamp(d * d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(30.f / (3.7f*i+1)), vec3(1.f)));
+
+                        direction = reflect(direction, forward_normal_surface);
+                        origin = target_point.position.xyz + origin_epsilon * direction;
+                    } break;
                 }
             }
             else
