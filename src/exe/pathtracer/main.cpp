@@ -376,6 +376,7 @@ int main()
 
         target_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT1);
         target_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        gl::framebuffer::default_fbo().bind();
 
         if (show_renderchunk)
         {

@@ -35,7 +35,7 @@ namespace gl
         void draw_to_attachments(const std::vector<GLenum>& attachments) const;
         void read_from_attachment(GLenum attachment) const;
 
-        void bind();
+        void bind() const;
         void unbind() const;
 
         struct blit_rect { int x0, y0, x1, y1; };
@@ -52,6 +52,5 @@ namespace gl
         gl_framebuffer_t _id;
         std::map<GLenum, jpu::ref_ptr<texture>> _attachments;
         std::map<GLenum, render_buffer> _render_buffers;
-        gl_framebuffer_t _last_bound_framebuffer { 0 };
     };
 }

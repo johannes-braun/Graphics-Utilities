@@ -27,8 +27,6 @@ namespace gfx
         _random_texture->assign_2d(GL_RGBA, GL_FLOAT, random_pixels.data());
         _random_texture->generate_mipmaps();
 
-        _temporal_target = GL_COLOR_ATTACHMENT0;
-
         _luminance_compute_pipeline = jpu::make_ref<gl::compute_pipeline>(new gl::shader("postprocess/tonemap/sample_luminance.comp"));
         _luminance_sample_buffer = jpu::make_ref<gl::buffer>(std::array<float, 32>{}, gl::buffer_flag_bits::map_dynamic_persistent_read);
         _luminance = 0;
@@ -48,6 +46,8 @@ namespace gfx
         _add_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/add.frag"));
         _ssao_pipeline = jpu::make_ref<gl::graphics_pipeline>();
         _ssao_pipeline->use_stages(screen_vertex_shader, jpu::make_ref<gl::shader>("postprocess/filter/ssao.frag"));
+
+        _pp_provider = std::make_shared<postprocess_provider>(_full_resolution, 3);
     }
 
     renderer::~renderer()
@@ -83,18 +83,6 @@ namespace gfx
             _full_size_attachments[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
             _full_size_attachments[0]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 3);
             _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT0, _full_size_attachments[0]);
-
-            _full_size_attachments[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-            _full_size_attachments[1]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
-            _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT1, _full_size_attachments[1]);
-
-            _full_size_attachments[2] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-            _full_size_attachments[2]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
-            _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT2, _full_size_attachments[2]);
-
-            _full_size_attachments[3] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-            _full_size_attachments[3]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, 1);
-            _pp_fullsize_framebuffer->attach(GL_COLOR_ATTACHMENT3, _full_size_attachments[3]);
         }
 
         if (resolution_changed || samples_changed)
@@ -148,103 +136,110 @@ namespace gfx
     void renderer::draw(const double delta_time, const gl::framebuffer& target_framebuffer)
     {
         _main_framebuffer->unbind();
-
         _main_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT0);
-        _pp_fullsize_framebuffer->draw_to_attachments({ _temporal_target });
-        _main_framebuffer->blit(*_pp_fullsize_framebuffer,
+        _pp_provider->reset();
+        _main_framebuffer->blit(*_pp_provider->framebuffer(),
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y }, 
             GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         if (enabled)
         {
-            constexpr auto adaption_speed = 0.4f;
-            constexpr auto brightness = 2.5f;
+            if (enable_tonemap)
+            {
+                _pp_provider->begin_draw();
+                constexpr auto adaption_speed = 0.4f;
+                constexpr auto brightness = 2.5f;
+                const auto new_luma = std::accumulate(_luminance_sample_buffer->data_as<float>(), _luminance_sample_buffer->data_as<float>() + 32, 0.f) * (1 / 32.f);
+                _luminance = glm::mix(glm::mix(_luminance, new_luma, adaption_speed * delta_time), new_luma, adaption_speed * delta_time);
+                const auto half_inv_luma = 0.5f / _luminance;
+                const auto luminance = half_inv_luma * (half_inv_luma * brightness + 1.f) / (half_inv_luma + 1.f);
+                _luminance_sample_buffer->bind(1, GL_SHADER_STORAGE_BUFFER);
+                _luminance_compute_pipeline->bind();
+                _luminance_compute_pipeline->get_uniform<uint64_t>("src_texture") = _sampler->sample_texture(_pp_provider->last_target());
+                _luminance_compute_pipeline->dispatch(1);
 
-            const auto new_luma = std::accumulate(_luminance_sample_buffer->data_as<float>(), _luminance_sample_buffer->data_as<float>() + 32, 0.f) * (1 / 32.f);
-            _luminance = glm::mix(glm::mix(_luminance, new_luma, adaption_speed * delta_time), new_luma, adaption_speed * delta_time);
-            const auto half_inv_luma = 0.5f / _luminance;
-            const auto luminance = half_inv_luma * (half_inv_luma * brightness + 1.f) / (half_inv_luma + 1.f);
-            _luminance_sample_buffer->bind(1, GL_SHADER_STORAGE_BUFFER);
-            _luminance_compute_pipeline->bind();
-            _luminance_compute_pipeline->get_uniform<uint64_t>("src_texture") = _sampler->sample_texture(_full_size_attachments[0]);
-            _luminance_compute_pipeline->dispatch(1);
+                _tonemap_pipeline->bind();
+                _tonemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_pp_provider->last_target());
+                _tonemap_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor") = luminance;
+                _tonemap_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_provider->end_draw();
+            }
 
-            _pp_fullsize_framebuffer->bind();
-            _pp_fullsize_framebuffer->draw_to_attachments({ _temporal_target });
-            _tonemap_pipeline->bind();
-            _tonemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_full_size_attachments[0]);
-            _tonemap_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor") = luminance;
-            _tonemap_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_fullsize_framebuffer->unbind();
-            _full_size_attachments[0]->generate_mipmaps();
+            if(enable_ssao)
+            {
+                _pp_provider->begin_draw();
+                _ssao_pipeline->bind();
+                _ssao_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "albedo_texture") = _sampler->sample_texture(_pp_provider->last_target());
+                _ssao_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random_texture") = _sampler->sample_texture(_random_texture);
+                _ssao_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "normal_depth_texture") = _msaa_attachments[0]->address();
+                _ssao_pipeline->get_uniform<float>(gl::shader_type::fragment, "time") = static_cast<float>(glfwGetTime());
+                _ssao_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_provider->end_draw();
+            }
 
-            _pp_quartersize_framebuffer->bind();
-            _pp_quartersize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
-            glViewport(0, 0, _quarter_resolution.x, _quarter_resolution.y);
-            _bright_spots_pipeline->bind();
-            _bright_spots_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_full_size_attachments[0]);
-            _bright_spots_pipeline->get_uniform<float>(gl::shader_type::fragment, "threshold_lower") = 1.0f;
-            _bright_spots_pipeline->get_uniform<float>(gl::shader_type::fragment, "threshold_higher") = 1.45f;
-            _bright_spots_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_quartersize_framebuffer->unbind();
+            if (enable_fxaa)
+            {
+                _pp_provider->begin_draw();
+                _fxaa_pipeline->bind();
+                _fxaa_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_pp_provider->last_target());
+                _fxaa_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_provider->end_draw();
+            }
+            
+            if (enable_bloom)
+            {
+                _pp_provider->begin_draw();
+                _pp_provider->last_target()->generate_mipmaps();
+                _pp_quartersize_framebuffer->bind();
+                _pp_quartersize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
+                glViewport(0, 0, _quarter_resolution.x, _quarter_resolution.y);
+                _bright_spots_pipeline->bind();
+                _bright_spots_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_pp_provider->last_target());
+                _bright_spots_pipeline->get_uniform<float>(gl::shader_type::fragment, "threshold_lower") = 1.0f;
+                _bright_spots_pipeline->get_uniform<float>(gl::shader_type::fragment, "threshold_higher") = 1.45f;
+                _bright_spots_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_quartersize_framebuffer->unbind();
 
-            _pp_quartersize_framebuffer->bind();
-            _pp_quartersize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-            _blur_pipeline->bind();
-            _blur_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_quarter_size_attachments[0]);
-            _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "axis") = 0;
-            _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "level") = 0;
-            _blur_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_quartersize_framebuffer->unbind();
+                _pp_quartersize_framebuffer->bind();
+                _pp_quartersize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
+                _blur_pipeline->bind();
+                _blur_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_quarter_size_attachments[0]);
+                _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "axis") = 0;
+                _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "level") = 0;
+                _blur_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_quartersize_framebuffer->unbind();
 
-            _pp_quartersize_framebuffer->bind();
-            _pp_quartersize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
-            _blur_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_quarter_size_attachments[1]);
-            _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "axis") = 1;
-            _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "level") = 0;
-            _blur_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_quartersize_framebuffer->unbind();
+                _pp_quartersize_framebuffer->bind();
+                _pp_quartersize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
+                _blur_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_quarter_size_attachments[1]);
+                _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "axis") = 1;
+                _blur_pipeline->get_uniform<int>(gl::shader_type::fragment, "level") = 0;
+                _blur_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_quartersize_framebuffer->unbind();
 
-            _pp_fullsize_framebuffer->bind();
-            _pp_fullsize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-            glViewport(0, 0, _full_resolution.x, _full_resolution.y);
-            _flare_pipeline->bind();
-            _flare_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_quarter_size_attachments[0]);
-            _flare_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_fullsize_framebuffer->unbind();
+                _pp_fullsize_framebuffer->bind();
+                _pp_fullsize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
+                glViewport(0, 0, _full_resolution.x, _full_resolution.y);
+                _flare_pipeline->bind();
+                _flare_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_quarter_size_attachments[0]);
+                _flare_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_fullsize_framebuffer->unbind();
 
-            _pp_fullsize_framebuffer->bind();
-            _pp_fullsize_framebuffer->draw_to_attachments({ _temporal_target });
-            _add_pipeline->bind();
-            _add_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_full_size_attachments[0]);
-            _add_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[1]") = _sampler->sample_texture(_full_size_attachments[1]);
-            _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_one") = 1.f;
-            _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_two") = 0.3f;
-            _add_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_fullsize_framebuffer->unbind();
-
-            _pp_fullsize_framebuffer->bind();
-            _pp_fullsize_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
-            _ssao_pipeline->bind();
-            _ssao_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "albedo_texture") = _sampler->sample_texture(_full_size_attachments[0]);
-            _ssao_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random_texture") = _sampler->sample_texture(_random_texture);
-            _ssao_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "normal_depth_texture") = _msaa_attachments[0]->address();
-            _ssao_pipeline->get_uniform<float>(gl::shader_type::fragment, "time") = static_cast<float>(glfwGetTime());
-            _ssao_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_fullsize_framebuffer->unbind();
-
-            _pp_fullsize_framebuffer->bind();
-            _pp_fullsize_framebuffer->draw_to_attachments({ _temporal_target });
-            _fxaa_pipeline->bind();
-            _fxaa_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_full_size_attachments[1]);
-            _fxaa_pipeline->draw(gl::primitive::triangles, 3);
-            _pp_fullsize_framebuffer->unbind();
+                _pp_provider->framebuffer()->bind();
+                _add_pipeline->bind();
+                _add_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = _sampler->sample_texture(_pp_provider->last_target());
+                _add_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[1]") = _sampler->sample_texture(_full_size_attachments[0]);
+                _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_one") = 1.f;
+                _add_pipeline->get_uniform<float>(gl::shader_type::fragment, "factor_two") = 0.3f;
+                _add_pipeline->draw(gl::primitive::triangles, 3);
+                _pp_provider->end_draw();
+            }
         }
-
-        _pp_fullsize_framebuffer->read_from_attachment(_temporal_target);
-        _pp_fullsize_framebuffer->blit(target_framebuffer,
+        _pp_provider->framebuffer()->blit(target_framebuffer,
             gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y },
             GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        target_framebuffer.bind();
     }
 
     gl::texture* renderer::random_texture() const

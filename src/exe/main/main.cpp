@@ -68,7 +68,10 @@ void resize(const int width, const int height, const int samples, const bool ful
         }
     }
 
-    main_renderer->resize(width, height, samples);
+    if(main_renderer)
+        main_renderer->resize(width, height, samples);
+    else
+        main_renderer = std::make_unique<gfx::renderer>(full_resolution.x, full_resolution.y, current_samples);
 }
 
 int main()
@@ -84,7 +87,6 @@ int main()
     main_window->set_icon(icon.width, icon.height, icon.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(60.f);
-    main_renderer = std::make_unique<gfx::renderer>(full_resolution.x, full_resolution.y, current_samples);
     resize(1280, 720, 1 << 2, false);
 
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {

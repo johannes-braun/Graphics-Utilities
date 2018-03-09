@@ -7,6 +7,7 @@
 #include <opengl/vertex_array.hpp>
 #include <opengl/buffer.hpp>
 #include <glm/glm.hpp>
+#include "postprocess.hpp"
 
 namespace gfx
 {
@@ -25,11 +26,16 @@ namespace gfx
         void draw(double delta_time, const gl::framebuffer& target_framebuffer = gl::framebuffer::default_fbo());
         gl::texture* random_texture() const;
 
-        bool enabled = true;
         gl::framebuffer* main_framebuffer() const
         {
             return _main_framebuffer;
         }
+
+        bool enabled = true;
+        bool enable_tonemap = true;
+        bool enable_bloom = true;
+        bool enable_ssao = true;
+        bool enable_fxaa = true;
 
     private:
 
@@ -37,11 +43,13 @@ namespace gfx
         glm::ivec2 _full_resolution{ 0, 0 };
         glm::ivec2 _quarter_resolution{ 0, 0 };
 
+        std::shared_ptr<postprocess_provider> _pp_provider;
+
         jpu::ref_ptr<gl::framebuffer> _main_framebuffer;
         jpu::ref_ptr<gl::framebuffer> _pp_fullsize_framebuffer;
         jpu::ref_ptr<gl::framebuffer> _pp_quartersize_framebuffer;
         std::array<jpu::ref_ptr<gl::texture>, 2> _quarter_size_attachments;
-        std::array<jpu::ref_ptr<gl::texture>, 4> _full_size_attachments;
+        std::array<jpu::ref_ptr<gl::texture>, 1> _full_size_attachments;
         std::array<jpu::ref_ptr<gl::texture>, 2> _msaa_attachments;
 
         jpu::ref_ptr<gl::sampler> _sampler;
@@ -49,7 +57,6 @@ namespace gfx
 
         glm::vec4 _clear_color{0, 0, 0, 1};
         float _clear_depth = 0.f;
-        GLenum _temporal_target;
 
         jpu::ref_ptr<gl::compute_pipeline> _luminance_compute_pipeline;
         jpu::ref_ptr<gl::buffer> _luminance_sample_buffer;

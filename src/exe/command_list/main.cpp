@@ -39,7 +39,7 @@ int main()
     io::camera camera;
     io::default_cam_controller controller;
 
-    const auto scene = res::load_geometry("../res/bunny.obj");
+    const auto scene = res::load_geometry("../res/bunny.dae");
     const auto vbo = jpu::make_ref<gl::buffer>(scene.meshes.get_by_index(0).vertices);
     const auto ibo = jpu::make_ref<gl::buffer>(scene.meshes.get_by_index(0).indices);
 
@@ -114,6 +114,15 @@ int main()
         ImGui::Begin("My Window");
         ImGui::ColorEdit3("Light Color", &light_color[0], ImGuiColorEditFlags_HDR);
         ImGui::Value("Time", 1 / static_cast<float>(window->delta_time()));
+        if (ImGui::Button("Reload PP"))
+        {
+            renderer->reload_pipelines();
+        }
+
+        ImGui::Checkbox("Tonemap/Auto Exp.", &renderer->enable_tonemap);
+        ImGui::Checkbox("Bloom", &renderer->enable_bloom);
+        ImGui::Checkbox("SSAO", &renderer->enable_ssao);
+        ImGui::Checkbox("FXAA", &renderer->enable_fxaa);
         ImGui::End();
 
         gizmo.update(*window, camera.view(), camera.projection());

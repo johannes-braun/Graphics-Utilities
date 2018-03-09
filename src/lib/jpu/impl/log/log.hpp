@@ -129,8 +129,11 @@ namespace jpu::logging
 
 		void print() const
 		{
+#define JPU_LOG_THREADSAFE
+#if defined(JPU_LOG_THREADSAFE)
 			static std::mutex stdout_mutex;
-			std::unique_lock<std::mutex> lock(stdout_mutex);
+            std::unique_lock<std::mutex> lock(stdout_mutex);
+#endif
 			std::cout << _stream.str();
 		}
 
@@ -167,7 +170,6 @@ namespace jpu::logging
             prefix << logging::log_text<S>.data() << "\033[90m[ " << file << " ]\033[0m ";
         }
 		auto str = prefix.str();
-
 		log_channel channel;
 		channel << '\n' << str << std::string(58 - str.size(), ' ') << " ";
 		return channel;

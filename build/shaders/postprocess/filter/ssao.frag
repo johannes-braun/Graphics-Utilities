@@ -22,6 +22,7 @@ void main()
 
     vec4 col = texture(albedo_texture, uv);
 
+    return;
     if(is_bg) {
         color = col;
         return;
