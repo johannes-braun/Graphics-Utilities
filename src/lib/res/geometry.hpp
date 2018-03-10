@@ -29,5 +29,5 @@ namespace res
         friend geometry_file load_geometry(const std::experimental::filesystem::path& path);
     };
 
-    geometry_file load_geometry(const std::experimental::filesystem::path& path);
+    geometry_file load_geometry(const std::experimental::filesystem::path& path) noexcept;
 }

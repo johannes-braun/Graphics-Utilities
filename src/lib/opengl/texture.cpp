@@ -3,35 +3,35 @@
 
 namespace gl
 {
-    texture::texture(GLenum type): _type(type)
+    texture::texture(GLenum type) noexcept : _type(type)
     {
         glCreateTextures(_type, 1, &_id);
     }
 
-    texture::~texture()
+    texture::~texture() noexcept
     {
         glDeleteTextures(1, &_id);
     }
 
-    texture::operator gl_texture_t() const
+    texture::operator gl_texture_t() const noexcept
     {
         return _id;
     }
 
-    void texture::storage_1d(const int width, const GLenum internal_format, const int levels)
+    void texture::storage_1d(const int width, const GLenum internal_format, const int levels) noexcept
     {
         _width = width;
         glTextureStorage1D(_id, levels == -1 ? max_levels(width, 1, 1) : levels, internal_format, width);
     }
 
-    void texture::storage_2d(const int width, const int height, const GLenum internal_format, const int levels)
+    void texture::storage_2d(const int width, const int height, const GLenum internal_format, const int levels) noexcept
     {
         _width = width;
         _height = height;
         glTextureStorage2D(_id, levels == -1 ? max_levels(width, height, 1) : levels, internal_format, width, height);
     }
 
-    void texture::storage_3d(const int width, const int height, const int depth, const GLenum internal_format, const int levels)
+    void texture::storage_3d(const int width, const int height, const int depth, const GLenum internal_format, const int levels) noexcept
     {
         _width = width;
         _height = height;
@@ -41,7 +41,7 @@ namespace gl
     }
 
     void texture::storage_2d_multisample(const int width, int height, const int samples, const GLenum internal_format,
-                                         const bool fixed_sample_locations)
+                                         const bool fixed_sample_locations) noexcept
     {
         _width = width;
         _height = height;
@@ -49,7 +49,7 @@ namespace gl
     }
 
     void texture::storage_2d_multisample(const int width, const int height, const int depth, const int samples, const GLenum internal_format,
-                                         const bool fixed_sample_locations)
+                                         const bool fixed_sample_locations) noexcept
     {
         _width = width;
         _height = height;
@@ -57,71 +57,71 @@ namespace gl
         glTextureStorage3DMultisample(_id, samples, internal_format, width, height, depth, fixed_sample_locations);
     }
 
-    void texture::assign_1d(const int x, const int width, const int level, const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_1d(const int x, const int width, const int level, const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         glTextureSubImage1D(_id, level, x, width, format, type, pixels);
     }
 
-    void texture::assign_1d(const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_1d(const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         assign_1d(0, _width, 0, format, type, pixels);
     }
 
-    void texture::assign_1d_compressed(const int x, const int width, const int level, const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_1d_compressed(const int x, const int width, const int level, const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         glCompressedTextureSubImage1D(_id, level, x, width, format, type, pixels);
     }
 
-    void texture::assign_1d_compressed(const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_1d_compressed(const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         assign_1d_compressed(0, _width, 0, format, type, pixels);
     }
 
     void texture::assign_2d_compressed(const int x, const int y, const int width, const int height, const int level, const GLenum format, const GLenum type,
-                                       void* pixels) const
+                                       void* pixels) const noexcept
     {
         glCompressedTextureSubImage2D(_id, level, x, y, width, height, format, type, pixels);
     }
 
-    void texture::assign_2d_compressed(const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_2d_compressed(const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         assign_2d_compressed(0, 0, _width, _height, 0, format, type, pixels);
     }
 
     void texture::assign_2d(const int x, const int y, const int width, const int height, const int level, const GLenum format, const GLenum type,
-                            void* pixels) const
+                            void* pixels) const noexcept
     {
         glTextureSubImage2D(_id, level, x, y, width, height, format, type, pixels);
     }
 
-    void texture::assign_2d(const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_2d(const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         assign_2d(0, 0, _width, _height, 0, format, type, pixels);
     }
 
     void texture::assign_3d(const int x, const int y, const int z, const int width, const int height, const int depth, const int level, const GLenum format,
-                            const GLenum type, void* pixels) const
+                            const GLenum type, void* pixels) const noexcept
     {
         glTextureSubImage3D(_id, level, x, y, z, width, height, depth, format, type, pixels);
     }
 
     void texture::assign_3d_compressed(const int x, const int y, const int z, const int width, const int height, const int depth, const int level, const GLenum format,
-        const GLenum type, void* pixels) const
+        const GLenum type, void* pixels) const noexcept
     {
         glCompressedTextureSubImage3D(_id, level, x, y, z, width, height, depth, format, type, pixels);
     }
 
-    void texture::assign_3d_compressed(const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_3d_compressed(const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         assign_3d_compressed(0, 0, 0, _width, _height, _depth, 0, format, type, pixels);
     }
 
-    void texture::assign_3d(const GLenum format, const GLenum type, void* pixels) const
+    void texture::assign_3d(const GLenum format, const GLenum type, void* pixels) const noexcept
     {
         assign_3d(0, 0, 0, _width, _height, _depth, 0, format, type, pixels);
     }
 
-    uint64_t texture::address() const
+    uint64_t texture::address() const noexcept
     {
         if (!glGetTextureSamplerHandleARB)
             return 0;
@@ -131,42 +131,42 @@ namespace gl
         return handle;
     }
 
-    void texture::generate_mipmaps() const
+    void texture::generate_mipmaps() const noexcept
     {
         glGenerateTextureMipmap(_id);
     }
 
-    void texture::set_buffer(const gl_buffer_t buffer, const GLenum internal_format) const
+    void texture::set_buffer(const gl_buffer_t buffer, const GLenum internal_format) const noexcept
     {
         glTextureBuffer(_id, internal_format, buffer);
     }
 
-    void texture::set_buffer(const gl_buffer_t buffer, const GLenum internal_format, const size_t size, const size_t offset) const
+    void texture::set_buffer(const gl_buffer_t buffer, const GLenum internal_format, const size_t size, const size_t offset) const noexcept
     {
         glTextureBufferRange(_id, internal_format, buffer, size, offset);
     }
 
-    int texture::width() const
+    int texture::width() const noexcept
     {
         return _width;
     }
 
-    int texture::height() const
+    int texture::height() const noexcept
     {
         return _height;
     }
 
-    void texture::get_texture_data(const GLenum format, const GLenum type, const size_t target_byte_size, void* target, const int level) const
+    void texture::get_texture_data(const GLenum format, const GLenum type, const size_t target_byte_size, void* target, const int level) const noexcept
     {
         glGetTextureImage(_id, level, format, type, static_cast<int>(target_byte_size), target);
     }
 
-    int texture::max_levels(const int width, const int height, const int depth)
+    int texture::max_levels(const int width, const int height, const int depth) noexcept
     {
         return 1 + static_cast<uint32_t>(std::log2(std::max(width, std::max(height, depth))));
     }
 
-    sampler::sampler()
+    sampler::sampler() noexcept
     {
         glCreateSamplers(1, &_id);
 
@@ -180,22 +180,22 @@ namespace gl
         set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
     }
 
-    sampler::~sampler()
+    sampler::~sampler() noexcept
     {
         glDeleteSamplers(1, &_id);
     }
 
-    void sampler::set(const GLenum name, const int value) const
+    void sampler::set(const GLenum name, const int value) const noexcept
     {
         glSamplerParameteri(_id, name, value);
     }
 
-    void sampler::set(const GLenum name, const float value) const
+    void sampler::set(const GLenum name, const float value) const noexcept
     {
         glSamplerParameterf(_id, name, value);
     }
 
-    uint64_t sampler::sample_texture(texture* t) const
+    uint64_t sampler::sample_texture(texture* t) const noexcept
     {
         if (!glGetTextureSamplerHandleARB)
             return 0;
@@ -205,23 +205,23 @@ namespace gl
         return handle;
     }
 
-    image::image(texture* t, const int level, const bool layered, const int layer, const GLenum format, const GLenum access): _handle(
-        glGetImageHandleARB(*t, level, layered, layer, format))
+    image::image(texture* t, const int level, const bool layered, const int layer, const GLenum format, const GLenum access) noexcept
+        : _handle(glGetImageHandleARB(*t, level, layered, layer, format))
     {
         glMakeImageHandleResidentARB(_handle, access);
     }
 
-    image::~image()
+    image::~image() noexcept
     {
         glMakeImageHandleNonResidentARB(_handle);
     }
 
-    image::operator uint64_t() const
+    image::operator uint64_t() const noexcept
     {
         return _handle;
     }
 
-    sampler::operator gl_sampler_t() const
+    sampler::operator gl_sampler_t() const noexcept
     {
         return _id;
     }

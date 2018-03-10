@@ -2,17 +2,17 @@
 
 namespace gl
 {
-    pipeline::pipeline()
+    pipeline::pipeline() noexcept
     {
         glCreateProgramPipelines(1, &_id);
     }
 
-    pipeline::~pipeline()
+    pipeline::~pipeline() noexcept
     {
         glDeleteProgramPipelines(1, &_id);
     }
 
-    pipeline::operator gl_program_pipeline_t() const
+    pipeline::operator gl_program_pipeline_t() const noexcept
     {
         return _id;
     }
@@ -22,7 +22,7 @@ namespace gl
         return _shaders.count(s) != 0 ? _shaders.at(s).get() : nullptr;
     }
 
-    void pipeline::bind() const
+    void pipeline::bind() const noexcept
     {
         glBindProgramPipeline(_id);
     }
@@ -75,7 +75,7 @@ namespace gl
         _shaders[s->type()] = s;
     }
 
-    GLbitfield pipeline::stage_bits(const shader_type t)
+    GLbitfield pipeline::stage_bits(const shader_type t) noexcept
     {
         GLbitfield stage_bits = GL_ZERO;
         switch (t)
@@ -118,29 +118,29 @@ namespace gl
         }
     }
 
-    void graphics_pipeline::set_input_format(const uint32_t attribute, const int components, const GLenum type, const bool normalized) const
+    void graphics_pipeline::set_input_format(const uint32_t attribute, const int components, const GLenum type, const bool normalized) const noexcept
     {
         _vertex_array.set_format(attribute, components, type, normalized);
     }
 
-    void graphics_pipeline::disable_input(const uint32_t attribute) const
+    void graphics_pipeline::disable_input(const uint32_t attribute) const noexcept
     {
         glDisableVertexArrayAttrib(_vertex_array, attribute);
     }
 
-    void graphics_pipeline::set_input_buffer(const uint32_t attribute, const buffer* buffer, const size_t stride, const size_t offset) const
+    void graphics_pipeline::set_input_buffer(const uint32_t attribute, const buffer* buffer, const size_t stride, const size_t offset) const noexcept
     {
         _vertex_array.set_vertex_buffer(attribute, *buffer, stride, offset);
     }
 
-    void graphics_pipeline::set_index_buffer(const buffer* buffer, const index_type elem_type) const
+    void graphics_pipeline::set_index_buffer(const buffer* buffer, const index_type elem_type) const noexcept
     {
         _elem_type = elem_type;
         _vertex_array.set_element_buffer(*buffer);
     }
 
     void graphics_pipeline::draw_indexed(const primitive p, const size_t elem_count, const size_t base_index, const uint32_t base_vertex,
-        const uint32_t instance_count, const uint32_t base_instance) const
+        const uint32_t instance_count, const uint32_t base_instance) const noexcept
     {
         _vertex_array.bind();
         glDrawElementsInstancedBaseVertexBaseInstance(static_cast<GLenum>(p), static_cast<uint32_t>(elem_count),
@@ -151,7 +151,7 @@ namespace gl
     }
 
     void graphics_pipeline::draw(const primitive p, const size_t vertex_count, const size_t first, const uint32_t instance_count,
-        const uint32_t base_instance) const
+        const uint32_t base_instance) const noexcept
     {
         _vertex_array.bind();
         glDrawArraysInstancedBaseInstance(static_cast<GLenum>(p), static_cast<int>(first), static_cast<int>(vertex_count), static_cast<int>(instance_count), base_instance);
@@ -169,7 +169,7 @@ namespace gl
                 "Group sizes result in a group invocation count higher than the pre-defined wave size. This might lead to a slower dispatch. Consider using smaller group sizes.");
     }
 
-    void compute_pipeline::dispatch(const uint32_t count_x, const uint32_t count_y, const uint32_t count_z)
+    void compute_pipeline::dispatch(const uint32_t count_x, const uint32_t count_y, const uint32_t count_z) noexcept
     {
         const static auto invocation_count = [](uint32_t global, uint32_t local) {
             return (global + local - 1) / local;

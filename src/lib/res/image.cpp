@@ -12,7 +12,7 @@
 
 namespace res
 {
-    image load_image(const filesystem::path& path, const image_type type, image_components components)
+    image load_image(const filesystem::path& path, const image_type type, image_components components) noexcept
     {
         image img;
         img.data = type == image_type::f32 ?
@@ -23,7 +23,7 @@ namespace res
         return img;
     }
 
-    image load_svg_rasterized(const filesystem::path& path, const float scale)
+    image load_svg_rasterized(const filesystem::path& path, const float scale) noexcept
     {
         struct rasterizer_deleter
         {

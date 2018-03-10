@@ -6,13 +6,13 @@ namespace res
 {
     struct vertex
     {
-        vertex()
+        vertex() noexcept
             : position(0, 0, 0),
             normal{ 0, 1, 0 },
             uv{ 0, 0 }
         {}
 
-        vertex(const glm::vec3 position, const glm::vec2 uv, const glm::vec3 norm)
+        vertex(const glm::vec3 position, const glm::vec2 uv, const glm::vec3 norm) noexcept
             : position(position), normal(normalize(norm)), uv(uv)
         {}
 

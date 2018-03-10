@@ -9,7 +9,7 @@
 
 namespace res
 {
-    void handle_node(geometry_file& file, aiNode* node, const glm::mat4& transform)
+    void handle_node(geometry_file& file, aiNode* node, const glm::mat4& transform) noexcept
     {
         const glm::mat4 node_trafo = transform * transpose(reinterpret_cast<glm::mat4&>(node->mTransformation));
         
@@ -24,7 +24,7 @@ namespace res
         }
     }
 
-    geometry_file load_geometry(const std::experimental::filesystem::path& path)
+    geometry_file load_geometry(const std::experimental::filesystem::path& path) noexcept
     {
         geometry_file result;
         if (!exists(path))

@@ -7,10 +7,10 @@ namespace gl
     {}
 
     template <typename T>
-    uniform<T>::operator T() const { return *_value; }
+    uniform<T>::operator T() const noexcept { return *_value; }
 
     template <typename T>
-    uniform<T>& uniform<T>::operator=(const T& value)
+    uniform<T>& uniform<T>::operator=(const T& value) noexcept
     {
         *_value = value;
         update();

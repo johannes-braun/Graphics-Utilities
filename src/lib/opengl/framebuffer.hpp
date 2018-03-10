@@ -14,40 +14,40 @@ namespace gl
     {
         struct render_buffer
         {
-            render_buffer();
-            ~render_buffer();
-            operator gl_renderbuffer_t() const;
+            render_buffer() noexcept;
+            ~render_buffer() noexcept;
+            operator gl_renderbuffer_t() const noexcept;
         private:
             gl_renderbuffer_t _id;
         };
 
     public:
-        static framebuffer default_fbo() { return nullptr; }
-        framebuffer(nullptr_t);
-        framebuffer();
-        ~framebuffer();
-        operator gl_framebuffer_t() const;
+        static framebuffer default_fbo() noexcept { return nullptr; }
+        framebuffer(nullptr_t) noexcept;
+        framebuffer() noexcept;
+        ~framebuffer() noexcept;
+        operator gl_framebuffer_t() const noexcept;
 
         void use_renderbuffer(GLenum attachment, GLenum internal_format, int width, int height);
         void use_renderbuffer_multisample(GLenum attachment, GLenum internal_format, int width, int height, int samples);
         void attach(GLenum attachment, texture* texture, int level = 0);
 
-        void draw_to_attachments(const std::vector<GLenum>& attachments) const;
-        void read_from_attachment(GLenum attachment) const;
+        void draw_to_attachments(const std::vector<GLenum>& attachments) const noexcept;
+        void read_from_attachment(GLenum attachment) const noexcept;
 
-        void bind() const;
-        void unbind() const;
+        void bind() const noexcept;
+        void unbind() const noexcept;
 
         struct blit_rect { int x0, y0, x1, y1; };
-        void blit(const framebuffer& other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter) const;
-        void blit(const framebuffer& other, blit_rect src_and_dst, GLbitfield buffers, GLenum filter) const;
+        void blit(const framebuffer& other, blit_rect src, blit_rect dst, GLbitfield buffers, GLenum filter) const noexcept;
+        void blit(const framebuffer& other, blit_rect src_and_dst, GLbitfield buffers, GLenum filter) const noexcept;
 
-        void clear_color(int attachment, const glm::vec4& color) const;
-        void clear_depth(float depth) const;
-        void clear_stencil(int stencil) const;
+        void clear_color(int attachment, const glm::vec4& color) const noexcept;
+        void clear_depth(float depth) const noexcept;
+        void clear_stencil(int stencil) const noexcept;
 
     private:
-        void check_complete() const;
+        void check_complete() const noexcept;
 
         gl_framebuffer_t _id;
         std::map<GLenum, jpu::ref_ptr<texture>> _attachments;

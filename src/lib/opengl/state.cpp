@@ -3,17 +3,17 @@
 
 namespace gl
 {
-    state::state()
+    state::state() noexcept
     {
         glCreateStatesNV(1, &_id);
     }
 
-    state::~state()
+    state::~state() noexcept
     {
         glDeleteStatesNV(1, &_id);
     }
 
-    void state::capture(basic_primitive primitive) const
+    void state::capture(basic_primitive primitive) const noexcept
     {
         set_debug_callback_enabled(gl::debug_type::other, false);
         glStateCaptureNV(_id, static_cast<GLenum>(primitive));

@@ -36,18 +36,18 @@ namespace gl
         notification = GL_DEBUG_SEVERITY_NOTIFICATION
     };
 
-    const char* get_debug_enum_desc(debug_source e);
-    const char* get_debug_enum_desc(debug_type e);
-    const char* get_debug_enum_desc(debug_severity e);
+    const char* get_debug_enum_desc(debug_source e) noexcept;
+    const char* get_debug_enum_desc(debug_type e) noexcept;
+    const char* get_debug_enum_desc(debug_severity e) noexcept;
 
     using debug_function = std::function<void(debug_source source, debug_type type, uint32_t id, debug_severity severity, const char* message)>;
-    void set_debug_callback(debug_function function);
+    void set_debug_callback(debug_function function) noexcept;
 
-    void set_debug_callback_enabled(debug_source d, bool enable);
-    void set_debug_callback_enabled(debug_type d, bool enable);
-    void set_debug_callback_enabled(debug_severity d, bool enable);
-    void set_debug_callback_enabled(uint32_t* ids, size_t count, bool enable);
+    void set_debug_callback_enabled(debug_source d, bool enable) noexcept;
+    void set_debug_callback_enabled(debug_type d, bool enable) noexcept;
+    void set_debug_callback_enabled(debug_severity d, bool enable) noexcept;
+    void set_debug_callback_enabled(uint32_t* ids, size_t count, bool enable) noexcept;
 
-    inline void set_debug_callback_enabled(std::vector<uint32_t> ids, const bool enable) { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
-    template<size_t I> void set_debug_callback_enabled(std::array<uint32_t, I> ids, const bool enable) { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
+    inline void set_debug_callback_enabled(std::vector<uint32_t> ids, const bool enable) noexcept { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
+    template<size_t I> void set_debug_callback_enabled(std::array<uint32_t, I> ids, const bool enable) noexcept { set_debug_callback_enabled(ids.data(), ids.size(), enable); }
 }

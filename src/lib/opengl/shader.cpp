@@ -12,7 +12,7 @@ namespace gl
         reload(true);
     }
 
-    shader_type shader::type_of(const std::experimental::filesystem::path& extension)
+    shader_type shader::type_of(const std::experimental::filesystem::path& extension) noexcept
     {
         if (extension == ".vert")
             return shader_type::vertex;
@@ -30,7 +30,7 @@ namespace gl
         throw std::invalid_argument("File extension " + extension.string() + " does not refer to any shader type.");
     }
 
-    void shader::reload(bool force)
+    void shader::reload(bool force) noexcept
     {
         tlog_i("GL Shader") << "Load shader from " << _path;
 
@@ -78,17 +78,17 @@ namespace gl
         reload(true);
     }
 
-    shader::~shader()
+    shader::~shader() noexcept
     {
         glDeleteProgram(_id);
     }
 
-    shader::operator gl_shader_program_t() const
+    shader::operator gl_shader_program_t() const noexcept
     {
         return _id;
     }
 
-    shader_type shader::type() const
+    shader_type shader::type() const noexcept
     {
         return _type;
     }

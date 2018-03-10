@@ -5,21 +5,21 @@ namespace gl
 {
 
     template<typename... T>
-    buffer::buffer(const std::vector<T...>& data, const buffer_flags flags)
+    buffer::buffer(const std::vector<T...>& data, const buffer_flags flags) noexcept
         : buffer(std::data(data), std::size(data), flags)
     {
 
     }
 
     template<typename T, size_t S>
-    buffer::buffer(const std::array<T, S>& data, const buffer_flags flags)
+    buffer::buffer(const std::array<T, S>& data, const buffer_flags flags) noexcept
         : buffer(std::data(data), std::size(data), flags)
     {
 
     }
 
     template <typename TValue>
-    buffer::buffer(TValue* data, const size_t count, const buffer_flags flags) : _size(count * sizeof(TValue)),
+    buffer::buffer(TValue* data, const size_t count, const buffer_flags flags) noexcept : _size(count * sizeof(TValue)),
         _flags(flags)
     {
         glCreateBuffers(1, &_id);
@@ -29,13 +29,13 @@ namespace gl
     }
 
     template <typename TContainer, typename>
-    void buffer::assign(TContainer data, const size_t offset_bytes) const
+    void buffer::assign(TContainer data, const size_t offset_bytes) const noexcept
     {
         glNamedBufferSubData(_id, offset_bytes, std::size(data), std::data(data));
     }
 
     template <typename TValue>
-    void buffer::assign(TValue* data, const size_t count, const size_t offset_bytes) const
+    void buffer::assign(TValue* data, const size_t count, const size_t offset_bytes) const noexcept
     {
         glNamedBufferSubData(_id, offset_bytes, count * sizeof(TValue), data);
     }
@@ -50,7 +50,7 @@ namespace gl
     }
 
     template <typename T>
-    T* buffer::data_as() const
+    T* buffer::data_as() const noexcept
     {
         return static_cast<T*>(_mapped_data);
     }

@@ -49,12 +49,12 @@ namespace gl
     class pipeline : public jpu::ref_count
     {
     public:
-        pipeline();
-        virtual ~pipeline();
+        pipeline() noexcept;
+        virtual ~pipeline() noexcept;
 
-        operator gl_program_pipeline_t() const;
+        operator gl_program_pipeline_t() const noexcept;
 
-        void bind() const;
+        void bind() const noexcept;
         shader* stage(shader_type s) const;
         void reload_stages(bool force = false) const;
         
@@ -63,7 +63,7 @@ namespace gl
     protected:
         void set_stage_enabled(shader_type stage, bool enable);
         void use_shader(shader* s);
-        static GLbitfield stage_bits(shader_type t);
+        static GLbitfield stage_bits(shader_type t) noexcept;
         void validate() const;
 
         gl_program_pipeline_t _id;
@@ -79,15 +79,15 @@ namespace gl
         template<typename T>
         uniform<T> get_uniform(shader_type s, const char* name);
 
-        void disable_input(uint32_t attribute) const;
-        void set_input_format(uint32_t attribute, int components, GLenum type, bool normalized) const;
-        void set_input_buffer(uint32_t attribute, const buffer* buffer, size_t stride, size_t offset = 0) const;
-        void set_index_buffer(const buffer* buffer, index_type elem_type) const;
+        void disable_input(uint32_t attribute) const noexcept;
+        void set_input_format(uint32_t attribute, int components, GLenum type, bool normalized) const noexcept;
+        void set_input_buffer(uint32_t attribute, const buffer* buffer, size_t stride, size_t offset = 0) const noexcept;
+        void set_index_buffer(const buffer* buffer, index_type elem_type) const noexcept;
 
         void draw_indexed(primitive p, size_t elem_count, size_t base_index = 0, uint32_t base_vertex = 0,
-                          uint32_t instance_count = 1, uint32_t base_instance = 0) const;
+                          uint32_t instance_count = 1, uint32_t base_instance = 0) const noexcept;
         void draw(primitive p, size_t vertex_count, size_t first = 0, uint32_t instance_count = 1,
-                  uint32_t base_instance = 0) const;
+                  uint32_t base_instance = 0) const noexcept;
 
     private:
         mutable index_type _elem_type = index_type::u32;
@@ -99,7 +99,7 @@ namespace gl
     public:
         explicit compute_pipeline(shader* shader);
         void dispatch(uint32_t count_x, uint32_t count_y = 1, uint32_t count_z = 1);
-        const std::array<int, 3>& work_group_sizes() const { return _group_sizes; }
+        const std::array<int, 3>& work_group_sizes() const noexcept { return _group_sizes; }
         template<typename T>
         uniform<T> get_uniform(const char* name);
 

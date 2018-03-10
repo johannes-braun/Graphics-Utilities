@@ -2,32 +2,32 @@
 
 namespace gl
 {
-    buffer::~buffer()
+    buffer::~buffer() noexcept
     {
         glDeleteBuffers(1, &_id);
     }
 
-    buffer::operator gl_buffer_t() const
+    buffer::operator gl_buffer_t() const noexcept
     {
         return _id;
     }
 
-    void buffer::bind(const GLenum type, const uint32_t binding_point) const
+    void buffer::bind(const GLenum type, const uint32_t binding_point) const noexcept
     {
         glBindBufferRange(type, binding_point, _id, 0, _size);
     }
 
-    void buffer::bind(const GLenum type, const uint32_t binding_point, const size_t size, const ptrdiff_t offset) const
+    void buffer::bind(const GLenum type, const uint32_t binding_point, const size_t size, const ptrdiff_t offset) const noexcept
     {
         glBindBufferRange(type, binding_point, _id, offset, size);
     }
 
-    void buffer::clear_to_float(const float value) const
+    void buffer::clear_to_float(const float value) const noexcept
     {
         glClearNamedBufferData(_id, GL_R32F, GL_RED, GL_FLOAT, &value);
     }
 
-    void buffer::map(const GLenum map_access)
+    void buffer::map(const GLenum map_access) noexcept
     {
         if (_mapped_data && map_access != _map_access)
             return;
@@ -35,14 +35,10 @@ namespace gl
             unmap();
 
         _map_access = map_access;
-        if (_map_access == 0)
-            throw std::runtime_error(
-                "Cannot Map this buffer without setting buffer_flag_bits::map_read or buffer_flag_bits::map_write.");
-
         _mapped_data = glMapNamedBufferRange(_id, 0, size(), _map_access);
     }
 
-    void buffer::unmap() const
+    void buffer::unmap() const noexcept
     {
         if (_flags & buffer_flag_bits::map_persistent)
             return;
@@ -50,27 +46,27 @@ namespace gl
         glUnmapNamedBuffer(_id);
     }
 
-    void buffer::flush(const size_t size_bytes, const size_t offset_bytes) const
+    void buffer::flush(const size_t size_bytes, const size_t offset_bytes) const noexcept
     {
         glFlushMappedNamedBufferRange(_id, offset_bytes, size_bytes);
     }
 
-    size_t buffer::size() const
+    size_t buffer::size() const noexcept
     {
         return _size;
     }
 
-    uint64_t buffer::address() const
+    uint64_t buffer::address() const noexcept
     {
         return _persistent_address;
     }
 
-    void buffer::allocate(const size_t size, const void* data, const buffer_flags flags) const
+    void buffer::allocate(const size_t size, const void* data, const buffer_flags flags) const noexcept
     {
         glNamedBufferStorage(_id, size, data, static_cast<GLbitfield>(static_cast<uint32_t>(flags)));
     }
 
-    void buffer::map_if_needed()
+    void buffer::map_if_needed() noexcept
     {
         if (_flags & buffer_flag_bits::map_read)
         {
@@ -88,7 +84,7 @@ namespace gl
         }
     }
 
-    void buffer::make_persistent_address()
+    void buffer::make_persistent_address() noexcept
     {
         if(!glMakeNamedBufferResidentNV)
             return;

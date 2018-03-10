@@ -2,7 +2,7 @@
 
 namespace gl
 {
-    const char* get_debug_enum_desc(const debug_source e)
+    const char* get_debug_enum_desc(const debug_source e) noexcept
     {
         switch (e) {
         case debug_source::api: return "API";
@@ -14,7 +14,7 @@ namespace gl
         }
     }
 
-    const char* get_debug_enum_desc(const debug_type e)
+    const char* get_debug_enum_desc(const debug_type e) noexcept
     {
         switch (e) {
         case debug_type::error: return "Error";
@@ -29,7 +29,7 @@ namespace gl
         }
     }
 
-    const char* get_debug_enum_desc(const debug_severity e)
+    const char* get_debug_enum_desc(const debug_severity e) noexcept
     {
         switch(e) {
         case debug_severity::high: return "High";
@@ -40,7 +40,7 @@ namespace gl
         }
     }
 
-    void debug_callback(GLenum source, GLenum type, const uint32_t id, const GLenum severity, int /*length*/, const char* message, const void* user_param)
+    void debug_callback(GLenum source, GLenum type, const uint32_t id, const GLenum severity, int /*length*/, const char* message, const void* user_param) noexcept
     {
         if (user_param)
             (*static_cast<const debug_function*>(user_param))(
@@ -51,29 +51,29 @@ namespace gl
                 message);
     }
 
-    void set_debug_callback(const debug_function function)
+    void set_debug_callback(const debug_function function) noexcept
     {
         static debug_function global_debug_callback;
         global_debug_callback = function;
         glDebugMessageCallback(reinterpret_cast<GLDEBUGPROC>(&debug_callback), &global_debug_callback);
     }
 
-    void set_debug_callback_enabled(debug_source d, const bool enable)
+    void set_debug_callback_enabled(debug_source d, const bool enable) noexcept
     {
         glDebugMessageControl(static_cast<GLenum>(d), GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, enable);
     }
 
-    void set_debug_callback_enabled(debug_type d, const bool enable)
+    void set_debug_callback_enabled(debug_type d, const bool enable) noexcept
     {
         glDebugMessageControl(GL_DONT_CARE, static_cast<GLenum>(d), GL_DONT_CARE, 0, nullptr, enable);
     }
 
-    void set_debug_callback_enabled(debug_severity d, const bool enable)
+    void set_debug_callback_enabled(debug_severity d, const bool enable) noexcept
     {
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, static_cast<GLenum>(d), 0, nullptr, enable);
     }
 
-    void set_debug_callback_enabled(uint32_t* ids, const size_t count, const bool enable)
+    void set_debug_callback_enabled(uint32_t* ids, const size_t count, const bool enable) noexcept
     {
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, static_cast<int>(count), ids, enable);
     }

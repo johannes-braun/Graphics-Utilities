@@ -22,11 +22,11 @@ namespace gl
     public:
         uniform(uniform&&) = default;
         uniform(const uniform&) = default;
-        operator T() const;
-        uniform& operator=(const T& value);
+        operator T() const noexcept;
+        uniform& operator=(const T& value) noexcept;
 
     protected:
-        uniform(uint32_t location, gl_shader_program_t s);
+        uniform(uint32_t location, gl_shader_program_t s) noexcept;
         void update() const;
 
         gl_shader_program_t _shader;

@@ -29,19 +29,19 @@ namespace gl
 
         explicit shader(const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
 
-        ~shader();
-        operator gl_shader_program_t() const;
-        shader_type type() const;
+        ~shader() noexcept;
+        operator gl_shader_program_t() const noexcept;
+        shader_type type() const noexcept;
 
-        void reload(bool force = false);
+        void reload(bool force = false) noexcept;
         void reload(const std::vector<glshader::definition>& definitions);
 
         template<typename T>
         uniform<T> get_uniform(std::string_view name);
 
     private:
+        static shader_type type_of(const std::experimental::filesystem::path& extension) noexcept;
         static std::vector<std::experimental::filesystem::path> _include_directories;
-        static shader_type type_of(const std::experimental::filesystem::path& extension);
 
         gl_shader_program_t _id;
         shader_type _type;

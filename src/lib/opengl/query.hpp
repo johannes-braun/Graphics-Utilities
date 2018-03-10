@@ -8,16 +8,16 @@ namespace gl
     class query : public jpu::ref_count
     {
     public:
-        query(GLenum type);
-        ~query();
+        query(GLenum type) noexcept;
+        ~query() noexcept;
 
-        void begin() const;
-        void end() const;
+        void begin() const noexcept;
+        void end() const noexcept;
 
-        int get_int(GLenum param = GL_QUERY_RESULT) const;
-        uint32_t get_uint(GLenum param = GL_QUERY_RESULT) const;
-        int64_t get_int64(GLenum param = GL_QUERY_RESULT) const;
-        uint64_t get_uint64(GLenum param = GL_QUERY_RESULT) const;
+        int get_int(GLenum param = GL_QUERY_RESULT) const noexcept;
+        uint32_t get_uint(GLenum param = GL_QUERY_RESULT) const noexcept;
+        int64_t get_int64(GLenum param = GL_QUERY_RESULT) const noexcept;
+        uint64_t get_uint64(GLenum param = GL_QUERY_RESULT) const noexcept;
 
     private:
         GLenum _type;
