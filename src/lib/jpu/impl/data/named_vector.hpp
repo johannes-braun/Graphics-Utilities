@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <cinttypes>
+#include <algorithm>
 
 namespace jpu
 {
@@ -59,6 +61,6 @@ namespace jpu
         std::vector<TIdentifier> _keys;
         std::vector<TPayload> _payloads;
     };
-}
+} // namespace jpu
 
 #include "named_vector.inl"

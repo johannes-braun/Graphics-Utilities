@@ -29,21 +29,21 @@ namespace jpu
     {}
 
     template <typename TBase, typename TEnum>
-    flags<TBase, TEnum> operator|(TEnum flag, flags<TBase, TEnum> flags)
+    flags<TBase, TEnum> operator|(TEnum flag, flags<TBase, TEnum> value)
     {
-        return flags | flag;
+        return value | flag;
     }
 
     template <typename TBase, typename TEnum>
-    flags<TBase, TEnum> operator&(TEnum flag, flags<TBase, TEnum> flags)
+    flags<TBase, TEnum> operator&(TEnum flag, flags<TBase, TEnum> value)
     {
-        return flags & flag;
+        return value & flag;
     }
 
     template <typename TBase, typename TEnum>
-    flags<TBase, TEnum> operator^(TEnum flag, flags<TBase, TEnum> flags)
+    flags<TBase, TEnum> operator^(TEnum flag, flags<TBase, TEnum> value)
     {
-        return flags ^ flag;
+        return value ^ flag;
     }
 
     template <typename TBase, typename TEnum>
@@ -132,4 +132,4 @@ namespace jpu
     {
         return _flags;
     }
-}
+} // namespace jpu

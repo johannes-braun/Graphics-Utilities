@@ -10,7 +10,7 @@ namespace jpu
         ref_count(const ref_count& other) = delete;
         ref_count(ref_count&& other) noexcept = delete;
         ref_count& operator=(const ref_count& other) = delete;
-        ref_count& operator=(ref_count&& other) noexcept = default;
+        ref_count& operator=(ref_count&& other) noexcept = delete;
         virtual ~ref_count() = default;
 
         int inc_ref();
@@ -21,29 +21,6 @@ namespace jpu
     private:
         std::atomic_int32_t _references{1};
     };
-    
-    template<typename T>
-    class add_refcount : public T, public ref_count
-    {
-    public:
-        template<typename... Args>
-        add_refcount(Args&&... args) : T(std::forward<Args&&>(args)...) {}
-    };
-    
-    template<typename T>
-    struct remove_add_refcount
-    {
-        using type = T;
-    };
-    
-    template<typename T>
-    struct remove_add_refcount<add_refcount<T>>
-    {
-        using type = T;
-    };
-    
-    template<typename T>
-    using remove_add_refcount_t = typename remove_add_refcount<T>::type;
 
     template<typename T>
     class ref_ptr
@@ -51,7 +28,7 @@ namespace jpu
     public:
         static_assert(std::is_base_of_v<ref_count, T>, "Ref Pointer base class needs to derive from ref_count.");
 
-        ref_ptr(nullptr_t);
+        ref_ptr(std::nullptr_t);
         ref_ptr();
         ref_ptr(const ref_ptr& other);
         ref_ptr(ref_ptr&& other) noexcept;
@@ -63,7 +40,7 @@ namespace jpu
         ref_ptr& operator=(T* other) noexcept;
         operator T*() const;
 
-        remove_add_refcount_t<T>& operator*() const;
+        T& operator*() const;
         T* operator->() const;
 
         T* get() const;
@@ -71,7 +48,7 @@ namespace jpu
         operator bool() const;
 
         void reset();
-        void reset(nullptr_t);
+        void reset(std::nullptr_t);
         void reset(T* other);
 
     private:
@@ -80,6 +57,6 @@ namespace jpu
     
     template<typename T, typename... Args>
     ref_ptr<T> make_ref(Args&&... args);
-}
+} // namespace jpu
 
 #include "ref.inl"

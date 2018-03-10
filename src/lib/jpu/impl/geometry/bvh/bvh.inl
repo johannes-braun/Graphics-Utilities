@@ -42,7 +42,7 @@ namespace jpu::impl
         for (const auto& b : bounds)
             construction.centroid_bounds[0].expand(b);
 
-        for (std::atomic_int32_t dispatches = 1, ranges_offset = 0; const int count = dispatches; ++bvh.depth, ranges_offset = 0)
+        for (std::atomic_int32_t dispatches{ 1 }, ranges_offset{ 0 }; const int count = dispatches; ++bvh.depth, ranges_offset = 0)
         {
 #pragma omp parallel for schedule(dynamic)
             for (auto gid = 0; gid < count; ++gid)
@@ -125,7 +125,7 @@ namespace jpu::impl
             const int32_t range_index = ranges_offset.fetch_add(1);
 
             bvh_best_sah best = sah_get_best(element);
-            auto[left_range, right_range] = sah_sort_best(i_attr, idx_data, element, best);
+            auto [left_range, right_range] = sah_sort_best(i_attr, idx_data, element, best);
 
             left_range.parent = element.current_node;
             right_range.parent = element.current_node;
@@ -235,7 +235,7 @@ namespace jpu::impl
                 const float surface_right = bins_right[plane].bounds.surface();
 
                 const float exponent = 2;
-                const float cost = glm::pow(surface_left, exponent) * bins_left[plane].objects + pow(surface_right, exponent) * bins_right[plane].objects;
+                const float cost = std::pow(surface_left, exponent) * bins_left[plane].objects + std::pow(surface_right, exponent) * bins_right[plane].objects;
                 if (cost < best.cost)
                 {
                     best.cost = cost;

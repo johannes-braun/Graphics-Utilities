@@ -20,7 +20,7 @@ namespace jpu
         flags(const flags& other) = default;
         flags(flags&& other) noexcept = default;
         flags& operator=(const flags& other) = default;
-        flags& operator=(flags&& other) = default;
+        flags& operator=(flags&& other) noexcept = default;
 
         template<typename B, typename E>
         friend flags<B, E> operator|(E flag, flags<B, E> value);
@@ -29,9 +29,9 @@ namespace jpu
         template<typename B, typename E>
         friend flags<B, E> operator^(E flag, flags<B, E> value);
 
-        flags operator|(flags flags) const;
-        flags operator&(flags flags) const;
-        flags operator^(flags flags) const;
+        flags operator|(flags value) const;
+        flags operator&(flags value) const;
+        flags operator^(flags value) const;
         bool operator!() const;
         flags operator~() const;
 
@@ -50,6 +50,6 @@ namespace jpu
     private:
         TBase _flags = 0;
     };
-}
+} // namespace jpu
 
 #include "flags.inl"

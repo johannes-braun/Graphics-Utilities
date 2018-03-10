@@ -1,5 +1,17 @@
 #pragma once
 
+#include <array>
+#if __has_include(<omp.h>)
+#include <omp.h>
+#else
+inline int omp_get_thread_num() { return 1; }
+#endif
+#include <algorithm>
+#include <atomic>
+#include <cmath>
+#include <thread>
+#include <vector>
+
 #include "bvh_config.hpp"
 
 #ifdef JPU_BVH_HEADER_ONLY
@@ -7,16 +19,6 @@
 #else
 #define JPU_BVH_INL
 #endif
-
-#include <array>
-#include <vector>
-#if __has_include(<omp.h>)
-#include <omp.h>
-#else
-inline int omp_get_thread_num() { return 0; }
-#endif
-#include <atomic>
-#include <algorithm>
 #include "attr.hpp"
 
 #include "bvh_impl/xyzw.hpp"
@@ -107,7 +109,7 @@ namespace jpu
             template<typename Index>
             static std::tuple<typename bvh_type::range, typename bvh_type::range> sah_sort_best(const index_attribute<Index>& i_attr, void* idx_data, const typename construction::element& element, bvh_best_sah& best);
         };
-    }
+    } // namespace impl
 
     enum class bvh_primitive_type
     {
@@ -201,9 +203,7 @@ namespace jpu
         template<typename Positions, typename IndexContainer, typename Member>
         bvh& assign_to(IndexContainer& indices, const Positions& positions, bvh_primitive_type type)
         {
-            position_attribute attr;
-            attr.offset = 0;
-            attr.stride = sizeof(typename Positions::value_type);
+            position_attribute attr{ sizeof(typename Positions::value_type), 0 };
             const auto count = static_cast<uint32_t>(type);
             return (*this = std::move(impl::bvh_creator<Dim, Bins>::create(
                 attr,
@@ -213,6 +213,6 @@ namespace jpu
             )));
         }
     };
-}
+} // namespace jpu
 
 #include "bvh.inl"

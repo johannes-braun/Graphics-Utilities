@@ -42,4 +42,4 @@ namespace jpu
     using timer_us = timer<std::micro>;
     using timer_ms = timer<std::milli>;
     using timer_s = timer<std::ratio<1>>;
-}
+} // namespace jpu

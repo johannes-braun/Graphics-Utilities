@@ -65,9 +65,9 @@ namespace jpu::logging
 	// This class is actually just for the convenience of the operator[] for log_text.
 	class tag {
 	public:
-		constexpr tag(const char* tag) : _tag(0 | (tag[0] << 0) | (tag[1] << 8) | (tag[2] << 16)) {}
-		constexpr tag(const uint32_t tag) : _tag(tag){}
-		constexpr char operator[](const int i) const { return (_tag >> (i * 8)) & 0xff; }
+		constexpr tag(const char* tag) noexcept : _tag(0 | (tag[0] << 0) | (tag[1] << 8) | (tag[2] << 16)) {}
+		constexpr tag(const uint32_t tag) noexcept : _tag(tag){}
+		constexpr char operator[](const int i) const { return (_tag >> (static_cast<uint32_t>(i) * 8)) & 0xff; }
 		constexpr operator uint32_t() const { return _tag; }
 
 	private:
@@ -75,7 +75,7 @@ namespace jpu::logging
 	};
 
 	template<uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Bright>
-	constexpr int logColor()
+	constexpr int logColor() noexcept
 	{
 		static_assert(Red <= 1 && Green <= 1 && Blue <= 1 && Bright <= 1, "You can only use binary color formats with values 0 or 1.");
 		return 30 + 1 * Red + 2 * Green + 4 * Blue + 60 * Bright;
@@ -112,7 +112,7 @@ namespace jpu::logging
 	// It shall not be saved anywhere and is used to only print completed Log streams to mutex locked stdout.
 	struct log_channel
 	{
-		log_channel() {}
+        log_channel() = default;
 		log_channel(log_channel&&) = default;
 		log_channel(const log_channel&) = delete;
 		void operator=(const log_channel&) = delete;
@@ -174,7 +174,7 @@ namespace jpu::logging
 		channel << '\n' << str << std::string(58 - str.size(), ' ') << " ";
 		return channel;
 	}
-}
+} // namespace jpu::logging
 
 // Log Settings
 constexpr jpu::logging::severity min_severity =
@@ -185,8 +185,8 @@ constexpr jpu::logging::severity min_severity =
 #endif
 
 // Log definitions
-#define log_out(S) if constexpr(S >= min_severity) jpu::logging::capture<S>(__FILE__, __LINE__)
-#define tlog_out(tag, S) if constexpr(S >= min_severity) jpu::logging::capture<S>(tag, -1)
+#define log_out(S) if constexpr((S) >= min_severity) jpu::logging::capture<S>(__FILE__, __LINE__)
+#define tlog_out(tag, S) if constexpr((S) >= min_severity) jpu::logging::capture<S>(tag, -1)
 #define log_v log_out(jpu::logging::severity::verbose)
 #define log_d log_out(jpu::logging::severity::debug)
 #define log_i log_out(jpu::logging::severity::info)

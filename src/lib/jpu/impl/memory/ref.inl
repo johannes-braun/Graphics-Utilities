@@ -28,7 +28,7 @@ namespace jpu
     }
 
     template <typename T>
-    ref_ptr<T>::ref_ptr(nullptr_t)
+    ref_ptr<T>::ref_ptr(std::nullptr_t)
         : _object(nullptr)
     {}
 
@@ -120,7 +120,7 @@ namespace jpu
     }
 
     template <typename T>
-    void ref_ptr<T>::reset(nullptr_t)
+    void ref_ptr<T>::reset(std::nullptr_t)
     {
         reset();
     }
@@ -143,7 +143,7 @@ namespace jpu
 
 
     template <typename T>
-    remove_add_refcount_t<T>& ref_ptr<T>::operator*() const
+    T& ref_ptr<T>::operator*() const
     {
         return *_object;
     }
@@ -153,4 +153,4 @@ namespace jpu
     {
         return _object;
     }
-}
+} // namespace jpu

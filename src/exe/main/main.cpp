@@ -346,7 +346,7 @@ int main()
 
         main_renderer->bind();
 
-        int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
+        int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask); 
         glDepthMask(GL_FALSE);
         cubemap_pipeline->bind();
         cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = glm::mat4(glm::mat3(scene.get_inv_view())) * scene.get_inv_projection();
