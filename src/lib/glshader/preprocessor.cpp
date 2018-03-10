@@ -443,7 +443,7 @@ namespace glshader::preprocessor
             auto end_params = begin_params - 1;
             if (*begin_params == '(')
             {
-                while (*end_params != ')')
+                while (*end_params != ')' && *end_params != '\0')
                     ++end_params;
             }
 

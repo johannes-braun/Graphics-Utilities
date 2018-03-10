@@ -6,7 +6,6 @@
 #include <sstream>
 #include <tuple>
 #include <fstream>
-#include <jpu/log>
 #include <snappy.h>
 
 namespace glshader
@@ -200,7 +199,7 @@ namespace glshader
             }
             if (!reload)
             {
-                log_i << "Load cached shader binary...";
+                LOG_OUTPUT << "Load cached shader binary...";
                 std::vector<char> compressed(header.binary_length);
                 input.read(reinterpret_cast<char*>(compressed.data()), header.binary_length);
 
@@ -232,7 +231,7 @@ namespace glshader
             {
             case shader_format::gl_binary:
             {
-                log_i << "Compile OpenGL shader binary...";
+                LOG_OUTPUT << "Compile OpenGL shader binary...";
                 auto[b, fmt, ds] = load_glbin(src, include_directories, definitions);
                 bin = std::move(b);
                 dependencies = std::move(ds);
@@ -240,7 +239,7 @@ namespace glshader
             } break;
             case shader_format::spirv:
             {
-                log_i << "Compile SPIR-V shader binary...";
+                LOG_OUTPUT << "Compile SPIR-V shader binary...";
                 auto[b, ds] = load_spirv(src, include_directories, definitions);
                 bin = std::move(b);
                 dependencies = std::move(ds);
@@ -275,7 +274,7 @@ namespace glshader
             out.write(reinterpret_cast<const char*>(out_compressed.data()), out_compressed.size());
             out.close();
 
-            log_i << "Shader compilation successful";
+            LOG_OUTPUT << "Shader compilation successful";
         }
 
         return { type, format, bin };

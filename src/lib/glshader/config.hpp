@@ -13,6 +13,14 @@
 #   endif
 #endif
 
+#if __has_include(<jpu/log>)
+#   include <jpu/log>
+#   define LOG_OUTPUT log_i
+#else
+#   include <iostream>
+#   define LOG_OUTPUT std::cout
+#endif
+
 namespace glshader
 {
     constexpr static const char* shader_cache_dir = "../cache/shaders";
