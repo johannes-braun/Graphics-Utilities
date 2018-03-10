@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 #include <asio.hpp>
-#include <jpu/log>
+#include <jpu/log.hpp>
 #include "tcp_server.hpp"
 
 using asio::ip::tcp;

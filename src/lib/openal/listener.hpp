@@ -1,6 +1,6 @@
 #pragma once
 #include "glm/gtx/quaternion.hpp"
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 
 namespace al
 {

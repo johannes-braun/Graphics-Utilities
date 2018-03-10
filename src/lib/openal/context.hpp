@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <AL/alc.h>
 
 namespace al

@@ -2,7 +2,7 @@
 
 #include <cinttypes>
 #include <AL/al.h>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 
 namespace al
 {

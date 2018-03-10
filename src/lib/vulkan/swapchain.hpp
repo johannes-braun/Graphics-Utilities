@@ -2,7 +2,7 @@
 #include "texture.hpp"
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 
 namespace vkn
 {

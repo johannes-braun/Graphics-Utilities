@@ -1,6 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <map>
 #include <list>
 

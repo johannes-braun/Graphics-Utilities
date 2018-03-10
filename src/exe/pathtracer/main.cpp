@@ -1,7 +1,7 @@
 #include <random>
-#include <jpu/memory>
-#include <jpu/data>
-#include <jpu/log>
+#include <jpu/memory.hpp>
+#include <jpu/data.hpp>
+#include <jpu/log.hpp>
 #include "io/window.hpp"
 #include "opengl/framebuffer.hpp"
 #include "io/camera.hpp"

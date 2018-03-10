@@ -3,9 +3,9 @@
 #include <random>
 
 #include <glm/ext.hpp>
-#include <jpu/memory>
-#include <jpu/data>
-#include <jpu/geometry>
+#include <jpu/memory.hpp>
+#include <jpu/data.hpp>
+#include <jpu/geometry.hpp>
 
 #include "scene.hpp"
 

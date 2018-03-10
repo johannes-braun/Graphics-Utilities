@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <glm/vec2.hpp>
 #include "../postprocess.hpp"
 #include <opengl/pipeline.hpp>

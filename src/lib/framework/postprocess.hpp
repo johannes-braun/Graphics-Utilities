@@ -2,7 +2,7 @@
 
 #include <array>
 #include <random>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <opengl/texture.hpp>
 #include <opengl/framebuffer.hpp>
 #include <opengl/shader.hpp>

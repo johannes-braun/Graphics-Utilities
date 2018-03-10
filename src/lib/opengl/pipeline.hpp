@@ -3,8 +3,8 @@
 #include "shader.hpp"
 #include "uniform.hpp"
 
-#include <jpu/memory>
-#include <jpu/log>
+#include <jpu/memory.hpp>
+#include <jpu/log.hpp>
 #include <array>
 #include <map>
 #include <set>

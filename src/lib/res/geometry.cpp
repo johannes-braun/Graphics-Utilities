@@ -5,7 +5,7 @@
 #include <assimp/vector3.h>
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
-#include <jpu/log>
+#include <jpu/log.hpp>
 
 namespace res
 {

@@ -2,7 +2,7 @@
 
 #include <mygl/gl.hpp>
 #include <vector>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <map>
 #include <glm/detail/type_vec4.hpp>
 

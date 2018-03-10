@@ -1,7 +1,7 @@
 #include <io/window.hpp>
 #include <res/geometry.hpp>
 #include <opengl/buffer.hpp>
-#include <jpu/log>
+#include <jpu/log.hpp>
 
 std::unique_ptr<io::window> main_window;
 

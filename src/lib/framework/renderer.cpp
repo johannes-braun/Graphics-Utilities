@@ -2,7 +2,7 @@
 #include <random>
 #include <numeric>
 #include <GLFW/glfw3.h>
-#include <jpu/log>
+#include <jpu/log.hpp>
 #include "postfx/bloom.hpp"
 #include "postfx/ssao.hpp"
 #include "postfx/fxaa.hpp"
@@ -13,7 +13,7 @@ namespace gfx
     renderer::renderer(const int width, const int height, const uint32_t samples)
     {
         _passes.emplace("Auto Exposure", std::make_pair(std::make_shared<gfx::fx::auto_exposure>(), true));
-        _passes.emplace("SSAO", std::make_pair(std::make_shared<gfx::fx::ssao>(), true));
+        _passes.emplace("SSAO", std::make_pair(std::make_shared<gfx::fx::ssao>(), false));
         _passes.emplace("Bloom", std::make_pair(std::make_shared<gfx::fx::bloom>(), true));
         _passes.emplace("FXAA", std::make_pair(std::make_shared<gfx::fx::fxaa>(), true));
 

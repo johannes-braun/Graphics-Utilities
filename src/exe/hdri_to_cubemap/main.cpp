@@ -9,7 +9,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 #include <iostream>
-#include <jpu/log>
+#include <jpu/log.hpp>
 #include "tinyfd/tinyfiledialogs.h"
 
 std::array<std::string, 6> sides {

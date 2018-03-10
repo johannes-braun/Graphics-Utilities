@@ -1,5 +1,5 @@
-#include <jpu/memory>
-#include <jpu/flags>
+#include <jpu/memory.hpp>
+#include <jpu/flags.hpp>
 #include "io/window.hpp"
 #include "io/camera.hpp"
 #include "res/vertex.hpp"

@@ -1,9 +1,9 @@
 #include <atomic>
 #include <array>
-#include <jpu/log>
-#include <jpu/memory>
+#include <jpu/log.hpp>
+#include <jpu/memory.hpp>
+#include <jpu/data.hpp>
 #include <io/window.hpp>
-#include <jpu/data>
 #include <stack>
 #include <opengl/query.hpp>
 #include <numeric>

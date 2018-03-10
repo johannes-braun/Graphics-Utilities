@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mygl/gl.hpp>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 
 namespace gl
 {

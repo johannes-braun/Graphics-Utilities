@@ -1,6 +1,6 @@
 #pragma once
 #include <res/transform.hpp>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <opengl/pipeline.hpp>
 #include <opengl/buffer.hpp>
 #include <opengl/vertex_array.hpp>

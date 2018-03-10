@@ -5,7 +5,7 @@
 #include "gui_gl.hpp"
 
 #include <array>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <GLFW/glfw3.h>

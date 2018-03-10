@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <stb_image.h>
 
 namespace res

@@ -1,7 +1,7 @@
 #pragma once
 #include "memory.hpp"
 #include <vulkan/vulkan.hpp>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <map>
 #include <functional>
 

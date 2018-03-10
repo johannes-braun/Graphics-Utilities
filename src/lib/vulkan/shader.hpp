@@ -4,7 +4,7 @@
 
 #include <filesystem>
 #include <vulkan/vulkan.hpp>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <glshader/binary.hpp>
 
 namespace vkn

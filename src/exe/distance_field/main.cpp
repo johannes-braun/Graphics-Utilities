@@ -1,5 +1,5 @@
-#include <jpu/memory>
-#include <jpu/data>
+#include <jpu/memory.hpp>
+#include <jpu/data.hpp>
 #include "io/window.hpp"
 #include "io/camera.hpp"
 #include "stb_image.h"

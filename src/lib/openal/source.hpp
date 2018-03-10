@@ -1,6 +1,6 @@
 #pragma once
 
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <AL/al.h>
 #include <glm/glm.hpp>
 

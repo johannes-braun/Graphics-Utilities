@@ -13,8 +13,8 @@
 #include <GLFW/glfw3.h>
 
 #include <optional>
-#include <jpu/memory>
-#include <jpu/log>
+#include <jpu/memory.hpp>
+#include <jpu/log.hpp>
 #include <filesystem>
 #include <functional>
 #include "callbacks.hpp"

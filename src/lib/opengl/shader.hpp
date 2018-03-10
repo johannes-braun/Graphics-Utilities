@@ -4,7 +4,7 @@
 
 #include <mygl/gl.hpp>
 #include <filesystem>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <any>
 #include <map>
 #include <glshader/binary.hpp>

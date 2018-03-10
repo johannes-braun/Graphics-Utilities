@@ -2,7 +2,7 @@
 
 #include "device.hpp"
 #include "texture.hpp"
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 
 namespace vkn
 {

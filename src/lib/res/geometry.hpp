@@ -3,7 +3,7 @@
 #include "vertex.hpp"
 #include "transform.hpp"
 
-#include <jpu/data>
+#include <jpu/data.hpp>
 #include <filesystem>
 
 namespace res

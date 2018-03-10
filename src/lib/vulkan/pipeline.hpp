@@ -4,7 +4,7 @@
 #include "shader.hpp"
 #include "descriptor.hpp"
 
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace vkn

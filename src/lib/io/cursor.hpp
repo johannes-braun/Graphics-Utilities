@@ -1,7 +1,7 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <jpu/memory>
+#include <jpu/memory.hpp>
 
 namespace io
 {

@@ -1,6 +1,6 @@
 #include "shader.hpp"
 #include <array>
-#include <jpu/log>
+#include <jpu/log.hpp>
 
 namespace gl
 {

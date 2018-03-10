@@ -2,9 +2,9 @@
 
 #include <array>
 #include <mygl/gl.hpp>
-#include <jpu/memory>
-#include <jpu/flags>
-#include <jpu/log>
+#include <jpu/memory.hpp>
+#include <jpu/flags.hpp>
+#include <jpu/log.hpp>
 
 namespace gl
 {

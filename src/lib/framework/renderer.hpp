@@ -6,7 +6,7 @@
 #include <opengl/pipeline.hpp>
 #include <opengl/vertex_array.hpp>
 #include <opengl/buffer.hpp>
-#include <jpu/data>
+#include <jpu/data.hpp>
 #include <glm/glm.hpp>
 #include "postprocess.hpp"
 
