@@ -5,7 +5,7 @@
 #   include <mygl/gl.hpp>
 #else
 #   if __has_include(<GL/glew.h>)
-#       include <gl/glew.h>
+#       include <GL/glew.h>
 #   elif __has_include(<glad/glad.h>)
 #       include <glad/glad.h>
 #   elif __has_include(<glbinding/gl/gl.h>)
