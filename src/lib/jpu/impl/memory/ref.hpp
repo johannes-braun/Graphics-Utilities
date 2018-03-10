@@ -6,11 +6,19 @@ namespace jpu
     class ref_count
     {
     public:
+        constexpr static int invalid_reference_count = -6500;
+
         ref_count() = default;
         ref_count(const ref_count& other) = delete;
-        ref_count(ref_count&& other) noexcept = delete;
+        ref_count(ref_count&& other) noexcept {
+            _references.store(other._references);
+            other._references.store(invalid_reference_count);
+        }
         ref_count& operator=(const ref_count& other) = delete;
-        ref_count& operator=(ref_count&& other) noexcept = delete;
+        ref_count& operator=(ref_count&& other) noexcept {
+            _references.store(other._references);
+            other._references.store(invalid_reference_count);
+        }
         virtual ~ref_count() = default;
 
         int inc_ref();

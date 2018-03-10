@@ -10,7 +10,7 @@ namespace jpu
     inline int ref_count::dec_ref()
     {
         const auto last = _references.fetch_sub(1);
-        if (last <= 1)
+        if (last <= 1 && last > invalid_reference_count)
             delete this;
 
         return last - 1;

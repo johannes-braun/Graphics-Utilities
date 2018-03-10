@@ -206,7 +206,7 @@ int main()
     io::default_cam_controller ctrl;
     cam.transform.position = glm::vec3(0, 0, 4);
 
-    const auto sampler = jpu::make_ref<gl::sampler>();
+    const gl::sampler sampler;
 
     std::vector<res::image> cubemap_images;
     cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::f32, res::image_components::rgb));
@@ -308,10 +308,10 @@ int main()
         alignas(16) glm::vec3 camera_position;
         alignas(4)  int max_samples;
     };
-    
-    gl::buffer pathtracer_info_buffer(sizeof(pathtracer_info), gl::buffer_flag_bits::dynamic_storage);
-        
+
     pathtracer_info info;
+    gl::buffer pathtracer_info_buffer(info, gl::buffer_flag_bits::dynamic_storage);
+        
     while (main_window->update())
     {
         ctrl.update(cam, *main_window, main_window->delta_time());
@@ -339,7 +339,7 @@ int main()
         const int count_x = ceil(static_cast<float>(resolution.x) / size_x);
         const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
 
-        pathtracer_info_buffer.bind(0, GL_UNIFORM_BUFFER);
+        pathtracer_info_buffer.bind(GL_UNIFORM_BUFFER, 0);
         double t = 0.0;
         while (t < main_window->get_swap_delay() / 2.f)
         {
@@ -351,7 +351,7 @@ int main()
             info.max_samples = max_samples;
             info.camera_position = cam.transform.position;
             info.camera_matrix = camera_matrix;
-            info.cubemap = sampler->sample_texture(cubemap);
+            info.cubemap = sampler.sample_texture(cubemap);
             info.meshes = meshes_buffer->address();
             info.num_meshes = meshes_buffer->size() / sizeof(mesh);
             info.max_bounces = 8;
@@ -369,7 +369,7 @@ int main()
         main_renderer->bind();
         bilateral_pipeline.bind();
         bilateral_pipeline.get_uniform<float>(gl::shader_type::fragment, "gauss_bsigma") = gauss_bsigma;
-        bilateral_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler->sample_texture(target_textures[0]);
+        bilateral_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler.sample_texture(target_textures[0]);
         bilateral_pipeline.get_uniform<float>(gl::shader_type::fragment, "gauss_sigma") = show_bfilter ? gauss_sigma : 0;
         bilateral_pipeline.draw(gl::primitive::triangles, 3);
         main_renderer->draw(main_window->delta_time(), *target_framebuffer);

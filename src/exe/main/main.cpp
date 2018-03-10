@@ -146,10 +146,10 @@ int main()
     mesh_buffer->at<mesh>(0).elements = index_buffer->address();
     mesh_buffer->at<mesh>(0).vertices = vertex_buffer->address();
     mesh_buffer->at<mesh>(0).data = bvh_buffer->address();
-    mesh_buffer->bind(8, GL_SHADER_STORAGE_BUFFER);
+    mesh_buffer->bind(GL_SHADER_STORAGE_BUFFER, 8);
 
     const auto scene_buffer = jpu::make_ref<gl::buffer>(sizeof(geo::scene), gl::buffer_flag_bits::map_dynamic_persistent);
-    scene_buffer->bind(0, GL_UNIFORM_BUFFER);
+    scene_buffer->bind(GL_UNIFORM_BUFFER, 0);
 
     res::transform transform;
     transform.position = glm::vec3(4.f, 4.f, 4.f);

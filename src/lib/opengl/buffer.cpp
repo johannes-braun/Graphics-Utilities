@@ -12,9 +12,14 @@ namespace gl
         return _id;
     }
 
-    void buffer::bind(const uint32_t binding_point, const GLenum type) const
+    void buffer::bind(const GLenum type, const uint32_t binding_point) const
     {
-        glBindBufferBase(type, binding_point, _id);
+        glBindBufferRange(type, binding_point, _id, 0, _size);
+    }
+
+    void buffer::bind(const GLenum type, const uint32_t binding_point, const size_t size, const ptrdiff_t offset) const
+    {
+        glBindBufferRange(type, binding_point, _id, offset, size);
     }
 
     void buffer::clear_to_float(const float value) const

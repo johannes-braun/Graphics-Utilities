@@ -26,20 +26,23 @@ namespace gl
     {
     public:
         template<typename... T>
-        explicit buffer(const std::vector<T...>& data, buffer_flags flags = {});
+        buffer(const std::vector<T...>& data, buffer_flags flags = {});
 
         template<typename T, size_t S>
-        explicit buffer(const std::array<T, S>& data, buffer_flags flags = {});
+        buffer(const std::array<T, S>& data, buffer_flags flags = {});
 
         template<typename T, typename = std::enable_if_t<!std::is_arithmetic_v<T>>>
-        explicit buffer(const T& object, buffer_flags flags = {}) : buffer(&object, 1, flags) {}
+        buffer(const T& object, buffer_flags flags = {}) : buffer(&object, 1, flags) {}
 
         template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
         explicit buffer(T size, buffer_flags flags = {}) : buffer(static_cast<uint8_t*>(nullptr), size, flags) {};
 
         template<typename TValue>
-        buffer(TValue* data, size_t count, buffer_flags flags = {});
+        explicit buffer(TValue* data, size_t count, buffer_flags flags = {});
 
+
+        buffer(buffer&& other) noexcept = default;
+        buffer& operator=(buffer&& other) noexcept = default;
         ~buffer();
         operator gl_buffer_t() const;
 
@@ -59,7 +62,8 @@ namespace gl
         void map(GLenum map_access);
         void unmap() const;
         void flush(size_t size_bytes, size_t offset_bytes) const;
-        void bind(uint32_t binding_point, GLenum type) const;
+        void bind(GLenum type, uint32_t binding_point) const;
+        void bind(GLenum type, uint32_t binding_point, size_t size, ptrdiff_t offset = 0) const;
 
         size_t size() const;
         uint64_t address() const;

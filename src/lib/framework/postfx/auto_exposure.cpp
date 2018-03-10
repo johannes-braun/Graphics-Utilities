@@ -19,7 +19,7 @@ namespace gfx::fx
         _luminance = glm::mix(glm::mix(_luminance, new_luma, adaption_speed * delta_time), new_luma, adaption_speed * delta_time);
         const auto half_inv_luma = 0.5f / _luminance;
         const auto luminance = half_inv_luma * (half_inv_luma * brightness + 1.f) / (half_inv_luma + 1.f);
-        _luminance_sample_buffer.bind(1, GL_SHADER_STORAGE_BUFFER);
+        _luminance_sample_buffer.bind(GL_SHADER_STORAGE_BUFFER, 1);
         _luminance_compute_pipeline.bind();
         _luminance_compute_pipeline.get_uniform<uint64_t>("src_texture") = sampler.sample_texture(provider.last_target());
         _luminance_compute_pipeline.dispatch(1);

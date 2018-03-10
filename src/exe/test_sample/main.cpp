@@ -56,14 +56,14 @@ int main()
 
     std::generate(data1.begin(), data1.end(), []() { return static_cast<float>(rand()); });
     auto buf = jpu::make_ref<gl::buffer>(data1);
-    buf->bind(0, GL_SHADER_STORAGE_BUFFER);
+    buf->bind(GL_SHADER_STORAGE_BUFFER, 0);
     glFinish();
 
     const auto sort_bitonic = [&]() {
         auto cmp = jpu::make_ref<gl::compute_pipeline>(new gl::shader("sort/bitonic.comp"));
         std::generate(data1.begin(), data1.end(), []() { return rand(); });
         buf = jpu::make_ref<gl::buffer>(data1);
-        buf->bind(0, GL_SHADER_STORAGE_BUFFER);
+        buf->bind(GL_SHADER_STORAGE_BUFFER, 0);
         glFinish();
         const int trg = data1.size() >> 1;
         auto puni = cmp->get_uniform<int>("p");
