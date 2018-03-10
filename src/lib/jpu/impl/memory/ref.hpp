@@ -10,7 +10,7 @@ namespace jpu
         ref_count(const ref_count& other) = delete;
         ref_count(ref_count&& other) noexcept = delete;
         ref_count& operator=(const ref_count& other) = delete;
-        ref_count& operator=(ref_count&& other) noexcept = delete;
+        ref_count& operator=(ref_count&& other) noexcept = default;
         virtual ~ref_count() = default;
 
         int inc_ref();

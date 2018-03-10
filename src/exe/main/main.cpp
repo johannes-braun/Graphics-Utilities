@@ -72,6 +72,8 @@ void resize(const int width, const int height, const int samples, const bool ful
         main_renderer->resize(width, height, samples);
     else
         main_renderer = std::make_unique<gfx::renderer>(full_resolution.x, full_resolution.y, current_samples);
+    glViewportIndexedf(0, 0, 0, width, height);
+    glScissorIndexed(0, 0, 0, width, height);
 }
 
 int main()

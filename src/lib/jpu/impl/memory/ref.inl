@@ -131,7 +131,8 @@ namespace jpu
         if (_object)
             _object->dec_ref();
         _object = other;
-        _object->inc_ref();
+        if (_object)
+            _object->inc_ref();
     }
 
     template<typename T, typename... Args>

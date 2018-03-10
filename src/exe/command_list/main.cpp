@@ -31,7 +31,7 @@ int main()
     window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     window->callbacks->framebuffer_size_callback.add([](GLFWwindow*, int x, int y) {
         renderer->resize(x, y, start_samples);
-        glViewport(0, 0, x, y);
+        glViewportIndexedf(0, 0, 0, x, y);
     });
     renderer = std::make_unique<gfx::renderer>(start_width, start_height, start_samples);
     renderer->set_clear_color(glm::vec4(background, 1.f));
@@ -62,7 +62,8 @@ int main()
 
     struct uniforms_1
     {
-        alignas(16) glm::mat4 view_projection;
+        alignas(16) glm::mat4 view;
+        alignas(16) glm::mat4 projection;
         alignas(16) glm::mat4 model;
     };
     struct uniforms_2
@@ -81,8 +82,8 @@ int main()
     gl::state state;
     renderer->bind();
     pipeline->bind();
-    glViewport(0, 0, start_width, start_height);
-    glScissor(0, 0, start_width, start_height);
+    glViewportIndexedf(0, 0, 0, start_width, start_height);
+    glScissorIndexed(0, 0, 0, start_width, start_height);
     glEnable(GL_DEPTH_TEST);
     const auto add_attrib = [](uint32_t a, uint32_t c, GLenum t, bool n, size_t s)
     {
@@ -119,15 +120,12 @@ int main()
             renderer->reload_pipelines();
         }
 
-        ImGui::Checkbox("Tonemap/Auto Exp.", &renderer->enable_tonemap);
-        ImGui::Checkbox("Bloom", &renderer->enable_bloom);
-        ImGui::Checkbox("SSAO", &renderer->enable_ssao);
-        ImGui::Checkbox("FXAA", &renderer->enable_fxaa);
         ImGui::End();
 
         gizmo.update(*window, camera.view(), camera.projection());
 
-        u_data1->view_projection = camera.projection() * camera.view();
+        u_data1->view = camera.view();
+        u_data1->projection = camera.projection();
         u_data1->model = glm::mat4(1.f);
 
         u_data2->image_texture = sampler->sample_texture(image_texture);

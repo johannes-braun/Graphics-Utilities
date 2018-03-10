@@ -1,7 +1,7 @@
-#define COUNT 8
+#define COUNT 16
 #define FARCLIP 1.0
 #define BIAS .4f
-#define RADIUS 0.04f
+#define RADIUS 0.03f
 
 layout(location=0) in vec2 uv;
 
@@ -21,10 +21,9 @@ void main()
     bool is_bg = norz.w == 1;
 
     vec4 col = texture(albedo_texture, uv);
-
-    return;
+    color = col;
+    
     if(is_bg) {
-        color = col;
         return;
     }
 
@@ -40,6 +39,7 @@ void main()
     {
         ivec2 randUv = clamp(ivec2(gl_FragCoord.xy + 27.71 * float(i) + vec2(34232.f * sin(time), 51314.f * cos(time))) % rnd_res, 
             ivec2(1), rnd_res-1);
+
         vec3 randNor = texelFetch(random_texture, randUv, 0).rgb * 2.0 - 1.0;
         
         if(dot(norz.xyz, randNor) < 0.0)
@@ -47,7 +47,7 @@ void main()
         
         vec2 off = randNor.xy * scale;
 
-        vec4 sampleNorz = texelFetch(normal_depth_texture, ivec2((uv + off) * resolution), 0);
+        vec4 sampleNorz = texelFetch(normal_depth_texture, ivec2(clamp((uv + off), 0, 1-1e-4f) * resolution), 0);
         is_bg = sampleNorz.w == 1;
         if(is_bg) continue;
 
@@ -56,10 +56,10 @@ void main()
         vec3 otherColor = texture(albedo_texture, (uv + off)).rgb;
         
         vec3 sampleDir = vec3(randNor.xy * radius, depthDelta);       
-        float occ = max(0.0, dot(normalize(norz.xyz), normalize(sampleDir)) - BIAS) / (length(sampleDir) + 1.0);
-        ao += (occ) * (vec3(1.0)-otherColor.xyz);
+        float occ = max(0.0, dot(normalize(norz.xyz), normalize(sampleDir)) - BIAS) / pow(length(sampleDir) + 1.0, 0.999f);
+        ao += pow(max((1-depthDelta), 0), 0.01) * (occ) * (vec3(1.0));
     }    
     
     vec3 base = vec3(col);
-    color =  vec4((1.0 - 2.f*length(ao)/float(COUNT)) * vec3(base), col.a);
+    color = vec4(((1.0 - 2.f*length(ao)/float(COUNT))*0.8f + 0.2f) * vec3(base), col.a);
 }

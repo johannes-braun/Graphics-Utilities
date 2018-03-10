@@ -244,7 +244,7 @@ int main()
         floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view") = inverse(camera.view());
         floor_pipeline->get_uniform<float>(gl::shader_type::fragment, "time") = glfwGetTime();
         floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler->sample_texture(cubemap);
-        floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random") = sampler->sample_texture(main_renderer->random_texture());
+       // floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random") = sampler->sample_texture(main_renderer->random_texture());
         floor_pipeline->draw_indexed(gl::primitive::triangles, floor_indices.size());
 
         int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);

@@ -88,7 +88,7 @@ namespace io::impl
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glClipControl(GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
 
-        glViewport(0, 0, static_cast<int>(fb_width), static_cast<int>(fb_height));
+        glViewportIndexedf(0, 0, 0, static_cast<int>(fb_width), static_cast<int>(fb_height));
 
         glm::mat4 ortho_projection = glm::mat4(1.f);
         ortho_projection[0][0] = 2.0f / io.DisplaySize.x;
@@ -123,7 +123,7 @@ namespace io::impl
         _last_enable_depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
         _last_enable_scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GLenum(_last_polygon_mode[0]));
-        glViewport(_last_viewport[0], _last_viewport[1], static_cast<int>(_last_viewport[2]), static_cast<int>(_last_viewport[3]));
+        glViewportIndexedf(0, _last_viewport[0], _last_viewport[1], static_cast<int>(_last_viewport[2]), static_cast<int>(_last_viewport[3]));
         glScissor(_last_scissor_box[0], _last_scissor_box[1], static_cast<int>(_last_scissor_box[2]), static_cast<int>(_last_scissor_box[3]));
     }
 }

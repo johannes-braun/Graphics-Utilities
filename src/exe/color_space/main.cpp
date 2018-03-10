@@ -284,7 +284,7 @@ int main()
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
-        glViewport(0, 0, static_cast<int>(texture->width() *scale), static_cast<int>(texture->height() *scale));
+        glViewportIndexedf(0, 0, 0, static_cast<int>(texture->width() *scale), static_cast<int>(texture->height() *scale));
         img_pipeline->bind();
         img_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         img_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "tex") = id;
@@ -292,7 +292,7 @@ int main()
 
         int w, h;
         glfwGetFramebufferSize(*main_window, &w, &h);
-        glViewport(0, 0, w, h);
+        glViewportIndexedf(0, 0, 0, w, h);
         glEnable(GL_DEPTH_TEST);
     }
 }

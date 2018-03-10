@@ -173,7 +173,7 @@ void resize(GLFWwindow*, int w, int h)
     target_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
     target_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
     target_framebuffer->attach(GL_COLOR_ATTACHMENT2, target_textures[2]);
-    glViewport(0, 0, resolution.x, resolution.y);
+    glViewportIndexedf(0, 0, 0, resolution.x, resolution.y);
 }
 
 int main()
