@@ -1,9 +1,16 @@
 #pragma once
 
+
 #if __has_include(<mygl/gl.hpp>)
 #   include <mygl/gl.hpp>
 #else
-#   error "GLAD not found. Please include your own extension loader header if you are using a different one."
+#   if __has_include(<GL/glew.h>)
+#       include <gl/glew.h>
+#   elif __has_include(<glad/glad.h>)
+#       include <glad/glad.h>
+#   elif __has_include(<glbinding/gl/gl.h>)
+#       include <glbinding/gl/gl.h>
+#   endif
 #endif
 
 namespace glshader
