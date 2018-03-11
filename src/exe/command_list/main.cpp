@@ -9,6 +9,89 @@
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
 
+
+#include <res/presets.hpp>
+#include "buffer.hpp"
+
+void buffer_test()
+{
+    namespace cube = res::presets::cube;
+    std::vector<res::vertex> random_verts(4, res::vertex(glm::vec3{ 100.f }, glm::vec2{ 20.f }, glm::vec3{ 1.f }));
+    gl::v2::buffer<res::vertex> vertices(GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+    gl::v2::buffer<uint32_t> indices(GL_DYNAMIC_STORAGE_BIT);
+
+    vertices.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
+    int i = 0;
+    for (auto&& vertex : cube::vertices)
+    {
+        ++i;
+        vertices.push_back(vertex);
+        if (i == 11)
+        {
+            res::vertex& some = vertices[10];
+            some.position.x = 10;
+        }
+    }
+
+    for (auto idx : cube::indices)
+        indices.push_back(idx);
+    vertices.flush_element(10);
+
+    vertices.insert(vertices.begin() + 3, random_verts.begin(), random_verts.end());
+    //Mapped access.
+    for (const auto& mv : vertices)
+    {
+    }
+
+    vertices.unmap();
+
+    indices.shrink_to_fit();
+    vertices.shrink_to_fit();
+
+    vertices.map(GL_MAP_READ_BIT);
+    for (const auto& mv : vertices)
+        //Mapped access. Fast. But with the need to map first.
+        log_i << to_string(mv.position);
+    vertices.unmap();
+
+    //Unmapped access. Fairly slow but maybe useful.
+    i = 0;
+    for (auto&& mv : vertices)
+    {
+        log_i << to_string(mv.position);
+        if (i == vertices.size() - 1)
+            mv.position = glm::vec4(0);
+        ++i;
+    }
+
+    for (auto it = vertices.begin(); it != vertices.end();)
+    {
+        if (it - vertices.begin() > 8)
+            it = vertices.erase(it);
+        else
+            ++it;
+    }
+
+    for (const auto& mv : vertices)
+        log_i << to_string(mv.position);
+
+    vertices.insert(vertices.begin() + 3, random_verts.begin(), random_verts.end());
+
+    for (const auto& mv : vertices)
+        log_i << to_string(mv.position);
+
+    system("pause");
+}
+
+
+
+
+
+
+
+
+
+
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
 
@@ -35,6 +118,9 @@ int main()
     });
     renderer = std::make_unique<gfx::renderer>(start_width, start_height, start_samples);
     renderer->set_clear_color(glm::vec4(background, 1.f));
+
+    buffer_test();
+    return 0;
 
     io::camera camera;
     io::default_cam_controller controller;
@@ -74,10 +160,8 @@ int main()
         alignas(16) glm::vec3 background;
     };
 
-    gl::buffer uniform_buffer1(uniforms_1{}, gl::buffer_flag_bits::map_dynamic_persistent_write);
-    gl::buffer uniform_buffer2(uniforms_2{}, gl::buffer_flag_bits::map_dynamic_persistent_write);
-    uniforms_1* u_data1 = uniform_buffer1.data_as<uniforms_1>();
-    uniforms_2* u_data2 = uniform_buffer2.data_as<uniforms_2>();
+    gl::v2::buffer<uniforms_1> uniform_buffer1(1, GL_DYNAMIC_STORAGE_BIT);
+    gl::v2::buffer<uniforms_2> uniform_buffer2(1, GL_DYNAMIC_STORAGE_BIT);
 
     gl::state state;
     renderer->bind();
@@ -103,8 +187,8 @@ int main()
     command_buffer.push(gl::cmd_attribute_address{ 1, vbo->address() + offsetof(res::vertex, normal) });
     command_buffer.push(gl::cmd_attribute_address{ 2, vbo->address() + offsetof(res::vertex, uv) });
     command_buffer.push(gl::cmd_element_address{ ibo->address(), sizeof(uint32_t) });
-    command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::vertex, uniform_buffer1.address() });
-    command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::fragment, uniform_buffer2.address() });
+    command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::vertex, uniform_buffer1.handle() });
+    command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::fragment, uniform_buffer2.handle() });
     command_buffer.push(gl::cmd_draw_elements{ static_cast<uint32_t>(ibo->size() / sizeof(uint32_t)), 0, 0 });
     command_buffer.end();
 
@@ -124,14 +208,16 @@ int main()
 
         gizmo.update(*window, camera.view(), camera.projection());
 
-        u_data1->view = camera.view();
-        u_data1->projection = camera.projection();
-        u_data1->model = glm::mat4(1.f);
+        uniform_buffer1[0].view = camera.view();
+        uniform_buffer1[0].projection = camera.projection();
+        uniform_buffer1[0].model = glm::mat4(1.f);
+        uniform_buffer1.synchronize();
 
-        u_data2->image_texture = sampler->sample_texture(image_texture);
-        u_data2->background = background;
-        u_data2->light_position = light_transform.position;
-        u_data2->light_color = light_color;
+        uniform_buffer2[0].image_texture = sampler->sample_texture(image_texture);
+        uniform_buffer2[0].background = background;
+        uniform_buffer2[0].light_position = light_transform.position;
+        uniform_buffer2[0].light_color = light_color;
+        uniform_buffer2.synchronize();
 
         renderer->bind();
         gl_framebuffer_t fbos = *renderer->main_framebuffer();
