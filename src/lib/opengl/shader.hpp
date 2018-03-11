@@ -40,7 +40,7 @@ namespace gl
         uniform<T> get_uniform(std::string_view name);
 
     private:
-        static shader_type type_of(const std::experimental::filesystem::path& extension) noexcept;
+        static shader_type type_of(const std::experimental::filesystem::path& extension);
         static std::vector<std::experimental::filesystem::path> _include_directories;
 
         gl_shader_program_t _id;

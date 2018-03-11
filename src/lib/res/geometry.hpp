@@ -26,7 +26,7 @@ namespace res
         jpu::named_vector<std::string, mesh> meshes;
         jpu::named_vector<std::string, material> materials;
         
-        friend geometry_file load_geometry(const std::experimental::filesystem::path& path);
+        friend geometry_file load_geometry(const std::experimental::filesystem::path& path) noexcept;
     };
 
     geometry_file load_geometry(const std::experimental::filesystem::path& path) noexcept;

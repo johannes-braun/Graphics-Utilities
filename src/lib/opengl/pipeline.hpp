@@ -98,7 +98,7 @@ namespace gl
     {
     public:
         explicit compute_pipeline(shader* shader);
-        void dispatch(uint32_t count_x, uint32_t count_y = 1, uint32_t count_z = 1);
+        void dispatch(uint32_t count_x, uint32_t count_y = 1, uint32_t count_z = 1) noexcept;
         const std::array<int, 3>& work_group_sizes() const noexcept { return _group_sizes; }
         template<typename T>
         uniform<T> get_uniform(const char* name);

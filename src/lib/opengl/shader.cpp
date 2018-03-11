@@ -12,7 +12,7 @@ namespace gl
         reload(true);
     }
 
-    shader_type shader::type_of(const std::experimental::filesystem::path& extension) noexcept
+    shader_type shader::type_of(const std::experimental::filesystem::path& extension)
     {
         if (extension == ".vert")
             return shader_type::vertex;

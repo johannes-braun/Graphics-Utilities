@@ -3,7 +3,8 @@
 namespace gl
 {
     template <typename T>
-    uniform<T>::uniform(const uint32_t location, const gl_shader_program_t s) : _shader(s), _value(new T()), _location(location)
+    uniform<T>::uniform(const uint32_t location, const gl_shader_program_t s) noexcept 
+        : _shader(s), _value(new T()), _location(location)
     {}
 
     template <typename T>

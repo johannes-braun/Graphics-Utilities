@@ -27,7 +27,7 @@ namespace gl
 
     protected:
         uniform(uint32_t location, gl_shader_program_t s) noexcept;
-        void update() const;
+        void update() const noexcept;
 
         gl_shader_program_t _shader;
         std::shared_ptr<T> _value;
