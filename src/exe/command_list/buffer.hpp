@@ -195,6 +195,7 @@ namespace gl::v2
 
     private:
         double compute_size_increase() const noexcept;
+        void init_handle() noexcept;
 
         gl_buffer_t _id = gl_buffer_t::zero;
         T* _data = nullptr;

@@ -59,6 +59,7 @@ namespace gl::v2
             }
         }
         _reserved_size = _size;
+        init_handle();
     }
 
     template<typename T>
@@ -254,7 +255,12 @@ namespace gl::v2
         }
         _reserved_size = size;
         _size = std::min(_size, size);
+        init_handle();
+    }
 
+    template<typename T>
+    void buffer<T>::init_handle() noexcept
+    {
         if (!glIsNamedBufferResidentNV(_id))
             glMakeNamedBufferResidentNV(_id, GL_READ_WRITE);
         glGetNamedBufferParameterui64vNV(_id, GL_BUFFER_GPU_ADDRESS_NV, &_handle);

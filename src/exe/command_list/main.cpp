@@ -119,15 +119,12 @@ int main()
     renderer = std::make_unique<gfx::renderer>(start_width, start_height, start_samples);
     renderer->set_clear_color(glm::vec4(background, 1.f));
 
-    buffer_test();
-    return 0;
-
     io::camera camera;
     io::default_cam_controller controller;
 
     const auto scene = res::load_geometry("../res/bunny.dae");
-    const auto vbo = jpu::make_ref<gl::buffer>(scene.meshes.get_by_index(0).vertices);
-    const auto ibo = jpu::make_ref<gl::buffer>(scene.meshes.get_by_index(0).indices);
+    gl::v2::buffer<res::vertex> vbo(scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end());
+    gl::v2::buffer<uint32_t> ibo(scene.meshes.get_by_index(0).indices.begin(), scene.meshes.get_by_index(0).indices.end());
 
     const auto pipeline = jpu::make_ref<gl::graphics_pipeline>();
     pipeline->use_stages(new gl::shader("simple_gl/simple.vert"), new gl::shader("simple_gl/simple.frag"));
@@ -183,13 +180,13 @@ int main()
 
     gl::command_buffer command_buffer;
     command_buffer.begin();
-    command_buffer.push(gl::cmd_attribute_address{ 0, vbo->address() + offsetof(res::vertex, position) });
-    command_buffer.push(gl::cmd_attribute_address{ 1, vbo->address() + offsetof(res::vertex, normal) });
-    command_buffer.push(gl::cmd_attribute_address{ 2, vbo->address() + offsetof(res::vertex, uv) });
-    command_buffer.push(gl::cmd_element_address{ ibo->address(), sizeof(uint32_t) });
+    command_buffer.push(gl::cmd_attribute_address{ 0, vbo.handle() + offsetof(res::vertex, position) });
+    command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(res::vertex, normal) });
+    command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(res::vertex, uv) });
+    command_buffer.push(gl::cmd_element_address{ ibo.handle(), sizeof(uint32_t) });
     command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::vertex, uniform_buffer1.handle() });
     command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::fragment, uniform_buffer2.handle() });
-    command_buffer.push(gl::cmd_draw_elements{ static_cast<uint32_t>(ibo->size() / sizeof(uint32_t)), 0, 0 });
+    command_buffer.push(gl::cmd_draw_elements{ static_cast<uint32_t>(ibo.size()), 0, 0 });
     command_buffer.end();
 
     while (window->update())
