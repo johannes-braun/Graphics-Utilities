@@ -95,8 +95,8 @@ void buffer_test()
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
 
-constexpr int start_width = 1280;
-constexpr int start_height = 720;
+constexpr int start_width = 800;
+constexpr int start_height = 600;
 constexpr int start_samples = 8;
 constexpr float start_framerate = 120.f;
 const glm::vec3 background = { 0.8f, 0.94f, 1.f };
@@ -131,6 +131,7 @@ int main()
         v.position  = trf * glm::vec4(v.position, 1);
         return v;
     });
+    vbo.clear();
 
     const auto pipeline = jpu::make_ref<gl::graphics_pipeline>();
     pipeline->use_stages(new gl::shader("simple_gl/simple.vert"), new gl::shader("simple_gl/simple.frag"));
@@ -205,6 +206,13 @@ int main()
         if (ImGui::Button("Reload PP"))
         {
             renderer->reload_pipelines();
+        }
+        if (ImGui::Button("Assign data!"))
+        {
+            if(vbo.empty())
+                vbo.insert(vbo.begin(), scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end());
+            else
+                vbo.assign(vbo.begin(), scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end());
         }
 
         ImGui::End();

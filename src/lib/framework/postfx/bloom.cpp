@@ -42,13 +42,15 @@ namespace gfx::fx
         _bright_pipeline.get_uniform<float>(gl::shader_type::fragment, "threshold_higher") = 1.45f;
         _bright_pipeline.draw(gl::primitive::triangles, 3);
 
+        _quarter_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
         _blur_pipeline.bind();
         _blur_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler.sample_texture(_quarter_attachments[0]);
         _blur_pipeline.get_uniform<int>(gl::shader_type::fragment, "axis") = 0;
         _blur_pipeline.get_uniform<int>(gl::shader_type::fragment, "level") = 0;
         _blur_pipeline.draw(gl::primitive::triangles, 3);
 
-        _blur_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler.sample_texture(_quarter_attachments[0]);
+        _quarter_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0 });
+        _blur_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler.sample_texture(_quarter_attachments[1]);
         _blur_pipeline.get_uniform<int>(gl::shader_type::fragment, "axis") = 1;
         _blur_pipeline.get_uniform<int>(gl::shader_type::fragment, "level") = 0;
         _blur_pipeline.draw(gl::primitive::triangles, 3);

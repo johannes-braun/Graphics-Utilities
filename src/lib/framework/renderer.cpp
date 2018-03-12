@@ -58,6 +58,7 @@ namespace gfx
             _main_framebuffer->use_renderbuffer_multisample(GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH24_STENCIL8, _full_resolution.x, _full_resolution.y, samples);
 
         }
+        glViewportIndexedf(0, 0, 0, width, height);
     }
 
     void renderer::reload_pipelines()

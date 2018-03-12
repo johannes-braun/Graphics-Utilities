@@ -36,7 +36,7 @@ namespace gl::v2
     }
 
     template<typename T>
-    template<typename It, typename, typename, typename, typename, typename, typename>
+    template<typename It, typename>
     buffer<T>::buffer(It begin, It end, GLbitfield usage)
         : buffer(usage)
     {
@@ -102,7 +102,43 @@ namespace gl::v2
     }
 
     template<typename T>
-    template<typename It, typename, typename, typename, typename, typename, typename>
+    template<typename It, typename>
+    inline void buffer<T>::assign(iterator start, It begin, It end)
+    {
+        const bool was_data_full_size = _data_full_size;
+        const GLbitfield map_access = _data_access;
+        if (was_data_full_size && _size != 0)
+            unmap();
+        if constexpr(iterator_has_difference_v<It>)
+        {
+            const ptrdiff_t size = end - begin;
+            if (size > ptrdiff_t(_size) - start._offset)
+                throw std::out_of_range("Range out of bounds.");
+            const T* data = &*begin;
+
+            if (size > 0)
+            {
+                glNamedBufferSubData(_id, start._offset * sizeof(T), size * sizeof(T), data);
+            }
+        }
+        else
+        {
+            std::vector<T> temp(begin, end);
+            const ptrdiff_t size = temp.size();
+            if (size > ptrdiff_t(_size) - start._offset)
+                throw std::out_of_range("Range out of bounds.");
+
+            if (size > 0)
+            {
+                glNamedBufferSubData(_id, start._offset * sizeof(T), size * sizeof(T), temp.data());
+            }
+        }
+        if (was_data_full_size)
+            map(map_access);
+    }
+
+    template<typename T>
+    template<typename It, typename>
     inline typename buffer<T>::iterator buffer<T>::insert(iterator at, It begin, It end)
     {
         iterator retval;
@@ -114,7 +150,7 @@ namespace gl::v2
         if constexpr(iterator_has_difference_v<It>)
         {
             const ptrdiff_t size = end - begin;
-            if (_size > 0)
+            if (size > 0)
             {
                 const size_t new_size = _size + size;
                 if (new_size > _reserved_size)
@@ -126,7 +162,10 @@ namespace gl::v2
                 const size_t insert_position = at._offset;
                 end_it._size += size;
                 at._size += size;
-                retval = std::rotate(at, at + size-1, end_it);
+                if (end_it > at + size)
+                    retval = std::rotate(at, at + size, end_it);
+                else
+                    retval = at;
                 glNamedBufferSubData(_id, insert_position * sizeof(T), size * sizeof(T), data);
             }
         }
@@ -135,7 +174,7 @@ namespace gl::v2
             std::vector<T> temp(begin, end);
             const ptrdiff_t size = temp.size();
 
-            if (_size > 0)
+            if (size > 0)
             {
                 const size_t new_size = _size + size;
                 if (new_size > _reserved_size)
@@ -147,7 +186,10 @@ namespace gl::v2
                 const size_t insert_position = at._offset;
                 end_it._size += size;
                 at._size += size;
-                retval = std::rotate(at, at + size, this->end());
+                if (end_it > at + size)
+                    retval = std::rotate(at, at + size, end_it);
+                else
+                    retval = at;
                 glNamedBufferSubData(_id, insert_position * sizeof(T), size * sizeof(T), temp.data());
             }
         }
@@ -189,6 +231,24 @@ namespace gl::v2
     }
 
     template<typename T>
+    inline void buffer<T>::bind(GLenum target, uint32_t binding) const noexcept
+    {
+        bind(target, binding, 0, _size);
+    }
+
+    template<typename T>
+    inline void buffer<T>::bind(GLenum target, uint32_t binding, ptrdiff_t offset, size_t size) const noexcept
+    {
+        glBindBufferRange(target, binding, _id, offset * sizeof(T), size * sizeof(T));
+    }
+
+    template<typename T>
+    inline bool buffer<T>::empty() const noexcept
+    {
+        return _size == 0;
+    }
+
+    template<typename T>
     inline size_t buffer<T>::size() const noexcept
     {
         return _size;
@@ -198,6 +258,14 @@ namespace gl::v2
     inline size_t buffer<T>::capacity() const noexcept
     {
         return _reserved_size;
+    }
+
+    template<typename T>
+    void buffer<T>::clear(const T& value) noexcept
+    {
+        std::vector<T> temp(_size, value);
+        glNamedBufferSubData(_id, 0, _size * sizeof(T), temp.data());
+        _size = 0;
     }
 
     template<typename T>
@@ -282,7 +350,7 @@ namespace gl::v2
     template<typename T>
     bool buffer<T>::is_mapped() const noexcept
     {
-        return _data_full_size || _data != nullptr;
+        return (_data_full_size && _size != 0) || _data != nullptr;
     }
 
     template<typename T>
@@ -436,4 +504,37 @@ namespace gl::v2
     {
         return _id;
     }
+
+    template<typename T>
+    typename buffer<T>::bounded_buffer_data buffer<T>::iterate() noexcept
+    {
+        if (_data)
+            return bounded_buffer_data(this, _data_size);
+        else
+            return bounded_buffer_data(this, _size);
+    }
+
+    template<typename T>
+    typename buffer<T>::iterator buffer<T>::begin() noexcept { return iterate().begin(); }
+
+    template<typename T>
+    typename buffer<T>::iterator buffer<T>::end() noexcept { return iterate().end(); }
+
+    template<typename T>
+    typename buffer<T>::const_iterator buffer<T>::cbegin() const noexcept { return iterate().cbegin(); }
+
+    template<typename T>
+    typename buffer<T>::const_iterator buffer<T>::cend() const noexcept { return iterate().cend(); }
+
+    template<typename T>
+    typename buffer<T>::reverse_iterator buffer<T>::rbegin() noexcept { return iterate().rbegin(); }
+
+    template<typename T>
+    typename buffer<T>::reverse_iterator buffer<T>::rend() noexcept { return iterate().rend(); }
+
+    template<typename T>
+    typename buffer<T>::const_reverse_iterator buffer<T>::crbegin() const noexcept { return iterate().crbegin(); }
+
+    template<typename T>
+    typename buffer<T>::const_reverse_iterator buffer<T>::crend() const noexcept { return iterate().crend(); }
 }
