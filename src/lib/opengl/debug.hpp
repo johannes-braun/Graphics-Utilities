@@ -1,8 +1,8 @@
 #pragma once
 
+#include "gl.hpp"
+
 #include <functional>
-#define MYGL_IMPLEMENTATION
-#include <mygl/gl.hpp>
 
 namespace gl
 {

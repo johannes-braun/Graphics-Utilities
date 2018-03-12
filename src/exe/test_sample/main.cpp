@@ -12,8 +12,6 @@
 
 
 constexpr int logn = 20;
-std::vector<float> data1(1 << logn);
-std::vector<float> data2(1 << logn);
 
 void bitonic(const int logn, uint32_t* a, const size_t len)
 {
@@ -52,20 +50,19 @@ int main()
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(60.f);
 
-    data2 = data1;
+    std::vector<float> data2(1 << logn, GL_DYNAMIC_STORAGE_BIT);
 
-    std::generate(data1.begin(), data1.end(), []() { return static_cast<float>(rand()); });
-    auto buf = jpu::make_ref<gl::buffer>(data1);
-    buf->bind(GL_SHADER_STORAGE_BUFFER, 0);
+    gl::buffer<float> buf(1 << logn, GL_DYNAMIC_STORAGE_BIT);
+    std::generate(buf.begin(), buf.end(), []() { return static_cast<float>(rand()); });
+    buf.bind(GL_SHADER_STORAGE_BUFFER, 0);
     glFinish();
 
     const auto sort_bitonic = [&]() {
         auto cmp = jpu::make_ref<gl::compute_pipeline>(new gl::shader("sort/bitonic.comp"));
-        std::generate(data1.begin(), data1.end(), []() { return rand(); });
-        buf = jpu::make_ref<gl::buffer>(data1);
-        buf->bind(GL_SHADER_STORAGE_BUFFER, 0);
+        std::generate(buf.begin(), buf.end(), []() { return rand(); });
+        buf.bind(GL_SHADER_STORAGE_BUFFER, 0);
         glFinish();
-        const int trg = data1.size() >> 1;
+        const int trg = buf.size() >> 1;
         auto puni = cmp->get_uniform<int>("p");
         auto quni = cmp->get_uniform<int>("q");
         auto duni = cmp->get_uniform<int>("d");

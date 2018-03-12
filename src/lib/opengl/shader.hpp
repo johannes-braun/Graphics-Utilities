@@ -1,8 +1,8 @@
 #pragma once
 
 #include "uniform.hpp"
+#include "gl.hpp"
 
-#include <mygl/gl.hpp>
 #include <filesystem>
 #include <jpu/memory.hpp>
 #include <any>
@@ -51,4 +51,4 @@ namespace gl
     };
 }
 
-#include "shader.inl"
+#include "impl/shader.inl"

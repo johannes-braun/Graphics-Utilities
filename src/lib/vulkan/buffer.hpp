@@ -40,4 +40,4 @@ namespace vkn
     };
 }
 
-#include "buffer.inl"
+#include "impl/buffer.inl"

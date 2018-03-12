@@ -115,11 +115,11 @@ int main()
     auto cylinder = res::load_geometry("../res/bunny.dae");
     jpu::bvh<3> obj_bvh;
     obj_bvh.assign_to(cylinder.meshes.get_by_index(0).indices, cylinder.meshes.get_by_index(0).vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-    const auto index_buffer = jpu::make_ref<gl::buffer>(cylinder.meshes.get_by_index(0).indices);
-    const auto vertex_buffer = jpu::make_ref<gl::buffer>(cylinder.meshes.get_by_index(0).vertices);
-    const auto bvh_buffer = jpu::make_ref<gl::buffer>(obj_bvh.node_count * sizeof(obj_bvh.nodes[0]) + sizeof(obj_bvh.attributes), gl::buffer_flag_bits::dynamic_storage);
-    bvh_buffer->assign(&obj_bvh.attributes, 1);
-    bvh_buffer->assign(obj_bvh.data(), obj_bvh.node_count, sizeof(obj_bvh.attributes));
+
+    std::vector<gl::byte> bvh_bytes = obj_bvh.pack();
+    gl::buffer<uint32_t> index_buffer(cylinder.meshes.get_by_index(0).indices.begin(), cylinder.meshes.get_by_index(0).indices.end());
+    gl::buffer<res::vertex> vertex_buffer(cylinder.meshes.get_by_index(0).vertices.begin(), cylinder.meshes.get_by_index(0).vertices.end());
+    gl::buffer<gl::byte> bvh_buffer(bvh_bytes.begin(), bvh_bytes.end());
 
     struct mesh
     {
@@ -140,16 +140,18 @@ int main()
         glm::mat4 inverse_transform;
     };
 
-    const auto mesh_buffer = jpu::make_ref<gl::buffer>(sizeof(mesh), gl::buffer_flag_bits::map_dynamic_persistent);
-    mesh_buffer->at<mesh>(0).num_vertices = static_cast<uint32_t>(cylinder.meshes.get_by_index(0).vertices.size());
-    mesh_buffer->at<mesh>(0).num_elements = static_cast<uint32_t>(cylinder.meshes.get_by_index(0).indices.size());
-    mesh_buffer->at<mesh>(0).elements = index_buffer->address();
-    mesh_buffer->at<mesh>(0).vertices = vertex_buffer->address();
-    mesh_buffer->at<mesh>(0).data = bvh_buffer->address();
-    mesh_buffer->bind(GL_SHADER_STORAGE_BUFFER, 8);
+    gl::buffer<mesh> mesh_buffer(1, GL_MAP_PERSISTENT_BIT | GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+    mesh_buffer[0].num_vertices = static_cast<uint32_t>(cylinder.meshes.get_by_index(0).vertices.size());
+    mesh_buffer[0].num_elements = static_cast<uint32_t>(cylinder.meshes.get_by_index(0).indices.size());
+    mesh_buffer[0].elements = index_buffer.handle();
+    mesh_buffer[0].vertices = vertex_buffer.handle();
+    mesh_buffer[0].data = bvh_buffer.handle();
+    mesh_buffer.synchronize();
+    mesh_buffer.bind(GL_SHADER_STORAGE_BUFFER, 8);
 
-    const auto scene_buffer = jpu::make_ref<gl::buffer>(sizeof(geo::scene), gl::buffer_flag_bits::map_dynamic_persistent);
-    scene_buffer->bind(GL_UNIFORM_BUFFER, 0);
+    gl::buffer<geo::scene> scene_buffer(1, GL_MAP_PERSISTENT_BIT | GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+    scene_buffer.bind(GL_UNIFORM_BUFFER, 0);
+    scene_buffer.map(GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
 
     res::transform transform;
     transform.position = glm::vec3(4.f, 4.f, 4.f);
@@ -163,7 +165,7 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glClearColor(0, 0, 0, 0);
 
-    const auto sampler = jpu::make_ref<gl::sampler>();
+    const gl::sampler sampler;
 
     auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
@@ -242,7 +244,7 @@ int main()
         }
 
         ImGui::Begin("Window", nullptr, ImGuiWindowFlags_NoTitleBar);
-        ImGui::Image(reinterpret_cast<ImTextureID>(sampler->sample_texture(logo)), ImVec2(32, 32));
+        ImGui::Image(reinterpret_cast<ImTextureID>(sampler.sample_texture(logo)), ImVec2(32, 32));
         ImGui::SameLine();
         const auto cur_pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(ImVec2(cur_pos.x, cur_pos.y + 6));
@@ -338,10 +340,9 @@ int main()
         listener->set_position(cam.transform.position);
         listener->set_orientation(cam.transform.rotation);
 
-        auto&& scene = scene_buffer->at<geo::scene>(0);
-        scene.set_view(cam.view());
-        scene.set_projection(cam.projection());
-        scene.set_time(glfwGetTime());
+        scene_buffer[0].set_view(cam.view());
+        scene_buffer[0].set_projection(cam.projection());
+        scene_buffer[0].set_time(glfwGetTime());
         glFinish();
 
         main_renderer->bind();
@@ -349,8 +350,8 @@ int main()
         int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask); 
         glDepthMask(GL_FALSE);
         cubemap_pipeline->bind();
-        cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = glm::mat4(glm::mat3(scene.get_inv_view())) * scene.get_inv_projection();
-        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = glm::mat4(glm::mat3(scene_buffer[0].get_inv_view())) * scene_buffer[0].get_inv_projection();
+        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler.sample_texture(cubemap);
         cubemap_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
         cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);
@@ -362,10 +363,10 @@ int main()
         graphics_pipeline->set_index_buffer(index_buffer, gl::index_type::u32);
         graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "model_matrix") = transform;
         graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "my_texture") = sampler->sample_texture(texture_col);
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_depth") = sampler->sample_texture(texture_dis);
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_normal") = sampler->sample_texture(texture_nor);
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cube_map") = sampler->sample_texture(cubemap);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "my_texture") = sampler.sample_texture(texture_col);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_depth") = sampler.sample_texture(texture_dis);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_normal") = sampler.sample_texture(texture_nor);
+        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cube_map") = sampler.sample_texture(cubemap);
         graphics_pipeline->draw_indexed(gl::primitive::triangles, cylinder.meshes.get_by_index(0).indices.size());
 
         main_renderer->draw(main_window->delta_time());

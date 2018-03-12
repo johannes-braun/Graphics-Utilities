@@ -31,7 +31,7 @@ int main(int argc, const char** argv)
     });
     main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
 
-    const auto sampler = jpu::make_ref<gl::sampler>();
+    const gl::sampler sampler;
 
     auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/ven/hdr/posx.hdr", &w, &h, &c);
@@ -65,7 +65,7 @@ int main(int argc, const char** argv)
         distance_field_pipeline->get_uniform<glm::vec3>(gl::shader_type::fragment, "cam_position") = cam.transform.position;
         distance_field_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "proj_mat") = cam.projection();
         distance_field_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view_mat") = inverse(cam.projection() * cam.view());
-        distance_field_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler->sample_texture(cubemap);
+        distance_field_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler.sample_texture(cubemap);
         distance_field_pipeline->draw(gl::primitive::triangles, 3);
         main_renderer->draw(main_window->delta_time());
     }

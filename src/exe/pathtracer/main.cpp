@@ -39,9 +39,11 @@ public:
         std::vector<uint32_t> indices = mesh.indices;
         jpu::bvh<3> bvh;
         bvh.assign_to(indices, mesh.vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-        _vertex_buffer = jpu::make_ref<gl::buffer>(mesh.vertices);
-        _index_buffer = jpu::make_ref<gl::buffer>(indices);
-        _bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
+
+        const std::vector<uint8_t> packed_bvh = bvh.pack();
+        _vertex_buffer = gl::buffer<res::vertex>(mesh.vertices.begin(), mesh.vertices.end());
+        _index_buffer = gl::buffer<uint32_t>(indices.begin(), indices.end());
+        _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
         _transform = mesh.transform;
         _idx_count = indices.size();
     }
@@ -91,9 +93,11 @@ public:
             indices[i] = i;
         }
 
-        _vertex_buffer = jpu::make_ref<gl::buffer>(opt_vertices);
-        _index_buffer = jpu::make_ref<gl::buffer>(indices);
-        _bvh_buffer = jpu::make_ref<gl::buffer>(bvh.pack());
+        const std::vector<uint8_t> packed_bvh = bvh.pack();
+        _vertex_buffer = gl::buffer<res::vertex>(opt_vertices.begin(), opt_vertices.end());
+        _index_buffer = gl::buffer<uint32_t>(indices.begin(), indices.end());
+        _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
+
         _transform = glm::mat4(1.f);
         _idx_count = indices.size();
     }
@@ -107,9 +111,9 @@ public:
 
 private:
     int _idx_count;
-    jpu::ref_ptr<gl::buffer> _vertex_buffer;
-    jpu::ref_ptr<gl::buffer> _index_buffer;
-    jpu::ref_ptr<gl::buffer> _bvh_buffer;
+    gl::buffer<res::vertex> _vertex_buffer;
+    gl::buffer<uint32_t> _index_buffer;
+    gl::buffer<gl::byte> _bvh_buffer;
     res::transform _transform;
 };
 
@@ -139,9 +143,9 @@ struct material
 struct mesh
 {
     mesh(mesh_proxy* proxy, const intptr_t material_addr, const glm::mat4 model)
-        : vertices(proxy->_vertex_buffer->address()),
-        elements(proxy->_index_buffer->address()),
-        bvh(proxy->_bvh_buffer->address()),
+        : vertices(proxy->_vertex_buffer.handle()),
+        elements(proxy->_index_buffer.handle()),
+        bvh(proxy->_bvh_buffer.handle()),
         material(material_addr),
         inv_model(inverse(model)),
         model(model)
@@ -232,37 +236,30 @@ int main()
     std::mt19937 gen;
     const std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    jpu::ref_ptr<gl::buffer> material_buffer;
-    jpu::ref_ptr<gl::buffer> meshes_buffer;
+    gl::buffer<material> material_buffer(GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<mesh> meshes_buffer(GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
 
     const auto load_mesh = [&](const auto& path, const bool combine) {
         auto geometry = res::load_geometry(path);
+        material_buffer.resize(geometry.meshes.size());
+        meshes_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+
         if (combine)
         {
             // Combine all vertex data into one object
-
-            using namespace jpu::flags_operators;
-            material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-            meshes_buffer = jpu::make_ref<gl::buffer>(sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-            for (int i = 0; i < geometry.meshes.size(); ++i)
-            {
-                material_buffer->data_as<material>()[i] = material();
-            }
-            meshes[geometry.meshes.id_by_index(0)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.payloads()), std::vector<mesh*>());
-            meshes.get_by_index(0).second.push_back(&(meshes_buffer->data_as<mesh>()[0] = mesh(meshes.get_by_index(0).first, material_buffer->address(), glm::mat4(1.f))));
+            meshes[geometry.meshes.id_by_index(0)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(0)), std::vector<mesh*>());
+            meshes_buffer.emplace_back(meshes.get_by_index(0).first, material_buffer.handle(), glm::mat4(1.f));
+            meshes.get_by_index(0).second.push_back(&meshes_buffer[0]);
         }
         else
         {
             // Keep each object as it's own mesh
-
-            using namespace jpu::flags_operators;
-            material_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(material), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
-            meshes_buffer = jpu::make_ref<gl::buffer>(geometry.meshes.size() * sizeof(mesh), gl::buffer_flag_bits::map_persistent | gl::buffer_flag_bits::map_write | gl::buffer_flag_bits::dynamic_storage);
+            meshes_buffer.reserve(geometry.meshes.size());
             for (int i = 0; i < geometry.meshes.size(); ++i)
             {
-                material_buffer->data_as<material>()[i] = material();
                 meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
-                meshes.get_by_index(i).second.push_back(&(meshes_buffer->data_as<mesh>()[i] = mesh(meshes.get_by_index(i).first, material_buffer->address() + i * sizeof(material), geometry.meshes.get_by_index(i).transform)));
+                meshes_buffer.emplace_back(meshes.get_by_index(i).first, material_buffer.handle() + i * sizeof(material), geometry.meshes.get_by_index(i).transform);
+                meshes.get_by_index(i).second.push_back(&(meshes_buffer[0]));
             }
         }
     };
@@ -309,8 +306,8 @@ int main()
         alignas(4)  int max_samples;
     };
 
-    pathtracer_info info;
-    gl::buffer pathtracer_info_buffer(info, gl::buffer_flag_bits::dynamic_storage);
+    gl::buffer<pathtracer_info> pathtracer_info_buffer(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+    pathtracer_info_buffer.map(GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
         
     while (main_window->update())
     {
@@ -345,18 +342,17 @@ int main()
         {
             query_time.begin();
             pp_trace->bind();
-            info.target_image = *target_image;
-            info.random_gen = dist(gen);
-            info.sample_blend_offset = sample_blend_offset;
-            info.max_samples = max_samples;
-            info.camera_position = cam.transform.position;
-            info.camera_matrix = camera_matrix;
-            info.cubemap = sampler.sample_texture(cubemap);
-            info.meshes = meshes_buffer->address();
-            info.num_meshes = meshes_buffer->size() / sizeof(mesh);
-            info.max_bounces = 8;
-            info.offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
-            pathtracer_info_buffer.assign(&info, 1);
+            pathtracer_info_buffer[0].target_image = *target_image;
+            pathtracer_info_buffer[0].random_gen = dist(gen);
+            pathtracer_info_buffer[0].sample_blend_offset = sample_blend_offset;
+            pathtracer_info_buffer[0].max_samples = max_samples;
+            pathtracer_info_buffer[0].camera_position = cam.transform.position;
+            pathtracer_info_buffer[0].camera_matrix = camera_matrix;
+            pathtracer_info_buffer[0].cubemap = sampler.sample_texture(cubemap);
+            pathtracer_info_buffer[0].meshes = meshes_buffer.handle();
+            pathtracer_info_buffer[0].num_meshes = meshes_buffer.size();
+            pathtracer_info_buffer[0].max_bounces = 8;
+            pathtracer_info_buffer[0].offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
             pp_trace->dispatch(size_x, size_y);
             frame = (frame + 1) % (count_x * count_y);
             if (frame == 0 && enable_continuous_improvement)
@@ -469,13 +465,13 @@ int main()
             }
         }
 
-        for (int i = 0; i < material_buffer->size() / sizeof(material); ++i)
+        for (int i = 0; i < material_buffer.size(); ++i)
         {
             const auto id = ("Material " + std::to_string(i));
             if (ImGui::CollapsingHeader(id.c_str()))
             {
                 ImGui::PushID(id.c_str());
-                auto&& item = material_buffer->data_as<material>() + i;
+                auto&& item = material_buffer[i];
 
                 ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
                 ImGui::PushStyleColor(ImGuiCol_Text, 0xff87f100);
@@ -483,13 +479,13 @@ int main()
                 ImGui::PopStyleColor();
                 ImGui::PopFont();
                 ImGui::PushID("Ground");
-                ImGui::ColorEdit3("Scatter Color", &item->ground.scatter_color[0]);
-                ImGui::ColorEdit3("Density Color", &item->ground.density_color[0]);
-                ImGui::ColorEdit3("Reflect Color", &item->ground.reflection_color[0]);
-                ImGui::DragFloat("Roughness", &item->ground.roughness, 0.01f, 0.f, 1.f);
-                ImGui::DragFloat("Transmissiveness", &item->ground.transmissiveness, 0.01f, 0.f, 1.f);
-                ImGui::DragFloat("Density", &item->ground.density, 0.01f, 0.f, 100.f);
-                ImGui::DragFloat("Density Falloff", &item->ground.density_falloff, 0.01f, 0.f, 100.f);
+                ImGui::ColorEdit3("Scatter Color", &item.ground.scatter_color[0]);
+                ImGui::ColorEdit3("Density Color", &item.ground.density_color[0]);
+                ImGui::ColorEdit3("Reflect Color", &item.ground.reflection_color[0]);
+                ImGui::DragFloat("Roughness", &item.ground.roughness, 0.01f, 0.f, 1.f);
+                ImGui::DragFloat("Transmissiveness", &item.ground.transmissiveness, 0.01f, 0.f, 1.f);
+                ImGui::DragFloat("Density", &item.ground.density, 0.01f, 0.f, 100.f);
+                ImGui::DragFloat("Density Falloff", &item.ground.density_falloff, 0.01f, 0.f, 100.f);
                 ImGui::Spacing();
                 ImGui::PopID();
 
@@ -499,8 +495,8 @@ int main()
                 ImGui::PopStyleColor();
                 ImGui::PopFont();
                 ImGui::PushID("Surface");
-                ImGui::ColorEdit3("Reflect Color", &item->surface.reflection_color[0]);
-                ImGui::DragFloat("Roughness", &item->surface.roughness, 0.01f, 0.f, 1.f);
+                ImGui::ColorEdit3("Reflect Color", &item.surface.reflection_color[0]);
+                ImGui::DragFloat("Roughness", &item.surface.roughness, 0.01f, 0.f, 1.f);
                 ImGui::PopID();
 
                 ImGui::PushFont(ImGui::GetIO().Fonts[0].Fonts[2]);
@@ -509,8 +505,8 @@ int main()
                 ImGui::PopStyleColor();
                 ImGui::PopFont();
                 ImGui::PushID("General");
-                ImGui::DragFloat("Extinction Coeff.", &item->extinction, 0.01f, 0.f, 100.f);
-                ImGui::DragFloat("IOR", &item->ior, 0.01f, 0.f, 100.f);
+                ImGui::DragFloat("Extinction Coeff.", &item.extinction, 0.01f, 0.f, 100.f);
+                ImGui::DragFloat("IOR", &item.ior, 0.01f, 0.f, 100.f);
                 ImGui::PopID();
                 ImGui::PopID();
             }

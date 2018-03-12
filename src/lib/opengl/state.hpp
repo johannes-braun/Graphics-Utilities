@@ -1,7 +1,8 @@
 #pragma once
 
-#include <jpu/memory.hpp>
 #include "pipeline.hpp"
+
+#include <jpu/memory.hpp>
 
 namespace gl
 {

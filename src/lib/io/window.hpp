@@ -4,11 +4,12 @@
 #include <vulkan/device.hpp>
 #include <vulkan/swapchain.hpp>
 #include <vulkan/vulkan_ext.h>
+#include <opengl/gl.hpp>
 
 #include "cursor.hpp"
 #include "api.hpp"
-#include "gui_impl/gui.hpp"
-#include <mygl/gl.hpp>
+#include "gui.hpp"
+#include "callbacks.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -17,7 +18,6 @@
 #include <jpu/log.hpp>
 #include <filesystem>
 #include <functional>
-#include "callbacks.hpp"
 
 namespace io
 {

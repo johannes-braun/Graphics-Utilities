@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mygl/gl.hpp>
+#include "gl.hpp"
 #include <jpu/memory.hpp>
 
 namespace gl

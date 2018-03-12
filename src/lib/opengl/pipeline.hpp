@@ -2,14 +2,14 @@
 
 #include "shader.hpp"
 #include "uniform.hpp"
+#include "vertex_array.hpp"
+#include "buffer.hpp"
 
 #include <jpu/memory.hpp>
 #include <jpu/log.hpp>
 #include <array>
 #include <map>
 #include <set>
-#include "vertex_array.hpp"
-#include "buffer.hpp"
 
 namespace gl
 {
@@ -81,8 +81,8 @@ namespace gl
 
         void disable_input(uint32_t attribute) const noexcept;
         void set_input_format(uint32_t attribute, int components, GLenum type, bool normalized) const noexcept;
-        void set_input_buffer(uint32_t attribute, const buffer* buffer, size_t stride, size_t offset = 0) const noexcept;
-        void set_index_buffer(const buffer* buffer, index_type elem_type) const noexcept;
+        void set_input_buffer(uint32_t attribute, gl_buffer_t buffer, size_t stride, size_t offset = 0) const noexcept;
+        void set_index_buffer(gl_buffer_t buffer, index_type elem_type) const noexcept;
 
         void draw_indexed(primitive p, size_t elem_count, size_t base_index = 0, uint32_t base_vertex = 0,
                           uint32_t instance_count = 1, uint32_t base_instance = 0) const noexcept;
@@ -108,4 +108,4 @@ namespace gl
     };
 }
 
-#include "pipeline.inl"
+#include "impl/pipeline.inl"

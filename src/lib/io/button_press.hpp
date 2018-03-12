@@ -30,4 +30,4 @@ namespace io
     using keyboard_button = button<&glfwGetKey>;
 }
 
-#include "button_press.inl"
+#include "impl/button_press.inl"

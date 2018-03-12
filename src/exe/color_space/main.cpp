@@ -147,7 +147,7 @@ int main()
     texture->storage_2d(picture.width, picture.height, GL_RGB8);
     texture->assign_2d(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
     texture->generate_mipmaps();
-    const auto sampler = jpu::make_ref<gl::sampler>();
+    const gl::sampler sampler;
 
     glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.data.get());
     axis_transformation trafo = principal_axis_transformation(begin, picture.num_pixels());
@@ -176,8 +176,9 @@ int main()
     cube_pipeline->set_input_format(0, 3, GL_FLOAT, false);
     cube_pipeline->set_input_format(1, 2, GL_FLOAT, false);
 
-    const auto vbo = jpu::make_ref<gl::buffer>(res::presets::cube::vertices);
-    const auto ibo = jpu::make_ref<gl::buffer>(res::presets::cube::indices);
+    namespace cube = res::presets::cube;
+    gl::buffer<res::vertex> vbo(cube::vertices.begin(), cube::vertices.end());
+    gl::buffer<uint32_t> ibo(cube::indices.begin(), cube::indices.end());
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_DEPTH_TEST);
@@ -194,7 +195,7 @@ int main()
         gl::framebuffer::default_fbo().clear_color(0, { 0.15f, 0.15f, 0.15f, 1.f });
         gl::framebuffer::default_fbo().clear_depth(0.f);
 
-        const auto id = sampler->sample_texture(texture.get());
+        const auto id = sampler.sample_texture(texture.get());
         ImGui::Begin("Primary Axis Transformation");
         static bool hat_en = true;
         ImGui::Checkbox("Enable Transformation", &hat_en);
@@ -275,7 +276,7 @@ int main()
         cube_pipeline->set_input_buffer(1, vbo, sizeof(res::vertex), offsetof(res::vertex, uv));
         cube_pipeline->set_index_buffer(ibo, gl::index_type::u32);
         cube_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = cam.projection() * cam.view();
-        cube_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "tex") = sampler->sample_texture(grid.get());
+        cube_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "tex") = sampler.sample_texture(grid.get());
         cube_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(1, 1, 1, 1);
         cube_pipeline->draw_indexed(gl::primitive::triangles, res::presets::cube::indices.size());
         glFrontFace(GL_CCW); glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

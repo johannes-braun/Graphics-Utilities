@@ -82,7 +82,9 @@ namespace gfx
         _vertices_default = _vertices;
         for (auto&& v : _vertices)
             v.color = glm::u8vec4(255, 128, 0, 255);
-        _vertex_buffer = jpu::make_ref<gl::buffer>(_vertices_default, gl::buffer_flag_bits::dynamic_storage);
+        _vertex_buffer.clear();
+        _vertex_buffer.insert(_vertex_buffer.begin(), _vertices_default.begin(), _vertices_default.end());
+        _vertex_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 
         std::vector<index> indices;
         indices.insert(indices.end(), non_cube_indices.begin(), non_cube_indices.end());
@@ -91,8 +93,9 @@ namespace gfx
         indices.resize(indices.size() + circle_resolution);
         for (int i = 0; i < circle_resolution; ++i)
             indices[last_size + i] = i;
-        _index_buffer = jpu::make_ref<gl::buffer>(indices);
-
+        _index_buffer.clear();
+        _index_buffer.insert(_index_buffer.begin(), indices.begin(), indices.end());
+        _index_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
         _translate_pipeline->set_input_format(0, 3, GL_FLOAT, false);
         _translate_pipeline->set_input_format(1, 4, GL_UNSIGNED_BYTE, true);
     }
@@ -101,10 +104,12 @@ namespace gfx
     {
         if (to_default)
             for (const auto idx : indices)
-                _vertex_buffer->assign(_vertices_default.data() + idx, 1, (idx) * sizeof(vertex));
+                _vertex_buffer[idx] = _vertices_default[idx];
         else
             for (const auto idx : indices)
-                _vertex_buffer->assign(_vertices.data() + idx, 1, (idx) * sizeof(vertex));
+                _vertex_buffer[idx] = _vertices[idx];
+        
+        _vertex_buffer.synchronize();
     }
 
     void gizmo::change_hover_state(const gizmo_state_flags new_state)
@@ -120,13 +125,13 @@ namespace gfx
             reassign_vertices({ 12, 14, 19, 20 }, true);
 
         if ((_last_hover_state & gizmo_state::hover_ry) && !(new_state & gizmo_state::hover_ry))
-            _vertex_buffer->assign(_vertices_default.data() + 21, circle_resolution, (21) * sizeof(vertex));
+            _vertex_buffer.assign(_vertex_buffer.begin() + 21, _vertices_default.begin() + 21, _vertices_default.begin() + 21 + circle_resolution);
+
         if ((_last_hover_state & gizmo_state::hover_rz) && !(new_state & gizmo_state::hover_rz))
-            _vertex_buffer->assign(_vertices_default.data() + 21 + circle_resolution, circle_resolution,
-            (21 + circle_resolution) * sizeof(vertex));
+            _vertex_buffer.assign(_vertex_buffer.begin() + 21 + circle_resolution, _vertices_default.begin() + 21 + circle_resolution, _vertices_default.begin() + 21 + (2*circle_resolution));
+
         if ((_last_hover_state & gizmo_state::hover_rx) && !(new_state & gizmo_state::hover_rx))
-            _vertex_buffer->assign(_vertices_default.data() + 21 + 2 * circle_resolution, circle_resolution,
-            (21 + 2 * circle_resolution) * sizeof(vertex));
+            _vertex_buffer.assign(_vertex_buffer.begin() + 21 + (2*circle_resolution), _vertices_default.begin() + 21 + (2 * circle_resolution), _vertices_default.begin() + 21 + (3 * circle_resolution));
 
         if ((new_state & gizmo_state::hover_x) && !(_last_hover_state & gizmo_state::hover_x))
             reassign_vertices({ 9, 11, 15, 16 }, false);
@@ -136,13 +141,13 @@ namespace gfx
             reassign_vertices({ 12, 14, 19, 20 }, false);
 
         if ((new_state & gizmo_state::hover_ry) && !(_last_hover_state & gizmo_state::hover_ry))
-            _vertex_buffer->assign(_vertices.data() + 21, circle_resolution, (21) * sizeof(vertex));
+            _vertex_buffer.assign(_vertex_buffer.begin() + 21, _vertices.begin() + 21, _vertices.begin() + 21 + circle_resolution);
+
         if ((new_state & gizmo_state::hover_rz) && !(_last_hover_state & gizmo_state::hover_rz))
-            _vertex_buffer->assign(_vertices.data() + 21 + circle_resolution, circle_resolution,
-            (21 + circle_resolution) * sizeof(vertex));
+            _vertex_buffer.assign(_vertex_buffer.begin() + 21 + circle_resolution, _vertices.begin() + 21 + circle_resolution, _vertices.begin() + 21 + (2 * circle_resolution));
+
         if ((new_state & gizmo_state::hover_rx) && !(_last_hover_state & gizmo_state::hover_rx))
-            _vertex_buffer->assign(_vertices.data() + 21 + 2 * circle_resolution, circle_resolution,
-            (21 + 2 * circle_resolution) * sizeof(vertex));
+            _vertex_buffer.assign(_vertex_buffer.begin() + 21 + (2 * circle_resolution), _vertices.begin() + 21 + (2 * circle_resolution), _vertices.begin() + 21 + (3 * circle_resolution));
 
         _last_hover_state = new_state;
     }

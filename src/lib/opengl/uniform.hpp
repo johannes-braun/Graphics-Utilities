@@ -1,6 +1,7 @@
 #pragma once
 
-#include <mygl/gl.hpp>
+#include "gl.hpp"
+
 #include <glm/ext.hpp>
 #include <variant>
 #include <memory>
@@ -49,4 +50,4 @@ namespace gl
     >;
 }
 
-#include "uniform.inl"
+#include "impl/uniform.inl"

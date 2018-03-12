@@ -1,6 +1,9 @@
 #pragma once
+
+#include "gl.hpp"
+
+#include <array>
 #include <jpu/memory.hpp>
-#include <mygl/gl.hpp>
 #include <stdexcept>
 
 namespace gl
@@ -56,11 +59,15 @@ namespace gl
         int _depth{0};
     };
 
-    class sampler : public jpu::ref_count
+    class sampler
     {
     public:
         sampler() noexcept;
         ~sampler() noexcept;
+        sampler(const sampler& other) noexcept;
+        sampler(sampler&& other) noexcept;
+        sampler& operator=(const sampler& other) noexcept;
+        sampler& operator=(sampler&& other) noexcept;
         operator gl_sampler_t() const noexcept;
 
         void set(GLenum name, int value) const noexcept;
@@ -69,6 +76,27 @@ namespace gl
         uint64_t sample_texture(texture* t) const noexcept;
 
     private:
+        constexpr const static std::array<GLenum, 3> _float_parameters {
+            GL_TEXTURE_MIN_LOD, 
+            GL_TEXTURE_MAX_LOD, 
+            GL_TEXTURE_MAX_ANISOTROPY
+        };
+
+        constexpr const static std::array<GLenum, 8> _int_parameters {
+            GL_TEXTURE_WRAP_S, 
+            GL_TEXTURE_WRAP_T, 
+            GL_TEXTURE_WRAP_R,
+            GL_TEXTURE_MIN_FILTER,
+            GL_TEXTURE_MAG_FILTER,
+            GL_TEXTURE_COMPARE_MODE, 
+            GL_TEXTURE_COMPARE_FUNC, 
+            GL_TEXTURE_CUBE_MAP_SEAMLESS
+        };
+
+        constexpr const static std::array<GLenum, 1> _float_array_parameters {
+            GL_TEXTURE_BORDER_COLOR
+        };
+
         gl_sampler_t _id;
     };
 

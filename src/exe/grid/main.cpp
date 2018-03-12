@@ -194,11 +194,8 @@ int main()
         }
     }
 
-    //load mesh
-    //floor_vertices = { res::presets::cube::vertices.begin(), res::presets::cube::vertices.end() };
-    //floor_indices = { res::presets::cube::indices.begin(), res::presets::cube::indices.end() };
-    const auto vertex_buffer = jpu::make_ref<gl::buffer>(floor_vertices);
-    const auto element_buffer = jpu::make_ref<gl::buffer>(floor_indices);
+    gl::buffer<res::vertex> vertex_buffer(floor_vertices.begin(), floor_vertices.end());
+    gl::buffer<uint32_t> element_buffer(floor_indices.begin(), floor_indices.end());
 
     // Load simple mesh shader
     floor_pipeline = jpu::make_ref<gl::graphics_pipeline>();
@@ -215,7 +212,7 @@ int main()
         jpu::make_ref<gl::shader>("cubemap/cubemap.vert"),
         jpu::make_ref<gl::shader>("cubemap/cubemap.frag")
     );
-    const auto sampler = jpu::make_ref<gl::sampler>();
+    const gl::sampler sampler;
 
     auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
@@ -243,7 +240,7 @@ int main()
         floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = camera.projection() * camera.view();
         floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view") = inverse(camera.view());
         floor_pipeline->get_uniform<float>(gl::shader_type::fragment, "time") = glfwGetTime();
-        floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler->sample_texture(cubemap);
+        floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler.sample_texture(cubemap);
        // floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random") = sampler->sample_texture(main_renderer->random_texture());
         floor_pipeline->draw_indexed(gl::primitive::triangles, floor_indices.size());
 
@@ -251,7 +248,7 @@ int main()
         glDepthMask(GL_FALSE);
         cubemap_pipeline->bind();
         cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
-        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler->sample_texture(cubemap);
+        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler.sample_texture(cubemap);
         cubemap_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
         cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);

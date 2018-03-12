@@ -1,6 +1,7 @@
 #pragma once
 
-#include <mygl/gl.hpp>
+#include "gl.hpp"
+
 #include <vector>
 #include <jpu/memory.hpp>
 #include <map>

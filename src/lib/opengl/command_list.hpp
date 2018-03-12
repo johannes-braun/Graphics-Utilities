@@ -1,9 +1,10 @@
 #pragma once
 
-#include <mygl/gl.hpp>
+#include "gl.hpp"
+#include "shader.hpp"
+#include "buffer.hpp"
+
 #include <cstdint>
-#include <opengl/shader.hpp>
-#include <opengl/buffer.hpp>
 
 namespace gl
 {
@@ -163,34 +164,24 @@ namespace gl
         template<typename T, typename = std::void_t<decltype(std::declval<T>().as_bytes()), decltype(T::byte_size())>>
         void push(const T& cmd)
         {
-            const size_t old = _commands.size();
-            _commands.resize(_commands.size() + cmd.byte_size());
-            memcpy(_commands.data() + old, cmd.as_bytes(), cmd.byte_size());
+            _command_buffer.insert(_command_buffer.end(), cmd.as_bytes(), cmd.as_bytes() + cmd.byte_size());
         }
 
         void begin() noexcept
         {
-            _commands.clear();
+            _command_buffer.clear();
         }
 
         void end() noexcept
         {
-            int size = _queue ? _queue->size() : 1;
-            while (size < _commands.size())
-                size *= 2;
-
-            if (!_queue || size != _queue->size())
-                _queue = std::make_unique<buffer>(size, buffer_flag_bits::dynamic_storage);
-            _queue->assign(_commands);
-            indirect = _queue->address();
-            this->size = _commands.size();
+            indirect = _command_buffer.handle();
+            this->size = _command_buffer.size();
         }
 
         uint64_t indirect;
         int32_t size;
 
     private:
-        std::unique_ptr<buffer> _queue;
-        std::vector<uint8_t> _commands;
+        buffer<uint8_t> _command_buffer = buffer<uint8_t>(GL_DYNAMIC_STORAGE_BIT);
     };
 }
