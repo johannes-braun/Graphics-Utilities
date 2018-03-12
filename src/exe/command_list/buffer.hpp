@@ -102,7 +102,7 @@ namespace gl::v2
             bounded_buffer_iterator_base operator-(ptrdiff_t offset) const;
             bounded_buffer_iterator_base operator+(ptrdiff_t offset) const;
 
-            ptrdiff_t operator-(const bounded_buffer_iterator_base& offset);
+            ptrdiff_t operator-(const bounded_buffer_iterator_base& offset) const;
 
             const Ptr operator->() const;
             std::enable_if_t<!std::is_const_v<Ptr>, Ptr> operator->();

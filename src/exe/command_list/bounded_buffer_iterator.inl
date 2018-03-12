@@ -105,7 +105,7 @@ namespace gl::v2
 
     template<typename T>
     template<typename Ptr, int Inc>
-    ptrdiff_t bounded_buffer_iterator_base_impl<T, Ptr, Inc>::operator-(const bounded_buffer_iterator_base_impl<T, Ptr, Inc>& offset)
+    ptrdiff_t bounded_buffer_iterator_base_impl<T, Ptr, Inc>::operator-(const bounded_buffer_iterator_base_impl<T, Ptr, Inc>& offset) const
     {
         assert(compatible(offset) && "Iterators incompatible");
         assert(offset.valid() && "Iterator invalid");

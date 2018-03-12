@@ -123,8 +123,14 @@ int main()
     io::default_cam_controller controller;
 
     const auto scene = res::load_geometry("../res/bunny.dae");
-    gl::v2::buffer<res::vertex> vbo(scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end());
-    gl::v2::buffer<uint32_t> ibo(scene.meshes.get_by_index(0).indices.begin(), scene.meshes.get_by_index(0).indices.end());
+    gl::v2::buffer<res::vertex> vbo(scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end(), GL_DYNAMIC_STORAGE_BIT);
+    gl::v2::buffer<uint32_t> ibo(scene.meshes.get_by_index(0).indices.begin(), scene.meshes.get_by_index(0).indices.end(), GL_DYNAMIC_STORAGE_BIT);
+    
+    glm::mat4 trf = glm::rotate(glm::radians(90.f), glm::vec3(1, 0, 0));
+    std::transform(vbo.begin(), vbo.end(), vbo.begin(), [&trf](res::vertex v) {
+        v.position  = trf * glm::vec4(v.position, 1);
+        return v;
+    });
 
     const auto pipeline = jpu::make_ref<gl::graphics_pipeline>();
     pipeline->use_stages(new gl::shader("simple_gl/simple.vert"), new gl::shader("simple_gl/simple.frag"));
