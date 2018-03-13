@@ -87,7 +87,7 @@ namespace gl
 
     void shader::reload()
     {
-        while (_id == gl_shader_program_t::zero)
+        do
         {
             try
             {
@@ -107,7 +107,7 @@ namespace gl
                     std::cin.get();
                 }
             }
-        }
+        } while (_id == gl_shader_program_t::zero);
 
         _uniforms.clear();
     }

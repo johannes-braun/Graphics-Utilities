@@ -143,7 +143,7 @@ int main()
     if (!src_data) return 0;
 
     res::image picture = res::load_image(src_data, res::image_type::u8, res::image_components::rgb);
-    gl::v2::texture texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
+    gl::texture texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
     texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
     texture.generate_mipmaps();
     const gl::sampler sampler;
@@ -153,7 +153,7 @@ int main()
     const glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
 
     auto grid_image = load_image("../res/grid.jpg", res::image_type::u8, res::image_components::rgb_alpha);
-    gl::v2::texture grid(GL_TEXTURE_2D, grid_image.width, grid_image.height, GL_RGBA8);
+    gl::texture grid(GL_TEXTURE_2D, grid_image.width, grid_image.height, GL_RGBA8);
     grid.assign(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
     grid.generate_mipmaps();
 
@@ -190,8 +190,8 @@ int main()
 
     while (main_window->update())
     {
-        gl::framebuffer::default_fbo().clear_color(0, { 0.15f, 0.15f, 0.15f, 1.f });
-        gl::framebuffer::default_fbo().clear_depth(0.f);
+        gl::framebuffer::zero().clear(0, { 0.15f, 0.15f, 0.15f, 1.f });
+        gl::framebuffer::zero().clear(0.f, 0);
 
         const auto id = sampler.sample(texture);
         ImGui::Begin("Primary Axis Transformation");
@@ -222,7 +222,7 @@ int main()
             if (const auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
             {
                 picture = res::load_image(src_data, res::image_type::u8, res::image_components::rgb);
-                texture = gl::v2::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
+                texture = gl::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
                 texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
                 texture.generate_mipmaps();
 

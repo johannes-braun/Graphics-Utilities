@@ -10,6 +10,10 @@ namespace gl
     {
     public:
         state() noexcept;
+        state(const state&) = delete;
+        state(state&& other) noexcept;
+        state& operator=(const state&) = delete;
+        state& operator=(state&& other) noexcept;
         ~state() noexcept;
 
         void capture(basic_primitive primitive) const noexcept;

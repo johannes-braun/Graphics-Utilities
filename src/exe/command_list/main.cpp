@@ -55,7 +55,7 @@ int main()
     pipeline->use_stages(std::make_shared<gl::shader>("simple_gl/simple.vert"), std::make_shared<gl::shader>("simple_gl/simple.frag"));
 
     const res::image image_texture_content = load_image("../res/bricks/brick.png", res::image_type::u8, res::image_components::rgb_alpha);
-    gl::v2::texture image_texture(GL_TEXTURE_2D, image_texture_content.width, image_texture_content.height, GL_RGBA8);
+    gl::texture image_texture(GL_TEXTURE_2D, image_texture_content.width, image_texture_content.height, GL_RGBA8);
     image_texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.data.get());
     image_texture.generate_mipmaps();
 
@@ -106,7 +106,7 @@ int main()
     state.capture(gl::basic_primitive::triangles);
 
     gl::command_buffer command_buffer;
-    command_buffer.begin();
+    command_buffer.start();
     command_buffer.push(gl::cmd_attribute_address{ 0, vbo.handle() + offsetof(res::vertex, position) });
     command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(res::vertex, normal) });
     command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(res::vertex, uv) });
@@ -114,7 +114,7 @@ int main()
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_VERTEX_SHADER, uniform_buffer1.handle() });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_FRAGMENT_SHADER, uniform_buffer2.handle() });
     command_buffer.push(gl::cmd_draw_elements{ static_cast<uint32_t>(ibo.size()), 0, 0 });
-    command_buffer.end();
+    command_buffer.finish();
 
     while (window->update())
     {
@@ -149,7 +149,7 @@ int main()
         uniform_buffer2[0].light_color = light_color;
 
         renderer->bind();
-        gl_framebuffer_t fbos = *renderer->main_framebuffer();
+        gl_framebuffer_t fbos = renderer->main_framebuffer();
         gl_state_nv_t states = state;
         glDrawCommandsStatesAddressNV(&command_buffer.indirect, &command_buffer.size, &states, &fbos, 1);
         renderer->draw(window->delta_time());

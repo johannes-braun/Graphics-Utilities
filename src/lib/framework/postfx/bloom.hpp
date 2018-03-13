@@ -13,14 +13,14 @@ namespace gfx::fx
     public:
         bloom();
         virtual void resize(int x, int y) override;
-        virtual void run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time) override;
+        virtual void run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time) override;
         virtual void reload_pipelines() override;
 
     private:
-        jpu::ref_ptr<gl::framebuffer> _quarter_framebuffer;
-        jpu::ref_ptr<gl::framebuffer> _full_framebuffer;
-        std::array<std::shared_ptr<gl::v2::texture>, 2> _quarter_attachments;
-        std::shared_ptr<gl::v2::texture> _full_attachment;
+        gl::framebuffer _quarter_framebuffer;
+        gl::framebuffer _full_framebuffer;
+        std::array<std::shared_ptr<gl::texture>, 2> _quarter_attachments;
+        std::shared_ptr<gl::texture> _full_attachment;
         glm::ivec2 _viewport;
         gl::graphics_pipeline _bright_pipeline;
         gl::graphics_pipeline _blur_pipeline;

@@ -10,7 +10,7 @@ namespace gfx::fx
     {
         _tonemap_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/const_multiply.frag"));
     }
-    void auto_exposure::run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
+    void auto_exposure::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
     {
         provider.begin_draw();
         constexpr auto adaption_speed = 0.4f;

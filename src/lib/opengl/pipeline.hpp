@@ -14,6 +14,60 @@
 #include <type_traits>
 namespace gl
 {
+    namespace v2
+    {
+        class pipeline;
+        class stage
+        {
+        public:
+            friend pipeline;
+
+            stage() = delete;
+            stage(const stage&) = delete;
+            stage(stage&&) = default;
+            stage& operator=(const stage&) = delete;
+            stage& operator=(stage&&) = delete;
+
+            stage& operator=(std::shared_ptr<shader> shader);
+            stage& operator=(nullptr_t);
+            operator const std::shared_ptr<shader>&() const;
+            shader* operator->() const;
+            shader* get() const;
+            operator bool() const noexcept;
+
+        private:
+            stage(pipeline* pipeline, GLenum bits);
+            pipeline* _pipeline;
+            GLenum _type;
+            std::shared_ptr<shader> _shader;
+        };
+
+        class pipeline
+        {
+        public:
+            pipeline() noexcept;
+            pipeline(const pipeline& other) noexcept;
+            pipeline(pipeline&& other) noexcept;
+            pipeline& operator=(const pipeline& other) noexcept;
+            pipeline& operator=(pipeline&& other) noexcept;
+            ~pipeline() noexcept;
+
+            stage& at(GLenum stage);
+            const std::shared_ptr<shader>& at(GLenum stage) const;
+            stage& operator[](GLenum stage);
+            const std::shared_ptr<shader>& operator[](GLenum stage) const;
+
+            void reload() const noexcept;
+            void bind() const noexcept;
+            operator gl_program_pipeline_t() const noexcept;
+
+        private:
+            std::map<GLenum, stage> _stages;
+            gl_program_pipeline_t _id;
+        };
+    }
+
+
     enum class primitive
     {
         points = GL_POINTS,

@@ -22,7 +22,7 @@ namespace io::impl
         unsigned char* pixels;
         int width, height;
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        _fonts_atlas = std::make_unique<gl::v2::texture>(GL_TEXTURE_2D, width, height, GL_RGBA8, 1);
+        _fonts_atlas = std::make_unique<gl::texture>(GL_TEXTURE_2D, width, height, GL_RGBA8, 1);
         _fonts_atlas->assign(GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
         _sampler = gl::sampler();

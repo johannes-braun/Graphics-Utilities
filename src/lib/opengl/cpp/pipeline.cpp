@@ -2,6 +2,186 @@
 
 namespace gl
 {
+    namespace v2
+    {
+        GLbitfield stage_bitfield(GLenum st) noexcept
+        {
+            switch (st)
+            {
+            case GL_VERTEX_SHADER:
+                return GL_VERTEX_SHADER_BIT;
+            case GL_FRAGMENT_SHADER:
+                return GL_FRAGMENT_SHADER_BIT;
+            case GL_GEOMETRY_SHADER:
+                return GL_GEOMETRY_SHADER_BIT;
+            case GL_TESS_CONTROL_SHADER:
+                return GL_TESS_CONTROL_SHADER_BIT;
+            case GL_TESS_EVALUATION_SHADER:
+                return GL_TESS_EVALUATION_SHADER_BIT;
+            case GL_COMPUTE_SHADER:
+                return GL_COMPUTE_SHADER_BIT;
+            default:
+                return GL_ZERO;
+            }
+        }
+
+        stage::stage(pipeline* pipeline, GLenum type)
+            : _pipeline(pipeline), _type(type)
+        {
+        }
+
+        stage& stage::operator=(std::shared_ptr<shader> shader)
+        {
+            assert(shader->type() == _type && "Incompatible shader type.");
+            _shader = shader;
+            glUseProgramStages(*_pipeline, stage_bitfield(_type), *_shader);
+            glValidateProgramPipeline(*_pipeline);
+            return *this;
+        }
+
+        stage& stage::operator=(nullptr_t)
+        {
+            glUseProgramStages(*_pipeline, stage_bitfield(_type), gl_shader_program_t::zero);
+            glValidateProgramPipeline(*_pipeline);
+            return *this;
+        }
+
+        stage::operator const std::shared_ptr<shader>&() const
+        {
+            return _shader;
+        }
+
+        shader* stage::operator->() const
+        {
+            return _shader.get();
+        }
+
+        shader* stage::get() const
+        {
+            return _shader.get();
+        }
+
+        stage::operator bool() const noexcept
+        {
+            return _shader != nullptr;
+        }
+
+        pipeline::pipeline() noexcept 
+        {
+            glCreateProgramPipelines(1, &_id);
+        }
+
+        pipeline::pipeline(const pipeline& other) noexcept
+        {
+            operator=(std::forward<const pipeline&>(other));
+        }
+
+        pipeline::pipeline(pipeline&& other) noexcept
+        {
+            operator=(std::forward<pipeline&&>(other));
+        }
+
+        pipeline& pipeline::operator=(const pipeline& other) noexcept
+        {
+            if (_id != gl_program_pipeline_t::zero)
+                glDeleteProgramPipelines(1, &_id);
+            if (other._id == gl_program_pipeline_t::zero)
+            {
+                _id = gl_program_pipeline_t::zero;
+                return *this;
+            }
+            else glCreateProgramPipelines(1, &_id);
+            
+            for (auto&& pair : other._stages)
+            {
+                _stages.emplace(pair.first, stage(this, pair.first));
+                _stages.at(pair.first) = static_cast<std::shared_ptr<shader>>(pair.second);
+            }
+            return *this;
+        }
+
+        pipeline& pipeline::operator=(pipeline&& other) noexcept
+        {
+            if (_id != gl_program_pipeline_t::zero)
+                glDeleteProgramPipelines(1, &_id);
+            _id = other._id;
+            _stages = std::move(other._stages);
+            other._id = gl_program_pipeline_t::zero;
+            return *this;
+        }
+
+        pipeline::~pipeline() noexcept
+        {
+            if (_id != gl_program_pipeline_t::zero)
+                glDeleteProgramPipelines(1, &_id);
+        }
+
+        stage& pipeline::at(GLenum stage)
+        {
+            if (_stages.count(stage) == 0)
+                _stages.emplace(stage, gl::v2::stage(this, stage));
+            return _stages.at(stage);
+        }
+
+        const std::shared_ptr<shader>& pipeline::at(GLenum stage) const
+        {
+            return _stages.at(stage);
+        }
+
+        stage& pipeline::operator[](GLenum stage)
+        {
+            return at(stage);
+        }
+
+        const std::shared_ptr<shader>& pipeline::operator[](GLenum stage) const
+        {
+            return at(stage);
+        }
+
+        void pipeline::bind() const noexcept
+        {
+            glBindProgramPipeline(_id);
+        }
+
+        pipeline::operator gl_program_pipeline_t() const noexcept
+        {
+            return _id;
+        }
+
+        void pipeline::reload() const noexcept
+        {
+            for (auto&& stage : _stages)
+            {
+                if (stage.second)
+                {
+                    stage.second->reload();
+                    glUseProgramStages(_id, stage_bitfield(stage.first), *(stage.second.get()));
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     pipeline::pipeline() noexcept
     {
         glCreateProgramPipelines(1, &_id);

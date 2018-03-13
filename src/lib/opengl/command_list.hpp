@@ -2,6 +2,7 @@
 
 #include "gl.hpp"
 #include "shader.hpp"
+#include "pipeline.hpp"
 #include "buffer.hpp"
 
 #include <cstdint>
@@ -26,7 +27,8 @@ namespace gl
     struct cmd_nop : command<GL_NOP_COMMAND_NV, cmd_terminate_sequence> {};
     struct cmd_draw_elements : command<GL_DRAW_ELEMENTS_COMMAND_NV, cmd_draw_elements>
     {
-        cmd_draw_elements(const u32 count, const u32 first_index = 0, const u32 base_vertex = 0) noexcept : count(count), first_index(first_index), base_vertex(base_vertex) {}
+        cmd_draw_elements(const u32 count, const u32 first_index = 0, const u32 base_vertex = 0) noexcept 
+            : count(count), first_index(first_index), base_vertex(base_vertex) {}
         u32 count;
         u32 first_index;
         u32 base_vertex;
@@ -39,14 +41,16 @@ namespace gl
     };
     struct cmd_draw_elements_strip : command<GL_DRAW_ELEMENTS_STRIP_COMMAND_NV, cmd_draw_elements_strip>
     {
-        cmd_draw_elements_strip(const u32 count, const u32 first_index = 0, const u32 base_vertex = 0) noexcept : count(count), first_index(first_index), base_vertex(base_vertex) {}
+        cmd_draw_elements_strip(const u32 count, const u32 first_index = 0, const u32 base_vertex = 0) noexcept 
+            : count(count), first_index(first_index), base_vertex(base_vertex) {}
         u32 count;
         u32 first_index;
         u32 base_vertex;
     };
     struct cmd_draw_arrays_strip : command<GL_DRAW_ARRAYS_STRIP_COMMAND_NV, cmd_draw_arrays_strip>
     {
-        cmd_draw_arrays_strip(const u32 count, const u32 first = 0) noexcept : count(count), first(first) {}
+        cmd_draw_arrays_strip(const u32 count, const u32 first = 0) noexcept
+            : count(count), first(first) {}
         u32  count;
         u32  first;
     };
@@ -75,13 +79,15 @@ namespace gl
     };
     struct cmd_element_address : command<GL_ELEMENT_ADDRESS_COMMAND_NV, cmd_element_address>
     {
-        cmd_element_address(const u64 address, const u32 type_size) noexcept : address(address), type_size(type_size) {}
+        cmd_element_address(const u64 address, const u32 type_size) noexcept 
+            : address(address), type_size(type_size) {}
         u64 address;
         u32 type_size;
     };
     struct cmd_attribute_address : command<GL_ATTRIBUTE_ADDRESS_COMMAND_NV, cmd_attribute_address>
     {
-        cmd_attribute_address(const u32 index, const u64 address) noexcept : index(index), address(address) {}
+        cmd_attribute_address(const u32 index, const u64 address) noexcept 
+            : index(index), address(address) {}
         u32 index;
         u64 address;
     };
@@ -162,21 +168,9 @@ namespace gl
     {
     public:
         template<typename T, typename = std::void_t<decltype(std::declval<T>().as_bytes()), decltype(T::byte_size())>>
-        void push(const T& cmd)
-        {
-            _command_buffer.insert(_command_buffer.end(), cmd.as_bytes(), cmd.as_bytes() + cmd.byte_size());
-        }
-
-        void begin() noexcept
-        {
-            _command_buffer.clear();
-        }
-
-        void end() noexcept
-        {
-            indirect = _command_buffer.handle();
-            this->size = _command_buffer.size();
-        }
+        void push(const T& cmd);
+        void start() noexcept;
+        void finish() noexcept;
 
         uint64_t indirect;
         int32_t size;
@@ -185,3 +179,5 @@ namespace gl
         buffer<uint8_t> _command_buffer = buffer<uint8_t>(GL_DYNAMIC_STORAGE_BIT);
     };
 }
+
+#include "impl/command_list.inl"

@@ -24,16 +24,15 @@ namespace gfx
         {
             _full_resolution = resolution;
 
-            _double_buffer[0] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, _full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
-            _double_buffer[1] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, _full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
+            _double_buffer[0] = std::make_shared<gl::texture>(GL_TEXTURE_2D, _full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
+            _double_buffer[1] = std::make_shared<gl::texture>(GL_TEXTURE_2D, _full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
 
-            _framebuffer = jpu::make_ref<gl::framebuffer>();
-            _framebuffer->attach(GL_COLOR_ATTACHMENT0, _double_buffer[0]);
-            _framebuffer->attach(GL_COLOR_ATTACHMENT1, _double_buffer[1]);
+            _framebuffer[GL_COLOR_ATTACHMENT0] = _double_buffer[0];
+            _framebuffer[GL_COLOR_ATTACHMENT1] = _double_buffer[1];
         }
 
-        gl::framebuffer* framebuffer() const { return _framebuffer; }
-        const gl::v2::texture& last_target() const { 
+        const gl::framebuffer& framebuffer() const { return _framebuffer; }
+        const gl::texture& last_target() const { 
             return *_double_buffer[_last_target]; 
         }
         int current_index() const {
@@ -43,29 +42,29 @@ namespace gfx
         void begin_draw()
         {
             _last_target = _target_buffer;
-            framebuffer()->draw_to_attachments({ GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer) });
-            framebuffer()->read_from_attachment(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
-            framebuffer()->bind();
+            _framebuffer.set_readbuffer(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
+            _framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
+            _framebuffer.bind();
         }
 
         void end_draw()
         {
-            framebuffer()->unbind();
+            gl::framebuffer::zero().bind();
         }
         
         void swap()
         {
             _last_target = _target_buffer;
             _target_buffer = (_target_buffer + 1) % 2;
-            framebuffer()->draw_to_attachments({ GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer) });
-            framebuffer()->read_from_attachment(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
+            _framebuffer.set_readbuffer(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
+            _framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
         }
 
         void reset()
         {
             _target_buffer = 0;
-            framebuffer()->read_from_attachment(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
-            framebuffer()->draw_to_attachments({ GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer) });
+            _framebuffer.set_readbuffer(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
+            _framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT0 + GLenum(_target_buffer));
         }
 
     private:
@@ -73,23 +72,23 @@ namespace gfx
         int _max_mipmaps = 0;
         int _target_buffer = 0;
         int _last_target = 0;
-        jpu::ref_ptr<gl::framebuffer> _framebuffer;
-        std::array<std::shared_ptr<gl::v2::texture>, 2> _double_buffer;
+        gl::framebuffer _framebuffer;
+        std::array<std::shared_ptr<gl::texture>, 2> _double_buffer;
     };
 
     class postprocess_pass
     {
         public:
-            virtual void run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider& provider, double delta_time) = 0;
+            virtual void run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider& provider, double delta_time) = 0;
             virtual void resize(int x, int y) = 0;
             virtual void reload_pipelines() = 0;
             std::shared_ptr<gl::shader> screen_vertex_shader() const {
                 static auto shader = std::make_shared<gl::shader>("postprocess/screen.vert");
                 return shader;
             }
-            std::shared_ptr<gl::v2::texture> random_texture() const {
-                static std::shared_ptr<gl::v2::texture> tex = []() {
-                    auto texture = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, 512, 512, GL_RGBA16F, 1);
+            std::shared_ptr<gl::texture> random_texture() const {
+                static std::shared_ptr<gl::texture> tex = []() {
+                    auto texture = std::make_shared<gl::texture>(GL_TEXTURE_2D, 512, 512, GL_RGBA16F, 1);
                     std::vector<float> random_pixels(512 * 512 * 4);
                     std::generate(random_pixels.begin(), random_pixels.end(),
                         [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable { return dist(gen); });

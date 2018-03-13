@@ -23,10 +23,10 @@ namespace gfx
         void set_clear_color(glm::vec4 color);
         void set_clear_depth(float depth);
 
-        void bind() const;
-        void draw(double delta_time, const gl::framebuffer& target_framebuffer = gl::framebuffer::default_fbo());
+        void bind();
+        void draw(double delta_time, const gl::framebuffer& target_framebuffer = gl::framebuffer::zero());
 
-        gl::framebuffer* main_framebuffer() const
+        const gl::framebuffer& main_framebuffer() const
         {
             return _main_framebuffer;
         }
@@ -44,8 +44,8 @@ namespace gfx
 
         std::shared_ptr<postprocess_provider> _pp_provider;
 
-        jpu::ref_ptr<gl::framebuffer> _main_framebuffer;
-        std::array<std::shared_ptr<gl::v2::texture>, 2> _msaa_attachments;
+        gl::framebuffer _main_framebuffer;
+        std::array<std::shared_ptr<gl::texture>, 2> _msaa_attachments;
 
         glm::vec4 _clear_color{0, 0, 0, 1};
         float _clear_depth = 0.f;

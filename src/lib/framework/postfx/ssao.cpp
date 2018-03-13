@@ -11,7 +11,7 @@ namespace gfx::fx
     void ssao::resize(int x, int y)
     {
     }
-    void ssao::run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
+    void ssao::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
     {
         provider.begin_draw();
         _ssao_pipeline.bind();

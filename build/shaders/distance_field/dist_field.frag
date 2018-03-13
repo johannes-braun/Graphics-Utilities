@@ -9,7 +9,7 @@ layout(location=0) out vec4 color;
 
 uniform float clip_near = 0.01f;
 uniform float clip_far = 30.f;
-uniform int max_march_steps = 150;
+uniform int max_march_steps = 512;
 uniform mat4 view_mat;
 uniform mat4 inv_view_mat;
 uniform samplerCube cubemap;
@@ -122,7 +122,7 @@ void main()
         float ds = map(pt + ao_fac * normal);
         float ao = clamp(1 -5*abs(ao_fac - ds), 0, 1);
 
-        const vec3 diffcol = vec3(0, 0.3, 0);
+        const vec3 diffcol = vec3(1, 0.3, 0);
         color = vec4(diffcol*shad*ao, 1);
         color += vec4(diffcol, 1)*textureLod(cubemap, normal, 16);
         

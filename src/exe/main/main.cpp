@@ -112,6 +112,10 @@ int main()
     graphics_pipeline->set_input_format(1, 3, GL_FLOAT, false);
     graphics_pipeline->set_input_format(2, 2, GL_FLOAT, false);
 
+    gl::v2::pipeline gp;
+    gp[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("gbuffer/gbuffer.vert");
+    gp[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("gbuffer/gbuffer.frag");
+
     auto cylinder = res::load_geometry("../res/bunny.dae");
     jpu::bvh<3> obj_bvh;
     obj_bvh.assign_to(cylinder.meshes.get_by_index(0).indices, cylinder.meshes.get_by_index(0).vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
@@ -168,7 +172,7 @@ int main()
     const gl::sampler sampler;
 
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
-    gl::v2::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
+    gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
     cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
@@ -177,11 +181,11 @@ int main()
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap.generate_mipmaps();
 
-    const auto load_texture = [&](auto path, auto internal_format, auto format, auto type) -> gl::v2::texture
+    const auto load_texture = [&](auto path, auto internal_format, auto format, auto type) -> gl::texture
     {
         auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::f32 : res::image_type::u8,
             format == GL_RED ? res::image_components::grey : (format == GL_RG ? res::image_components::grey_alpha : (format == GL_RGB ? res::image_components::rgb : res::image_components::rgb_alpha)));
-        gl::v2::texture texture(GL_TEXTURE_2D, image.width, image.height, internal_format);
+        gl::texture texture(GL_TEXTURE_2D, image.width, image.height, internal_format);
         texture.assign(format, type, image.data.get());
         return texture;
     };
@@ -230,6 +234,7 @@ int main()
     static float frametime = 0;
     static float fps = 0;
 
+    glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
     while (main_window->update())
     {
         time += main_window->delta_time();
@@ -354,18 +359,40 @@ int main()
         cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);
 
-        graphics_pipeline->bind();
-        graphics_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
-        graphics_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
-        graphics_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
-        graphics_pipeline->set_index_buffer(index_buffer, gl::index_type::u32);
-        graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_matrix") = transform;
-        graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
-        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "my_texture") = sampler.sample(texture_col);
-        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "texture_depth") = sampler.sample(texture_dis);
-        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "texture_normal") = sampler.sample(texture_nor);
-        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "cube_map") = sampler.sample(cubemap);
-        graphics_pipeline->draw_indexed(gl::primitive::triangles, cylinder.meshes.get_by_index(0).indices.size());
+        
+
+        glBindVertexArray(gl_vertex_array_t::zero);
+        gp.bind();
+        gp[GL_VERTEX_SHADER]->uniform<glm::mat4>("model_matrix") = transform;
+        gp[GL_VERTEX_SHADER]->uniform<glm::mat4>("normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
+        gp[GL_FRAGMENT_SHADER]->uniform<uint64_t>("my_texture") = sampler.sample(texture_col);
+        gp[GL_FRAGMENT_SHADER]->uniform<uint64_t>("texture_depth") = sampler.sample(texture_dis);
+        gp[GL_FRAGMENT_SHADER]->uniform<uint64_t>("texture_normal") = sampler.sample(texture_nor);
+        gp[GL_FRAGMENT_SHADER]->uniform<uint64_t>("cube_map") = sampler.sample(cubemap);
+
+        glVertexAttribFormatNV(0, 3, GL_FLOAT, false, sizeof(res::vertex));
+        glVertexAttribFormatNV(1, 3, GL_FLOAT, false, sizeof(res::vertex));
+        glVertexAttribFormatNV(2, 3, GL_FLOAT, false, sizeof(res::vertex));
+        glBufferAddressRangeNV(GL_VERTEX_ATTRIB_ARRAY_ADDRESS_NV, 0, vertex_buffer.handle() + offsetof(res::vertex, position), vertex_buffer.size() * sizeof(decltype(vertex_buffer[0])));
+        glBufferAddressRangeNV(GL_VERTEX_ATTRIB_ARRAY_ADDRESS_NV, 1, vertex_buffer.handle() + offsetof(res::vertex, normal), vertex_buffer.size() * sizeof(decltype(vertex_buffer[0])));
+        glBufferAddressRangeNV(GL_VERTEX_ATTRIB_ARRAY_ADDRESS_NV, 2, vertex_buffer.handle() + offsetof(res::vertex, uv), vertex_buffer.size() * sizeof(decltype(vertex_buffer[0])));
+        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, index_buffer.handle(), index_buffer.size() * sizeof(decltype(index_buffer[0])));
+
+        glDrawElements(GL_TRIANGLES, index_buffer.size(), GL_UNSIGNED_INT, nullptr);
+
+
+        //graphics_pipeline->bind();
+        //graphics_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
+        //graphics_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
+        //graphics_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
+        //graphics_pipeline->set_index_buffer(index_buffer, gl::index_type::u32);
+        //graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_matrix") = transform;
+        //graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
+        //graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "my_texture") = sampler.sample(texture_col);
+        //graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "texture_depth") = sampler.sample(texture_dis);
+        //graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "texture_normal") = sampler.sample(texture_nor);
+        //graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "cube_map") = sampler.sample(cubemap);
+        //graphics_pipeline->draw_indexed(gl::primitive::triangles, cylinder.meshes.get_by_index(0).indices.size());
 
         main_renderer->draw(main_window->delta_time());
 

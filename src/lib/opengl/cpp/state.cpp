@@ -8,9 +8,22 @@ namespace gl
         glCreateStatesNV(1, &_id);
     }
 
+    state::state(state&& other) noexcept
+    {
+        operator=(std::forward<state&&>(other));
+    }
+
+    state& state::operator=(state&& other) noexcept
+    {
+        _id = other._id;
+        other._id = gl_state_nv_t::zero;
+        return *this;
+    }
+
     state::~state() noexcept
     {
-        glDeleteStatesNV(1, &_id);
+        if(_id != gl_state_nv_t::zero)
+            glDeleteStatesNV(1, &_id);
     }
 
     void state::capture(basic_primitive primitive) const noexcept

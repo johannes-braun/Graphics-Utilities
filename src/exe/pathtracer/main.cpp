@@ -25,10 +25,6 @@ jpu::ref_ptr<io::window> main_window;
 jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipelines;
 std::unique_ptr<gfx::renderer> main_renderer;
 
-jpu::ref_ptr<gl::framebuffer> target_framebuffer;
-std::array<std::shared_ptr<gl::v2::texture>, 3> target_textures;
-std::unique_ptr<gl::image> target_image;
-
 struct mesh;
 class mesh_proxy : public jpu::ref_count
 {
@@ -162,18 +158,23 @@ struct mesh
 jpu::named_vector<std::string, std::pair<jpu::ref_ptr<mesh_proxy>, std::vector<mesh*>>> meshes;
 int selected_mesh = 0;
 
+std::unique_ptr<gl::framebuffer> target_framebuffer;
+std::array<std::shared_ptr<gl::texture>, 3> target_textures;
+std::unique_ptr<gl::image> target_image;
+
 void resize(GLFWwindow*, int w, int h)
 {
     resolution = { w, h };
     main_renderer->resize(resolution.x, resolution.y, 8);
-    target_textures[0] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA32F);
-    target_textures[1] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA16F);
-    target_textures[2] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA16F);
+    target_textures[0] = std::make_shared<gl::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA32F);
+    target_textures[1] = std::make_shared<gl::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA16F);
+    target_textures[2] = std::make_shared<gl::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA16F);
     target_image = std::make_unique<gl::image>(*target_textures[0], GL_RGBA32F, GL_READ_WRITE);
-    target_framebuffer = jpu::make_ref<gl::framebuffer>();
-    target_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
-    target_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
-    target_framebuffer->attach(GL_COLOR_ATTACHMENT2, target_textures[2]);
+
+    target_framebuffer = std::make_unique<gl::framebuffer>();
+    target_framebuffer->emplace(GL_COLOR_ATTACHMENT0, target_textures[0]);
+    target_framebuffer->emplace(GL_COLOR_ATTACHMENT1, target_textures[1]);
+    target_framebuffer->emplace(GL_COLOR_ATTACHMENT2, target_textures[2]);
     glViewportIndexedf(0, 0, 0, resolution.x, resolution.y);
 }
 
@@ -219,7 +220,7 @@ int main()
 
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;
-    gl::v2::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
+    gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
     cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
     cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
     cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
@@ -357,7 +358,7 @@ int main()
             t += query_time.get<uint64_t>() / 1'000'000'000.0;
         }
 
-        target_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
+        target_framebuffer->set_drawbuffer(GL_COLOR_ATTACHMENT1);
         main_renderer->bind();
         bilateral_pipeline.bind();
         bilateral_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "gauss_bsigma") = gauss_bsigma;
@@ -366,9 +367,9 @@ int main()
         bilateral_pipeline.draw(gl::primitive::triangles, 3);
         main_renderer->draw(main_window->delta_time(), *target_framebuffer);
 
-        target_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT1);
-        target_framebuffer->blit(nullptr, gl::framebuffer::blit_rect{ 0, 0, resolution.x, resolution.y }, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-        gl::framebuffer::default_fbo().bind();
+        target_framebuffer->set_readbuffer(GL_COLOR_ATTACHMENT1);
+        target_framebuffer->blit(nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        gl::framebuffer::zero().bind();
 
         if (show_renderchunk)
         {

@@ -45,13 +45,11 @@ namespace gfx
         if (resolution_changed || samples_changed)
         {
             tlog_i("Renderer") << "Resizing to (" << width << " x " << height << " x " << samples << ")";
-            _main_framebuffer = jpu::make_ref<gl::framebuffer>();
-
-            _msaa_attachments[0] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, gl::v2::samples(uint32_t(std::log2(samples))), GL_RGBA16F);
-            _msaa_attachments[1] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, gl::v2::samples(uint32_t(std::log2(samples))), GL_RGBA16F);
-            _main_framebuffer->attach(GL_COLOR_ATTACHMENT0, _msaa_attachments[0]);
-            _main_framebuffer->attach(GL_COLOR_ATTACHMENT1, _msaa_attachments[1]);
-            _main_framebuffer->use_renderbuffer_multisample(GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH24_STENCIL8, _full_resolution.x, _full_resolution.y, samples);
+            _msaa_attachments[0] = std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, gl::samples(uint32_t(std::log2(samples))), GL_RGBA16F);
+            _msaa_attachments[1] = std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, gl::samples(uint32_t(std::log2(samples))), GL_RGBA16F);
+            _main_framebuffer[GL_COLOR_ATTACHMENT0] = _msaa_attachments[0];
+            _main_framebuffer[GL_COLOR_ATTACHMENT1] = _msaa_attachments[1];
+            _main_framebuffer[GL_DEPTH_STENCIL_ATTACHMENT] = std::make_shared<gl::renderbuffer>(GL_DEPTH24_STENCIL8, _full_resolution.x, _full_resolution.y, gl::samples(uint32_t(std::log2(samples))));
 
         }
         glViewportIndexedf(0, 0, 0, width, height);
@@ -73,32 +71,25 @@ namespace gfx
         _clear_depth = depth;
     }
 
-    void renderer::bind() const
+    void renderer::bind()
     {
-        _main_framebuffer->bind();
-        _main_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
-        _main_framebuffer->clear_color(0, _clear_color);
-        _main_framebuffer->clear_color(1, { 1, 0, 0, 1 });
-        _main_framebuffer->clear_depth(_clear_depth);
+        _main_framebuffer.bind();
+        _main_framebuffer.set_drawbuffers({ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 });
+        _main_framebuffer.clear(0, _clear_color);
+        _main_framebuffer.clear(1, { 1, 0, 0, 1 });
+        _main_framebuffer.clear(_clear_depth, 0);
     }
 
     void renderer::draw(const double delta_time, const gl::framebuffer& target_framebuffer)
     {
-        _main_framebuffer->unbind();
-        _main_framebuffer->read_from_attachment(GL_COLOR_ATTACHMENT0);
         _pp_provider->reset();
-        _main_framebuffer->blit(*_pp_provider->framebuffer(),
-            gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y }, 
-            GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        _main_framebuffer.blit(_pp_provider->framebuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
         if (enabled)
             for (auto&& pass : _passes)
                 if(pass.second) pass.first->run(_msaa_attachments, *_pp_provider, delta_time);
         
-        _pp_provider->framebuffer()->blit(target_framebuffer,
-            gl::framebuffer::blit_rect{ 0, 0, _full_resolution.x, _full_resolution.y },
-            GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
+        _pp_provider->framebuffer().blit(target_framebuffer, GL_COLOR_BUFFER_BIT, GL_LINEAR);
         target_framebuffer.bind();
     }
 }
