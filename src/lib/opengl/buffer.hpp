@@ -62,7 +62,6 @@ namespace gl
         buffer& operator=(const buffer& other) noexcept;
         buffer& operator=(buffer&& other) noexcept;
 
-
         void push_back(T&& value);
         void push_back(const T& value);
         template<typename... As> void emplace_back(As&&... value);
@@ -103,12 +102,16 @@ namespace gl
         bounded_buffer_data iterate() noexcept;
         iterator begin() noexcept;
         iterator end() noexcept;
+        const_iterator begin() const noexcept;
+        const_iterator end() const noexcept;
         const_iterator cbegin() const noexcept;
         const_iterator cend() const noexcept;
         reverse_iterator rbegin() noexcept;
         reverse_iterator rend() noexcept;
         const_reverse_iterator crbegin() const noexcept;
         const_reverse_iterator crend() const noexcept;
+        const_reverse_iterator rbegin() const noexcept;
+        const_reverse_iterator rend() const noexcept;
 
     private:
         double compute_size_increase() const noexcept;
@@ -137,8 +140,12 @@ namespace gl
         typename buffer::iterator end() noexcept;
         typename buffer::const_iterator cbegin() const noexcept;
         typename buffer::const_iterator cend() const noexcept;
+        typename buffer::const_iterator begin() const noexcept;
+        typename buffer::const_iterator end() const noexcept;
         typename buffer::reverse_iterator rbegin() noexcept;
         typename buffer::reverse_iterator rend() noexcept;
+        typename buffer::const_reverse_iterator rbegin() const noexcept;
+        typename buffer::const_reverse_iterator rend() const noexcept;
         typename buffer::const_reverse_iterator crbegin() const noexcept;
         typename buffer::const_reverse_iterator crend() const noexcept;
 

@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 
+#include <type_traits>
 namespace gl
 {
     enum class primitive
@@ -55,29 +56,30 @@ namespace gl
         operator gl_program_pipeline_t() const noexcept;
 
         void bind() const noexcept;
-        shader* stage(shader_type s) const;
+        shader* stage(GLenum stype) const;
         void reload_stages(bool force = false) const;
         
-        void set_stages_enabled(const std::vector<shader_type>& stages, bool enable);
+        void set_stages_enabled(const std::vector<GLenum>& stages, bool enable);
 
     protected:
-        void set_stage_enabled(shader_type stage, bool enable);
-        void use_shader(shader* s);
-        static GLbitfield stage_bits(shader_type t) noexcept;
+        void set_stage_enabled(GLenum stage, bool enable);
+        void use_shader(std::shared_ptr<shader> s);
+        static GLbitfield stage_bits(GLenum st) noexcept;
         void validate() const;
 
         gl_program_pipeline_t _id;
-        std::map<shader_type, jpu::ref_ptr<shader>> _shaders;
-        std::set<shader_type> _disabled_stages;
+        std::map<GLenum, std::shared_ptr<shader>> _shaders;
+        std::set<GLenum> _disabled_stages;
     };
 
     class graphics_pipeline : public pipeline
     {
+        template<typename T, typename... As> struct are_same : std::conjunction<std::is_same<T, As>...> {};
     public:
         template<typename... TShaders>
-        void use_stages(TShaders ... shd);
+        std::enable_if_t<are_same<std::shared_ptr<shader>, TShaders...>::value> use_stages(TShaders ... shd);
         template<typename T>
-        uniform<T> get_uniform(shader_type s, const char* name);
+        uniform<T> get_uniform(GLenum stage, const char* name);
 
         void disable_input(uint32_t attribute) const noexcept;
         void set_input_format(uint32_t attribute, int components, GLenum type, bool normalized) const noexcept;
@@ -97,7 +99,7 @@ namespace gl
     class compute_pipeline : public pipeline
     {
     public:
-        explicit compute_pipeline(shader* shader);
+        explicit compute_pipeline(std::shared_ptr<shader> shader);
         void dispatch(uint32_t count_x, uint32_t count_y = 1, uint32_t count_z = 1) noexcept;
         const std::array<int, 3>& work_group_sizes() const noexcept { return _group_sizes; }
         template<typename T>

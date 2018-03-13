@@ -17,7 +17,7 @@ constexpr int start_height = 600;
 constexpr int start_samples = 8;
 constexpr float start_framerate = 120.f;
 const glm::vec3 background = { 0.8f, 0.94f, 1.f };
- 
+
 int main()
 {
     const res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 10.f);
@@ -51,13 +51,13 @@ int main()
     vbo.clear();
 
     const auto pipeline = jpu::make_ref<gl::graphics_pipeline>();
-    pipeline->use_stages(new gl::shader("simple_gl/simple.vert"), new gl::shader("simple_gl/simple.frag"));
+    pipeline->use_stages(std::make_shared<gl::shader>("simple_gl/simple.vert"), std::make_shared<gl::shader>("simple_gl/simple.frag"));
 
-    const auto image_texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
     const res::image image_texture_content = load_image("../res/bricks/brick.png", res::image_type::u8, res::image_components::rgb_alpha);
-    image_texture->storage_2d(image_texture_content.width, image_texture_content.height, GL_RGBA8);
-    image_texture->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.data.get());
-    image_texture->generate_mipmaps();
+    gl::v2::texture image_texture(GL_TEXTURE_2D, image_texture_content.width, image_texture_content.height, GL_RGBA8);
+    image_texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.data.get());
+    image_texture.generate_mipmaps();
+
     const gl::sampler sampler;
 
     res::transform light_transform;
@@ -110,8 +110,8 @@ int main()
     command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(res::vertex, normal) });
     command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(res::vertex, uv) });
     command_buffer.push(gl::cmd_element_address{ ibo.handle(), sizeof(uint32_t) });
-    command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::vertex, uniform_buffer1.handle() });
-    command_buffer.push(gl::cmd_uniform_address{ 0, gl::shader_type::fragment, uniform_buffer2.handle() });
+    command_buffer.push(gl::cmd_uniform_address{ 0, GL_VERTEX_SHADER, uniform_buffer1.handle() });
+    command_buffer.push(gl::cmd_uniform_address{ 0, GL_FRAGMENT_SHADER, uniform_buffer2.handle() });
     command_buffer.push(gl::cmd_draw_elements{ static_cast<uint32_t>(ibo.size()), 0, 0 });
     command_buffer.end();
 
@@ -142,7 +142,7 @@ int main()
         uniform_buffer1[0].projection = camera.projection();
         uniform_buffer1[0].model = glm::mat4(1.f);
 
-        uniform_buffer2[0].image_texture = sampler.sample_texture(image_texture);
+        uniform_buffer2[0].image_texture = sampler.sample(image_texture);
         uniform_buffer2[0].background = background;
         uniform_buffer2[0].light_position = light_transform.position;
         uniform_buffer2[0].light_color = light_color;

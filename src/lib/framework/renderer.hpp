@@ -45,7 +45,7 @@ namespace gfx
         std::shared_ptr<postprocess_provider> _pp_provider;
 
         jpu::ref_ptr<gl::framebuffer> _main_framebuffer;
-        std::array<jpu::ref_ptr<gl::texture>, 2> _msaa_attachments;
+        std::array<std::shared_ptr<gl::v2::texture>, 2> _msaa_attachments;
 
         glm::vec4 _clear_color{0, 0, 0, 1};
         float _clear_depth = 0.f;

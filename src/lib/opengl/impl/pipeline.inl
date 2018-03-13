@@ -3,10 +3,10 @@
 namespace gl
 {
     template<typename... TShaders>
-    void graphics_pipeline::use_stages(TShaders ... shd)
+    std::enable_if_t<graphics_pipeline::are_same<std::shared_ptr<shader>, TShaders...>::value> graphics_pipeline::use_stages(TShaders ... shd)
     {
         _shaders.clear();
-        const std::initializer_list<shader*> list{ shd... };
+        const std::initializer_list<std::shared_ptr<shader>> list{ shd... };
         for (auto s : list)
             use_shader(s);
 
@@ -25,14 +25,14 @@ namespace gl
     }
 
     template <typename T>
-    uniform<T> graphics_pipeline::get_uniform(const shader_type s, const char* name)
+    uniform<T> graphics_pipeline::get_uniform(const GLenum s, const char* name)
     {
-        return stage(s)->get_uniform<T>(name);
+        return stage(s)->uniform<T>(name);
     }
 
     template <typename T>
     uniform<T> compute_pipeline::get_uniform(const char* name)
     {
-        return stage(shader_type::compute)->get_uniform<T>(name);
+        return stage(GL_COMPUTE_SHADER)->uniform<T>(name);
     }
 }

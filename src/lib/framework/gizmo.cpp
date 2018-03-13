@@ -49,8 +49,8 @@ namespace gfx
     gizmo::gizmo()
     {
         _translate_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _translate_pipeline->use_stages(new gl::shader("multi_gizmo/gizmo_translate.vert"),
-            new gl::shader("multi_gizmo/gizmo_translate.frag"));
+        _translate_pipeline->use_stages(std::make_shared<gl::shader>("multi_gizmo/gizmo_translate.vert"),
+            std::make_shared<gl::shader>("multi_gizmo/gizmo_translate.frag"));
 
         _vertices.insert(_vertices.end(), non_cube_vertices.begin(), non_cube_vertices.end());
         const size_t last_vsize = _vertices.size();
@@ -171,7 +171,7 @@ namespace gfx
         trn_only[3] = glm::vec4(transform->position, 1);
 
         const glm::mat4 scaled_mvp_tr = projection * view * trn_only * glm::scale(glm::vec3(scale));
-        _translate_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "model_view_projection") =
+        _translate_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_view_projection") =
             scaled_mvp_tr;
 
         glm::vec2 uv = (glm::vec2(mouse_x, mouse_y) - 0.5f) * 2.f;

@@ -87,8 +87,8 @@ namespace gl
     };
     struct cmd_uniform_address : command<GL_UNIFORM_ADDRESS_COMMAND_NV, cmd_uniform_address>
     {
-        cmd_uniform_address(const u16 index, const gl::shader_type stage, const u64 address) noexcept
-            : index(index), stage_id(glGetStageIndexNV(static_cast<GLenum>(stage))), address(address)
+        cmd_uniform_address(const u16 index, const GLenum stage, const u64 address) noexcept
+            : index(index), stage_id(glGetStageIndexNV(stage)), address(address)
         {}
         u16 index;
         u16 stage_id;

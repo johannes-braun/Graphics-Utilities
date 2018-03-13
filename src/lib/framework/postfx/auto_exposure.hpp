@@ -10,7 +10,7 @@ namespace gfx::fx
     {
     public:
         auto_exposure();
-        virtual void run(const std::array<jpu::ref_ptr<gl::texture>, 2>& base_attachments, postprocess_provider& provider, double delta_time) override;
+        virtual void run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider& provider, double delta_time) override;
         virtual void resize(int x, int y) override;
         virtual void reload_pipelines() override;
     private:

@@ -23,6 +23,24 @@ namespace gl
     }
 
     template<typename T>
+    typename buffer<T>::const_iterator bounded_buffer_data_impl<T>::begin() const noexcept {
+        const_iterator i;
+        i._parent = _parent;
+        i._size = _size;
+        i._offset = 0i64;
+        return i;
+    }
+
+    template<typename T>
+    typename buffer<T>::const_iterator bounded_buffer_data_impl<T>::end() const noexcept {
+        const_iterator i;
+        i._parent = _parent;
+        i._size = _size;
+        i._offset = ptrdiff_t(_size);
+        return i;
+    }
+
+    template<typename T>
     typename buffer<T>::const_iterator bounded_buffer_data_impl<T>::cbegin() const noexcept {
         const_iterator i;
         i._parent = _parent;
@@ -52,6 +70,23 @@ namespace gl
     template<typename T>
     typename buffer<T>::reverse_iterator bounded_buffer_data_impl<T>::rend() noexcept {
         reverse_iterator i;
+        i._parent = _parent;
+        i._size = _size;
+        i._offset = -1i64;
+        return i;
+    }
+
+    template<typename T>
+    typename buffer<T>::const_reverse_iterator bounded_buffer_data_impl<T>::rbegin() const noexcept {
+        const_reverse_iterator i;
+        i._parent = _parent;
+        i._size = _size;
+        i._offset = ptrdiff_t(_size - 1i64);
+        return i;
+    }
+    template<typename T>
+    typename buffer<T>::const_reverse_iterator bounded_buffer_data_impl<T>::rend() const noexcept {
+        const_reverse_iterator i;
         i._parent = _parent;
         i._size = _size;
         i._offset = -1i64;

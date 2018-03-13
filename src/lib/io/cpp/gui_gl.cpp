@@ -9,8 +9,8 @@ namespace io::impl
             return;
         _graphics_pipeline = jpu::make_ref<gl::graphics_pipeline>();
         _graphics_pipeline->use_stages(
-            jpu::make_ref<gl::shader>("gui/gui.vert"),
-            jpu::make_ref<gl::shader>("gui/gui.frag")
+            std::make_shared<gl::shader>("gui/gui.vert"),
+            std::make_shared<gl::shader>("gui/gui.frag")
         );
         _graphics_pipeline->set_input_format(0, 2, GL_FLOAT, false);
         _graphics_pipeline->set_input_format(1, 2, GL_FLOAT, false);
@@ -22,15 +22,14 @@ namespace io::impl
         unsigned char* pixels;
         int width, height;
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        _fonts_atlas = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-        _fonts_atlas->storage_2d(width, height, GL_RGBA8, 1);
-        _fonts_atlas->assign_2d(GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        _fonts_atlas = std::make_unique<gl::v2::texture>(GL_TEXTURE_2D, width, height, GL_RGBA8, 1);
+        _fonts_atlas->assign(GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
         _sampler = gl::sampler();
         _sampler.set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        return reinterpret_cast<ImTextureID>(static_cast<uint64_t>(_sampler.sample_texture(_fonts_atlas)));
+        return reinterpret_cast<ImTextureID>(static_cast<uint64_t>(_sampler.sample(*_fonts_atlas)));
     }
 
     void gui_gl::pre_render(ImDrawData* draw_data)
@@ -87,13 +86,13 @@ namespace io::impl
         _graphics_pipeline->set_input_buffer(1, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, uv));
         _graphics_pipeline->set_input_buffer(2, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, col));
         _graphics_pipeline->set_index_buffer(_index_buffer, gl::index_type(GL_UNSIGNED_BYTE + sizeof(ImDrawIdx)));
-        _graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "projection") = ortho_projection;
+        _graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "projection") = ortho_projection;
     }
 
     void gui_gl::render(const ImDrawCmd& cmd, const int index_offset, const int vertex_offset) const
     {
         assert(GL_UNSIGNED_INT == GL_UNSIGNED_BYTE + 4 && GL_UNSIGNED_SHORT == GL_UNSIGNED_BYTE + 2);
-        _graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "img") = reinterpret_cast<uint64_t>(cmd.TextureId);
+        _graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "img") = reinterpret_cast<uint64_t>(cmd.TextureId);
         glScissor(static_cast<int>(cmd.ClipRect.x), static_cast<int>(static_cast<int>(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
             static_cast<int>(cmd.ClipRect.z - cmd.ClipRect.x), static_cast<int>(cmd.ClipRect.w - cmd.ClipRect.y));
         _graphics_pipeline->draw_indexed(gl::primitive::triangles, cmd.ElemCount, index_offset, vertex_offset);

@@ -2,22 +2,30 @@
 
 #include "gl.hpp"
 #include <jpu/memory.hpp>
+#include <type_traits>
 
 namespace gl
 {
-    class query : public jpu::ref_count
+    class query
     {
     public:
         query(GLenum type) noexcept;
+        query(const query& other) noexcept;
+        query(query&& other) noexcept;
+        query& operator=(const query& other) noexcept;
+        query& operator=(query&& other) noexcept;
         ~query() noexcept;
 
-        void begin() const noexcept;
-        void end() const noexcept;
+        void start(uint32_t index = 0) const noexcept;
+        void finish(uint32_t index = 0) const noexcept;
 
-        int get_int(GLenum param = GL_QUERY_RESULT) const noexcept;
-        uint32_t get_uint(GLenum param = GL_QUERY_RESULT) const noexcept;
-        int64_t get_int64(GLenum param = GL_QUERY_RESULT) const noexcept;
-        uint64_t get_uint64(GLenum param = GL_QUERY_RESULT) const noexcept;
+        template<typename T, typename = std::enable_if_t<
+            std::disjunction_v <
+            std::is_same<T, int>,
+            std::is_same<T, uint32_t>,
+            std::is_same<T, int64_t>,
+            std::is_same<T, uint64_t>>>>
+            T get(GLenum param = GL_QUERY_RESULT) const noexcept;
 
     private:
         GLenum _type;

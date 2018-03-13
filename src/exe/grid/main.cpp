@@ -200,8 +200,8 @@ int main()
     // Load simple mesh shader
     floor_pipeline = jpu::make_ref<gl::graphics_pipeline>();
     floor_pipeline->use_stages(
-        new gl::shader("grid/vs.vert"),
-        new gl::shader("grid/fs.frag")
+        std::make_shared<gl::shader>("grid/vs.vert"),
+        std::make_shared<gl::shader>("grid/fs.frag")
     );
     floor_pipeline->set_input_format(0, 3, GL_FLOAT, false);
     floor_pipeline->set_input_format(1, 3, GL_FLOAT, false);
@@ -209,21 +209,20 @@ int main()
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
     cubemap_pipeline->use_stages(
-        jpu::make_ref<gl::shader>("cubemap/cubemap.vert"),
-        jpu::make_ref<gl::shader>("cubemap/cubemap.frag")
+        std::make_shared<gl::shader>("cubemap/cubemap.vert"),
+        std::make_shared<gl::shader>("cubemap/cubemap.frag")
     );
     const gl::sampler sampler;
 
-    auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
-    cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->generate_mipmaps();
+    gl::v2::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
+    cubemap.assign(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.generate_mipmaps();
 
     while (main_window->update())
     {
@@ -237,19 +236,19 @@ int main()
         floor_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
         floor_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
         floor_pipeline->set_index_buffer(element_buffer, gl::index_type::u32);
-        floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "view_projection") = camera.projection() * camera.view();
-        floor_pipeline->get_uniform<glm::mat4>(gl::shader_type::fragment, "inv_view") = inverse(camera.view());
-        floor_pipeline->get_uniform<float>(gl::shader_type::fragment, "time") = glfwGetTime();
-        floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cubemap") = sampler.sample_texture(cubemap);
-       // floor_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "random") = sampler->sample_texture(main_renderer->random_texture());
+        floor_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "view_projection") = camera.projection() * camera.view();
+        floor_pipeline->get_uniform<glm::mat4>(GL_FRAGMENT_SHADER, "inv_view") = inverse(camera.view());
+        floor_pipeline->get_uniform<float>(GL_FRAGMENT_SHADER, "time") = glfwGetTime();
+        floor_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "cubemap") = sampler.sample(cubemap);
+       // floor_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "random") = sampler->sample(main_renderer->random_texture());
         floor_pipeline->draw_indexed(gl::primitive::triangles, floor_indices.size());
 
         int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
         glDepthMask(GL_FALSE);
         cubemap_pipeline->bind();
-        cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
-        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler.sample_texture(cubemap);
-        cubemap_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
+        cubemap_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "cubemap_matrix") = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
+        cubemap_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "map") = sampler.sample(cubemap);
+        cubemap_pipeline->get_uniform<glm::vec4>(GL_FRAGMENT_SHADER, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
         cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);
         main_renderer->draw(main_window->delta_time());

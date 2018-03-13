@@ -17,7 +17,7 @@ namespace gl
         return _id;
     }
 
-    shader* pipeline::stage(const shader_type s) const
+    shader* pipeline::stage(const GLenum s) const
     {
         return _shaders.count(s) != 0 ? _shaders.at(s).get() : nullptr;
     }
@@ -31,7 +31,7 @@ namespace gl
     {
         for (auto&& shader : _shaders)
         {
-            shader.second->reload(force);
+            shader.second->reload();
 
             glUseProgramStages(_id, stage_bits(shader.second->type()), *shader.second);
         }
@@ -39,7 +39,7 @@ namespace gl
         validate();
     }
 
-    void pipeline::set_stages_enabled(const std::vector<shader_type>& stages, const bool enable)
+    void pipeline::set_stages_enabled(const std::vector<GLenum>& stages, const bool enable)
     {
         for (auto stage : stages)
             set_stage_enabled(stage, enable);
@@ -47,7 +47,7 @@ namespace gl
         validate();
     }
 
-    void pipeline::set_stage_enabled(shader_type stage, const bool enable)
+    void pipeline::set_stage_enabled(GLenum stage, const bool enable)
     {
         if (enable)
         {
@@ -68,34 +68,33 @@ namespace gl
         }
     }
 
-    void pipeline::use_shader(shader* s)
+    void pipeline::use_shader(std::shared_ptr<shader> s)
     {
         glUseProgramStages(_id, stage_bits(s->type()), *s);
-        s->inc_ref();
         _shaders[s->type()] = s;
     }
 
-    GLbitfield pipeline::stage_bits(const shader_type t) noexcept
+    GLbitfield pipeline::stage_bits(const GLenum t) noexcept
     {
         GLbitfield stage_bits = GL_ZERO;
         switch (t)
         {
-        case shader_type::vertex:
+        case GL_VERTEX_SHADER:
             stage_bits = GL_VERTEX_SHADER_BIT;
             break;
-        case shader_type::fragment:
+        case GL_FRAGMENT_SHADER:
             stage_bits = GL_FRAGMENT_SHADER_BIT;
             break;
-        case shader_type::geometry:
+        case GL_GEOMETRY_SHADER:
             stage_bits = GL_GEOMETRY_SHADER_BIT;
             break;
-        case shader_type::tesselation_control:
+        case GL_TESS_CONTROL_SHADER:
             stage_bits = GL_TESS_CONTROL_SHADER_BIT;
             break;
-        case shader_type::tesselation_evaluation:
+        case GL_TESS_EVALUATION_SHADER:
             stage_bits = GL_TESS_EVALUATION_SHADER_BIT;
             break;
-        case shader_type::compute:
+        case GL_COMPUTE_SHADER:
             stage_bits = GL_COMPUTE_SHADER_BIT;
             break;
         }
@@ -157,7 +156,7 @@ namespace gl
         glDrawArraysInstancedBaseInstance(static_cast<GLenum>(p), static_cast<int>(first), static_cast<int>(vertex_count), static_cast<int>(instance_count), base_instance);
     }
 
-    compute_pipeline::compute_pipeline(shader* shader) : pipeline()
+    compute_pipeline::compute_pipeline(std::shared_ptr<shader> shader) : pipeline()
     {
         use_shader(shader);
 

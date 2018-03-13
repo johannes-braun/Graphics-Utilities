@@ -626,6 +626,12 @@ namespace gl
     typename buffer<T>::iterator buffer<T>::end() noexcept { return iterate().end(); }
 
     template<typename T>
+    typename buffer<T>::const_iterator buffer<T>::begin() const noexcept { return iterate().cbegin(); }
+
+    template<typename T>
+    typename buffer<T>::const_iterator buffer<T>::end() const noexcept { return iterate().cend(); }
+
+    template<typename T>
     typename buffer<T>::const_iterator buffer<T>::cbegin() const noexcept { return iterate().cbegin(); }
 
     template<typename T>
@@ -636,6 +642,12 @@ namespace gl
 
     template<typename T>
     typename buffer<T>::reverse_iterator buffer<T>::rend() noexcept { return iterate().rend(); }
+
+    template<typename T>
+    typename buffer<T>::const_reverse_iterator buffer<T>::rbegin() const noexcept { return iterate().crbegin(); }
+
+    template<typename T>
+    typename buffer<T>::const_reverse_iterator buffer<T>::rend() const noexcept { return iterate().crend(); }
 
     template<typename T>
     typename buffer<T>::const_reverse_iterator buffer<T>::crbegin() const noexcept { return iterate().crbegin(); }

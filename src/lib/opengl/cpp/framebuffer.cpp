@@ -78,7 +78,7 @@ namespace gl
         check_complete();
     }
 
-    void framebuffer::attach(const GLenum attachment, texture* texture, const int level)
+    void framebuffer::attach(const GLenum attachment, std::shared_ptr<v2::texture> texture, const int level)
     {
         if (_id == gl_framebuffer_t::zero)
         {

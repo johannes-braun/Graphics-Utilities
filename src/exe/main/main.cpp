@@ -107,7 +107,7 @@ int main()
     });
 
     auto graphics_pipeline = graphics_pipelines.push("Default Graphics Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    graphics_pipeline->use_stages(new gl::shader("gbuffer/gbuffer.vert"), new gl::shader("gbuffer/gbuffer.frag"));
+    graphics_pipeline->use_stages(std::make_shared<gl::shader>("gbuffer/gbuffer.vert"), std::make_shared<gl::shader>("gbuffer/gbuffer.frag"));
     graphics_pipeline->set_input_format(0, 3, GL_FLOAT, false);
     graphics_pipeline->set_input_format(1, 3, GL_FLOAT, false);
     graphics_pipeline->set_input_format(2, 2, GL_FLOAT, false);
@@ -160,31 +160,29 @@ int main()
     gizmo.transform = &transform;
 
     auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    cubemap_pipeline->use_stages(new gl::shader("cubemap/cubemap.vert"), new gl::shader("cubemap/cubemap.frag"));
+    cubemap_pipeline->use_stages(std::make_shared<gl::shader>("cubemap/cubemap.vert"), std::make_shared<gl::shader>("cubemap/cubemap.frag"));
 
     glEnable(GL_DEPTH_TEST);
     glClearColor(0, 0, 0, 0);
 
     const gl::sampler sampler;
 
-    auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
-    cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap->generate_mipmaps();
+    gl::v2::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
+    cubemap.assign(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.generate_mipmaps();
 
-    const auto load_texture = [&](auto path, auto internal_format, auto format, auto type)
+    const auto load_texture = [&](auto path, auto internal_format, auto format, auto type) -> gl::v2::texture
     {
         auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::f32 : res::image_type::u8,
             format == GL_RED ? res::image_components::grey : (format == GL_RG ? res::image_components::grey_alpha : (format == GL_RGB ? res::image_components::rgb : res::image_components::rgb_alpha)));
-        auto texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-        texture->storage_2d(image.width, image.height, internal_format);
-        texture->assign_2d(format, type, image.data.get());
+        gl::v2::texture texture(GL_TEXTURE_2D, image.width, image.height, internal_format);
+        texture.assign(format, type, image.data.get());
         return texture;
     };
 
@@ -244,7 +242,7 @@ int main()
         }
 
         ImGui::Begin("Window", nullptr, ImGuiWindowFlags_NoTitleBar);
-        ImGui::Image(reinterpret_cast<ImTextureID>(sampler.sample_texture(logo)), ImVec2(32, 32));
+        ImGui::Image(reinterpret_cast<ImTextureID>(sampler.sample(logo)), ImVec2(32, 32));
         ImGui::SameLine();
         const auto cur_pos = ImGui::GetCursorPos();
         ImGui::SetCursorPos(ImVec2(cur_pos.x, cur_pos.y + 6));
@@ -350,9 +348,9 @@ int main()
         int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask); 
         glDepthMask(GL_FALSE);
         cubemap_pipeline->bind();
-        cubemap_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "cubemap_matrix") = glm::mat4(glm::mat3(scene_buffer[0].get_inv_view())) * scene_buffer[0].get_inv_projection();
-        cubemap_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "map") = sampler.sample_texture(cubemap);
-        cubemap_pipeline->get_uniform<glm::vec4>(gl::shader_type::fragment, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
+        cubemap_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "cubemap_matrix") = glm::mat4(glm::mat3(scene_buffer[0].get_inv_view())) * scene_buffer[0].get_inv_projection();
+        cubemap_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "map") = sampler.sample(cubemap);
+        cubemap_pipeline->get_uniform<glm::vec4>(GL_FRAGMENT_SHADER, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
         cubemap_pipeline->draw(gl::primitive::triangles, 3);
         glDepthMask(mask);
 
@@ -361,12 +359,12 @@ int main()
         graphics_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
         graphics_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
         graphics_pipeline->set_index_buffer(index_buffer, gl::index_type::u32);
-        graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "model_matrix") = transform;
-        graphics_pipeline->get_uniform<glm::mat4>(gl::shader_type::vertex, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "my_texture") = sampler.sample_texture(texture_col);
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_depth") = sampler.sample_texture(texture_dis);
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "texture_normal") = sampler.sample_texture(texture_nor);
-        graphics_pipeline->get_uniform<uint64_t>(gl::shader_type::fragment, "cube_map") = sampler.sample_texture(cubemap);
+        graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_matrix") = transform;
+        graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "normal_matrix") = glm::mat4(glm::mat3(transpose(inverse(static_cast<glm::mat4>(transform)))));
+        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "my_texture") = sampler.sample(texture_col);
+        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "texture_depth") = sampler.sample(texture_dis);
+        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "texture_normal") = sampler.sample(texture_nor);
+        graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "cube_map") = sampler.sample(cubemap);
         graphics_pipeline->draw_indexed(gl::primitive::triangles, cylinder.meshes.get_by_index(0).indices.size());
 
         main_renderer->draw(main_window->delta_time());

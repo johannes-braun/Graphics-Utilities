@@ -58,7 +58,7 @@ int main()
     glFinish();
 
     const auto sort_bitonic = [&]() {
-        auto cmp = jpu::make_ref<gl::compute_pipeline>(new gl::shader("sort/bitonic.comp"));
+        auto cmp = jpu::make_ref<gl::compute_pipeline>(std::make_shared<gl::shader>("sort/bitonic.comp"));
         std::generate(buf.begin(), buf.end(), []() { return rand(); });
         buf.bind(GL_SHADER_STORAGE_BUFFER, 0);
         glFinish();
@@ -69,7 +69,7 @@ int main()
 
         gl::query query(GL_TIME_ELAPSED);
         cmp->bind();
-        query.begin();
+        query.start();
         for (int p = 0; p < logn; ++p)
         {
             puni = p;
@@ -82,8 +82,8 @@ int main()
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
             }
         }
-        query.end();
-        uint64_t time = query.get_uint64();
+        query.finish();
+        uint64_t time = query.get<uint64_t>();
         log_i << time / 1000000.f;
     };
 

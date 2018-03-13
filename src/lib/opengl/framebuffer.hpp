@@ -2,6 +2,7 @@
 
 #include "gl.hpp"
 
+#include <memory>
 #include <vector>
 #include <jpu/memory.hpp>
 #include <map>
@@ -9,7 +10,10 @@
 
 namespace gl
 {
-    class texture;
+    namespace v2
+    {
+        class texture;
+    }
 
     class framebuffer : public jpu::ref_count
     {
@@ -31,7 +35,7 @@ namespace gl
 
         void use_renderbuffer(GLenum attachment, GLenum internal_format, int width, int height);
         void use_renderbuffer_multisample(GLenum attachment, GLenum internal_format, int width, int height, int samples);
-        void attach(GLenum attachment, texture* texture, int level = 0);
+        void attach(GLenum attachment, std::shared_ptr<v2::texture> texture, int level = 0);
 
         void draw_to_attachments(const std::vector<GLenum>& attachments) const noexcept;
         void read_from_attachment(GLenum attachment) const noexcept;
@@ -51,7 +55,7 @@ namespace gl
         void check_complete() const noexcept;
 
         gl_framebuffer_t _id;
-        std::map<GLenum, jpu::ref_ptr<texture>> _attachments;
+        std::map<GLenum, std::shared_ptr<v2::texture>> _attachments;
         std::map<GLenum, render_buffer> _render_buffers;
     };
 }

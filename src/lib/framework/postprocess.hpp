@@ -24,10 +24,8 @@ namespace gfx
         {
             _full_resolution = resolution;
 
-            _double_buffer[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-            _double_buffer[0]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
-            _double_buffer[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-            _double_buffer[1]->storage_2d(_full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
+            _double_buffer[0] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, _full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
+            _double_buffer[1] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, _full_resolution.x, _full_resolution.y, GL_RGBA16F, max_mipmaps);
 
             _framebuffer = jpu::make_ref<gl::framebuffer>();
             _framebuffer->attach(GL_COLOR_ATTACHMENT0, _double_buffer[0]);
@@ -35,8 +33,8 @@ namespace gfx
         }
 
         gl::framebuffer* framebuffer() const { return _framebuffer; }
-        gl::texture* last_target() const { 
-            return _double_buffer[_last_target]; 
+        const gl::v2::texture& last_target() const { 
+            return *_double_buffer[_last_target]; 
         }
         int current_index() const {
             return _target_buffer; 
@@ -76,27 +74,26 @@ namespace gfx
         int _target_buffer = 0;
         int _last_target = 0;
         jpu::ref_ptr<gl::framebuffer> _framebuffer;
-        std::array<jpu::ref_ptr<gl::texture>, 2> _double_buffer;
+        std::array<std::shared_ptr<gl::v2::texture>, 2> _double_buffer;
     };
 
     class postprocess_pass
     {
         public:
-            virtual void run(const std::array<jpu::ref_ptr<gl::texture>, 2>& base_attachments, postprocess_provider& provider, double delta_time) = 0;
+            virtual void run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider& provider, double delta_time) = 0;
             virtual void resize(int x, int y) = 0;
             virtual void reload_pipelines() = 0;
-            gl::shader* screen_vertex_shader() const {
-                static gl::shader shader("postprocess/screen.vert");
-                return &shader;
+            std::shared_ptr<gl::shader> screen_vertex_shader() const {
+                static auto shader = std::make_shared<gl::shader>("postprocess/screen.vert");
+                return shader;
             }
-            gl::texture* random_texture() const {
-                static jpu::ref_ptr<gl::texture> tex = []() {
-                    auto texture = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-                    texture->storage_2d(512, 512, GL_RGBA16F, 1);
+            std::shared_ptr<gl::v2::texture> random_texture() const {
+                static std::shared_ptr<gl::v2::texture> tex = []() {
+                    auto texture = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, 512, 512, GL_RGBA16F, 1);
                     std::vector<float> random_pixels(512 * 512 * 4);
                     std::generate(random_pixels.begin(), random_pixels.end(),
                         [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable { return dist(gen); });
-                    texture->assign_2d(GL_RGBA, GL_FLOAT, random_pixels.data());
+                    texture->assign(GL_RGBA, GL_FLOAT, random_pixels.data());
                     texture->generate_mipmaps();
                     return texture;
                 }();

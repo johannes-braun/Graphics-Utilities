@@ -21,7 +21,7 @@ namespace io::impl
         jpu::ref_ptr<gl::graphics_pipeline> _graphics_pipeline;
         gl::buffer<ImDrawVert> _vertex_buffer = gl::buffer<ImDrawVert>(GL_DYNAMIC_STORAGE_BIT);
         gl::buffer<ImDrawIdx> _index_buffer = gl::buffer<ImDrawIdx>(GL_DYNAMIC_STORAGE_BIT);
-        jpu::ref_ptr<gl::texture> _fonts_atlas;
+        std::unique_ptr<gl::v2::texture> _fonts_atlas;
         gl::sampler _sampler;
 
         size_t _last_vertex_buffer_size = 0;

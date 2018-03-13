@@ -3,51 +3,49 @@
 #include "uniform.hpp"
 #include "gl.hpp"
 
+#include <vector>
 #include <filesystem>
-#include <jpu/memory.hpp>
+#include <string_view>
 #include <any>
 #include <map>
 #include <glshader/binary.hpp>
+#include <jpu/memory.hpp>
 
 namespace gl
 {
-    enum class shader_type
-    {
-        vertex = GL_VERTEX_SHADER,
-        fragment = GL_FRAGMENT_SHADER,
-        geometry = GL_GEOMETRY_SHADER,
-        tesselation_evaluation = GL_TESS_EVALUATION_SHADER,
-        tesselation_control = GL_TESS_CONTROL_SHADER,
-        compute = GL_COMPUTE_SHADER,
-    };
+    namespace files = std::experimental::filesystem;
+    using glshader::definition;
 
-    class shader : public jpu::ref_count
+    class shader
     {
     public:
-        static void set_include_directories(std::vector<std::experimental::filesystem::path> include_directories);
-        static void set_include_directories(std::experimental::filesystem::path include_directories);
+        static void set_include_directories(files::path include_directories);
+        static void set_include_directories(std::vector<files::path> include_directories);
 
-        explicit shader(const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
-
+        explicit shader(const files::path& path, const std::vector<definition>& definitions = {});
+        shader(const shader& other) noexcept;
+        shader(shader&& other) noexcept;
+        shader& operator=(const shader& other) noexcept;
+        shader& operator=(shader&& other) noexcept;
         ~shader() noexcept;
-        operator gl_shader_program_t() const noexcept;
-        shader_type type() const noexcept;
 
-        void reload(bool force = false) noexcept;
-        void reload(const std::vector<glshader::definition>& definitions);
+        void reload(const std::vector<definition>& definitions);
+        void reload();
+
+        GLenum type() const noexcept;
+        operator gl_shader_program_t() const noexcept;
 
         template<typename T>
-        uniform<T> get_uniform(std::string_view name);
+        uniform<T> uniform(const std::string& name);
 
     private:
-        static shader_type type_of(const std::experimental::filesystem::path& extension);
-        static std::vector<std::experimental::filesystem::path> _include_directories;
+        static std::vector<files::path> _include_directories;
 
-        gl_shader_program_t _id;
-        shader_type _type;
-        std::map<std::string_view, all_uniform_types> _uniforms;
-        std::experimental::filesystem::path _path;
-        std::vector<glshader::definition> _definitions;
+        gl_shader_program_t _id = gl_shader_program_t::zero;
+        GLenum _type;
+        files::path _path;
+        std::map<std::string, all_uniform_types> _uniforms;
+        std::vector<definition> _definitions;
     };
 }
 

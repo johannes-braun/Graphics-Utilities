@@ -26,8 +26,8 @@ jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipel
 std::unique_ptr<gfx::renderer> main_renderer;
 
 jpu::ref_ptr<gl::framebuffer> target_framebuffer;
-std::array<jpu::ref_ptr<gl::texture>, 3> target_textures;
-jpu::ref_ptr<gl::image> target_image;
+std::array<std::shared_ptr<gl::v2::texture>, 3> target_textures;
+std::unique_ptr<gl::image> target_image;
 
 struct mesh;
 class mesh_proxy : public jpu::ref_count
@@ -166,13 +166,10 @@ void resize(GLFWwindow*, int w, int h)
 {
     resolution = { w, h };
     main_renderer->resize(resolution.x, resolution.y, 8);
-    target_textures[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-    target_textures[0]->storage_2d(resolution.x, resolution.y, GL_RGBA32F);
-    target_textures[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-    target_textures[1]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_textures[2] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D);
-    target_textures[2]->storage_2d(resolution.x, resolution.y, GL_RGBA16F);
-    target_image = jpu::make_ref<gl::image>(target_textures[0], 0, false, 0, GL_RGBA32F, GL_READ_WRITE);
+    target_textures[0] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA32F);
+    target_textures[1] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA16F);
+    target_textures[2] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D, resolution.x, resolution.y, GL_RGBA16F);
+    target_image = std::make_unique<gl::image>(*target_textures[0], GL_RGBA32F, GL_READ_WRITE);
     target_framebuffer = jpu::make_ref<gl::framebuffer>();
     target_framebuffer->attach(GL_COLOR_ATTACHMENT0, target_textures[0]);
     target_framebuffer->attach(GL_COLOR_ATTACHMENT1, target_textures[1]);
@@ -222,15 +219,14 @@ int main()
 
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;
-    auto cubemap = jpu::make_ref<gl::texture>(GL_TEXTURE_CUBE_MAP);
-    cubemap->storage_2d(w, h, GL_R11F_G11F_B10F);
-    cubemap->assign_3d(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
-    cubemap->assign_3d(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
-    cubemap->assign_3d(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
-    cubemap->assign_3d(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[3].data.get());
-    cubemap->assign_3d(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[4].data.get());
-    cubemap->assign_3d(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[5].data.get());
-    cubemap->generate_mipmaps();
+    gl::v2::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
+    cubemap.assign(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
+    cubemap.assign(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
+    cubemap.assign(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
+    cubemap.assign(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[3].data.get());
+    cubemap.assign(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[4].data.get());
+    cubemap.assign(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[5].data.get());
+    cubemap.generate_mipmaps();
     cubemap_images.clear();
 
     std::mt19937 gen;
@@ -267,24 +263,24 @@ int main()
 
     gl::query query_time(GL_TIME_ELAPSED);
 
-    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(new gl::shader("pathtracer/trace.comp")));
-    gl::graphics_pipeline pp_chunk; pp_chunk.use_stages(new gl::shader("pathtracer/chunk.vert"), new gl::shader("pathtracer/chunk.frag"));
-    gl::graphics_pipeline pp_mesh; pp_mesh.use_stages(new gl::shader("pathtracer/mesh.vert"), new gl::shader("pathtracer/mesh.frag"));
+    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(std::make_shared<gl::shader>("pathtracer/trace.comp")));
+    gl::graphics_pipeline pp_chunk; pp_chunk.use_stages(std::make_shared<gl::shader>("pathtracer/chunk.vert"), std::make_shared<gl::shader>("pathtracer/chunk.frag"));
+    gl::graphics_pipeline pp_mesh; pp_mesh.use_stages(std::make_shared<gl::shader>("pathtracer/mesh.vert"), std::make_shared<gl::shader>("pathtracer/mesh.frag"));
     pp_mesh.set_input_format(0, 3, GL_FLOAT, false);
-    gl::graphics_pipeline bilateral_pipeline; bilateral_pipeline.use_stages(new gl::shader("postprocess/screen.vert"), new gl::shader("postprocess/filter/bilateral.frag"));
+    gl::graphics_pipeline bilateral_pipeline; bilateral_pipeline.use_stages(std::make_shared<gl::shader>("postprocess/screen.vert"), std::make_shared<gl::shader>("postprocess/filter/bilateral.frag"));
 
     gfx::gizmo gizmo;
     
-    uint32_t bID = glGetUniformBlockIndex(*pp_trace->stage(gl::shader_type::compute), "Infos");
-    int size = -1; glGetActiveUniformBlockiv(*pp_trace->stage(gl::shader_type::compute), bID, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
-    int c; glGetActiveUniformBlockiv(*pp_trace->stage(gl::shader_type::compute), bID, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &c);
+    uint32_t bID = glGetUniformBlockIndex(*pp_trace->stage(GL_COMPUTE_SHADER), "Infos");
+    int size = -1; glGetActiveUniformBlockiv(*pp_trace->stage(GL_COMPUTE_SHADER), bID, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
+    int c; glGetActiveUniformBlockiv(*pp_trace->stage(GL_COMPUTE_SHADER), bID, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &c);
     for (uint32_t i = 0; i < c; ++i)
     {
-        int len; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_NAME_LENGTH, &len);
-        std::string str(len, ' '); glGetActiveUniformName(*pp_trace->stage(gl::shader_type::compute), i, len, &len, str.data());
-        int offsets; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_OFFSET, &offsets);
-        int strides; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_ARRAY_STRIDE, &strides);
-        int sizes; glGetActiveUniformsiv(*pp_trace->stage(gl::shader_type::compute), 1, &i, GL_UNIFORM_SIZE, &sizes);
+        int len; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_NAME_LENGTH, &len);
+        std::string str(len, ' '); glGetActiveUniformName(*pp_trace->stage(GL_COMPUTE_SHADER), i, len, &len, str.data());
+        int offsets; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_OFFSET, &offsets);
+        int strides; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_ARRAY_STRIDE, &strides);
+        int sizes; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_SIZE, &sizes);
         log_i << str << ": " << offsets << ", " << strides << ", " << sizes;
     }
     
@@ -340,7 +336,7 @@ int main()
         double t = 0.0;
         while (t < main_window->get_swap_delay() / 2.f)
         {
-            query_time.begin();
+            query_time.start();
             pp_trace->bind();
             pathtracer_info_buffer[0].target_image = *target_image;
             pathtracer_info_buffer[0].random_gen = dist(gen);
@@ -348,7 +344,7 @@ int main()
             pathtracer_info_buffer[0].max_samples = max_samples;
             pathtracer_info_buffer[0].camera_position = cam.transform.position;
             pathtracer_info_buffer[0].camera_matrix = camera_matrix;
-            pathtracer_info_buffer[0].cubemap = sampler.sample_texture(cubemap);
+            pathtracer_info_buffer[0].cubemap = sampler.sample(cubemap);
             pathtracer_info_buffer[0].meshes = meshes_buffer.handle();
             pathtracer_info_buffer[0].num_meshes = meshes_buffer.size();
             pathtracer_info_buffer[0].max_bounces = 8;
@@ -357,16 +353,16 @@ int main()
             frame = (frame + 1) % (count_x * count_y);
             if (frame == 0 && enable_continuous_improvement)
                 ++sample_blend_offset;
-            query_time.end();
-            t += query_time.get_uint64() / 1'000'000'000.0;
+            query_time.finish();
+            t += query_time.get<uint64_t>() / 1'000'000'000.0;
         }
 
         target_framebuffer->draw_to_attachments({ GL_COLOR_ATTACHMENT1 });
         main_renderer->bind();
         bilateral_pipeline.bind();
-        bilateral_pipeline.get_uniform<float>(gl::shader_type::fragment, "gauss_bsigma") = gauss_bsigma;
-        bilateral_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler.sample_texture(target_textures[0]);
-        bilateral_pipeline.get_uniform<float>(gl::shader_type::fragment, "gauss_sigma") = show_bfilter ? gauss_sigma : 0;
+        bilateral_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "gauss_bsigma") = gauss_bsigma;
+        bilateral_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(*target_textures[0]);
+        bilateral_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "gauss_sigma") = show_bfilter ? gauss_sigma : 0;
         bilateral_pipeline.draw(gl::primitive::triangles, 3);
         main_renderer->draw(main_window->delta_time(), *target_framebuffer);
 
@@ -378,9 +374,9 @@ int main()
         {
             glLineWidth(2.f);
             pp_chunk.bind();
-            pp_chunk.get_uniform<glm::vec2>(gl::shader_type::vertex, "inv_resolution") = 1.f / glm::vec2(resolution);
-            pp_chunk.get_uniform<glm::vec2>(gl::shader_type::vertex, "offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
-            pp_chunk.get_uniform<glm::vec2>(gl::shader_type::vertex, "size") = glm::vec2(size_x, size_y);
+            pp_chunk.get_uniform<glm::vec2>(GL_VERTEX_SHADER, "inv_resolution") = 1.f / glm::vec2(resolution);
+            pp_chunk.get_uniform<glm::vec2>(GL_VERTEX_SHADER, "offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pp_chunk.get_uniform<glm::vec2>(GL_VERTEX_SHADER, "size") = glm::vec2(size_x, size_y);
             pp_chunk.draw(gl::primitive::line_strip, 5);
         }
 
@@ -395,7 +391,7 @@ int main()
                 pp_mesh.bind();
                 for (auto&& s : p.second)
                 {
-                    pp_mesh.get_uniform<glm::mat4>(gl::shader_type::vertex, "model_view_projection") = cam.projection() * cam.view() * s->model;
+                    pp_mesh.get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_view_projection") = cam.projection() * cam.view() * s->model;
                     p.first->draw(pp_mesh);
                 }
                 glPolygonMode(GL_FRONT, GL_FILL);
@@ -433,7 +429,7 @@ int main()
         if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
             res::stbi_data tex_data(malloc(resolution.x * resolution.y * 4 * sizeof(float)));
-            target_textures[1]->get_texture_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
+            target_textures[1]->get_data(GL_RGBA, GL_FLOAT, resolution.x * resolution.y * 4 * sizeof(float), tex_data.get());
 
             glm::vec4* ic = static_cast<glm::vec4*>(tex_data.get());
             std::vector<glm::u8vec4> convert(resolution.x * resolution.y);

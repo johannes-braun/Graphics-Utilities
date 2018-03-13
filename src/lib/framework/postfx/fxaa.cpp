@@ -4,16 +4,16 @@ namespace gfx::fx
 {
     fxaa::fxaa()
     {
-        _fxaa_pipeline.use_stages(screen_vertex_shader(), new gl::shader("postprocess/filter/fxaa.frag"));
+        _fxaa_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/fxaa.frag"));
     }
     void fxaa::resize(int x, int y)
     {
     }
-    void fxaa::run(const std::array<jpu::ref_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
+    void fxaa::run(const std::array<std::shared_ptr<gl::v2::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
     {
         provider.begin_draw();
         _fxaa_pipeline.bind();
-        _fxaa_pipeline.get_uniform<uint64_t>(gl::shader_type::fragment, "src_textures[0]") = sampler.sample_texture(provider.last_target());
+        _fxaa_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(provider.last_target());
         _fxaa_pipeline.draw(gl::primitive::triangles, 3);
         provider.end_draw();
     }

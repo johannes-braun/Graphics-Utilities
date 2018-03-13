@@ -2,49 +2,84 @@
 
 namespace gl
 {
-    query::query(const GLenum type) noexcept
+    query::query(GLenum type) noexcept
         : _type(type)
     {
+        glCreateQueries(type, 1, &_id);
+    }
+
+    query::query(const query& other) noexcept
+        : query(other._type)
+    {
+    }
+
+    query::query(query&& other) noexcept
+        : _id(other._id), _type(other._type)
+    {
+        other._id = gl_query_t::zero;
+        other._type = GL_ZERO;
+    }
+
+    query& query::operator=(const query& other) noexcept
+    {
+        if (_id != gl_query_t::zero)
+            glDeleteQueries(1, &_id);
+        _type = other._type;
         glCreateQueries(_type, 1, &_id);
+        return *this;
+    }
+
+    query& query::operator=(query&& other) noexcept
+    {
+        _id = other._id;
+        _type = other._type;
+        other._id = gl_query_t::zero;
+        other._type = GL_ZERO;
+        return *this;
     }
 
     query::~query() noexcept
     {
-        glDeleteQueries(1, &_id);
+        if (_id != gl_query_t::zero)
+            glDeleteQueries(1, &_id);
     }
 
-    void query::begin() const noexcept
+    void query::start(uint32_t index) const noexcept
     {
-        glBeginQuery(_type, _id);
+        glBeginQueryIndexed(_type, index, _id);
     }
 
-    void query::end() const noexcept
+    void query::finish(uint32_t index) const noexcept
     {
-        glEndQuery(_type);
+        glEndQueryIndexed(_type, index);
     }
 
-    int query::get_int(const GLenum param) const noexcept
+    template<>
+    int query::get<int>(GLenum param) const noexcept
     {
         int i;
         glGetQueryObjectiv(_id, param, &i);
         return i;
     }
 
-    uint32_t query::get_uint(const GLenum param) const noexcept
+    template<>
+    uint32_t query::get<uint32_t>(GLenum param) const noexcept
     {
         uint32_t i;
         glGetQueryObjectuiv(_id, param, &i);
         return i;
     }
 
-    int64_t query::get_int64(const GLenum param) const noexcept
+    template<>
+    int64_t query::get<int64_t>(GLenum param) const noexcept
     {
         int64_t i;
         glGetQueryObjecti64v(_id, param, &i);
         return i;
     }
 
-    uint64_t query::get_uint64(const GLenum param) const noexcept
+    template<>
+    uint64_t query::get<uint64_t>(GLenum param) const noexcept
     {
         uint64_t i;
         glGetQueryObjectui64v(_id, param, &i);

@@ -47,14 +47,10 @@ namespace gfx
             tlog_i("Renderer") << "Resizing to (" << width << " x " << height << " x " << samples << ")";
             _main_framebuffer = jpu::make_ref<gl::framebuffer>();
 
-            _msaa_attachments[0] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE);
-            _msaa_attachments[0]->storage_2d_multisample(_full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
+            _msaa_attachments[0] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
+            _msaa_attachments[1] = std::make_shared<gl::v2::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
             _main_framebuffer->attach(GL_COLOR_ATTACHMENT0, _msaa_attachments[0]);
-
-            _msaa_attachments[1] = jpu::make_ref<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE);
-            _msaa_attachments[1]->storage_2d_multisample(_full_resolution.x, _full_resolution.y, samples, GL_RGBA16F);
             _main_framebuffer->attach(GL_COLOR_ATTACHMENT1, _msaa_attachments[1]);
-
             _main_framebuffer->use_renderbuffer_multisample(GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH24_STENCIL8, _full_resolution.x, _full_resolution.y, samples);
 
         }
