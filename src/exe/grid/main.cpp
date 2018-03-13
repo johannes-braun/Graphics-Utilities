@@ -9,10 +9,8 @@
 #include "framework/renderer.hpp"
 
 jpu::ref_ptr<io::window> main_window;
-jpu::ref_ptr<gl::graphics_pipeline> floor_pipeline;
+std::unique_ptr<gl::pipeline> floor_pipeline;
 std::unique_ptr<gfx::renderer> main_renderer;
-
-jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 std::vector<res::vertex> floor_vertices;
 std::vector<uint32_t> floor_indices;
@@ -39,7 +37,7 @@ int main()
 
         if (key == GLFW_KEY_P && action == GLFW_PRESS)
         {
-            floor_pipeline->reload_stages();
+            floor_pipeline->reload();
         }
     });
 
@@ -85,7 +83,7 @@ int main()
     for(int i=0; i<width*height; ++i)
     {
         const float val = static_cast<float*>(img.data.get())[i];
-        heights[i] = val > 0 ? (val * scale +1) : val;
+        heights[i] = int(val > 0 ? (val * scale +1) : val);
     }
 
     const std::array<glm::ivec2, 8> offsets{
@@ -165,7 +163,7 @@ int main()
                         for (int i = 0; i < infos[w].idx.size(); ++i)
                         {
                             auto idx = infos[w].idx[i];
-                            idx += old_vtx_size;
+                            idx += uint32_t(old_vtx_size);
                             floor_indices[old_idx_size + i] = idx;
                         }
                     }
@@ -187,7 +185,7 @@ int main()
                 for (int i = 0; i < infos[pos].idx.size(); ++i)
                 {
                     auto idx = infos[pos].idx[i];
-                    idx += old_vtx_size;
+                    idx += uint32_t(old_vtx_size);
                     floor_indices[old_idx_size + i] = idx;
                 }
             }
@@ -198,20 +196,14 @@ int main()
     gl::buffer<uint32_t> element_buffer(floor_indices.begin(), floor_indices.end());
 
     // Load simple mesh shader
-    floor_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-    floor_pipeline->use_stages(
-        std::make_shared<gl::shader>("grid/vs.vert"),
-        std::make_shared<gl::shader>("grid/fs.frag")
-    );
-    floor_pipeline->set_input_format(0, 3, GL_FLOAT, false);
-    floor_pipeline->set_input_format(1, 3, GL_FLOAT, false);
-    floor_pipeline->set_input_format(2, 2, GL_FLOAT, false);
+    floor_pipeline = std::make_unique<gl::pipeline>();
+    floor_pipeline->at(GL_VERTEX_SHADER) = std::make_shared<gl::shader>("grid/vs.vert");
+    floor_pipeline->at(GL_FRAGMENT_SHADER) = std::make_shared<gl::shader>("grid/fs.frag");
 
-    auto cubemap_pipeline = graphics_pipelines.push("Cubemap Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    cubemap_pipeline->use_stages(
-        std::make_shared<gl::shader>("cubemap/cubemap.vert"),
-        std::make_shared<gl::shader>("cubemap/cubemap.frag")
-    );
+    gl::pipeline cubemap_pipeline;
+    cubemap_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("cubemap/cubemap.vert");
+    cubemap_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("cubemap/cubemap.frag");
+
     const gl::sampler sampler;
 
     int w, h, c; stbi_info("../res/hdr/posx.hdr", &w, &h, &c);
@@ -224,33 +216,38 @@ int main()
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap.generate_mipmaps();
 
+    gl::texture random_texture(GL_TEXTURE_2D, 512, 512, GL_RGBA16F, 1);
+    std::vector<float> random_pixels(512 * 512 * 4);
+    std::generate(random_pixels.begin(), random_pixels.end(), [gen = std::mt19937(), dist = std::uniform_real_distribution<float>(0.f, 1.f)]() mutable { return dist(gen); });
+    random_texture.assign(GL_RGBA, GL_FLOAT, random_pixels.data());
+    random_texture.generate_mipmaps();
+
     while (main_window->update())
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         draw_gui();
         controller.update(camera, *main_window, main_window->delta_time());
-
+        
         main_renderer->bind();
         floor_pipeline->bind();
-        floor_pipeline->set_input_buffer(0, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
-        floor_pipeline->set_input_buffer(1, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, normal));
-        floor_pipeline->set_input_buffer(2, vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, uv));
-        floor_pipeline->set_index_buffer(element_buffer, gl::index_type::u32);
-        floor_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "view_projection") = camera.projection() * camera.view();
-        floor_pipeline->get_uniform<glm::mat4>(GL_FRAGMENT_SHADER, "inv_view") = inverse(camera.view());
-        floor_pipeline->get_uniform<float>(GL_FRAGMENT_SHADER, "time") = glfwGetTime();
-        floor_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "cubemap") = sampler.sample(cubemap);
-       // floor_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "random") = sampler->sample(main_renderer->random_texture());
-        floor_pipeline->draw_indexed(gl::primitive::triangles, floor_indices.size());
+        floor_pipeline->at(GL_VERTEX_SHADER)->uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
+        floor_pipeline->at(GL_FRAGMENT_SHADER)->uniform<glm::mat4>("inv_view") = inverse(camera.view());
+        floor_pipeline->at(GL_FRAGMENT_SHADER)->uniform<float>("time") = float(glfwGetTime());
+        floor_pipeline->at(GL_FRAGMENT_SHADER)->uniform<uint64_t>("cubemap") = sampler.sample(cubemap);
+        floor_pipeline->at(GL_FRAGMENT_SHADER)->uniform<uint64_t>("random") = sampler.sample(random_texture);
+        floor_pipeline->bind_attribute(0, vertex_buffer, 3, GL_FLOAT, offsetof(res::vertex, position));
+        floor_pipeline->bind_attribute(1, vertex_buffer, 3, GL_FLOAT, offsetof(res::vertex, normal));
+        floor_pipeline->bind_attribute(2, vertex_buffer, 2, GL_FLOAT, offsetof(res::vertex, uv));
+        floor_pipeline->draw(GL_TRIANGLES, element_buffer, GL_UNSIGNED_INT);
 
-        int mask; glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
-        glDepthMask(GL_FALSE);
-        cubemap_pipeline->bind();
-        cubemap_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "cubemap_matrix") = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
-        cubemap_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "map") = sampler.sample(cubemap);
-        cubemap_pipeline->get_uniform<glm::vec4>(GL_FRAGMENT_SHADER, "tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
-        cubemap_pipeline->draw(gl::primitive::triangles, 3);
-        glDepthMask(mask);
+        glDepthMask(false);
+        cubemap_pipeline.bind();
+        cubemap_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("cubemap_matrix") = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
+        cubemap_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("map") = sampler.sample(cubemap);
+        cubemap_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(0.9f, 0.96f, 1.f, 1.f);
+        cubemap_pipeline.draw(GL_TRIANGLES, 3);
+        glDepthMask(true);
+
         main_renderer->draw(main_window->delta_time());
     }
     return 0;
@@ -261,6 +258,6 @@ void draw_gui()
     ImGui::Begin("Settings");
     ImGui::Value("Delta-Time", static_cast<float>(main_window->delta_time()));
     if (ImGui::Button("Reload Pipeline"))
-        floor_pipeline->reload_stages();
+        floor_pipeline->reload();
     ImGui::End();
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <opengl/vertex_array.hpp>
 #include <opengl/buffer.hpp>
 #include <opengl/texture.hpp>
 #include <opengl/pipeline.hpp>
@@ -18,7 +17,7 @@ namespace io::impl
         void post_render();
 
     private:
-        jpu::ref_ptr<gl::graphics_pipeline> _graphics_pipeline;
+        gl::pipeline _graphics_pipeline;
         gl::buffer<ImDrawVert> _vertex_buffer = gl::buffer<ImDrawVert>(GL_DYNAMIC_STORAGE_BIT);
         gl::buffer<ImDrawIdx> _index_buffer = gl::buffer<ImDrawIdx>(GL_DYNAMIC_STORAGE_BIT);
         std::unique_ptr<gl::texture> _fonts_atlas;

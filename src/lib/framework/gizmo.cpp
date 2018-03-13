@@ -48,9 +48,8 @@ namespace gfx
 
     gizmo::gizmo()
     {
-        _translate_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _translate_pipeline->use_stages(std::make_shared<gl::shader>("multi_gizmo/gizmo_translate.vert"),
-            std::make_shared<gl::shader>("multi_gizmo/gizmo_translate.frag"));
+        _translate_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("multi_gizmo/gizmo_translate.vert");
+        _translate_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("multi_gizmo/gizmo_translate.frag");
 
         _vertices.insert(_vertices.end(), non_cube_vertices.begin(), non_cube_vertices.end());
         const size_t last_vsize = _vertices.size();
@@ -96,8 +95,6 @@ namespace gfx
         _index_buffer.clear();
         _index_buffer.insert(_index_buffer.begin(), indices.begin(), indices.end());
         _index_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-        _translate_pipeline->set_input_format(0, 3, GL_FLOAT, false);
-        _translate_pipeline->set_input_format(1, 4, GL_UNSIGNED_BYTE, true);
     }
 
     void gizmo::reassign_vertices(std::initializer_list<size_t> indices, const bool to_default)
@@ -159,8 +156,8 @@ namespace gfx
 
         double mx, my; glfwGetCursorPos(window, &mx, &my);
         int fbx, fby; glfwGetFramebufferSize(window, &fbx, &fby);
-        float mouse_x = mx / fbx;
-        float mouse_y = my / fby;
+        float mouse_x = float(mx / fbx);
+        float mouse_y = float(my / fby);
         bool mouse_button_down = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
 
         const glm::mat4 mvp = projection * view * static_cast<glm::mat4>(*transform);
@@ -171,8 +168,7 @@ namespace gfx
         trn_only[3] = glm::vec4(transform->position, 1);
 
         const glm::mat4 scaled_mvp_tr = projection * view * trn_only * glm::scale(glm::vec3(scale));
-        _translate_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_view_projection") =
-            scaled_mvp_tr;
+        _translate_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("model_view_projection") = scaled_mvp_tr;
 
         glm::vec2 uv = (glm::vec2(mouse_x, mouse_y) - 0.5f) * 2.f;
         uv.y = -uv.y;
@@ -386,23 +382,22 @@ namespace gfx
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        _translate_pipeline->bind();
-        _translate_pipeline->set_input_buffer(0, _vertex_buffer, sizeof(vertex), offsetof(vertex, position));
-        _translate_pipeline->set_input_buffer(1, _vertex_buffer, sizeof(vertex), offsetof(vertex, color));
-        _translate_pipeline->set_index_buffer(_index_buffer, gl::index_type::u16);
+        _translate_pipeline.bind();
+        _translate_pipeline.bind_attribute(0, _vertex_buffer, 3, GL_FLOAT, offsetof(vertex, position));
+        _translate_pipeline.bind_attribute(1, _vertex_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(vertex, color));
 
         glDisable(GL_CULL_FACE);
-        _translate_pipeline->draw_indexed(gl::primitive::triangles, 9, 0, 0);
+        _translate_pipeline.draw(GL_TRIANGLES, _index_buffer, GL_UNSIGNED_SHORT, 9, 0, 0);
         glLineWidth(2.f);
-        _translate_pipeline->draw_indexed(gl::primitive::lines, 6, 9, 9);
+        _translate_pipeline.draw(GL_LINES, _index_buffer, GL_UNSIGNED_SHORT, 6, 9, 9);
         glLineWidth(6.f);
-        _translate_pipeline->draw_indexed(gl::primitive::lines, 6, 9, 15);
+        _translate_pipeline.draw(GL_LINES, _index_buffer, GL_UNSIGNED_SHORT, 6, 9, 15);
         glPointSize(12.f);
-        _translate_pipeline->draw_indexed(gl::primitive::points, 3, 15, 15);
+        _translate_pipeline.draw(GL_POINTS, _index_buffer, GL_UNSIGNED_SHORT, 3, 15, 15);
         glLineWidth(3.f);
-        _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21);
-        _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21 + circle_resolution);
-        _translate_pipeline->draw_indexed(gl::primitive::line_loop, circle_resolution, 18, 21 + 2 * circle_resolution);
+        _translate_pipeline.draw(GL_LINE_LOOP, _index_buffer, GL_UNSIGNED_SHORT, circle_resolution, 18, 21);
+        _translate_pipeline.draw(GL_LINE_LOOP, _index_buffer, GL_UNSIGNED_SHORT, circle_resolution, 18, 21 + circle_resolution);
+        _translate_pipeline.draw(GL_LINE_LOOP, _index_buffer, GL_UNSIGNED_SHORT, circle_resolution, 18, 21 + 2 * circle_resolution);
 
         glUseProgram(gl_shader_program_t(last_program));
         glBlendEquationSeparate(GLenum(last_blend_equation_rgb), GLenum(last_blend_equation_alpha));

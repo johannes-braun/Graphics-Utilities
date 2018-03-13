@@ -2,37 +2,38 @@
 
 namespace gl
 {
-    template<typename... TShaders>
-    std::enable_if_t<graphics_pipeline::are_same<std::shared_ptr<shader>, TShaders...>::value> graphics_pipeline::use_stages(TShaders ... shd)
+    template<typename T>
+    void pipeline::bind_attribute(uint32_t index, const buffer<T>& buffer, int components, GLenum type, bool normalized, size_t offset, size_t stride) const noexcept
     {
-        _shaders.clear();
-        const std::initializer_list<std::shared_ptr<shader>> list{ shd... };
-        for (auto s : list)
-            use_shader(s);
-
-        glValidateProgramPipeline(_id);
-
-        if (int success = 0; glGetProgramPipelineiv(_id, GL_VALIDATE_STATUS, &success), !success)
-        {
-            int log_length;
-            glGetProgramPipelineiv(_id, GL_INFO_LOG_LENGTH, &log_length);
-            std::string log(log_length, ' ');
-            glGetProgramPipelineInfoLog(_id, log_length, &log_length, log.data());
-            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, static_cast<GLenum>(_id), GL_DEBUG_SEVERITY_HIGH, -1, log.c_str());
-
-            throw std::runtime_error("Program pipeline validation failed: " + log);
-        }
+        glEnableVertexAttribArray(index);
+        glVertexAttribFormatNV(index, components, type, normalized, int(stride));
+        glBufferAddressRangeNV(GL_VERTEX_ATTRIB_ARRAY_ADDRESS_NV, index, buffer.handle() + offset, buffer.size() * sizeof(decltype(buffer[0])));
     }
 
-    template <typename T>
-    uniform<T> graphics_pipeline::get_uniform(const GLenum s, const char* name)
+    template<typename T>
+    void pipeline::bind_attribute(uint32_t index, const buffer<T>& buffer, int components, GLenum type, size_t offset, size_t stride) const noexcept
     {
-        return stage(s)->uniform<T>(name);
+        bind_attribute(index, buffer, components, type, false, offset, stride);
     }
 
-    template <typename T>
-    uniform<T> compute_pipeline::get_uniform(const char* name)
+    template<typename T>
+    void pipeline::bind_uniform_buffer(uint32_t index, const buffer<T>& buffer, size_t offset, size_t size) const noexcept
     {
-        return stage(GL_COMPUTE_SHADER)->uniform<T>(name);
+        glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, index, buffer.handle() + offset, (size == ~0) ? buffer.size() * sizeof(decltype(buffer[0])) : size);
+    }
+
+    template<typename T>
+    void pipeline::draw(GLenum primitive, const buffer<T>& index_buffer, GLenum type, size_t count, size_t first_index, size_t first_vertex) const noexcept
+    {
+        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, 0ui64, std::numeric_limits<int64_t>::max());
+        glDrawElementsBaseVertex(primitive, int(count == ~0 ? index_buffer.size() : count), type,
+            reinterpret_cast<const void*>(index_buffer.handle() + first_index * std::max<size_t>(1, type - GL_UNSIGNED_BYTE)), int(first_vertex));
+        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, 0ui64, 1ui64);
+    }
+
+    template<typename T>
+    void compute_pipeline::bind_uniform_buffer(uint32_t index, const buffer<T>& buffer, size_t offset, size_t size) const noexcept
+    {
+        glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, index, buffer.handle() + offset, (size == ~0) ? buffer.size() * sizeof(decltype(buffer[0])) : size);
     }
 }

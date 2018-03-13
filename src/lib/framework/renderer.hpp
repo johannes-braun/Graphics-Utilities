@@ -4,7 +4,6 @@
 #include <opengl/texture.hpp>
 #include <opengl/framebuffer.hpp>
 #include <opengl/pipeline.hpp>
-#include <opengl/vertex_array.hpp>
 #include <opengl/buffer.hpp>
 #include <jpu/data.hpp>
 #include <glm/glm.hpp>

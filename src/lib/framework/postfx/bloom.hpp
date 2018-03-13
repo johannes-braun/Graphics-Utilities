@@ -21,10 +21,10 @@ namespace gfx::fx
         gl::framebuffer _full_framebuffer;
         std::array<std::shared_ptr<gl::texture>, 2> _quarter_attachments;
         std::shared_ptr<gl::texture> _full_attachment;
-        glm::ivec2 _viewport;
-        gl::graphics_pipeline _bright_pipeline;
-        gl::graphics_pipeline _blur_pipeline;
-        gl::graphics_pipeline _flare_pipeline;
-        gl::graphics_pipeline _add_pipeline;
+        glm::vec2 _viewport;
+        gl::pipeline _bright_pipeline;
+        gl::pipeline _blur_pipeline;
+        gl::pipeline _flare_pipeline;
+        gl::pipeline _add_pipeline;
     };
 }

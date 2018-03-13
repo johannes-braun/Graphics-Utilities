@@ -21,6 +21,7 @@
   </extensions>
   <commands>
     <command>glEnableClientState</command>
+    <command>glDisableClientState</command>
     <command>glDrawTextureNV</command>
   </commands>
 </mygl-generator>

@@ -52,7 +52,7 @@ namespace gfx
             _main_framebuffer[GL_DEPTH_STENCIL_ATTACHMENT] = std::make_shared<gl::renderbuffer>(GL_DEPTH24_STENCIL8, _full_resolution.x, _full_resolution.y, gl::samples(uint32_t(std::log2(samples))));
 
         }
-        glViewportIndexedf(0, 0, 0, width, height);
+        glViewportIndexedf(0, 0, 0, float(width), float(height));
     }
 
     void renderer::reload_pipelines()

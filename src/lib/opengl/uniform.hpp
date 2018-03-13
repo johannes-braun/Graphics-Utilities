@@ -10,7 +10,7 @@ namespace gl
 {
     class shader;
     class pipeline;
-    class graphics_pipeline;
+    class pipeline;
     class compute_pipeline;
 
     template <typename T>
@@ -18,7 +18,7 @@ namespace gl
     {
         friend shader;
         friend pipeline;
-        friend graphics_pipeline;
+        friend pipeline;
         friend compute_pipeline;
     public:
         uniform(uniform&&) = default;

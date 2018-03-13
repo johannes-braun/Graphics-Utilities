@@ -4,10 +4,15 @@ namespace gfx::fx
 { 
     bloom::bloom()
     {
-        _blur_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/blur.frag"));
-        _flare_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/flare.frag"));
-        _bright_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/bright_spots.frag"));
-        _add_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/add.frag"));
+        _blur_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
+        _flare_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
+        _bright_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
+        _add_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
+
+        _blur_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/blur.frag");
+        _flare_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/flare.frag");
+        _bright_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/bright_spots.frag");
+        _add_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/add.frag");
     }
     void bloom::resize(int x, int y)
     {
@@ -31,46 +36,46 @@ namespace gfx::fx
         _quarter_framebuffer.bind();
         _quarter_framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT0);
         _bright_pipeline.bind();
-        _bright_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(provider.last_target());
-        _bright_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "threshold_lower") = 1.0f;
-        _bright_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "threshold_higher") = 1.45f;
-        _bright_pipeline.draw(gl::primitive::triangles, 3);
+        _bright_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(provider.last_target());
+        _bright_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("threshold_lower") = 1.0f;
+        _bright_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("threshold_higher") = 1.45f;
+        _bright_pipeline.draw(GL_TRIANGLES, 3);
 
         _quarter_framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT1);
         _blur_pipeline.bind();
-        _blur_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(*_quarter_attachments[0]);
-        _blur_pipeline.get_uniform<int>(GL_FRAGMENT_SHADER, "axis") = 0;
-        _blur_pipeline.get_uniform<int>(GL_FRAGMENT_SHADER, "level") = 0;
-        _blur_pipeline.draw(gl::primitive::triangles, 3);
+        _blur_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(*_quarter_attachments[0]);
+        _blur_pipeline[GL_FRAGMENT_SHADER]->uniform<int>("axis") = 0;
+        _blur_pipeline[GL_FRAGMENT_SHADER]->uniform<int>("level") = 0;
+        _blur_pipeline.draw(GL_TRIANGLES, 3);
 
         _quarter_framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT0);
-        _blur_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(*_quarter_attachments[1]);
-        _blur_pipeline.get_uniform<int>(GL_FRAGMENT_SHADER, "axis") = 1;
-        _blur_pipeline.get_uniform<int>(GL_FRAGMENT_SHADER, "level") = 0;
-        _blur_pipeline.draw(gl::primitive::triangles, 3);
+        _blur_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(*_quarter_attachments[1]);
+        _blur_pipeline[GL_FRAGMENT_SHADER]->uniform<int>("axis") = 1;
+        _blur_pipeline[GL_FRAGMENT_SHADER]->uniform<int>("level") = 0;
+        _blur_pipeline.draw(GL_TRIANGLES, 3);
 
         glViewportIndexedf(0, 0, 0, _viewport.x, _viewport.y);
 
         _full_framebuffer.bind();
         _full_framebuffer.set_drawbuffer(GL_COLOR_ATTACHMENT0);
         _flare_pipeline.bind();
-        _flare_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(*_quarter_attachments[0]);
-        _flare_pipeline.draw(gl::primitive::triangles, 3);
+        _flare_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(*_quarter_attachments[0]);
+        _flare_pipeline.draw(GL_TRIANGLES, 3);
 
         provider.framebuffer().bind();
         _add_pipeline.bind();
-        _add_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(provider.last_target());
-        _add_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[1]") = sampler.sample(*_full_attachment);
-        _add_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "factor_one") = 1.f;
-        _add_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "factor_two") = 0.2f;
-        _add_pipeline.draw(gl::primitive::triangles, 3);
+        _add_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(provider.last_target());
+        _add_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[1]") = sampler.sample(*_full_attachment);
+        _add_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("factor_one") = 1.f;
+        _add_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("factor_two") = 0.2f;
+        _add_pipeline.draw(GL_TRIANGLES, 3);
         provider.end_draw();
     }
     void bloom::reload_pipelines()
     {
-        _bright_pipeline.reload_stages();
-        _blur_pipeline.reload_stages();
-        _flare_pipeline.reload_stages();
-        _add_pipeline.reload_stages();
+        _bright_pipeline.reload();
+        _blur_pipeline.reload();
+        _flare_pipeline.reload();
+        _add_pipeline.reload();
     }
 }

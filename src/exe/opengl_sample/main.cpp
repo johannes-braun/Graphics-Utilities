@@ -202,7 +202,7 @@ int main(int argc, const char** args)
     gl_texture_t texture; glCreateTextures(GL_TEXTURE_2D, 1, &texture);
     int texture_width, texture_height;
     stbi_data texture_data(stbi_load("../res/bricks/brick.png", &texture_width, &texture_height, nullptr, STBI_rgb_alpha)); // put in your own path.
-    glTextureStorage2D(texture, 1 + std::floor(std::log2(std::max(texture_width, texture_height))), GL_RGBA8, texture_width, texture_height);
+    glTextureStorage2D(texture, int(1 + std::floor(std::log2(std::max(texture_width, texture_height)))), GL_RGBA8, texture_width, texture_height);
     glTextureSubImage2D(texture, 0, 0, 0, texture_width, texture_height, GL_RGBA, GL_UNSIGNED_BYTE, texture_data.get());
     glGenerateTextureMipmap(texture);
 
@@ -245,17 +245,17 @@ int main(int argc, const char** args)
         glCreateFramebuffers(1, &framebuffer);
         glNamedFramebufferTexture(framebuffer, GL_COLOR_ATTACHMENT0, msaa_color_attachment, 0);
         glNamedFramebufferTexture(framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, msaa_depth_attachment, 0);
-        glViewportIndexedf(0, 0, 0, x, y);
+        glViewportIndexedf(0, 0, 0, float(x), float(y));
     });
 
     const glm::vec4 clear_color(0.6f, 0.8f, 0.9f, 1.f);
-    float last_time = glfwGetTime();
+    float last_time = float(glfwGetTime());
     float delta_time = 0.f;
     while (!glfwWindowShouldClose(window))
     {
         int w, h; glfwGetFramebufferSize(window, &w, &h);
-        delta_time = glfwGetTime() - last_time;
-        last_time = glfwGetTime();
+        delta_time = float(glfwGetTime() - last_time);
+        last_time = float(glfwGetTime());
 
         // Animate the quad (assign to mapped buffer, therefore automatically synchronized)
         mapped_matrix_buffer->model *= glm::rotate(glm::radians(80.f) * delta_time, glm::vec3(0, 0, 1));
@@ -271,7 +271,7 @@ int main(int argc, const char** args)
         glBindProgramPipeline(pipeline);
         glBindVertexArray(vertex_array);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
-        glDrawElements(GL_TRIANGLES, quad_indices.size(), /*uint8_t, therefore */ GL_UNSIGNED_BYTE, nullptr);
+        glDrawElements(GL_TRIANGLES, int(quad_indices.size()), /*uint8_t, therefore */ GL_UNSIGNED_BYTE, nullptr);
 
         glBlitNamedFramebuffer(framebuffer, gl_framebuffer_t::zero, 0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 

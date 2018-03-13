@@ -527,7 +527,7 @@ public:
 
   void operator()()
   {
-    *iter_;
+    auto i = *iter_;
   }
 
 private:

@@ -17,6 +17,6 @@ namespace gfx::fx
         float _luminance;
         gl::compute_pipeline _luminance_compute_pipeline;
         gl::buffer<float> _luminance_sample_buffer;
-        gl::graphics_pipeline _tonemap_pipeline;
+        gl::pipeline _tonemap_pipeline;
     };
 }

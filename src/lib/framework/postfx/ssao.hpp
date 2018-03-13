@@ -14,6 +14,6 @@ namespace gfx::fx
         virtual void reload_pipelines() override;
 
     private:
-        gl::graphics_pipeline _ssao_pipeline;
+        gl::pipeline _ssao_pipeline;
     };
 }

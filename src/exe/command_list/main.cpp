@@ -32,11 +32,11 @@ int main()
     window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     window->callbacks->framebuffer_size_callback.add([](GLFWwindow*, int x, int y) {
         renderer->resize(x, y, start_samples);
-        glViewportIndexedf(0, 0, 0, x, y);
+        glViewportIndexedf(0, 0, 0, float(x), float(y));
     });
     renderer = std::make_unique<gfx::renderer>(start_width, start_height, start_samples);
     renderer->set_clear_color(glm::vec4(background, 1.f));
-
+    
     io::camera camera;
     io::default_cam_controller controller;
 
@@ -45,14 +45,11 @@ int main()
     gl::buffer<uint32_t> ibo(scene.meshes.get_by_index(0).indices.begin(), scene.meshes.get_by_index(0).indices.end(), GL_DYNAMIC_STORAGE_BIT);
     
     glm::mat4 trf = glm::rotate(glm::radians(90.f), glm::vec3(1, 0, 0));
-    std::transform(vbo.begin(), vbo.end(), vbo.begin(), [&trf](res::vertex v) {
-        v.position  = trf * glm::vec4(v.position, 1);
-        return v;
-    });
-    vbo.clear();
+    for(auto&& v : vbo) v.position = trf * glm::vec4(v.position, 1);
 
-    const auto pipeline = jpu::make_ref<gl::graphics_pipeline>();
-    pipeline->use_stages(std::make_shared<gl::shader>("simple_gl/simple.vert"), std::make_shared<gl::shader>("simple_gl/simple.frag"));
+    gl::pipeline pipeline;
+    pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("simple_gl/simple.vert");
+    pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("simple_gl/simple.frag");
 
     const res::image image_texture_content = load_image("../res/bricks/brick.png", res::image_type::u8, res::image_components::rgb_alpha);
     gl::texture image_texture(GL_TEXTURE_2D, image_texture_content.width, image_texture_content.height, GL_RGBA8);
@@ -89,16 +86,14 @@ int main()
     
     gl::state state;
     renderer->bind();
-    pipeline->bind();
-    glViewportIndexedf(0, 0, 0, start_width, start_height);
+    pipeline.bind();
+    glViewportIndexedf(0, 0, 0, float(start_width), float(start_height));
     glScissorIndexed(0, 0, 0, start_width, start_height);
     glEnable(GL_DEPTH_TEST);
     const auto add_attrib = [](uint32_t a, uint32_t c, GLenum t, bool n, size_t s)
     {
         glEnableVertexAttribArray(a); 
-        glVertexAttribFormat(a, c, t, n, 0); 
-        glVertexAttribBinding(a, a);
-        glBindVertexBuffer(a, gl_buffer_t::zero, 0, s);
+        glVertexAttribFormatNV(a, c, t, n, int(s)); 
     };
     add_attrib(0, 3, GL_FLOAT, false, sizeof(res::vertex));
     add_attrib(1, 3, GL_FLOAT, false, sizeof(res::vertex));
@@ -113,7 +108,7 @@ int main()
     command_buffer.push(gl::cmd_element_address{ ibo.handle(), sizeof(uint32_t) });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_VERTEX_SHADER, uniform_buffer1.handle() });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_FRAGMENT_SHADER, uniform_buffer2.handle() });
-    command_buffer.push(gl::cmd_draw_elements{ static_cast<uint32_t>(ibo.size()), 0, 0 });
+    command_buffer.push(gl::cmd_draw_elements{ uint32_t(ibo.size()), 0, 0 });
     command_buffer.finish();
 
     while (window->update())
@@ -122,7 +117,7 @@ int main()
 
         ImGui::Begin("My Window");
         ImGui::ColorEdit3("Light Color", &light_color[0], ImGuiColorEditFlags_HDR);
-        ImGui::Value("Time", 1 / static_cast<float>(window->delta_time()));
+        ImGui::Value("Time", 1 / float(window->delta_time()));
         if (ImGui::Button("Reload PP"))
         {
             renderer->reload_pipelines();

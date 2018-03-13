@@ -9,7 +9,7 @@
 
 namespace gl
 {
-#pragma pack(1)
+#pragma pack(push, 1)
     template<GLenum Token, class Command>
     struct command
     {
@@ -161,8 +161,7 @@ namespace gl
         {}
         front_face front_face;
     };
-
-#pragma pack(pop)
+#pragma pack(pop, 1)
 
     class command_buffer
     {

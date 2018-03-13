@@ -22,7 +22,6 @@
 
 glm::ivec2 resolution{ 1280, 720 };
 jpu::ref_ptr<io::window> main_window;
-jpu::named_vector<std::string, jpu::ref_ptr<gl::compute_pipeline>> compute_pipelines;
 std::unique_ptr<gfx::renderer> main_renderer;
 
 struct mesh;
@@ -41,7 +40,6 @@ public:
         _index_buffer = gl::buffer<uint32_t>(indices.begin(), indices.end());
         _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
         _transform = mesh.transform;
-        _idx_count = indices.size();
     }
 
     mesh_proxy(const std::vector<res::mesh>& meshes)
@@ -73,8 +71,8 @@ public:
             {
                 indices[idx + index_offset] = meshes[i].indices[idx] + base_offset;
             }
-            index_offset += meshes[i].indices.size();
-            base_offset += meshes[i].vertices.size();
+            index_offset += int(meshes[i].indices.size());
+            base_offset += int(meshes[i].vertices.size());
         }
 
         jpu::bvh<3> bvh;
@@ -95,18 +93,15 @@ public:
         _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
 
         _transform = glm::mat4(1.f);
-        _idx_count = indices.size();
     }
 
-    void draw(const gl::graphics_pipeline& p) const
+    void draw(const gl::pipeline& p) const
     {
-        p.set_input_buffer(0, _vertex_buffer, sizeof(res::vertex), offsetof(res::vertex, position));
-        p.set_index_buffer(_index_buffer, gl::index_type::u32);
-        p.draw_indexed(gl::primitive::triangles, _idx_count);
+        p.bind_attribute(0, _vertex_buffer, 3, GL_FLOAT, offsetof(res::vertex, position));
+        p.draw(GL_TRIANGLES, _index_buffer, GL_UNSIGNED_INT);
     }
 
 private:
-    int _idx_count;
     gl::buffer<res::vertex> _vertex_buffer;
     gl::buffer<uint32_t> _index_buffer;
     gl::buffer<gl::byte> _bvh_buffer;
@@ -175,7 +170,7 @@ void resize(GLFWwindow*, int w, int h)
     target_framebuffer->emplace(GL_COLOR_ATTACHMENT0, target_textures[0]);
     target_framebuffer->emplace(GL_COLOR_ATTACHMENT1, target_textures[1]);
     target_framebuffer->emplace(GL_COLOR_ATTACHMENT2, target_textures[2]);
-    glViewportIndexedf(0, 0, 0, resolution.x, resolution.y);
+    glViewportIndexedf(0, 0, 0, float(resolution.x), float(resolution.y));
 }
 
 int main()
@@ -195,9 +190,9 @@ int main()
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantTextInput)
             return;
-        if (key == GLFW_KEY_P && action == GLFW_PRESS)
+      /*  if (key == GLFW_KEY_P && action == GLFW_PRESS)
             for (auto&& pipeline : compute_pipelines)
-                pipeline->reload_stages();
+                pipeline->reload_stages();*/
         if (key == GLFW_KEY_TAB && action == GLFW_PRESS)
             ++selected_mesh;
     });
@@ -264,24 +259,33 @@ int main()
 
     gl::query query_time(GL_TIME_ELAPSED);
 
-    const auto pp_trace = compute_pipelines.push("Trace", jpu::make_ref<gl::compute_pipeline>(std::make_shared<gl::shader>("pathtracer/trace.comp")));
-    gl::graphics_pipeline pp_chunk; pp_chunk.use_stages(std::make_shared<gl::shader>("pathtracer/chunk.vert"), std::make_shared<gl::shader>("pathtracer/chunk.frag"));
-    gl::graphics_pipeline pp_mesh; pp_mesh.use_stages(std::make_shared<gl::shader>("pathtracer/mesh.vert"), std::make_shared<gl::shader>("pathtracer/mesh.frag"));
-    pp_mesh.set_input_format(0, 3, GL_FLOAT, false);
-    gl::graphics_pipeline bilateral_pipeline; bilateral_pipeline.use_stages(std::make_shared<gl::shader>("postprocess/screen.vert"), std::make_shared<gl::shader>("postprocess/filter/bilateral.frag"));
+
+    gl::compute_pipeline pp_trace(std::make_shared<gl::shader>("pathtracer/trace.comp"));
+    
+    gl::pipeline pp_chunk;
+    pp_chunk[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("pathtracer/chunk.vert");
+    pp_chunk[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("pathtracer/chunk.frag");
+
+    gl::pipeline pp_mesh;
+    pp_mesh[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("pathtracer/mesh.vert");
+    pp_mesh[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("pathtracer/mesh.frag");
+
+    gl::pipeline bilateral_pipeline;
+    bilateral_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("postprocess/screen.vert");
+    bilateral_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/bilateral.frag");
 
     gfx::gizmo gizmo;
     
-    uint32_t bID = glGetUniformBlockIndex(*pp_trace->stage(GL_COMPUTE_SHADER), "Infos");
-    int size = -1; glGetActiveUniformBlockiv(*pp_trace->stage(GL_COMPUTE_SHADER), bID, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
-    int c; glGetActiveUniformBlockiv(*pp_trace->stage(GL_COMPUTE_SHADER), bID, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &c);
-    for (uint32_t i = 0; i < c; ++i)
+    uint32_t bID = glGetUniformBlockIndex(*pp_trace.stage(), "Infos");
+    int size = -1; glGetActiveUniformBlockiv(*pp_trace.stage(), bID, GL_UNIFORM_BLOCK_DATA_SIZE, &size);
+    int c; glGetActiveUniformBlockiv(*pp_trace.stage(), bID, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, &c);
+    for (uint32_t i = 0; i < uint32_t(c); ++i)
     {
-        int len; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_NAME_LENGTH, &len);
-        std::string str(len, ' '); glGetActiveUniformName(*pp_trace->stage(GL_COMPUTE_SHADER), i, len, &len, str.data());
-        int offsets; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_OFFSET, &offsets);
-        int strides; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_ARRAY_STRIDE, &strides);
-        int sizes; glGetActiveUniformsiv(*pp_trace->stage(GL_COMPUTE_SHADER), 1, &i, GL_UNIFORM_SIZE, &sizes);
+        int len; glGetActiveUniformsiv(*pp_trace.stage(), 1, &i, GL_UNIFORM_NAME_LENGTH, &len);
+        std::string str(len, ' '); glGetActiveUniformName(*pp_trace.stage(), i, len, &len, str.data());
+        int offsets; glGetActiveUniformsiv(*pp_trace.stage(), 1, &i, GL_UNIFORM_OFFSET, &offsets);
+        int strides; glGetActiveUniformsiv(*pp_trace.stage(), 1, &i, GL_UNIFORM_ARRAY_STRIDE, &strides);
+        int sizes; glGetActiveUniformsiv(*pp_trace.stage(), 1, &i, GL_UNIFORM_SIZE, &sizes);
         log_i << str << ": " << offsets << ", " << strides << ", " << sizes;
     }
     
@@ -328,17 +332,16 @@ int main()
         static float gauss_sigma = 6.f;
         static float gauss_bsigma = 0.1f;
 
-        const int size_x = pp_trace->work_group_sizes()[0] * size;
-        const int size_y = pp_trace->work_group_sizes()[0] * size;
-        const int count_x = ceil(static_cast<float>(resolution.x) / size_x);
-        const int count_y = ceil(static_cast<float>(resolution.y) / size_y);
+        const int size_x = pp_trace.group_sizes()[0] * size;
+        const int size_y = pp_trace.group_sizes()[0] * size;
+        const int count_x = int( ceil(float(resolution.x) / size_x) );
+        const int count_y = int( ceil(float(resolution.y) / size_y) );
 
         pathtracer_info_buffer.bind(GL_UNIFORM_BUFFER, 0);
         double t = 0.0;
         while (t < main_window->get_swap_delay() / 2.f)
         {
             query_time.start();
-            pp_trace->bind();
             pathtracer_info_buffer[0].target_image = *target_image;
             pathtracer_info_buffer[0].random_gen = dist(gen);
             pathtracer_info_buffer[0].sample_blend_offset = sample_blend_offset;
@@ -347,10 +350,13 @@ int main()
             pathtracer_info_buffer[0].camera_matrix = camera_matrix;
             pathtracer_info_buffer[0].cubemap = sampler.sample(cubemap);
             pathtracer_info_buffer[0].meshes = meshes_buffer.handle();
-            pathtracer_info_buffer[0].num_meshes = meshes_buffer.size();
+            pathtracer_info_buffer[0].num_meshes = int(meshes_buffer.size());
             pathtracer_info_buffer[0].max_bounces = 8;
             pathtracer_info_buffer[0].offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
-            pp_trace->dispatch(size_x, size_y);
+
+            pp_trace.bind_uniform_buffer(0, pathtracer_info_buffer);
+            pp_trace.dispatch(size_x, size_y);
+
             frame = (frame + 1) % (count_x * count_y);
             if (frame == 0 && enable_continuous_improvement)
                 ++sample_blend_offset;
@@ -361,10 +367,10 @@ int main()
         target_framebuffer->set_drawbuffer(GL_COLOR_ATTACHMENT1);
         main_renderer->bind();
         bilateral_pipeline.bind();
-        bilateral_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "gauss_bsigma") = gauss_bsigma;
-        bilateral_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(*target_textures[0]);
-        bilateral_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "gauss_sigma") = show_bfilter ? gauss_sigma : 0;
-        bilateral_pipeline.draw(gl::primitive::triangles, 3);
+        bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("gauss_bsigma") = gauss_bsigma;
+        bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(*target_textures[0]);
+        bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("gauss_sigma") = show_bfilter ? gauss_sigma : 0;
+        bilateral_pipeline.draw(GL_TRIANGLES, 3);
         main_renderer->draw(main_window->delta_time(), *target_framebuffer);
 
         target_framebuffer->set_readbuffer(GL_COLOR_ATTACHMENT1);
@@ -375,10 +381,10 @@ int main()
         {
             glLineWidth(2.f);
             pp_chunk.bind();
-            pp_chunk.get_uniform<glm::vec2>(GL_VERTEX_SHADER, "inv_resolution") = 1.f / glm::vec2(resolution);
-            pp_chunk.get_uniform<glm::vec2>(GL_VERTEX_SHADER, "offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
-            pp_chunk.get_uniform<glm::vec2>(GL_VERTEX_SHADER, "size") = glm::vec2(size_x, size_y);
-            pp_chunk.draw(gl::primitive::line_strip, 5);
+            pp_chunk[GL_VERTEX_SHADER]->uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(resolution);
+            pp_chunk[GL_VERTEX_SHADER]->uniform<glm::vec2>("offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pp_chunk[GL_VERTEX_SHADER]->uniform<glm::vec2>("size") = glm::vec2(size_x, size_y);
+            pp_chunk.draw(GL_LINE_STRIP, 5);
         }
 
         if (show_grid)
@@ -392,7 +398,7 @@ int main()
                 pp_mesh.bind();
                 for (auto&& s : p.second)
                 {
-                    pp_mesh.get_uniform<glm::mat4>(GL_VERTEX_SHADER, "model_view_projection") = cam.projection() * cam.view() * s->model;
+                    pp_mesh[GL_VERTEX_SHADER]->uniform<glm::mat4>("model_view_projection") = cam.projection() * cam.view() * s->model;
                     p.first->draw(pp_mesh);
                 }
                 glPolygonMode(GL_FRONT, GL_FILL);
@@ -407,9 +413,9 @@ int main()
 
         ImGui::Begin("Window");
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
-        ImGui::DragInt("Size", &size, 0.1f, 1.f, 100.f);
-        ImGui::DragInt("Max. Samples", &max_samples, 0.01f, 1.f, 100.f);
-        ImGui::DragInt("Sample Blend Offset", &sample_blend_offset, 0.01f, 1.f, 100.f);
+        ImGui::DragInt("Size", &size, 0.1f, 1, 100);
+        ImGui::DragInt("Max. Samples", &max_samples, 0.01f, 1, 100);
+        ImGui::DragInt("Sample Blend Offset", &sample_blend_offset, 0.01f, 1, 100);
         ImGui::Checkbox("Show Mesh", &show_grid);
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
         ImGui::Checkbox("Show Chunk", &show_renderchunk);

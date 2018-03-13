@@ -6,7 +6,8 @@ namespace gfx::fx
 {
     ssao::ssao()
     {
-        _ssao_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/ssao.frag"));
+        _ssao_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
+        _ssao_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/ssao.frag");
     }
     void ssao::resize(int x, int y)
     {
@@ -15,15 +16,15 @@ namespace gfx::fx
     {
         provider.begin_draw();
         _ssao_pipeline.bind();
-        _ssao_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "albedo_texture") = sampler.sample(provider.last_target());
-        _ssao_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "random_texture") = sampler.sample(*random_texture());
-        _ssao_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "normal_depth_texture") = base_attachments[1]->handle();
-        _ssao_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "time") = static_cast<float>(glfwGetTime());
-        _ssao_pipeline.draw(gl::primitive::triangles, 3);
+        _ssao_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("albedo_texture") = sampler.sample(provider.last_target());
+        _ssao_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("random_texture") = sampler.sample(*random_texture());
+        _ssao_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("normal_depth_texture") = base_attachments[1]->handle();
+        _ssao_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("time") = static_cast<float>(glfwGetTime());
+        _ssao_pipeline.draw(GL_TRIANGLES, 3);
         provider.end_draw();
     }
     void ssao::reload_pipelines()
     {
-        _ssao_pipeline.reload_stages();
+        _ssao_pipeline.reload();
     }
 }

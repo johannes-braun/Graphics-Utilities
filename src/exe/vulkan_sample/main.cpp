@@ -257,7 +257,7 @@ int main(int argc, const char** args)
 
         // Setup render environment
         render_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline);
-        render_command_buffer.setViewport(0, vk::Viewport(0, 0, main_window->swapchain()->extent().width, main_window->swapchain()->extent().height, 0, 1.f));
+        render_command_buffer.setViewport(0, vk::Viewport(0, 0, float(main_window->swapchain()->extent().width), float(main_window->swapchain()->extent().height), 0, 1.f));
         render_command_buffer.setScissor(0, vk::Rect2D(vk::Offset2D(), main_window->swapchain()->extent()));
 
         // Push information
@@ -272,7 +272,7 @@ int main(int argc, const char** args)
         render_command_buffer.bindVertexBuffers(1, static_cast<vk::Buffer>(*vtxbuffer), offsetof(res::vertex, normal));
         render_command_buffer.bindVertexBuffers(2, static_cast<vk::Buffer>(*vtxbuffer), offsetof(res::vertex, uv));
         render_command_buffer.bindIndexBuffer(*idxbuffer, 0, vk::IndexType::eUint32);
-        render_command_buffer.drawIndexed(idx.size(), 1, 0, 0, 0);
+        render_command_buffer.drawIndexed(uint32_t(idx.size()), 1, 0, 0, 0);
         render_command_buffer.end();
 
         main_window->current_primary_command_buffer().beginRenderPass(vk::RenderPassBeginInfo(msaa_renderpass.get(),

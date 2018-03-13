@@ -3,7 +3,6 @@
 #include <jpu/memory.hpp>
 #include <opengl/pipeline.hpp>
 #include <opengl/buffer.hpp>
-#include <opengl/vertex_array.hpp>
 #include <GLFW/glfw3.h>
 #include <jpu/flags.hpp>
 
@@ -68,7 +67,7 @@ namespace gfx
         gizmo_state_flags _last_hover_state;
         std::vector<vertex> _vertices;
         std::vector<vertex> _vertices_default;
-        jpu::ref_ptr<gl::graphics_pipeline> _translate_pipeline;
+        gl::pipeline _translate_pipeline;
         gl::buffer<vertex> _vertex_buffer = gl::buffer<vertex>(GL_DYNAMIC_STORAGE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
         gl::buffer<index> _index_buffer = gl::buffer<index>(GL_DYNAMIC_STORAGE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     };

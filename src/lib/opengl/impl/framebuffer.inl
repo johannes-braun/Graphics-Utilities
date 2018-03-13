@@ -7,6 +7,6 @@ namespace gl
     {
         _drawbuffers.clear();
         _drawbuffers.insert(_drawbuffers.begin(), attachments.begin(), attachments.end());
-        glNamedFramebufferDrawBuffers(_id, _drawbuffers.size(), _drawbuffers.data());
+        glNamedFramebufferDrawBuffers(_id, int(_drawbuffers.size()), _drawbuffers.data());
     }
 }

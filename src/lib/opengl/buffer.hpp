@@ -40,6 +40,14 @@ namespace gl
         struct bounded_buffer_iterator_base;
         friend bounded_buffer_iterator_base;
 
+        using value_type = std::decay_t<std::remove_pointer_t<T>>;
+        using pointer = value_type*;
+        using const_pointer = const value_type*;
+        using reference = value_type &;
+        using const_reference = const value_type&;
+        using size_type = size_t;
+        using difference_type = ptrdiff_t;
+
         using iterator = bounded_buffer_iterator_base<T*, 1>;
         using const_iterator = bounded_buffer_iterator_base<const T*, 1>;
         using reverse_iterator = bounded_buffer_iterator_base<T*, -1>;
@@ -80,6 +88,7 @@ namespace gl
         void flush_element(size_t index);
         void flush_elements(size_t begin, size_t count);
         void flush_bytes(size_t offset, size_t size);
+        void flush();
         void unmap() noexcept;
         void clear(const T& value = T()) noexcept;
         bool is_mapped() const noexcept;

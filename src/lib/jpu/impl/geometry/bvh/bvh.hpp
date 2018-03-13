@@ -194,7 +194,7 @@ namespace jpu
             const auto count = static_cast<uint32_t>(type);
             return (*this = std::move(impl::bvh_creator<Dim, Bins>::create(
                 make_position_attrib(position_field),
-                make_index_attrib<typename IndexContainer::value_type>(static_cast<uint32_t>(indices.size()) / count, count),
+                make_index_attrib<std::decay_t<decltype(indices[0])>>(static_cast<uint32_t>(indices.size()) / count, count),
                 vertices.data(),
                 indices.data()
             )));

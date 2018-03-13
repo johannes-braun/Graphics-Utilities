@@ -36,7 +36,6 @@ void bitonic(const int logn, uint32_t* a, const size_t len)
 }
 
 jpu::ref_ptr<io::window> main_window;
-jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 int main()
 {
@@ -58,17 +57,16 @@ int main()
     glFinish();
 
     const auto sort_bitonic = [&]() {
-        auto cmp = jpu::make_ref<gl::compute_pipeline>(std::make_shared<gl::shader>("sort/bitonic.comp"));
-        std::generate(buf.begin(), buf.end(), []() { return rand(); });
+        gl::compute_pipeline cmp(std::make_shared<gl::shader>("sort/bitonic.comp"));
+        std::generate(buf.begin(), buf.end(), []() { return float(rand()); });
         buf.bind(GL_SHADER_STORAGE_BUFFER, 0);
         glFinish();
-        const int trg = buf.size() >> 1;
-        auto puni = cmp->get_uniform<int>("p");
-        auto quni = cmp->get_uniform<int>("q");
-        auto duni = cmp->get_uniform<int>("d");
+        const int trg = int(buf.size() >> 1 );
+        auto puni = cmp.stage()->uniform<int>("p");
+        auto quni = cmp.stage()->uniform<int>("q");
+        auto duni = cmp.stage()->uniform<int>("d");
 
         gl::query query(GL_TIME_ELAPSED);
-        cmp->bind();
         query.start();
         for (int p = 0; p < logn; ++p)
         {
@@ -78,7 +76,7 @@ int main()
                 const int d = 1 << (p - q);
                 duni = d;
                 quni = q;
-                cmp->dispatch(trg);
+                cmp.dispatch(trg);
                 glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
             }
         }

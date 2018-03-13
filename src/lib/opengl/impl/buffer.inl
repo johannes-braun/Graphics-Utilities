@@ -502,8 +502,14 @@ namespace gl
     template<typename T>
     void buffer<T>::flush_bytes(size_t offset, size_t size)
     {
-        if (offset + size >= _data_size * sizeof(T)) throw std::out_of_range("Range out of bounds.");
+        if (offset + size > _data_size * sizeof(T)) throw std::out_of_range("Range out of bounds.");
         glFlushMappedNamedBufferRange(_id, offset, size);
+    }
+
+    template<typename T>
+    void buffer<T>::flush()
+    {
+        flush_elements(_data_offset, _data_size);
     }
 
     template<typename T>

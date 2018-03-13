@@ -123,6 +123,7 @@ namespace io
                 default: break;
                 }
             });
+            set_debug_callback_enabled(gl::debug_severity::medium, false);
             set_debug_callback_enabled(gl::debug_severity::notification, false);
             set_debug_callback_enabled(gl::debug_severity::low, false);
             _gui = jpu::make_ref<io::gui>(_window);

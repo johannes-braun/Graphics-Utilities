@@ -9,8 +9,7 @@
 
 std::unique_ptr<gfx::renderer> main_renderer;
 std::unique_ptr<io::window> main_window;
-jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
-std::unique_ptr<gl::v2::pipeline> mypeline;
+std::unique_ptr<gl::pipeline> mypeline;
 
 int main(int argc, const char** argv)
 {
@@ -42,18 +41,15 @@ int main(int argc, const char** argv)
     cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
     cubemap.generate_mipmaps();
-
-    auto distance_field_pipeline = graphics_pipelines.push("Distance Field Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    distance_field_pipeline->use_stages(std::make_shared<gl::shader>("postprocess/screen.vert"), std::make_shared<gl::shader>("distance_field/dist_field.frag"));
-
+    
     io::camera cam;
     io::default_cam_controller cam_controller;
     cam.transform.position = glm::vec3(0, 0, 5);
     
-    mypeline = std::make_unique<gl::v2::pipeline>();
+    mypeline = std::make_unique<gl::pipeline>();
     mypeline->at(GL_VERTEX_SHADER) = std::make_shared<gl::shader>("postprocess/screen.vert");
     mypeline->at(GL_FRAGMENT_SHADER) = std::make_shared<gl::shader>("distance_field/dist_field.frag");
-    //gl::vertex_array arr;
+
     while(main_window->update())
     {
         ImGui::Begin("Bla");
@@ -70,17 +66,8 @@ int main(int argc, const char** argv)
         mypeline->at(GL_FRAGMENT_SHADER)->uniform<glm::mat4>("proj_mat") = cam.projection();
         mypeline->at(GL_FRAGMENT_SHADER)->uniform<glm::mat4>("inv_view_mat") = inverse(cam.projection() * cam.view());
         mypeline->at(GL_FRAGMENT_SHADER)->uniform<uint64_t>("cubemap") = sampler.sample(cubemap);
-        //arr.bind();
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
-
-        /* distance_field_pipeline->bind();
-        distance_field_pipeline->get_uniform<glm::mat4>(GL_FRAGMENT_SHADER, "view_mat") = cam.view();
-        distance_field_pipeline->get_uniform<glm::vec3>(GL_FRAGMENT_SHADER, "cam_position") = cam.transform.position;
-        distance_field_pipeline->get_uniform<glm::mat4>(GL_FRAGMENT_SHADER, "proj_mat") = cam.projection();
-        distance_field_pipeline->get_uniform<glm::mat4>(GL_FRAGMENT_SHADER, "inv_view_mat") = inverse(cam.projection() * cam.view());
-        distance_field_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "cubemap") = sampler.sample(cubemap);
-        distance_field_pipeline->draw(gl::primitive::triangles, 3); */  
         main_renderer->draw(main_window->delta_time());
     }
 }

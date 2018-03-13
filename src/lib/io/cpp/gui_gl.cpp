@@ -7,14 +7,9 @@ namespace io::impl
     {
         if (!init)
             return;
-        _graphics_pipeline = jpu::make_ref<gl::graphics_pipeline>();
-        _graphics_pipeline->use_stages(
-            std::make_shared<gl::shader>("gui/gui.vert"),
-            std::make_shared<gl::shader>("gui/gui.frag")
-        );
-        _graphics_pipeline->set_input_format(0, 2, GL_FLOAT, false);
-        _graphics_pipeline->set_input_format(1, 2, GL_FLOAT, false);
-        _graphics_pipeline->set_input_format(2, 4, GL_UNSIGNED_BYTE, true);
+
+        _graphics_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("gui/gui.vert");
+        _graphics_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("gui/gui.frag");
     }
 
     ImTextureID gui_gl::build_font_atlas()
@@ -45,8 +40,8 @@ namespace io::impl
         }
 
         auto&& io = ImGui::GetIO();
-        const int fb_width = static_cast<int>(io.DisplaySize.x * io.DisplayFramebufferScale.x);
-        const int fb_height = static_cast<int>(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+        const float fb_width = io.DisplaySize.x * io.DisplayFramebufferScale.x;
+        const float fb_height = io.DisplaySize.y * io.DisplayFramebufferScale.y;
         glGetIntegerv(GL_POLYGON_MODE, _last_polygon_mode);
         glGetIntegerv(GL_VIEWPORT, _last_viewport);
         glGetIntegerv(GL_SCISSOR_BOX, _last_scissor_box);
@@ -74,28 +69,35 @@ namespace io::impl
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glClipControl(GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
 
-        glViewportIndexedf(0, 0, 0, static_cast<int>(fb_width), static_cast<int>(fb_height));
+        glViewportIndexedf(0, 0, 0, fb_width, fb_height);
 
         glm::mat4 ortho_projection = glm::mat4(1.f);
         ortho_projection[0][0] = 2.0f / io.DisplaySize.x;
         ortho_projection[1][1] = -2.0f / io.DisplaySize.y;
         ortho_projection[2] = glm::vec4{ 0.0f, 0.0f, -1.0f, 0.0f };
         ortho_projection[3] = glm::vec4{ -1.0f, 1.0f, 0.0f, 1.0f };
-        _graphics_pipeline->bind();
-        _graphics_pipeline->set_input_buffer(0, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, pos));
-        _graphics_pipeline->set_input_buffer(1, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, uv));
-        _graphics_pipeline->set_input_buffer(2, _vertex_buffer, sizeof(ImDrawVert), offsetof(ImDrawVert, col));
-        _graphics_pipeline->set_index_buffer(_index_buffer, gl::index_type(GL_UNSIGNED_BYTE + sizeof(ImDrawIdx)));
-        _graphics_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "projection") = ortho_projection;
+
+        _graphics_pipeline.bind();
+        _graphics_pipeline.bind_attribute(0, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, pos));
+        _graphics_pipeline.bind_attribute(1, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, uv));
+        _graphics_pipeline.bind_attribute(2, _vertex_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(ImDrawVert, col));
+
+        _graphics_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("projection") = ortho_projection;
     }
 
     void gui_gl::render(const ImDrawCmd& cmd, const int index_offset, const int vertex_offset) const
     {
         assert(GL_UNSIGNED_INT == GL_UNSIGNED_BYTE + 4 && GL_UNSIGNED_SHORT == GL_UNSIGNED_BYTE + 2);
-        _graphics_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "img") = reinterpret_cast<uint64_t>(cmd.TextureId);
-        glScissor(static_cast<int>(cmd.ClipRect.x), static_cast<int>(static_cast<int>(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
-            static_cast<int>(cmd.ClipRect.z - cmd.ClipRect.x), static_cast<int>(cmd.ClipRect.w - cmd.ClipRect.y));
-        _graphics_pipeline->draw_indexed(gl::primitive::triangles, cmd.ElemCount, index_offset, vertex_offset);
+
+        _graphics_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("img") = reinterpret_cast<uint64_t>(cmd.TextureId);
+
+        glScissor(static_cast<int>(cmd.ClipRect.x), 
+            static_cast<int>(static_cast<int>(ImGui::GetIO().DisplaySize.y * 
+                ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
+            static_cast<int>(cmd.ClipRect.z - cmd.ClipRect.x), 
+            static_cast<int>(cmd.ClipRect.w - cmd.ClipRect.y));
+
+        _graphics_pipeline.draw(GL_TRIANGLES, _index_buffer, GLenum(GL_UNSIGNED_BYTE + sizeof(ImDrawIdx)), cmd.ElemCount, index_offset, vertex_offset);
     }
 
     void gui_gl::post_render()
@@ -109,7 +111,7 @@ namespace io::impl
         _last_enable_depth_test ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
         _last_enable_scissor_test ? glEnable(GL_SCISSOR_TEST) : glDisable(GL_SCISSOR_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GLenum(_last_polygon_mode[0]));
-        glViewportIndexedf(0, _last_viewport[0], _last_viewport[1], static_cast<int>(_last_viewport[2]), static_cast<int>(_last_viewport[3]));
-        glScissor(_last_scissor_box[0], _last_scissor_box[1], static_cast<int>(_last_scissor_box[2]), static_cast<int>(_last_scissor_box[3]));
+        glViewportIndexedf(0, float(_last_viewport[0]), float(_last_viewport[1]), float(_last_viewport[2]), float(_last_viewport[3]));
+        glScissor(_last_scissor_box[0], _last_scissor_box[1], _last_scissor_box[2], _last_scissor_box[3]);
     }
 }

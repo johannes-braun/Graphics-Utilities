@@ -13,7 +13,6 @@
 #include <numeric>
 
 jpu::ref_ptr<io::window> main_window;
-jpu::named_vector<std::string, jpu::ref_ptr<gl::graphics_pipeline>> graphics_pipelines;
 
 struct axis_transformation
 {
@@ -130,9 +129,9 @@ int main()
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
     main_window->set_max_framerate(60.0);
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
-        if (action == GLFW_PRESS && key == GLFW_KEY_P)
+      /*  if (action == GLFW_PRESS && key == GLFW_KEY_P)
             for (auto&& p : graphics_pipelines)
-                p->reload_stages();
+                p->reload_stages();*/
     });
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -157,23 +156,26 @@ int main()
     grid.assign(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
     grid.generate_mipmaps();
 
-    auto points_pipeline = graphics_pipelines.push("Points Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    points_pipeline->use_stages(std::make_shared<gl::shader>("color_space/points.vert"), std::make_shared<gl::shader>("color_space/points.frag"));
+    gl::pipeline points_pipeline;
+    points_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("color_space/points.vert");
+    points_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("color_space/points.frag");
 
-    auto center_pipeline = graphics_pipelines.push("Center Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    center_pipeline->use_stages(std::make_shared<gl::shader>("color_space/center_point.vert"), std::make_shared<gl::shader>("color_space/center_point.frag"));
+    gl::pipeline center_pipeline;
+    center_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("color_space/center_point.vert");
+    center_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("color_space/center_point.frag");
 
-    auto gizmo_pipeline = graphics_pipelines.push("Gizmo Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    gizmo_pipeline->use_stages(std::make_shared<gl::shader>("color_space/gizmo.vert"), std::make_shared<gl::shader>("color_space/gizmo.frag"));
+    gl::pipeline gizmo_pipeline;
+    gizmo_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("color_space/gizmo.vert");
+    gizmo_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("color_space/gizmo.frag");
 
-    auto img_pipeline = graphics_pipelines.push("Image Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    img_pipeline->use_stages(std::make_shared<gl::shader>("postprocess/screen.vert"), std::make_shared<gl::shader>("color_space/image.frag"));
+    gl::pipeline img_pipeline;
+    img_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("postprocess/screen.vert");
+    img_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("color_space/image.frag");
 
-    auto cube_pipeline = graphics_pipelines.push("Cube Pipeline", jpu::make_ref<gl::graphics_pipeline>());
-    cube_pipeline->use_stages(std::make_shared<gl::shader>("color_space/cube.vert"), std::make_shared<gl::shader>("color_space/cube.frag"));
-    cube_pipeline->set_input_format(0, 3, GL_FLOAT, false);
-    cube_pipeline->set_input_format(1, 2, GL_FLOAT, false);
-
+    gl::pipeline cube_pipeline;
+    cube_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("color_space/cube.vert");
+    cube_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("color_space/cube.frag");
+    
     namespace cube = res::presets::cube;
     gl::buffer<res::vertex> vbo(cube::vertices.begin(), cube::vertices.end());
     gl::buffer<uint32_t> ibo(cube::indices.begin(), cube::indices.end());
@@ -249,48 +251,50 @@ int main()
 
         cam_controller.update(cam, *main_window, main_window->delta_time());
 
-        points_pipeline->bind();
-        points_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        points_pipeline->get_uniform<uint64_t>(GL_VERTEX_SHADER, "picture") = id;
-        points_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "view_projection") = cam.projection() * cam.view();
-        points_pipeline->draw(gl::primitive::points, texture.width() * texture.height());
+        points_pipeline.bind();
+        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
+        points_pipeline[GL_VERTEX_SHADER]->uniform<uint64_t>("picture") = id;
+        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        points_pipeline.draw(GL_POINTS, texture.width() * texture.height());
 
         glDisable(GL_DEPTH_TEST);
-        center_pipeline->bind();
-        center_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        center_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "view_projection") = cam.projection() * cam.view();
-        center_pipeline->get_uniform<glm::vec3>(GL_VERTEX_SHADER, "center") = average;
-        center_pipeline->draw(gl::primitive::points, 1);
+        center_pipeline.bind();
+        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
+        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::vec3>("center") = average;
+        center_pipeline.draw(GL_POINTS, 1);
         glEnable(GL_DEPTH_TEST);
 
-        gizmo_pipeline->bind();
-        gizmo_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "view_projection") = cam.projection() * cam.view();
-        gizmo_pipeline->draw(gl::primitive::lines, 6);
+        gizmo_pipeline.bind();
+        gizmo_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        gizmo_pipeline.draw(GL_LINES, 6);
 
         glFrontFace(GL_CW);
-        cube_pipeline->bind();
-        cube_pipeline->set_input_buffer(0, vbo, sizeof(res::vertex), offsetof(res::vertex, position));
-        cube_pipeline->set_input_buffer(1, vbo, sizeof(res::vertex), offsetof(res::vertex, uv));
-        cube_pipeline->set_index_buffer(ibo, gl::index_type::u32);
-        cube_pipeline->get_uniform<glm::mat4>(GL_VERTEX_SHADER, "view_projection") = cam.projection() * cam.view();
-        cube_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "tex") = sampler.sample(grid);
-        cube_pipeline->get_uniform<glm::vec4>(GL_FRAGMENT_SHADER, "tint") = glm::vec4(1, 1, 1, 1);
-        cube_pipeline->draw_indexed(gl::primitive::triangles, res::presets::cube::indices.size());
+
+        cube_pipeline.bind();
+        cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(res::vertex, position));
+        cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(res::vertex, uv));
+
+        cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = sampler.sample(grid);
+        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
+        cube_pipeline.draw(GL_TRIANGLES, ibo, GL_UNSIGNED_INT);
+
         glFrontFace(GL_CCW); glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        cube_pipeline->get_uniform<glm::vec4>(GL_FRAGMENT_SHADER, "tint") = glm::vec4(1, 1, 1, -1);
-        cube_pipeline->draw_indexed(gl::primitive::triangles, res::presets::cube::indices.size());
+        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
+        cube_pipeline.draw(GL_TRIANGLES, ibo, GL_UNSIGNED_INT);
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
-        glViewportIndexedf(0, 0, 0, static_cast<int>(texture.width() *scale), static_cast<int>(texture.height() *scale));
-        img_pipeline->bind();
-        img_pipeline->get_uniform<glm::mat4>(GL_FRAGMENT_SHADER, "hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        img_pipeline->get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "tex") = id;
-        img_pipeline->draw(gl::primitive::triangles, 3);
+        glViewportIndexedf(0, 0, 0, texture.width() *scale, texture.height() *scale);
+        img_pipeline.bind();
+        img_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
+        img_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = id;
+        img_pipeline.draw(GL_TRIANGLES, 3);
 
         int w, h;
         glfwGetFramebufferSize(*main_window, &w, &h);
-        glViewportIndexedf(0, 0, 0, w, h);
+        glViewportIndexedf(0, 0, 0, float(w), float(h));
         glEnable(GL_DEPTH_TEST);
     }
 }

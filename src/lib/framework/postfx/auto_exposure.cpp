@@ -8,7 +8,8 @@ namespace gfx::fx
         _luminance_sample_buffer(32, GL_DYNAMIC_STORAGE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT),
         _luminance(0)
     {
-        _tonemap_pipeline.use_stages(screen_vertex_shader(), std::make_shared<gl::shader>("postprocess/filter/const_multiply.frag"));
+        _tonemap_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
+        _tonemap_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postprocess/filter/const_multiply.frag");
     }
     void auto_exposure::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
     {
@@ -20,14 +21,13 @@ namespace gfx::fx
         const auto half_inv_luma = 0.5f / _luminance;
         const auto luminance = half_inv_luma * (half_inv_luma * brightness + 1.f) / (half_inv_luma + 1.f);
         _luminance_sample_buffer.bind(GL_SHADER_STORAGE_BUFFER, 1);
-        _luminance_compute_pipeline.bind();
-        _luminance_compute_pipeline.get_uniform<uint64_t>("src_texture") = sampler.sample(provider.last_target());
+        _luminance_compute_pipeline->uniform<uint64_t>("src_texture") = sampler.sample(provider.last_target());
         _luminance_compute_pipeline.dispatch(1);
 
         _tonemap_pipeline.bind();
-        _tonemap_pipeline.get_uniform<uint64_t>(GL_FRAGMENT_SHADER, "src_textures[0]") = sampler.sample(provider.last_target());
-        _tonemap_pipeline.get_uniform<float>(GL_FRAGMENT_SHADER, "factor") = luminance;
-        _tonemap_pipeline.draw(gl::primitive::triangles, 3);
+        _tonemap_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(provider.last_target());
+        _tonemap_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("factor") = luminance;
+        _tonemap_pipeline.draw(GL_TRIANGLES, 3);
         provider.end_draw();
     }
     void auto_exposure::resize(int x, int y)
@@ -35,7 +35,7 @@ namespace gfx::fx
     }
     void auto_exposure::reload_pipelines()
     {
-        _luminance_compute_pipeline.reload_stages();
-        _tonemap_pipeline.reload_stages();
+        _luminance_compute_pipeline.reload();
+        _tonemap_pipeline.reload();
     }
 }

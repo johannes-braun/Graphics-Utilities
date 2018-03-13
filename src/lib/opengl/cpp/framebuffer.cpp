@@ -143,12 +143,14 @@ namespace gl
 
     attachment::operator const std::shared_ptr<texture>&() const
     {
-        return _attachment_type == attachment_type::texture ? std::get<std::shared_ptr<texture>>(_storage) : nullptr;
+        static std::shared_ptr<texture> null{ nullptr };
+        return _attachment_type == attachment_type::texture ? std::get<std::shared_ptr<texture>>(_storage) : null;
     }
 
     attachment::operator const std::shared_ptr<renderbuffer>&() const
     {
-        return _attachment_type == attachment_type::renderbuffer ? std::get<std::shared_ptr<renderbuffer>>(_storage) : nullptr;
+        static std::shared_ptr<renderbuffer> null{ nullptr };
+        return _attachment_type == attachment_type::renderbuffer ? std::get<std::shared_ptr<renderbuffer>>(_storage) : null;
     }
 
     attachment::attachment(const framebuffer& framebuffer, GLenum type)
@@ -269,7 +271,7 @@ namespace gl
     {
         _drawbuffers.clear();
         _drawbuffers.insert(_drawbuffers.begin(), attachments.begin(), attachments.end());
-        glNamedFramebufferDrawBuffers(_id, _drawbuffers.size(), _drawbuffers.data());
+        glNamedFramebufferDrawBuffers(_id, int(_drawbuffers.size()), _drawbuffers.data());
     }
 
     attachment& framebuffer::at(GLenum type)
