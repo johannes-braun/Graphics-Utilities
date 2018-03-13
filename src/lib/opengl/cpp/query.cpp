@@ -25,7 +25,10 @@ namespace gl
         if (_id != gl_query_t::zero)
             glDeleteQueries(1, &_id);
         _type = other._type;
-        glCreateQueries(_type, 1, &_id);
+        if (other._id != gl_query_t::zero)
+            glCreateQueries(_type, 1, &_id);
+        else
+            _id = gl_query_t::zero;
         return *this;
     }
 
@@ -55,7 +58,7 @@ namespace gl
     }
 
     template<>
-    int query::get<int>(GLenum param) const noexcept
+    int32_t query::get<int32_t>(GLenum param) const noexcept
     {
         int i;
         glGetQueryObjectiv(_id, param, &i);

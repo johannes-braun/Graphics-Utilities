@@ -220,12 +220,12 @@ int main()
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;
     gl::v2::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
-    cubemap.assign(0, 0, 0, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
-    cubemap.assign(0, 0, 1, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
-    cubemap.assign(0, 0, 2, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
-    cubemap.assign(0, 0, 3, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[3].data.get());
-    cubemap.assign(0, 0, 4, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[4].data.get());
-    cubemap.assign(0, 0, 5, w, h, 1, 0, GL_RGB, GL_FLOAT, cubemap_images[5].data.get());
+    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
+    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
+    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
+    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[3].data.get());
+    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[4].data.get());
+    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[5].data.get());
     cubemap.generate_mipmaps();
     cubemap_images.clear();
 

@@ -19,13 +19,12 @@ namespace gl
         void start(uint32_t index = 0) const noexcept;
         void finish(uint32_t index = 0) const noexcept;
 
-        template<typename T, typename = std::enable_if_t<
-            std::disjunction_v <
-            std::is_same<T, int>,
+        template<typename T>
+        std::enable_if_t<std::disjunction_v <
+            std::is_same<T, int32_t>,
             std::is_same<T, uint32_t>,
             std::is_same<T, int64_t>,
-            std::is_same<T, uint64_t>>>>
-            T get(GLenum param = GL_QUERY_RESULT) const noexcept;
+            std::is_same<T, uint64_t>>, T> get(GLenum param = GL_QUERY_RESULT) const noexcept;
 
     private:
         GLenum _type;

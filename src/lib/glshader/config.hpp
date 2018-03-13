@@ -13,8 +13,8 @@
 #   endif
 #endif
 
-#if __has_include(<jpu/log>)
-#   include <jpu/log>
+#if __has_include(<jpu/log.hpp>)
+#   include <jpu/log.hpp>
 #   define LOG_OUTPUT log_i
 #else
 #   include <iostream>

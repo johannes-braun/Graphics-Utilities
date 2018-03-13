@@ -8,6 +8,7 @@
 #include <opengl/debug.hpp>
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
+#include <opengl/texture.hpp>
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
@@ -85,7 +86,7 @@ int main()
     uniform_buffer1.map(GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT);
     gl::buffer<uniforms_2> uniform_buffer2(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT);
     uniform_buffer2.map(GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT);
-
+    
     gl::state state;
     renderer->bind();
     pipeline->bind();

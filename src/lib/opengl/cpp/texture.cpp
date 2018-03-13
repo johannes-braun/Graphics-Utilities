@@ -77,7 +77,18 @@ namespace gl
             _levels = other._levels;
             _fixed_sample_locations = other._fixed_sample_locations;
             _handle = other._handle;
-            glCreateTextures(_type, 1, &_id);
+
+
+            if (other._id == gl_texture_t::zero)
+            {
+                _width = other._width;
+                _height = other._height;
+                _depth = other._depth;
+                _samples = other._samples;
+                _id = gl_texture_t::zero;
+                return *this;
+            }
+            else glCreateTextures(_type, 1, &_id);
 
             switch (_type)
             {
@@ -343,18 +354,24 @@ namespace gl
 
     sampler::sampler(const sampler& other) noexcept
     {
-        glCreateSamplers(1, &_id);
         operator=(std::forward<const sampler&>(other));
     }
 
     sampler::sampler(sampler&& other) noexcept
     {
-        glCreateSamplers(1, &_id);
         operator=(std::forward<sampler&&>(other));
     }
 
     sampler& sampler::operator=(const sampler& other) noexcept
     {
+        if (_id != gl_sampler_t::zero)
+            glDeleteSamplers(1, &_id);
+        if (other._id == gl_sampler_t::zero)
+        {
+            _id = gl_sampler_t::zero;
+            return *this;
+        }
+        else glCreateSamplers(1, &_id);
         for (const auto paramf : _float_parameters)
         {
             float p;
@@ -378,6 +395,8 @@ namespace gl
 
     sampler& sampler::operator=(sampler&& other) noexcept
     {
+        if (_id != gl_sampler_t::zero)
+            glDeleteSamplers(1, &_id);
         _id = other._id;
         other._id = gl_sampler_t::zero;
         return *this;
@@ -421,20 +440,21 @@ namespace gl
     }
 
     image::image(const v2::texture& t, const int level, const GLenum format, const GLenum access) noexcept
-        : _handle(glGetImageHandleARB(t, level, false, 0, format))
     {
-        glMakeImageHandleResidentARB(_handle, access);
+        _handle = (t == gl_texture_t::zero ? 0 : glGetImageHandleARB(t, level, false, 0, format));
+        if(_handle) glMakeImageHandleResidentARB(_handle, access);
     }
 
     image::image(const v2::texture& t, const int level, const int layer, const GLenum format, const GLenum access) noexcept
         : _handle(glGetImageHandleARB(t, level, true, layer, format))
     {
-        glMakeImageHandleResidentARB(_handle, access);
+        _handle = (t == gl_texture_t::zero ? 0 : glGetImageHandleARB(t, level, true, layer, format));
+        if (_handle) glMakeImageHandleResidentARB(_handle, access);
     }
 
     image::~image() noexcept
     {
-        glMakeImageHandleNonResidentARB(_handle);
+        if(_handle) glMakeImageHandleNonResidentARB(_handle);
     }
 
     image::operator uint64_t() const noexcept

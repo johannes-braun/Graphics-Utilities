@@ -28,6 +28,13 @@ namespace gl
         _data_access = other._data_access;
         _usage = other._usage;
 
+        if (other._id == gl_buffer_t::zero)
+        {
+            glDeleteBuffers(1, &_id);
+            _id = gl_buffer_t::zero;
+            return *this;
+        }
+
         const size_t last_size = _size;
         const size_t last_data_size = _data_size;
         const size_t last_data_offset = _data_offset;
