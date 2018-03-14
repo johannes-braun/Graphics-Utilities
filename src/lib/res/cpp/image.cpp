@@ -12,7 +12,7 @@
 
 namespace res
 {
-    image load_image(const filesystem::path& path, const image_type type, image_components components) noexcept
+    image load_image(const filesystem::path& path, const image_type type, components components) noexcept
     {
         image img;
         img.data = type == image_type::f32 ?

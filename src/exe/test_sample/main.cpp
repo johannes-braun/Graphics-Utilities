@@ -41,8 +41,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::RGBA);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
 
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
     main_window->set_icon(icon.width, icon.height, icon.data.get());

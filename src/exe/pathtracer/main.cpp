@@ -178,7 +178,7 @@ int main()
     gl::shader::set_include_directories("../shaders");
 
     res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 1.0f);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
 
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 8);
@@ -206,12 +206,12 @@ int main()
     const gl::sampler sampler;
 
     std::vector<res::image> cubemap_images;
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::f32, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negx.hdr", res::image_type::f32, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posy.hdr", res::image_type::f32, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negy.hdr", res::image_type::f32, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posz.hdr", res::image_type::f32, res::image_components::rgb));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negz.hdr", res::image_type::f32, res::image_components::rgb));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negx.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posy.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negy.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/posz.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/ven/hdr/negz.hdr", res::image_type::f32, res::RGB));
 
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;

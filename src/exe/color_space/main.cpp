@@ -119,8 +119,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::RGBA);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -141,7 +141,7 @@ int main()
     const auto src_data = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false);
     if (!src_data) return 0;
 
-    res::image picture = res::load_image(src_data, res::image_type::u8, res::image_components::rgb);
+    res::image picture = res::load_image(src_data, res::image_type::u8, res::RGB);
     gl::texture texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
     texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
     texture.generate_mipmaps();
@@ -151,7 +151,7 @@ int main()
     axis_transformation trafo = principal_axis_transformation(begin, picture.num_pixels());
     const glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
 
-    auto grid_image = load_image("../res/grid.jpg", res::image_type::u8, res::image_components::rgb_alpha);
+    auto grid_image = load_image("../res/grid.jpg", res::image_type::u8, res::RGBA);
     gl::texture grid(GL_TEXTURE_2D, grid_image.width, grid_image.height, GL_RGBA8);
     grid.assign(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
     grid.generate_mipmaps();
@@ -223,7 +223,7 @@ int main()
         {
             if (const auto src = tinyfd_openFileDialog("Open Image", "../res/", 2, fs, "Images", false))
             {
-                picture = res::load_image(src_data, res::image_type::u8, res::image_components::rgb);
+                picture = res::load_image(src_data, res::image_type::u8, res::RGB);
                 texture = gl::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
                 texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
                 texture.generate_mipmaps();

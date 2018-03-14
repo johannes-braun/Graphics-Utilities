@@ -20,8 +20,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::RGBA);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -73,7 +73,7 @@ int main()
         infos[wall].idx = std::move(scene.meshes.get_by_index(0).indices);
     }
 
-    auto img = load_image("../res/grid/heightmap.png", res::image_type::f32, res::image_components::grey);
+    auto img = load_image("../res/grid/heightmap.png", res::image_type::f32, res::Grey);
     const int width = img.width;
     const int height = img.height;
     std::vector<int32_t> heights(width * height);

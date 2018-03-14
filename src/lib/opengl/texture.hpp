@@ -42,14 +42,14 @@ namespace gl
         void resize(int width, int height, samples samples);
         void resize(int width, int height, int depth, samples samples);
 
-        void assign(int x, int width, GLenum format, GLenum type, const void* pixels);
-        void assign(int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels);
-        void assign(int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels);
-        void assign(int level, int x, int width, GLenum format, GLenum type, const void* pixels);
-        void assign(int level, int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels);
-        void assign(int level, int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels);
-        void assign(GLenum format, GLenum type, const void* pixels);
-        void assign(int level, GLenum format, GLenum type, const void* pixels);
+        void assign(int x, int width, GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(int level, int x, int width, GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(int level, int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(int level, int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(GLenum format, GLenum type, const void* pixels) noexcept;
+        void assign(int level, GLenum format, GLenum type, const void* pixels) noexcept;
 
         void get_data(GLenum format, GLenum type, size_t size, void* target) const noexcept;
         void get_data(int level, GLenum format, GLenum type, size_t size, void* target) const noexcept;

@@ -212,42 +212,42 @@ namespace gl
         init_handle();
     }
 
-    void texture::assign(int x, int width, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int x, int width, GLenum format, GLenum type, const void* pixels) noexcept
     {
         assign(0, x, width, format, type, pixels);
     }
 
-    void texture::assign(int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels) noexcept
     {
         assign(0, x, y, width, height, format, type, pixels);
     }
 
-    void texture::assign(int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels) noexcept
     {
         assign(0, x, y, z, width, height, depth, format, type, pixels);
     }
 
-    void texture::assign(int level, int x, int width, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int level, int x, int width, GLenum format, GLenum type, const void* pixels) noexcept
     {
         glTextureSubImage1D(_id, level, x, width, format, type, pixels);
     }
 
-    void texture::assign(int level, int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int level, int x, int y, int width, int height, GLenum format, GLenum type, const void* pixels) noexcept
     {
         glTextureSubImage2D(_id, level, x, y, width, height, format, type, pixels);
     }
 
-    void texture::assign(int level, int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int level, int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels) noexcept
     {
         glTextureSubImage3D(_id, level, x, y, z, width, height, depth, format, type, pixels);
     }
 
-    void texture::assign(GLenum format, GLenum type, const void* pixels)
+    void texture::assign(GLenum format, GLenum type, const void* pixels) noexcept
     {
         assign(0, format, type, pixels);
     }
 
-    void texture::assign(int level, GLenum format, GLenum type, const void* pixels)
+    void texture::assign(int level, GLenum format, GLenum type, const void* pixels) noexcept
     {
         assert((_type == GL_TEXTURE_1D ||
             _type == GL_TEXTURE_2D ||

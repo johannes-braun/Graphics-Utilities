@@ -22,7 +22,7 @@ const glm::vec3 background = { 0.8f, 0.94f, 1.f };
 int main()
 {
     const res::image logo = res::load_svg_rasterized("../res/ui/logo.svg", 10.f);
-    const res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    const res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
     
     gl::shader::set_include_directories("../shaders");
     glfwWindowHint(GLFW_SAMPLES, start_samples);
@@ -51,7 +51,7 @@ int main()
     pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("simple_gl/simple.vert");
     pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("simple_gl/simple.frag");
 
-    const res::image image_texture_content = load_image("../res/bricks/brick.png", res::image_type::u8, res::image_components::rgb_alpha);
+    const res::image image_texture_content = load_image("../res/bricks/brick.png", res::image_type::u8, res::RGBA);
     gl::texture image_texture(GL_TEXTURE_2D, image_texture_content.width, image_texture_content.height, GL_RGBA8);
     image_texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.data.get());
     image_texture.generate_mipmaps();

@@ -15,8 +15,8 @@ int main(int argc, const char** argv)
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::RGB);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -34,12 +34,12 @@ int main(int argc, const char** argv)
 
     int w, h, c; stbi_info("../res/ven/hdr/posx.hdr", &w, &h, &c);
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
-    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negx.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negy.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/posz.hdr", &c, &c, nullptr, STBI_rgb)).get());
-    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, res::stbi_data(stbi_loadf("../res/ven/hdr/negz.hdr", &c, &c, nullptr, STBI_rgb)).get());
+    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, res::load_image("../res/ven/hdr/posx.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, res::load_image("../res/ven/hdr/negx.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, res::load_image("../res/ven/hdr/posy.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, res::load_image("../res/ven/hdr/negy.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, res::load_image("../res/ven/hdr/posz.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, res::load_image("../res/ven/hdr/negz.hdr", res::image_type::f32, res::RGB).data.get());
     cubemap.generate_mipmaps();
     
     io::camera cam;
@@ -66,7 +66,7 @@ int main(int argc, const char** argv)
         mypeline->at(GL_FRAGMENT_SHADER)->uniform<glm::mat4>("proj_mat") = cam.projection();
         mypeline->at(GL_FRAGMENT_SHADER)->uniform<glm::mat4>("inv_view_mat") = inverse(cam.projection() * cam.view());
         mypeline->at(GL_FRAGMENT_SHADER)->uniform<uint64_t>("cubemap") = sampler.sample(cubemap);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        mypeline->draw(GL_TRIANGLES, 3);
 
         main_renderer->draw(main_window->delta_time());
     }

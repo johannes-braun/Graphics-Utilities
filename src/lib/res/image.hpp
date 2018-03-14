@@ -17,13 +17,13 @@ namespace res
         f32
     };
 
-    enum class image_components
+    enum components
     {
-        automatic = 0,
-        grey,
-        grey_alpha,
-        rgb,
-        rgb_alpha
+        Auto,
+        Grey,
+        RG,
+        RGB,
+        RGBA
     };
 
     struct image
@@ -36,7 +36,7 @@ namespace res
         stbi_data data;
     };
 
-    image load_image(const filesystem::path& path, image_type type, image_components components = image_components::automatic) noexcept;
+    image load_image(const filesystem::path& path, image_type type, components components = Auto) noexcept;
 
     image load_svg_rasterized(const filesystem::path& path, float scale) noexcept;
 }

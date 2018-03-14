@@ -86,8 +86,8 @@ int main()
 {
     gl::shader::set_include_directories("../shaders");
 
-    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::image_components::rgb_alpha);
-    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::image_components::rgb_alpha);
+    res::image icon = load_image("../res/ui/logo.png", res::image_type::u8, res::RGBA);
+    res::image cursor = load_image("../res/cursor.png", res::image_type::u8, res::RGBA);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -185,7 +185,7 @@ int main()
     const auto load_texture = [&](auto path, auto internal_format, auto format, auto type) -> gl::texture
     {
         auto image = res::load_image(path, type == GL_FLOAT ? res::image_type::f32 : res::image_type::u8,
-            format == GL_RED ? res::image_components::grey : (format == GL_RG ? res::image_components::grey_alpha : (format == GL_RGB ? res::image_components::rgb : res::image_components::rgb_alpha)));
+            format == GL_RED ? res::Grey : (format == GL_RG ? res::RG : (format == GL_RGB ? res::RGB : res::RGBA)));
         gl::texture texture(GL_TEXTURE_2D, image.width, image.height, internal_format);
         texture.assign(format, type, image.data.get());
         return texture;
