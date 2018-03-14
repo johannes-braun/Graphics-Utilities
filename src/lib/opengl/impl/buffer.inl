@@ -372,6 +372,14 @@ namespace gl
     }
 
     template<typename T>
+    void buffer<T>::clear() noexcept
+    {
+        std::vector<uint8_t> temp(_size * sizeof(T), 0);
+        glNamedBufferSubData(_id, 0, _size * sizeof(T), temp.data());
+        _size = 0;
+    }
+
+    template<typename T>
     void buffer<T>::clear(const T& value) noexcept
     {
         std::vector<T> temp(_size, value);
@@ -503,6 +511,7 @@ namespace gl
     void buffer<T>::flush_bytes(size_t offset, size_t size)
     {
         if (offset + size > _data_size * sizeof(T)) throw std::out_of_range("Range out of bounds.");
+        synchronize();
         glFlushMappedNamedBufferRange(_id, offset, size);
     }
 

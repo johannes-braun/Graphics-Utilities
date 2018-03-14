@@ -149,7 +149,7 @@ int main()
 
     glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.data.get());
     axis_transformation trafo = principal_axis_transformation(begin, picture.num_pixels());
-    const glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
+    glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
 
     auto grid_image = load_image("../res/grid.jpg", res::image_type::u8, res::RGBA);
     gl::texture grid(GL_TEXTURE_2D, grid_image.width, grid_image.height, GL_RGBA8);
@@ -229,8 +229,8 @@ int main()
                 texture.generate_mipmaps();
 
                 glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.data.get());
-                axis_transformation trafo = principal_axis_transformation(begin, picture.num_pixels());
-                const glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
+                trafo = principal_axis_transformation(begin, picture.num_pixels());
+                average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
             }
         }
         ImGui::SameLine();

@@ -90,7 +90,8 @@ namespace gl
         void flush_bytes(size_t offset, size_t size);
         void flush();
         void unmap() noexcept;
-        void clear(const T& value = T()) noexcept;
+        void clear() noexcept;
+        void clear(const T& value) noexcept;
         bool is_mapped() const noexcept;
         size_t size() const noexcept;
         size_t capacity() const noexcept;

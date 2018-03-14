@@ -235,6 +235,7 @@ int main()
         auto geometry = res::load_geometry(path);
         material_buffer.resize(geometry.meshes.size());
         meshes_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+        meshes_buffer.clear();
 
         if (combine)
         {
@@ -251,7 +252,7 @@ int main()
             {
                 meshes[geometry.meshes.id_by_index(i)] = std::make_pair(jpu::make_ref<mesh_proxy>(geometry.meshes.get_by_index(i)), std::vector<mesh*>());
                 meshes_buffer.emplace_back(meshes.get_by_index(i).first, material_buffer.handle() + i * sizeof(material), geometry.meshes.get_by_index(i).transform);
-                meshes.get_by_index(i).second.push_back(&(meshes_buffer[0]));
+                meshes.get_by_index(i).second.push_back(&(meshes_buffer[i]));
             }
         }
     };
@@ -308,7 +309,7 @@ int main()
     };
 
     gl::buffer<pathtracer_info> pathtracer_info_buffer(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-    pathtracer_info_buffer.map(GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+    pathtracer_info_buffer.map(GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
         
     while (main_window->update())
     {
@@ -337,7 +338,6 @@ int main()
         const int count_x = int( ceil(float(resolution.x) / size_x) );
         const int count_y = int( ceil(float(resolution.y) / size_y) );
 
-        pathtracer_info_buffer.bind(GL_UNIFORM_BUFFER, 0);
         double t = 0.0;
         while (t < main_window->get_swap_delay() / 2.f)
         {
@@ -353,24 +353,25 @@ int main()
             pathtracer_info_buffer[0].num_meshes = int(meshes_buffer.size());
             pathtracer_info_buffer[0].max_bounces = 8;
             pathtracer_info_buffer[0].offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
+            pathtracer_info_buffer.flush();
 
             pp_trace.bind_uniform_buffer(0, pathtracer_info_buffer);
             pp_trace.dispatch(size_x, size_y);
+            query_time.finish();
 
             frame = (frame + 1) % (count_x * count_y);
             if (frame == 0 && enable_continuous_improvement)
                 ++sample_blend_offset;
-            query_time.finish();
             t += query_time.get<uint64_t>() / 1'000'000'000.0;
         }
 
-        target_framebuffer->set_drawbuffer(GL_COLOR_ATTACHMENT1);
         main_renderer->bind();
         bilateral_pipeline.bind();
         bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("gauss_bsigma") = gauss_bsigma;
         bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("src_textures[0]") = sampler.sample(*target_textures[0]);
         bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("gauss_sigma") = show_bfilter ? gauss_sigma : 0;
         bilateral_pipeline.draw(GL_TRIANGLES, 3);
+        target_framebuffer->set_drawbuffer(GL_COLOR_ATTACHMENT1);
         main_renderer->draw(main_window->delta_time(), *target_framebuffer);
 
         target_framebuffer->set_readbuffer(GL_COLOR_ATTACHMENT1);
@@ -384,7 +385,7 @@ int main()
             pp_chunk[GL_VERTEX_SHADER]->uniform<glm::vec2>("inv_resolution") = 1.f / glm::vec2(resolution);
             pp_chunk[GL_VERTEX_SHADER]->uniform<glm::vec2>("offset") = glm::vec2(size_x * (frame % count_x), size_y * (frame / count_x));
             pp_chunk[GL_VERTEX_SHADER]->uniform<glm::vec2>("size") = glm::vec2(size_x, size_y);
-            pp_chunk.draw(GL_LINE_STRIP, 5);
+            pp_chunk.draw(GL_LINE_LOOP, 4);
         }
 
         if (show_grid)
@@ -408,8 +409,10 @@ int main()
 
         gizmo.update(*main_window, cam.view(), cam.projection());
         if (show_gizmo) gizmo.render();
-        meshes.get_by_index(selected_mesh).second.front()->model = static_cast<glm::mat4>(gizmo_transform);
-        meshes.get_by_index(selected_mesh).second.front()->inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
+
+        meshes_buffer[selected_mesh].model = static_cast<glm::mat4>(gizmo_transform);
+        meshes_buffer[selected_mesh].inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
+        meshes_buffer.synchronize();
 
         ImGui::Begin("Window");
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
@@ -420,9 +423,8 @@ int main()
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
         ImGui::Checkbox("Show Chunk", &show_renderchunk);
         if (ImGui::Checkbox("Continuous Improvement", &enable_continuous_improvement) && enable_continuous_improvement)
-        {
             sample_blend_offset = 0;
-        }
+
         ImGui::Checkbox("Enable PostProcess", &main_renderer->enabled);
         ImGui::Checkbox("Enable Filtering", &show_bfilter);
         if (show_bfilter)
