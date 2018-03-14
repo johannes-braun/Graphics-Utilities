@@ -5,6 +5,7 @@
 #include <memory>
 #include <res/image.hpp>
 #include <res/geometry.hpp>
+#include <jpu/geometry.hpp>
 #include <opengl/debug.hpp>
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
@@ -41,11 +42,16 @@ int main()
     io::default_cam_controller controller;
 
     const auto scene = res::load_geometry("../res/bunny.dae");
-    gl::buffer<res::vertex> vbo(scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end(), GL_DYNAMIC_STORAGE_BIT);
-    gl::buffer<uint32_t> ibo(scene.meshes.get_by_index(0).indices.begin(), scene.meshes.get_by_index(0).indices.end(), GL_DYNAMIC_STORAGE_BIT);
-    
-    glm::mat4 trf = glm::rotate(glm::radians(90.f), glm::vec3(1, 0, 0));
-    for(auto&& v : vbo) v.position = trf * glm::vec4(v.position, 1);
+    const auto& verts = scene.meshes.get_by_index(0).vertices;
+    const auto& inds = scene.meshes.get_by_index(0).indices;
+    gl::buffer<res::vertex> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<uint32_t> ibo(inds.begin(), inds.end(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+    ibo.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
+    jpu::bvh<3> bvh;
+    bvh.assign_to(ibo, verts, &res::vertex::position, jpu::bvh_primitive_type::triangles);
+    ibo.flush();
+    const auto pack = bvh.pack();
+    gl::buffer<gl::byte> bvh_buffer(pack.begin(), pack.end());
 
     gl::pipeline pipeline;
     pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("simple_gl/simple.vert");
@@ -77,6 +83,9 @@ int main()
         alignas(16) glm::vec3 light_position;
         alignas(16) glm::vec3 light_color;
         alignas(16) glm::vec3 background;
+        alignas(16) uint64_t indices;
+        alignas(16) uint64_t vertices;
+        alignas(16) uint64_t bvh_buffer;
     };
 
     gl::buffer<uniforms_1> uniform_buffer1(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT);
@@ -142,6 +151,9 @@ int main()
         uniform_buffer2[0].background = background;
         uniform_buffer2[0].light_position = light_transform.position;
         uniform_buffer2[0].light_color = light_color;
+        uniform_buffer2[0].bvh_buffer = bvh_buffer.handle();
+        uniform_buffer2[0].indices = ibo.handle();
+        uniform_buffer2[0].vertices = vbo.handle();
 
         renderer->bind();
         gl_framebuffer_t fbos = renderer->main_framebuffer();
