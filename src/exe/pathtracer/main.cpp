@@ -185,7 +185,7 @@ int main()
     main_window = jpu::make_ref<io::window>(io::api::opengl, resolution.x, resolution.y, "Grid");
     main_window->set_icon(logo.width, logo.height, logo.data.get());
     main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
-    main_window->set_max_framerate(60.f);
+    main_window->set_max_framerate(1000.f);
     main_window->callbacks->framebuffer_size_callback.add(&resize);
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantTextInput)
@@ -234,8 +234,8 @@ int main()
     const auto load_mesh = [&](const auto& path, const bool combine) {
         auto geometry = res::load_geometry(path);
         material_buffer.resize(geometry.meshes.size());
-        meshes_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
         meshes_buffer.clear();
+        meshes_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 
         if (combine)
         {
@@ -258,7 +258,9 @@ int main()
     };
     load_mesh("../res/cube.dae", true);
 
-    gl::query query_time(GL_TIME_ELAPSED);
+    gl::query query_trace(GL_TIME_ELAPSED);
+    gl::query query_uniform(GL_TIME_ELAPSED);
+    gl::query query_post(GL_TIME_ELAPSED);
 
 
     gl::compute_pipeline pp_trace(std::make_shared<gl::shader>("pathtracer/trace.comp"));
@@ -308,8 +310,7 @@ int main()
         alignas(4)  int max_samples;
     };
 
-    gl::buffer<pathtracer_info> pathtracer_info_buffer(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-    pathtracer_info_buffer.map(GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
+    gl::buffer<pathtracer_info> pathtracer_info_buffer(1, GL_DYNAMIC_STORAGE_BIT);
         
     while (main_window->update())
     {
@@ -338,33 +339,31 @@ int main()
         const int count_x = int( ceil(float(resolution.x) / size_x) );
         const int count_y = int( ceil(float(resolution.y) / size_y) );
 
-        double t = 0.0;
-        while (t < main_window->get_swap_delay() / 2.f)
-        {
-            query_time.start();
-            pathtracer_info_buffer[0].target_image = *target_image;
-            pathtracer_info_buffer[0].random_gen = dist(gen);
-            pathtracer_info_buffer[0].sample_blend_offset = sample_blend_offset;
-            pathtracer_info_buffer[0].max_samples = max_samples;
-            pathtracer_info_buffer[0].camera_position = cam.transform.position;
-            pathtracer_info_buffer[0].camera_matrix = camera_matrix;
-            pathtracer_info_buffer[0].cubemap = sampler.sample(cubemap);
-            pathtracer_info_buffer[0].meshes = meshes_buffer.handle();
-            pathtracer_info_buffer[0].num_meshes = int(meshes_buffer.size());
-            pathtracer_info_buffer[0].max_bounces = 8;
-            pathtracer_info_buffer[0].offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
-            pathtracer_info_buffer.flush();
+        query_uniform.start();
+        pp_trace.bind_uniform_buffer(0, pathtracer_info_buffer);
+        
+        pathtracer_info_buffer[0].target_image = *target_image;
+        pathtracer_info_buffer[0].random_gen = dist(gen);
+        pathtracer_info_buffer[0].sample_blend_offset = sample_blend_offset;
+        pathtracer_info_buffer[0].max_samples = max_samples;
+        pathtracer_info_buffer[0].camera_position = cam.transform.position;
+        pathtracer_info_buffer[0].camera_matrix = camera_matrix;
+        pathtracer_info_buffer[0].cubemap = sampler.sample(cubemap);
+        pathtracer_info_buffer[0].meshes = meshes_buffer.handle();
+        pathtracer_info_buffer[0].num_meshes = int(meshes_buffer.size());
+        pathtracer_info_buffer[0].max_bounces = 8;
+        pathtracer_info_buffer[0].offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
+        pathtracer_info_buffer.synchronize();
+        query_uniform.finish();
 
-            pp_trace.bind_uniform_buffer(0, pathtracer_info_buffer);
-            pp_trace.dispatch(size_x, size_y);
-            query_time.finish();
+        query_trace.start();
+        pp_trace.dispatch(size_x, size_y);
+        frame = (frame + 1) % (count_x * count_y);
+        if (frame == 0 && enable_continuous_improvement)
+            ++sample_blend_offset;
+        query_trace.finish();
 
-            frame = (frame + 1) % (count_x * count_y);
-            if (frame == 0 && enable_continuous_improvement)
-                ++sample_blend_offset;
-            t += query_time.get<uint64_t>() / 1'000'000'000.0;
-        }
-
+        query_post.start();
         main_renderer->bind();
         bilateral_pipeline.bind();
         bilateral_pipeline[GL_FRAGMENT_SHADER]->uniform<float>("gauss_bsigma") = gauss_bsigma;
@@ -377,6 +376,7 @@ int main()
         target_framebuffer->set_readbuffer(GL_COLOR_ATTACHMENT1);
         target_framebuffer->blit(nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         gl::framebuffer::zero().bind();
+        query_post.finish();
 
         if (show_renderchunk)
         {
@@ -419,6 +419,9 @@ int main()
         ImGui::DragInt("Size", &size, 0.1f, 1, 100);
         ImGui::DragInt("Max. Samples", &max_samples, 0.01f, 1, 100);
         ImGui::DragInt("Sample Blend Offset", &sample_blend_offset, 0.01f, 1, 100);
+        ImGui::Value("Update", float(query_uniform.get<uint64_t>() / 1'000'000.0));
+        ImGui::Value("Trace", float(query_trace.get<uint64_t>() / 1'000'000.0));
+        ImGui::Value("PostFX", float(query_post.get<uint64_t>() / 1'000'000.0));
         ImGui::Checkbox("Show Mesh", &show_grid);
         ImGui::Checkbox("Show Gizmo", &show_gizmo);
         ImGui::Checkbox("Show Chunk", &show_renderchunk);

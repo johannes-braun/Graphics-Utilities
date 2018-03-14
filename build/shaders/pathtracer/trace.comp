@@ -14,7 +14,7 @@ const int bsdf_type_reflect = 1;
 const int bsdf_type_surface = 2;
 
 const float origin_epsilon = 1e-5f;
-const float sqr_rad_cutoff = 1e-5f;
+const float sqr_rad_cutoff = 1e-2f;
 
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 
@@ -91,7 +91,7 @@ void main()
 
             bvh_result result;
             result.hits = false;
-            float nearest = 1.f/0.f;
+            float nearest = 100000000.f;
             bvh_state_set_mode(bvh_mode_nearest);
             for(int m = 0; m < num_meshes; ++m)
             {

@@ -34,12 +34,12 @@ void main()
     bvh_result res = bvh_hit(
         // Ray in local space 
         // (already transformed relative to the Mesh transformation)
-        position.xyz, normalize(to_light),
+        position.xyz+1e-3f*normal_world.xyz, normalize(to_light),
         // Data (as bindless buffer pointers). The data has to be compatible 
         // with the given bvh buffer layout and the assigned attribute data.
         bvh_buffer, indices, vertices, 
         // Search distance on ray
-        1000000000);
+        sqrt(dist_squared));
 
     if (res.hits)
         light_tint = vec3(0);

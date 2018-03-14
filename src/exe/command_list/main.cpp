@@ -50,6 +50,7 @@ int main()
     jpu::bvh<3> bvh;
     bvh.assign_to(ibo, verts, &res::vertex::position, jpu::bvh_primitive_type::triangles);
     ibo.flush();
+    ibo.unmap();
     const auto pack = bvh.pack();
     gl::buffer<gl::byte> bvh_buffer(pack.begin(), pack.end());
 
@@ -84,7 +85,7 @@ int main()
         alignas(16) glm::vec3 light_color;
         alignas(16) glm::vec3 background;
         alignas(16) uint64_t indices;
-        alignas(16) uint64_t vertices;
+        alignas(8) uint64_t vertices;
         alignas(16) uint64_t bvh_buffer;
     };
 

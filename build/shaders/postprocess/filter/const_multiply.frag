@@ -11,5 +11,5 @@ layout(location=0) out vec4 color;
 void main()
 {
     const vec4 in_color = texture(this_texture, uv);
-    color = vec4(in_color.rgb * factor, in_color.a * alpha_factor);
+    color = pow(vec4(in_color.rgb * factor, in_color.a * alpha_factor), 1/vec4(1.25f));
 }
