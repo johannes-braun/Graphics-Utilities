@@ -75,6 +75,12 @@ bool bsdf_is_total_reflection(float ior_in, float ior_out, vec3 incoming, vec3 m
 	return c * c < -(ior_out / ior_in) + 1;
 }
 
+bool bsdf_is_total_reflection(float eta, vec3 incoming, vec3 micro_normal)
+{
+	float c = abs(dot(incoming, micro_normal));
+	return c * c < -(1.f/eta) + 1;
+}
+
 int bsdf_largest_component(const in vec3 vector)
 {
     return int(vector.y > vector.x || vector.z > vector.x) + int(vector.z > vector.y && vector.z > vector.x);

@@ -1,0 +1,172 @@
+#include "../ext/bvh.h"
+#include "../ext/random.h"
+#include "../ext/sampling.h"
+#include "../ext/bsdf.h"
+
+#define PI 3.1415926535
+#define INV_PI 0.31830988618
+#define TAU 6.282185317
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding=0, std140) uniform Data
+{
+    mat4 camera_matrix;
+    vec4 camera_position;
+
+    layout(rgba32f) image2D img;
+    uintptr_t bvh;
+    uintptr_t vbo;
+    uintptr_t ibo;
+    samplerCube cubemap;
+    float seed;
+};
+
+struct vertex {
+    vec3 position;
+    uint meta;
+    vec3 normal;
+    uint meta1;
+    vec2 uv;
+    uintptr_t meta2;
+};
+
+struct triangle {
+    uint a;
+    uint b;
+    uint c;
+};
+
+const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
+void init_random(ivec2 pixel, float seed)
+{
+    random_value(int(pixel.x * random_primes[0] + pixel.y * random_primes[1] + random_primes[2] * seed));
+}
+
+int _current_prime = 0;
+float next_random()
+{
+    return random_value(_current_prime = (_current_prime + 1) % 6);
+}
+
+vec3 environment(samplerCube map, vec3 direction, float clamp_color)
+{
+    return clamp(pow(textureLod(map, direction, 0).rgb, vec3(1/2.8f)), 0, clamp_color);
+}
+
+void main()
+{
+    const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    const ivec2 imgsize = imageSize(img);
+    const float count = imgsize.x * imgsize.y;
+    const vec2 inv_size = 1.f / imgsize;
+
+    if(any(greaterThanEqual(pixel, imgsize)))
+        return;
+
+    init_random(pixel, seed);
+    vec2 random_sample = random_hammersley_2d(next_random() * count, 1/count);
+    vec2 uv = ((pixel + random_sample) * inv_size - 0.5f) * 2.f;
+    vec3 direction = normalize((camera_matrix * vec4(uv, 0, 1)).xyz);
+    vec3 origin = camera_position.xyz;
+
+    bvh_state_set_mode(bvh_mode_nearest);
+    bvh_result current_result = bvh_hit(origin.xyz, direction.xyz, 
+                bvh, ibo, vbo, 10000000000.f);
+
+    const vec4 last_color = imageLoad(img, pixel);
+    vec4 color = vec4(0);
+    if(current_result.hits)
+    {
+        vec3 radiance = vec3(1);
+        for(int i=0; i<10; ++i)
+        {
+            if(current_result.hits)
+            {
+                vertex* vertices = (vertex*) vbo;
+                triangle* triangles = ((triangle*) ibo) + current_result.near_triangle;
+            
+                #define barycentric_resolve(param) (\
+                    vertices[triangles->b].param * current_result.near_barycentric.x + \
+                    vertices[triangles->c].param * current_result.near_barycentric.y + \
+                    vertices[triangles->a].param * (1-current_result.near_barycentric.x-current_result.near_barycentric.y)\
+                )
+
+                const vec3 position = barycentric_resolve(position);
+                const vec3 normal = normalize(barycentric_resolve(normal));
+                const vec2 uv = barycentric_resolve(uv);
+
+                random_sample = random_hammersley_2d(next_random() * count, 1/count);
+                vec3 hemisphere = sample_cosine_hemisphere(random_sample);
+                vec3 world_hemisphere = bsdf_local_to_world(hemisphere, normal);
+
+                const vec3 lamp = vec3(2, 4, 3);
+                const vec3 lamp_color = vec3(30);
+                const float lamp_radius = 0.3f;
+
+                const vec3 to_lamp = normalize(lamp + sample_uniform_sphere(random_sample) * lamp_radius);
+
+                vec3 light_color = vec3(0);
+                if(dot(normal, to_lamp) > 0.f)
+                {
+                    const float dist = distance(position, lamp);
+                    bvh_state_set_mode(bvh_mode_any);
+                    bvh_result shadow_result = bvh_hit(position.xyz + 1e-3f * to_lamp, to_lamp, bvh, ibo, vbo, dist);
+
+                    if(!shadow_result.hits)
+                        light_color = dot(normal, to_lamp) * lamp_color / (1+dist*dist);
+                }
+
+                const vec3 facet_normal = bsdf_local_to_world(
+                    ggx_importance_hemisphere(
+                        ggx_importance_sample(random_sample, 0.001f)
+                    ), normal.xyz
+                );
+                const float fresnel = bsdf_fresnel_coefficient(direction, facet_normal.xyz, 1.5f, 0.6f);
+                
+                const bool internal = dot(facet_normal, direction) < 0;
+                const float eta = internal ? (1/1.5f) : 1.5f;
+                const bool total = bsdf_is_total_reflection(eta, direction, faceforward(facet_normal, direction, facet_normal));
+
+                if(next_random() < fresnel || total)
+                {
+                    direction = reflect(direction, faceforward(facet_normal, direction, facet_normal));
+                    origin = position + 1e-4f * direction;
+                }
+                else
+                {
+                    if(true)
+                    {
+                        vec4 diffuse = vec4(1, 1, 0, 1);
+                        direction = normalize(world_hemisphere);
+                        color += vec4(light_color, 1) * INV_PI * vec4(radiance, 1) * diffuse;
+                        origin = position + 1e-4f * direction;
+                        radiance *= abs(dot(direction, normal)) * diffuse.rgb;
+                    }
+                    else
+                    {
+                        direction = refract(direction, faceforward(facet_normal, direction, facet_normal), eta);
+                        origin = position + 1e-4f * direction;
+                        radiance *= vec3(1, 0, 0);
+                        i = max(1, i-1);
+                    }
+                }
+
+                if(dot(radiance, radiance) < 0.01f)
+                    break;
+
+                bvh_state_set_mode(bvh_mode_nearest);
+                current_result = bvh_hit(origin.xyz, direction.xyz, bvh, ibo, vbo, 10000000000.f);
+            }
+            else
+            {
+                color += vec4(radiance * environment(cubemap, direction, 1.1f), 1);
+                break;
+            }
+        }
+    }
+    else
+        color = vec4(environment(cubemap, direction, 2.f), 0);
+
+    imageStore(img, pixel, mix(last_color, color, 1.f / 30));
+}

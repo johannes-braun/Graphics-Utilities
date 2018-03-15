@@ -188,6 +188,8 @@ namespace jpu
             uint32_t index_offset;
         } attributes;
 
+        bvh() = default;
+
         template<typename VertexContainer, typename IndexContainer, typename Member>
         bvh& assign_to(IndexContainer& indices, const VertexContainer& vertices, Member VertexContainer::value_type::* position_field, bvh_primitive_type type)
         {

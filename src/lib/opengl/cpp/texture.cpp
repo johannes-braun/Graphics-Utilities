@@ -454,7 +454,7 @@ namespace gl
         if (_handle) glMakeImageHandleNonResidentARB(_handle);
     }
 
-    image::operator uint64_t() const noexcept
+    uint64_t image::handle() const noexcept
     {
         return _handle;
     }

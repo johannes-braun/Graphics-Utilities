@@ -342,7 +342,7 @@ int main()
         query_uniform.start();
         pp_trace.bind_uniform_buffer(0, pathtracer_info_buffer);
         
-        pathtracer_info_buffer[0].target_image = *target_image;
+        pathtracer_info_buffer[0].target_image = target_image->handle();
         pathtracer_info_buffer[0].random_gen = dist(gen);
         pathtracer_info_buffer[0].sample_blend_offset = sample_blend_offset;
         pathtracer_info_buffer[0].max_samples = max_samples;

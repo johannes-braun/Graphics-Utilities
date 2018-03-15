@@ -4,6 +4,7 @@
 
 namespace res
 {
+    using index32 = uint32_t;
     struct vertex
     {
         vertex() noexcept

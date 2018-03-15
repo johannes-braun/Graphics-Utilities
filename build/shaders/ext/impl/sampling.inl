@@ -1,7 +1,7 @@
 #pragma once
 #define TAU 6.282185317
 
-vec3 cosine_hemisphere(vec2 uv)
+vec3 sample_cosine_hemisphere(vec2 uv)
 {
 	// (Uniformly) sample a point on the unit disk
     float r = sqrt(uv.x);
@@ -14,7 +14,7 @@ vec3 cosine_hemisphere(vec2 uv)
     return vec3(x, y, z);
 }
 
-vec3 uniform_sphere(vec2 uv)
+vec3 sample_uniform_sphere(vec2 uv)
 {
 	float cosTheta = 2 * uv.x - 1;
 	float phi = uv.y * TAU;

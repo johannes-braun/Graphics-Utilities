@@ -128,7 +128,7 @@ namespace gl
         image(const texture& texture, int level, int layer, GLenum format, GLenum access) noexcept;
         ~image() noexcept;
 
-        operator uint64_t() const noexcept;
+        uint64_t handle() const noexcept;
 
     private:
         uint64_t _handle;

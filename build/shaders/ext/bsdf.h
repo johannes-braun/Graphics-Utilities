@@ -15,6 +15,7 @@ bsdf bsdf_transmission(const in vec3 view, const in vec3 normal, const in vec3 f
 float bsdf_normal_response(float ior, float metalness);
 float bsdf_fresnel(const in vec3 view, const in vec3 normal, float ior, float metalness);
 bool bsdf_is_total_reflection(float ior_in, float ior_out, vec3 incoming, vec3 micro_normal);
+bool bsdf_is_total_reflection(float eta, vec3 incoming, vec3 micro_normal);
 
 
 
