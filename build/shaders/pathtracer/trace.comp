@@ -13,13 +13,13 @@ const int bsdf_type_glass = 0;
 const int bsdf_type_reflect = 1;
 const int bsdf_type_surface = 2;
 
-const float origin_epsilon = 1e-5f;
+const float origin_epsilon = 1e-3f;
 const float sqr_rad_cutoff = 1e-2f;
 
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 
-const vec3 light_color = 160.0f*vec3(1.f, 1, 1);
-const float light_radius = 0.01f;
+const vec3 light_color = 10.0f*vec3(1.f, 1, 1);
+const float light_radius = 0.1f;
 const vec3 light_pos =vec3(-5, 4, 2);
 
 layout(binding = 0, std140) uniform Infos
@@ -32,10 +32,9 @@ layout(binding = 0, std140) uniform Infos
     mat4 camera_matrix;
     mesh* meshes;    
     int sample_blend_offset;
-    float max_bounces;
+    int max_bounces;
     vec3 camera_position;
     int max_samples;
-
 };
 
 void init_random(ivec2 pixel, float seed)
@@ -85,7 +84,7 @@ void main()
 
         vec3 rad = vec3(1);
         float inside_depth = 0;
-        for(int i=0; i < max_bounces && dot(rad, rad) > sqr_rad_cutoff; ++i)
+        for(int i=0; i < max_bounces && length(rad) > 0.01; ++i)
         {
             direction = normalize(direction);
 
@@ -152,7 +151,7 @@ void main()
                 const float ior_out = swap ? 1.f : mesh_material->ior;
                 const float fresnel = bsdf_fresnel_coefficient(direction, target_point.normal.xyz, mesh_material->ior, mesh_material->extinction);
                 const int target_bsdf = next_random() > fresnel && !bsdf_is_total_reflection(ior_in, ior_out, direction, forward_normal) ? 
-                        (next_random() > mesh_material->ground_transmissiveness ? bsdf_type_reflect : bsdf_type_glass) : (swap ? bsdf_type_reflect : bsdf_type_surface);
+                        (next_random()+0.01f > mesh_material->ground_transmissiveness ? bsdf_type_reflect : bsdf_type_glass) : (swap ? bsdf_type_reflect : bsdf_type_surface);
 
                 float cos_light_angle = dot(to_light, target_point.normal.xyz);
                 float d = max(cos_light_angle, 0.0f);
@@ -195,15 +194,18 @@ void main()
 
                         vec3 light_half_vector = normalize(-direction + normalize(to_light_full));
                         float distribution_light = clamp(ggx_distribution(abs(dot(target_point.normal.xyz, light_half_vector)), roughness), 0.f, 1.f);
+                        float distribution_thing = clamp(ggx_distribution(abs(dot(target_point.normal.xyz, normalize(facet_normal))), roughness), 0.f, 1.f);
 
-                        color += rad * ref_color * (1 - scatter_factor) * mesh_material->ground_density_color;
-                        rad *= scatter_factor * ref_color;
+                        //color += rad * ref_color * (1 - scatter_factor) * mesh_material->ground_density_color;
+                        rad *= ref_color;
 
                         vec3 d_rad = clamp(rad * distribution_light * max(dot(to_light, target_point.normal.xyz), 0.f), 0, 1.f);
                         color += clamp(d * d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(30.f / (3.7f*i+1)), vec3(1.f)));
 
-                        direction = reflect(direction, forward_normal);
-                        origin = target_point.position.xyz + origin_epsilon * direction;
+                        direction = normalize(reflect(direction, forward_normal));
+                        if (dot(direction, forward_normal) < 0)
+                            direction += 2 * dot(direction, forward_normal)*forward_normal;
+                        origin = target_point.position.xyz + origin_epsilon * target_point.normal.xyz;
                     }
                     break;
                     // ----------------------------------------------------------------------------------------------------------------
@@ -214,14 +216,16 @@ void main()
                         vec3 light_half_vector = normalize(-direction + normalize(to_light_full));
                         float distribution_light = clamp(ggx_distribution(abs(dot(target_point.normal.xyz, light_half_vector)), surface_roughness), 0.f, 1.f);
 
-                        color += rad * ref_color * (1 - scatter_factor) * mesh_material->ground_density_color;
-                        rad *= scatter_factor * ref_color;
+                       // color += rad * ref_color * (1 - scatter_factor) * mesh_material->ground_density_color;
+                        rad *= ref_color;
 
                         vec3 d_rad = clamp(rad * distribution_light * max(dot(to_light, target_point.normal.xyz), 0.f), 0, 1.f);
                         color += clamp(d * d_rad * light_color * PI / (1 + distance_to_light * distance_to_light), vec3(0), max(vec3(30.f / (3.7f*i+1)), vec3(1.f)));
 
-                        direction = reflect(direction, forward_normal_surface);
-                        origin = target_point.position.xyz + origin_epsilon * direction;
+                        direction = normalize(reflect(direction, forward_normal_surface));
+                        if (dot(direction, forward_normal_surface) < 0)
+                            direction += 2 * dot(direction, forward_normal_surface)*forward_normal_surface;
+                        origin = target_point.position.xyz + origin_epsilon * target_point.normal.xyz;
                     } break;
                 }
             }
@@ -231,6 +235,7 @@ void main()
                 alpha = 1-first;
                 vec3 unclamped = rad * texture(cubemap, direction).rgb * 4.f;
                 color += clamp(unclamped, vec3(0), vec3(6.f + first * 10.f));
+                rad = vec3(0);
                 break;
             }
         }

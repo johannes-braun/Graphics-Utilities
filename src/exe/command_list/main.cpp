@@ -10,6 +10,7 @@
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
 #include <opengl/texture.hpp>
+#include "../test_all/bvh.hpp"
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
@@ -49,10 +50,13 @@ int main()
     ibo.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
     jpu::bvh<3> bvh;
     bvh.assign_to(ibo, verts, &res::vertex::position, jpu::bvh_primitive_type::triangles);
+   
     ibo.flush();
     ibo.unmap();
-    const auto pack = bvh.pack();
-    gl::buffer<gl::byte> bvh_buffer(pack.begin(), pack.end());
+
+    std::vector<uint8_t> packed_bvh = bvh.pack();
+
+    gl::buffer<gl::byte> bvh_buffer(packed_bvh.begin(), packed_bvh.end());
 
     gl::pipeline pipeline;
     pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("simple_gl/simple.vert");

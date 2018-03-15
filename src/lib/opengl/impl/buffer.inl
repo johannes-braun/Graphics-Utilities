@@ -79,7 +79,7 @@ namespace gl
         _id = other._id;
         _data = other._data;
         _cached = std::move(other._cached);
-        _cached_position = other._cached_position;
+        _cached_index = other._cached_index;
         _usage = other._usage;
         _size = other._size;
         _reserved_size = other._reserved_size;
@@ -91,8 +91,10 @@ namespace gl
 
         other._id = gl_buffer_t::zero;
         other._data = nullptr;
-        other._cached = nullptr;
-        other._cached_position = 0;
+        for (auto&& c : _cached) {
+            c.first = 0; c.second = nullptr;
+        }
+        other._cached_index = 0;
         other._usage = GL_ZERO;
         other._size = 0;
         other._reserved_size = 0;
@@ -169,12 +171,18 @@ namespace gl
     void buffer<T>::push_back(T && value)
     {
         const size_t last_size = _size;
+        const bool was_data_full_size = _data_full_size;
+        const GLbitfield map_access = _data_access;
+        if (was_data_full_size && _size != 0)
+            unmap();
         if (_size + 1 >= _reserved_size)
         {
             reserve(static_cast<size_t>(std::max(1.0, static_cast<double>(_reserved_size)) * compute_size_increase()));
         }
         glNamedBufferSubData(_id, last_size * sizeof(T), sizeof(T), &value);
         ++_size;
+        if (was_data_full_size)
+            map(map_access);
         glFinish();
     }
 
@@ -487,8 +495,9 @@ namespace gl
         _data_size = count;
         _data_offset = begin;
         _data_access = access;
-        _cached_position = 0;
-        _cached = nullptr;
+        for (auto&& c : _cached) {
+            c.first = 0; c.second = nullptr;
+        }
         if (count != 0)
             _data = static_cast<T*>(glMapNamedBufferRange(_id, begin * sizeof(T), count * sizeof(T), access));
         else
@@ -536,8 +545,11 @@ namespace gl
     template<typename T>
     void buffer<T>::synchronize() const noexcept
     {
-        if((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached)
-            glNamedBufferSubData(_id, _cached_position * sizeof(T), sizeof(T), _cached.get());
+        for (int i = 0; i < _cached.size(); ++i)
+        {
+            if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
+                glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
+        }
     }
 
     template<typename T>
@@ -554,11 +566,13 @@ namespace gl
         if (!_data)
         {
             synchronize();
-            if (!_cached)
-                _cached = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
-            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached.get());
-            _cached_position = index;
-            return *_cached;
+            if (!_cached[_cached_index].second)
+                _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
+            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
+            _cached[_cached_index].first = index;
+            int idx = _cached_index;
+            _cached_index = (_cached_index + 1) % _cached.size();
+            return *_cached[idx].second;
         }
         return _data[index];
     }
@@ -571,11 +585,13 @@ namespace gl
         if (!_data)
         {
             synchronize();
-            if (!_cached)
-                _cached = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
-            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached.get());
-            _cached_position = index;
-            return *_cached;
+            if (!_cached[_cached_index].second)
+                _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
+            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
+            _cached[_cached_index].first = index;
+            int idx = _cached_index;
+            _cached_index = (_cached_index + 1) % _cached.size();
+            return *_cached[idx].second;
         }
         return _data[index];
     }
@@ -588,11 +604,13 @@ namespace gl
         if (!_data)
         {
             synchronize();
-            if (!_cached)
-                _cached = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
-            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached.get());
-            _cached_position = index;
-            return *_cached;
+            if (!_cached[_cached_index].second)
+                _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
+            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
+            _cached[_cached_index].first = index;
+            int idx = _cached_index;
+            _cached_index = (_cached_index + 1) % _cached.size();
+            return *_cached[idx].second;
         }
         return _data[index];
     }
@@ -605,11 +623,13 @@ namespace gl
         if (!_data)
         {
             synchronize();
-            if (!_cached)
-                _cached = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
-            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached.get());
-            _cached_position = index;
-            return *_cached;
+            if (!_cached[_cached_index].second)
+                _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
+            glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
+            _cached[_cached_index].first = index;
+            int idx = _cached_index;
+            _cached_index = (_cached_index + 1) % _cached.size();
+            return *_cached[idx].second;
         }
         return _data[index];
     }
