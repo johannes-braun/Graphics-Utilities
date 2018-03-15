@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mygl/gl.hpp>
+#include <array>
 #include <type_traits>
 #include <cinttypes>
 #include <algorithm>
@@ -129,8 +130,8 @@ namespace gl
 
         gl_buffer_t _id = gl_buffer_t::zero;
         T* _data = nullptr;
-        mutable std::unique_ptr<T> _cached{ nullptr };
-        size_t _cached_position = 0;
+        mutable std::array<std::pair<size_t, std::unique_ptr<T>>, 2> _cached{ std::make_pair(0, nullptr), std::make_pair(0, nullptr) };
+        int _cached_index = 0;
         size_t _data_size = 0;
         size_t _data_offset = 0;
         bool _data_full_size = false;
@@ -183,6 +184,8 @@ namespace gl
         bool operator>(const bounded_buffer_iterator_base& it) const noexcept;
         bool operator<=(const bounded_buffer_iterator_base& it) const noexcept;
         bool operator>=(const bounded_buffer_iterator_base& it) const noexcept;
+        bounded_buffer_iterator_base& operator+=(difference_type it) noexcept;
+        bounded_buffer_iterator_base& operator-=(difference_type it) noexcept;
 
         bounded_buffer_iterator_base& operator--() noexcept;
         friend bounded_buffer_iterator_base operator--(bounded_buffer_iterator_base& rhs, int i) noexcept;

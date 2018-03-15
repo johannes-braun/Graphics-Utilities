@@ -64,6 +64,20 @@ namespace gl
 
     template<typename T>
     template<typename Ptr, int Inc>
+    bounded_buffer_iterator_base_impl<T, Ptr, Inc>& bounded_buffer_iterator_base_impl<T, Ptr, Inc>::operator+=(difference_type it) noexcept
+    {
+        return (*this = *this + it);
+    }
+
+    template<typename T>
+    template<typename Ptr, int Inc>
+    bounded_buffer_iterator_base_impl<T, Ptr, Inc>& bounded_buffer_iterator_base_impl<T, Ptr, Inc>::operator-=(difference_type it) noexcept
+    {
+        return (*this = *this - it);
+    }
+
+    template<typename T>
+    template<typename Ptr, int Inc>
     bounded_buffer_iterator_base_impl<T, Ptr, Inc>& bounded_buffer_iterator_base_impl<T, Ptr, Inc>::operator--() noexcept
     {
         assert(valid() && "Iterator invalid");

@@ -79,16 +79,16 @@ public:
         bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
 
 
-        std::vector<res::vertex> opt_vertices(indices.size());
-#pragma omp parallel for
-        for (int i = 0; i < opt_vertices.size(); ++i)
-        {
-            opt_vertices[i] = vertices[indices[i]];
-            indices[i] = i;
-        }
+//        std::vector<res::vertex> opt_vertices(indices.size());
+//#pragma omp parallel for
+//        for (int i = 0; i < opt_vertices.size(); ++i)
+//        {
+//            opt_vertices[i] = vertices[indices[i]];
+//            indices[i] = i;
+//        }
 
         const std::vector<uint8_t> packed_bvh = bvh.pack();
-        _vertex_buffer = gl::buffer<res::vertex>(opt_vertices.begin(), opt_vertices.end());
+        _vertex_buffer = gl::buffer<res::vertex>(vertices.begin(), vertices.end());
         _index_buffer = gl::buffer<uint32_t>(indices.begin(), indices.end());
         _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
 
@@ -206,12 +206,12 @@ int main()
     const gl::sampler sampler;
 
     std::vector<res::image> cubemap_images;
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posx.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negx.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posy.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negy.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/posz.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/ven/hdr/negz.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/bath/hdr/posx.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/bath/hdr/negx.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/bath/hdr/posy.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/bath/hdr/negy.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/bath/hdr/posz.hdr", res::image_type::f32, res::RGB));
+    cubemap_images.emplace_back(load_image("../res/bath/hdr/negz.hdr", res::image_type::f32, res::RGB));
 
     const int w = cubemap_images[0].width;
     const int h = cubemap_images[0].height;
@@ -228,14 +228,15 @@ int main()
     std::mt19937 gen;
     const std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    gl::buffer<material> material_buffer(GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
-    gl::buffer<mesh> meshes_buffer(GL_MAP_PERSISTENT_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<material> material_buffer(GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<mesh> meshes_buffer(GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
 
     const auto load_mesh = [&](const auto& path, const bool combine) {
         auto geometry = res::load_geometry(path);
         material_buffer.resize(geometry.meshes.size());
         meshes_buffer.clear();
-        meshes_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+        meshes.clear();
+        meshes_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
 
         if (combine)
         {
@@ -255,8 +256,9 @@ int main()
                 meshes.get_by_index(i).second.push_back(&(meshes_buffer[i]));
             }
         }
+        meshes_buffer.flush();
     };
-    load_mesh("../res/cube.dae", true);
+    load_mesh("../res/bunny.dae", true);
 
     gl::query query_trace(GL_TIME_ELAPSED);
     gl::query query_uniform(GL_TIME_ELAPSED);
@@ -305,7 +307,7 @@ int main()
         alignas(16) glm::mat4 camera_matrix;
         alignas(16) uint64_t meshes;
         alignas(4)  int sample_blend_offset;
-        alignas(4)  float max_bounces;
+        alignas(4)  int max_bounces;
         alignas(16) glm::vec3 camera_position;
         alignas(4)  int max_samples;
     };
@@ -351,7 +353,7 @@ int main()
         pathtracer_info_buffer[0].cubemap = sampler.sample(cubemap);
         pathtracer_info_buffer[0].meshes = meshes_buffer.handle();
         pathtracer_info_buffer[0].num_meshes = int(meshes_buffer.size());
-        pathtracer_info_buffer[0].max_bounces = 8;
+        pathtracer_info_buffer[0].max_bounces = 4;
         pathtracer_info_buffer[0].offset = glm::ivec2(size_x * (frame % count_x), size_y * (frame / count_x));
         pathtracer_info_buffer.synchronize();
         query_uniform.finish();
@@ -359,6 +361,7 @@ int main()
         query_trace.start();
         pp_trace.dispatch(size_x, size_y);
         frame = (frame + 1) % (count_x * count_y);
+
         if (frame == 0 && enable_continuous_improvement)
             ++sample_blend_offset;
         query_trace.finish();
@@ -412,7 +415,7 @@ int main()
 
         meshes_buffer[selected_mesh].model = static_cast<glm::mat4>(gizmo_transform);
         meshes_buffer[selected_mesh].inv_model = inverse(static_cast<glm::mat4>(gizmo_transform));
-        meshes_buffer.synchronize();
+        meshes_buffer.flush();
 
         ImGui::Begin("Window");
         ImGui::Value("Frametime", static_cast<float>(1'000 * main_window->delta_time()));
@@ -470,6 +473,7 @@ int main()
             {
                 meshes.clear();
                 load_mesh(src, combine_mesh);
+                meshes_buffer.synchronize();
             }
         }
 
