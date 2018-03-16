@@ -130,7 +130,7 @@ namespace gl
 
         gl_buffer_t _id = gl_buffer_t::zero;
         T* _data = nullptr;
-        mutable std::array<std::pair<size_t, std::unique_ptr<T>>, 2> _cached{ std::make_pair(0, nullptr), std::make_pair(0, nullptr) };
+        mutable std::array<std::pair<ptrdiff_t, std::unique_ptr<T>>, 2> _cached{ std::make_pair(-1, nullptr), std::make_pair(-1, nullptr) };
         int _cached_index = 0;
         size_t _data_size = 0;
         size_t _data_offset = 0;

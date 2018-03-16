@@ -15,12 +15,13 @@ int main()
     gl::buffer<uint32_t> ibo(cb::indices.begin(), cb::indices.end(), GL_DYNAMIC_STORAGE_BIT);
 
     for (const auto idx : ibo)
-        log_i << glm::to_string(vbo[idx].position);
+        log_i << idx;
 
-
+    std::sort(ibo.begin(), ibo.end());
+    std::iter_swap(ibo.begin(), ibo.begin() + 4);
     log_h << "--------------------------";
     for (const auto idx : ibo)
-        log_i << glm::to_string(vbo[idx].position);
+        log_i << idx;
 
     system("pause");
 

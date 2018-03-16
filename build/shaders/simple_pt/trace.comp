@@ -113,8 +113,8 @@ void main()
                 vec3 hemisphere = sample_cosine_hemisphere(random_sample);
                 vec3 world_hemisphere = bsdf_local_to_world(hemisphere, normal);
 
-                const vec3 lamp = vec3(-8.11,9, -9.5);
-                const vec3 lamp_color = vec3(500);
+                const vec3 lamp = vec3(-1.11,1, -1.5);
+                const vec3 lamp_color = vec3(10);
                 const float lamp_radius = 0.0001f;
                 
                 const vec3 lamp_position = lamp + sample_uniform_sphere(random_sample) * lamp_radius;

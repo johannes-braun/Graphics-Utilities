@@ -92,7 +92,7 @@ namespace gl
         other._id = gl_buffer_t::zero;
         other._data = nullptr;
         for (auto&& c : _cached) {
-            c.first = 0; c.second = nullptr;
+            c.first = -1; c.second = nullptr;
         }
         other._cached_index = 0;
         other._usage = GL_ZERO;
@@ -496,7 +496,7 @@ namespace gl
         _data_offset = begin;
         _data_access = access;
         for (auto&& c : _cached) {
-            c.first = 0; c.second = nullptr;
+            c.first = -1; c.second = nullptr;
         }
         if (count != 0)
             _data = static_cast<T*>(glMapNamedBufferRange(_id, begin * sizeof(T), count * sizeof(T), access));
@@ -549,9 +549,6 @@ namespace gl
         {
             if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
                 glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
-
-            _cached[i].second = nullptr;
-            _cached[i].first = -1;
         }
     }
 
@@ -568,14 +565,27 @@ namespace gl
             throw std::out_of_range("Index out of bounds.");
         if (!_data)
         {
-            synchronize();
+            int idx = -1;
+            for (int i = 0; i < _cached.size(); ++i)
+            {
+                if (_cached[i].first == index)
+                {
+                    idx = i;
+                    break;
+                }
+
+                if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
+                    glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
+            }
+
+            _cached_index = idx == -1 ? _cached_index : idx;
             if (!_cached[_cached_index].second)
                 _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
             glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
             _cached[_cached_index].first = index;
-            int idx = _cached_index;
+            int last_idx = _cached_index;
             _cached_index = (_cached_index + 1) % _cached.size();
-            return *_cached[idx].second;
+            return *_cached[last_idx].second;
         }
         return _data[index];
     }
@@ -587,14 +597,27 @@ namespace gl
             throw std::out_of_range("Index out of bounds.");
         if (!_data)
         {
-            synchronize();
+            int idx = -1;
+            for (int i = 0; i < _cached.size(); ++i)
+            {
+                if (_cached[i].first == index)
+                {
+                    idx = i;
+                    break;
+                }
+
+                if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
+                    glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
+            }
+
+            _cached_index = idx == -1 ? _cached_index : idx;
             if (!_cached[_cached_index].second)
                 _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
             glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
             _cached[_cached_index].first = index;
-            int idx = _cached_index;
+            int last_idx = _cached_index;
             _cached_index = (_cached_index + 1) % _cached.size();
-            return *_cached[idx].second;
+            return *_cached[last_idx].second;
         }
         return _data[index];
     }
@@ -606,14 +629,26 @@ namespace gl
             throw std::out_of_range("Index out of bounds.");
         if (!_data)
         {
-            synchronize();
+            int idx = -1;
+            for (int i = 0; i < _cached.size(); ++i)
+            {
+                if (_cached[i].first == index)
+                {
+                    idx = i;
+                }
+
+                if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
+                    glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
+            }
+
+            _cached_index = idx == -1 ? _cached_index : idx;
             if (!_cached[_cached_index].second)
                 _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
             glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
             _cached[_cached_index].first = index;
-            int idx = _cached_index;
+            int last_idx = _cached_index;
             _cached_index = (_cached_index + 1) % _cached.size();
-            return *_cached[idx].second;
+            return *_cached[last_idx].second;
         }
         return _data[index];
     }
@@ -625,14 +660,27 @@ namespace gl
             throw std::out_of_range("Index out of bounds.");
         if (!_data)
         {
-            synchronize();
+            int idx = -1;
+            for (int i = 0; i < _cached.size(); ++i)
+            {
+                if (_cached[i].first == index)
+                {
+                    idx = i;
+                    break;
+                }
+
+                if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
+                    glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
+            }
+
+            _cached_index = idx == -1 ? _cached_index : idx;
             if (!_cached[_cached_index].second)
                 _cached[_cached_index].second = std::unique_ptr<T>(static_cast<T*>(malloc(sizeof(T))));
             glGetNamedBufferSubData(_id, index * sizeof(T), sizeof(T), _cached[_cached_index].second.get());
             _cached[_cached_index].first = index;
-            int idx = _cached_index;
+            int last_idx = _cached_index;
             _cached_index = (_cached_index + 1) % _cached.size();
-            return *_cached[idx].second;
+            return *_cached[last_idx].second;
         }
         return _data[index];
     }
