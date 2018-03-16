@@ -54,6 +54,16 @@ vec3 environment(samplerCube map, vec3 direction, float clamp_color)
     return clamp(pow(textureLod(map, direction, 0).rgb, vec3(1/2.8f)), 0, clamp_color);
 }
 
+struct light_path
+{
+    vec4 position;
+    vec4 normal;
+    vec4 color;
+};
+
+const int lpcount = 2;
+light_path lighting[lpcount];
+
 void main()
 {
     const ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
@@ -86,25 +96,89 @@ void main()
                 vertex* vertices = (vertex*) vbo;
                 triangle* triangles = ((triangle*) ibo) + current_result.near_triangle;
             
-                #define barycentric_resolve(param) (\
-                    vertices[triangles->b].param * current_result.near_barycentric.x + \
-                    vertices[triangles->c].param * current_result.near_barycentric.y + \
-                    vertices[triangles->a].param * (1-current_result.near_barycentric.x-current_result.near_barycentric.y)\
+                #define barycentric_resolve(param, res) (\
+                    vertices[triangles->b].param * res.near_barycentric.x + \
+                    vertices[triangles->c].param * res.near_barycentric.y + \
+                    vertices[triangles->a].param * (1-res.near_barycentric.x-res.near_barycentric.y)\
                 )
 
-                const vec3 position = barycentric_resolve(position);
-                const vec3 normal = normalize(barycentric_resolve(normal));
-                const vec2 uv = barycentric_resolve(uv);
+                const vec3 position = barycentric_resolve(position, current_result);
+                const vec3 normal = normalize(barycentric_resolve(normal, current_result));
+                const vec2 uv = barycentric_resolve(uv, current_result);
+                const uint meta = vertices[triangles->a].meta;
+                const float ext = meta == 1 ? 0.2f : 0.f;
+                const float rough = meta == 1 ? 0.0f : 0.1f;
 
                 random_sample = random_hammersley_2d(next_random() * count, 1/count);
                 vec3 hemisphere = sample_cosine_hemisphere(random_sample);
                 vec3 world_hemisphere = bsdf_local_to_world(hemisphere, normal);
 
-                const vec3 lamp = vec3(2, 4, 3);
-                const vec3 lamp_color = vec3(30);
-                const float lamp_radius = 0.3f;
+                const vec3 lamp = vec3(-8.11,9, -9.5);
+                const vec3 lamp_color = vec3(500);
+                const float lamp_radius = 0.0001f;
+                
+                const vec3 lamp_position = lamp + sample_uniform_sphere(random_sample) * lamp_radius;
+                const vec3 to_lamp = normalize(lamp_position - position);
 
-                const vec3 to_lamp = normalize(lamp + sample_uniform_sphere(random_sample) * lamp_radius);
+                 vec3 lorig = lamp_position;
+                 vec3 ldir = (sample_uniform_sphere(random_sample) * 0.0001f + position) - lamp_position;
+                 vec3 lcol = lamp_color;
+                 float dist = 0;
+                for(int p = 0; p < lpcount; ++p)
+                {
+                    ldir = normalize(ldir);
+                    bvh_state_set_mode(bvh_mode_nearest);
+                    bvh_result lamp_result = bvh_hit(lorig.xyz, ldir.xyz, 
+                                bvh, ibo, vbo, 10000000000.f);
+
+                    if(lamp_result.hits)
+                    {
+                        triangles = ((triangle*) ibo) + lamp_result.near_triangle;
+                        lighting[p].position = vec4(barycentric_resolve(position, lamp_result), 1);
+
+                        vec3 ld = lighting[p].position.xyz - lorig;
+                        dist += length(ld);
+
+                        lighting[p].normal = vec4(normalize(barycentric_resolve(normal, lamp_result)), 0);
+
+                        const vec3 facet_normal = bsdf_local_to_world(
+                            ggx_importance_hemisphere(
+                                ggx_importance_sample(random_sample, rough)
+                            ), lighting[p].normal.xyz
+                        );
+
+                        const vec3 lnorm = normalize(facet_normal.xyz);
+                        lighting[p].color = vec4(lcol,  1) / (dist * dist);
+
+                        const bool internal = dot(lnorm, ldir) < 0;
+                        const float eta = internal ? (1/1.5f) : 1.5f;
+                        const float fresnel = bsdf_fresnel_coefficient(ldir, lnorm.xyz, 1.5f, ext);
+                        const bool total = bsdf_is_total_reflection(eta, ldir, faceforward(lnorm, ldir, lnorm));
+                        const float nrand = next_random();
+                        
+                        if(next_random() < fresnel || total)
+                        {
+                            ldir = reflect(ldir, faceforward(lnorm, ldir, lnorm));
+                            lorig = lighting[p].position.xyz + 1e-3f * ldir;
+                            lcol *= vec3(1,1, 1);
+                        }
+                        else if(vertices[triangles->a].meta == 1)
+                        {
+                            ldir = refract(ldir, faceforward(lnorm, ldir, lnorm), eta);
+                            lorig = lighting[p].position.xyz + 1e-3f * ldir;
+                            lcol *= vec3(0, 1, 0);
+                        }
+                        else{
+                            vec3 hm = sample_cosine_hemisphere(random_sample);
+                            vec3 whm = bsdf_local_to_world(hm, lnorm);
+                            vec4 diffuse = vec4(1, 1, 1, 1);
+                            ldir = normalize(whm);
+                            lorig = lighting[p].position.xyz + 1e-4f * ldir;
+                            lcol *= abs(dot(direction, normal)) * diffuse.rgb;
+                        }
+                    }
+                }
+
 
                 vec3 light_color = vec3(0);
                 if(dot(normal, to_lamp) > 0.f)
@@ -114,15 +188,28 @@ void main()
                     bvh_result shadow_result = bvh_hit(position.xyz + 1e-3f * to_lamp, to_lamp, bvh, ibo, vbo, dist);
 
                     if(!shadow_result.hits)
-                        light_color = dot(normal, to_lamp) * lamp_color / (1+dist*dist);
+                    {
+                        light_color = dot(normal, to_lamp) * lamp_color / (dist * dist);
+                    }
+                    for(int p = 0; p < lpcount; ++p)
+                    {
+                        if(lighting[p].normal.w == -1)
+                            break;
+
+                        light_color += lighting[p].color.rgb * vec3(
+                            clamp(dot(normalize(lighting[p].position.xyz - position.xyz), normalize(normal.xyz)), 0.f, 1) *
+                            clamp(dot(-normalize(lighting[p].position.xyz - position.xyz), normalize(lighting[p].normal.xyz)), 0.f, 1) *
+                            clamp(1.f/(dot(lighting[p].position.xyz - position.xyz, lighting[p].position.xyz - position.xyz)), 0, 1)
+                            );
+                    }
                 }
 
                 const vec3 facet_normal = bsdf_local_to_world(
                     ggx_importance_hemisphere(
-                        ggx_importance_sample(random_sample, 0.001f)
+                        ggx_importance_sample(random_sample, rough)
                     ), normal.xyz
                 );
-                const float fresnel = bsdf_fresnel_coefficient(direction, facet_normal.xyz, 1.5f, 0.6f);
+                const float fresnel = bsdf_fresnel_coefficient(direction, facet_normal.xyz, 1.5f, ext);
                 
                 const bool internal = dot(facet_normal, direction) < 0;
                 const float eta = internal ? (1/1.5f) : 1.5f;
@@ -135,9 +222,9 @@ void main()
                 }
                 else
                 {
-                    if(true)
+                    if(meta == 0)
                     {
-                        vec4 diffuse = vec4(1, 1, 0, 1);
+                        vec4 diffuse = vec4(1, 1, 1, 1);
                         direction = normalize(world_hemisphere);
                         color += vec4(light_color, 1) * INV_PI * vec4(radiance, 1) * diffuse;
                         origin = position + 1e-4f * direction;
@@ -147,7 +234,7 @@ void main()
                     {
                         direction = refract(direction, faceforward(facet_normal, direction, facet_normal), eta);
                         origin = position + 1e-4f * direction;
-                        radiance *= vec3(1, 0, 0);
+                        radiance *= vec3(0, 1, 0);
                         i = max(1, i-1);
                     }
                 }
@@ -168,5 +255,5 @@ void main()
     else
         color = vec4(environment(cubemap, direction, 2.f), 0);
 
-    imageStore(img, pixel, mix(last_color, color, 1.f / 30));
+    imageStore(img, pixel, mix(last_color, color, 1.f / 10));
 }

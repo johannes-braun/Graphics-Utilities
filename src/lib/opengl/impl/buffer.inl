@@ -549,6 +549,9 @@ namespace gl
         {
             if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT && _cached[i].second)
                 glNamedBufferSubData(_id, _cached[i].first * sizeof(T), sizeof(T), _cached[i].second.get());
+
+            _cached[i].second = nullptr;
+            _cached[i].first = -1;
         }
     }
 

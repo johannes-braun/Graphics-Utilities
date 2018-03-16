@@ -34,10 +34,10 @@ struct tracer_data
 
 int main()
 {
-    window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "Simple PT");
+    window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
     
-    res::geometry_file file = res::load_geometry("../res/cube.dae");
+    res::geometry_file file = res::load_geometry("../res/blob.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
     jpu::bvh<3> mesh_bvh; mesh_bvh.assign_to(mesh.indices, mesh.vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
     const std::vector<gl::byte> packed = mesh_bvh.pack();
@@ -48,7 +48,7 @@ int main()
     
     gl::query timer(GL_TIME_ELAPSED);
 
-    auto render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D, 1280, 720, GL_RGBA32F, 1);
+    auto render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D, 800, 600, GL_RGBA32F, 1);
     gl::image img(*render_texture, GL_RGBA32F, GL_READ_WRITE);
     
     gl::framebuffer framebuffer;
@@ -100,7 +100,7 @@ int main()
         data.synchronize();
 
         tracer->bind_uniform_buffer(0, data);
-        tracer->dispatch(1280, 720);
+        tracer->dispatch(800, 600);
         
         framebuffer.blit(nullptr, GL_COLOR_BUFFER_BIT);
         timer.finish();
@@ -117,6 +117,7 @@ int main()
                 std::vector<uint32_t> indices;
                 std::vector<res::vertex> vertices;
                 size_t begin = 0;
+                int mid = 0;
                 for (const auto& mesh : file.meshes)
                 {
                     vertices.reserve(vertices.size() + mesh.vertices.size());
@@ -125,8 +126,11 @@ int main()
                     for (auto vertex : mesh.vertices) {
                         vertex.position = glm::vec3(model_matrix * glm::vec4(vertex.position, 1));
                         vertex.normal = glm::vec3(normal_matrix * glm::vec4(vertex.normal, 0));
+                        if(mid == 1)
+                            vertex.meta = 1;
                         vertices.emplace_back(std::move(vertex));
                     }
+                    ++mid;
                     indices.reserve(indices.size() + mesh.indices.size());
                     for (auto index : mesh.indices) indices.emplace_back(index + begin);
                     begin += mesh.vertices.size();
