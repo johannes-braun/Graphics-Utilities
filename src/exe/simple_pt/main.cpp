@@ -37,7 +37,7 @@ int main()
     window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
     
-    res::geometry_file file = res::load_geometry("../res/blob.dae");
+    res::geometry_file file = res::load_geometry("../res/plane.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
     jpu::bvh<3> mesh_bvh; mesh_bvh.assign_to(mesh.indices, mesh.vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
     const std::vector<gl::byte> packed = mesh_bvh.pack();
@@ -126,7 +126,7 @@ int main()
                     for (auto vertex : mesh.vertices) {
                         vertex.position = glm::vec3(model_matrix * glm::vec4(vertex.position, 1));
                         vertex.normal = glm::vec3(normal_matrix * glm::vec4(vertex.normal, 0));
-                        if(mid == 1)
+                        if(mid >= 1)
                             vertex.meta = 1;
                         vertices.emplace_back(std::move(vertex));
                     }
@@ -145,6 +145,22 @@ int main()
                 data[0].ibo = ibo.handle();
                 data[0].bvh = bvh.handle();
                 data.synchronize();
+            }
+        }
+        if (ImGui::Button("Save"))
+        {
+            const char* path = tinyfd_saveFileDialog("Save Render", "../res", 0, nullptr, "All Files");
+
+            if (path)
+            {
+                std::vector<float> data(800 * 600 * 4);
+                render_texture->get_data(GL_RGBA, GL_FLOAT, 800 * 600 * 4 * sizeof(float), data.data());
+
+                std::vector<uint8_t> u8data(800 * 600 * 4);
+                for (int i = 0; i < 800 * 600; ++i)
+                    u8data[i] = uint8_t(std::clamp(data[i] * 255, 0.f, 255.f));
+
+                stbi_write_png(path, 800, 600, 4, u8data.data(), 0);
             }
         }
         ImGui::End();
