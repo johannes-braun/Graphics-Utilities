@@ -19,7 +19,7 @@ layout(binding=0, std140) uniform Data
     uintptr_t bvh;
     uintptr_t vbo;
     uintptr_t ibo;
-    uintptr_t linespace;
+    uintptr_t grid_line_space;
     samplerCube cubemap;
     float seed;
     int frames;
@@ -79,15 +79,16 @@ void main()
         return;
 
     init_random(pixel, seed);
-    vec2 random_sample = vec2(0);// random_hammersley_2d(next_random() * count, 1 / count);
+    vec2 random_sample = random_hammersley_2d(next_random() * count, 1 / count);
     vec2 uv = ((pixel + random_sample) * inv_size - 0.5f) * 2.f;
     vec3 direction = normalize((camera_matrix * vec4(uv, 0, 1)).xyz);
     vec3 origin = camera_position.xyz;
 
 
-    vec3 hit_line = get_line(linespace, origin, direction, 1.f / 0.f);
+    vertex* vertices2 = (vertex*) vbo;
     
-    imageStore(img, pixel, vec4(hit_line, 1));
+    line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f);
+    imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
     return;
 
 

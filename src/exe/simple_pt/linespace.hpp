@@ -21,8 +21,8 @@ namespace gfx
         };
 #pragma pack(pop, 1)
 
-        static constexpr int s = sizeof(uint64_t[6][6]);
     public:
+        using data_type = buffer_data;
         struct line
         {
             int triangle;
@@ -30,7 +30,6 @@ namespace gfx
 
         line_space(int x, int y, int z)
         {
-
             const std::array<int, 6> sizes
             {
                 x * y,
@@ -41,9 +40,9 @@ namespace gfx
                 x * z,
                 y * z
             };
-            _data_buffer[0].x = x;
-            _data_buffer[0].y = y;
-            _data_buffer[0].z = z;
+            _buffer_data.x = x;
+            _buffer_data.y = y;
+            _buffer_data.z = z;
 
             _memory_consumption = 0;
             for (int s = 0; s < 6; ++s)
@@ -54,18 +53,21 @@ namespace gfx
                 }
             log_i << "Line Space {" << x << ", " << y << ", " << z << "} uses " << _memory_consumption << " Bytes of memory.";
         }
+        void build(const bvh<3>& bvh)
+        {
+            build(bvh, bvh.get_bounds());
+        }
 
-        template<typename It>
-        void build(const bvh<3>& bvh, It indices_begin, It indices_end)
+        void build(const bvh<3>& bvh, line_space_bounds bounds)
         {
             glm::ivec3 subdiv;
-            subdiv.x = _data_buffer[0].x;
-            subdiv.y = _data_buffer[0].y;
-            subdiv.z = _data_buffer[0].z;
+            subdiv.x = _buffer_data.x;
+            subdiv.y = _buffer_data.y;
+            subdiv.z = _buffer_data.z;
 
             const std::array<glm::ivec2, 6> patch_indices
             {
-                glm::ivec2{ 0, 1 },
+                glm::ivec2{ 0, 1},
                 glm::ivec2{ 0, 2 },
                 glm::ivec2{ 1, 2 },
 
@@ -85,11 +87,10 @@ namespace gfx
                 glm::ivec2{ subdiv.y, subdiv.z },
             };
 
-            line_space_bounds bounds = bvh.get_bounds();
-            _data_buffer[0].bounds = bounds;
+            _buffer_data.bounds = bounds;
             const glm::vec4 bounds_size = bounds.size();
 
-#pragma omp parallel for schedule(dynamic)
+//#pragma omp parallel for schedule(dynamic)
             for (int s = 0; s < 6; ++s)
             {
                 const glm::ivec2 patch_size_start = patch_sizes[s];
@@ -103,9 +104,11 @@ namespace gfx
                     for(int psx = 0; psx < patch_size_start.x; ++psx)
                     for (int psy = 0; psy < patch_size_start.y; ++psy)
                     {
+                        if (psx == 1 && psy == 1 && (s % 3) == (e%3))
+                            s = s;
                         const int index_start = (psy * patch_size_start.x + psx) * patch_size_end.x * patch_size_end.y;
                         const int normal_axis_start = 2 - (s % 3);
-                        const float normal_offset_start = s > 2 ? (bounds.min[normal_axis_start]) : (bounds.max[normal_axis_start]);
+                        const float normal_offset_start = s <= 2 ? (bounds.min[normal_axis_start]) : (bounds.max[normal_axis_start]);
 
                         glm::vec3 start_center{ normal_offset_start };
                         start_center[patch_indices[s].x] = (psx + 0.5f) * (bounds_size[patch_indices[s].x] / patch_sizes[s].x) + bounds.min[patch_indices[s].x];
@@ -115,7 +118,7 @@ namespace gfx
                         for (int pey = 0; pey < patch_size_end.y; ++pey)
                         {
                             const int normal_axis_end = 2 - (e % 3);
-                            const float normal_offset_end = e > 2 ? (bounds.min[normal_axis_end]) : (bounds.max[normal_axis_end]);
+                            const float normal_offset_end = e <= 2 ? (bounds.min[normal_axis_end]) : (bounds.max[normal_axis_end]);
 
                             glm::vec3 end_center{ normal_offset_end };
                             end_center[patch_indices[e].x] = (pex + 0.5f) * (bounds_size[patch_indices[e].x] / patch_sizes[e].x) + bounds.min[patch_indices[e].x];
@@ -124,26 +127,29 @@ namespace gfx
                             const glm::vec3 direction = normalize(end_center - start_center);
                             const glm::vec3 origin = start_center - 1e-3f*direction;
 
-                            const gfx::bvh<3>::bvh_result hit = bvh.bvh_hit(origin, direction, indices_begin, indices_end, std::numeric_limits<float>::max());
-                            _storages[s][e]->at(index_start + (pey * patch_size_end.x + pex)).triangle = hit.near_triangle;
+                            const gfx::bvh<3>::bvh_result hit = bvh.bvh_hit(origin, direction, 100000.f);
+                         
+                            if (!hit.hits)
+                               end_center = end_center;
+                            _storages[s][e]->at(index_start + (pey * patch_size_end.x + pex)).triangle = hit.hits ? hit.near_triangle : -1;
                         }
                     }
+                    _storages[s][e]->synchronize();
                 }
             }
 
             for (int s = 0; s < 6; ++s)
                 for (int e = 0; e < 6; ++e)
-                    _data_buffer[0].storages[s][e] = e == s ? 0ui64 : _storages[s][e]->handle();
-            _data_buffer.synchronize();
+                    _buffer_data.storages[s][e] = e == s ? 0ui64 : _storages[s][e]->handle();
         }
 
-        const gl::buffer<buffer_data>& buffer() const noexcept {
-            return _data_buffer;
+        const buffer_data& get_data() const noexcept {
+            return _buffer_data;
         }
 
     private:
         size_t _memory_consumption;
         std::array<std::array<std::unique_ptr<gl::buffer<line>>, 6>, 6> _storages;
-        gl::buffer<buffer_data> _data_buffer{ 1, GL_DYNAMIC_STORAGE_BIT };
+        buffer_data _buffer_data;
     };
 }

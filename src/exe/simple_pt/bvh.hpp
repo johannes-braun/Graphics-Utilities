@@ -256,8 +256,7 @@ namespace gfx
             bool hits;
         };
 
-        template<typename It>
-        bvh_result bvh_hit(const glm::vec3 origin, const glm::vec3 direction, It begin, It end, const float max_distance) const 
+        bvh_result bvh_hit(const glm::vec3 origin, const glm::vec3 direction, const float max_distance) const 
         {
             bvh_result result;
             result.near_distance = max_distance;
@@ -306,9 +305,11 @@ namespace gfx
                     uint32_t end = current_node->child_right;
                     for (uint32_t i = start; i != end + 1; ++i)
                     {
-                        vec_dim_type tv1 = vec_dim_type(_get_vertex(*std::next(begin, int(_shape)*i)));
-                        vec_dim_type tv2 = vec_dim_type(_get_vertex(*std::next(begin, int(_shape)*i+1)));
-                        vec_dim_type tv3 = vec_dim_type(_get_vertex(*std::next(begin, int(_shape)*i+2)));
+                        if (i == 4)
+                            i = 4;
+                        vec_dim_type tv1 = vec_dim_type(_get_vertex(int(_shape)*i));
+                        vec_dim_type tv2 = vec_dim_type(_get_vertex(int(_shape)*i+1));
+                        vec_dim_type tv3 = vec_dim_type(_get_vertex(int(_shape)*i+2));
 
                         if (intersect_triangle(
                             origin,
