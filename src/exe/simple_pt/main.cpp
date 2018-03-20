@@ -32,6 +32,7 @@ struct tracer_data
     alignas(8) uintptr_t ibo;
     alignas(8) uintptr_t cubemap;
     alignas(4) float seed;
+    alignas(4) int frames;
 };
 
 int main()
@@ -78,6 +79,7 @@ int main()
     data[0].ibo = ibo.handle();
     data[0].bvh = bvh.handle();
     data[0].cubemap = sampler.sample(cubemap);
+    data[0].frames = 10;
     data.synchronize();
 
     while (window->update())
@@ -99,6 +101,12 @@ int main()
 
         ImGui::Begin("Settings");
         ImGui::Value("Time", float(timer.get<uint64_t>() / 1'000'000.0));
+
+        static bool improve = false;
+        ImGui::Checkbox("Improve", &improve);
+        if(improve) data[0].frames++;
+        ImGui::DragInt("Int. Samples", &data[0].frames, 0.1f, 1, 10000);
+
         if (ImGui::Button("Reload")) tracer->reload();
         if (ImGui::Button("Load"))
         {

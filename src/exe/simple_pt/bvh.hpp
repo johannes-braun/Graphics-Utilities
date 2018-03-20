@@ -60,9 +60,7 @@ namespace gfx
             bounds& operator+=(const vec_type& v) { min = glm::min(min, v); max = glm::max(max, v); return *this; }
             bounds& operator+=(const bounds& b) { min = glm::min(min, b.min); max = glm::max(max, b.max); return *this; }
             vec_type size() const noexcept { return max - min; }
-            bool empty() const noexcept {
-                return glm::any(glm::lessThanEqual(vec_dim_type(size()), vec_dim_type(std::numeric_limits<float>::epsilon())));
-            }
+            bool empty() const noexcept { return glm::any(glm::lessThanEqual(vec_dim_type(size()), vec_dim_type(std::numeric_limits<float>::epsilon()))); }
             float surface() const noexcept { const vec_type s = size(); return 2.f * (s.x * s.y + s.x * s.z + s.y * s.z); }
         };
 

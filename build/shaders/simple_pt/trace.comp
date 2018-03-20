@@ -20,6 +20,7 @@ layout(binding=0, std140) uniform Data
     uintptr_t ibo;
     samplerCube cubemap;
     float seed;
+    int frames;
 };
 
 struct vertex {
@@ -61,7 +62,6 @@ struct light_path
     vec4 color;
 };
 
-const int frames = 10;
 const int bounce_count = 6;
 const int lpcount = 4;
 light_path lighting[lpcount];

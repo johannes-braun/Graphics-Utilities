@@ -5,6 +5,7 @@
 #include <jpu/log.hpp>
 #include <res/presets.hpp>
 #include "bvh.hpp"
+#include <numeric>
 
 int main()
 {
@@ -12,13 +13,13 @@ int main()
 
     namespace cb = res::presets::cube;
     gl::buffer<res::vertex> vbo(cb::vertices.begin(), cb::vertices.end());
-    gl::buffer<uint32_t> ibo(cb::indices.begin(), cb::indices.end(), GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<uint32_t> ibo(25, GL_DYNAMIC_STORAGE_BIT);
+    std::generate(ibo.begin(), ibo.end(), []()->uint32_t { return uint32_t(rand()); });
 
     for (const auto idx : ibo)
         log_i << idx;
 
     std::sort(ibo.begin(), ibo.end());
-    std::iter_swap(ibo.begin(), ibo.begin() + 4);
     log_h << "--------------------------";
     for (const auto idx : ibo)
         log_i << idx;
