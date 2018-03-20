@@ -17,6 +17,7 @@
 #include <opengl/query.hpp>
 
 #include "bvh.hpp"
+#include "linespace.hpp"
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
@@ -30,6 +31,7 @@ struct tracer_data
     alignas(16) uintptr_t bvh;
     alignas(8) uintptr_t vbo;
     alignas(8) uintptr_t ibo;
+    alignas(8) uintptr_t linespace;
     alignas(8) uintptr_t cubemap;
     alignas(4) float seed;
     alignas(4) int frames;
@@ -45,6 +47,9 @@ int main()
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
     const std::vector<gl::byte>& packed = gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
+
+    gfx::line_space linespace(6, 6, 6);
+    linespace.build(gen_bvh, mesh.indices.begin(), mesh.indices.end());
 
     gl::buffer<res::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
     gl::buffer<res::index32> ibo(mesh.indices.begin(), mesh.indices.end());
@@ -78,6 +83,7 @@ int main()
     data[0].vbo = vbo.handle();
     data[0].ibo = ibo.handle();
     data[0].bvh = bvh.handle();
+    data[0].linespace = linespace.buffer().handle();
     data[0].cubemap = sampler.sample(cubemap);
     data[0].frames = 10;
     data.synchronize();

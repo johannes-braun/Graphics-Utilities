@@ -47,6 +47,44 @@ bool intersect_bounds(
 	min_distance = min(tmin, tmax);
 	return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
+int faceID(float t, float t1, float t2, float t3, float t4, float t5, float t6) {
+    return t == t1 ? 3 	//neg_x
+        : (t == t2 ? 0 	//pos_x
+            : (t == t3 ? 4 	//neg_y
+                : (t == t4 ? 1 	//pos_y
+                    : (t == t5 ? 5 	//neg_z
+                        : 2))));		//pos_z
+}
+
+bool intersect_bounds(
+    const vec3 origin,
+    const vec3 direction,
+
+    const vec3 bounds_min,
+    const vec3 bounds_max,
+    const float max_distance,
+    inout float min_distance,
+    inout float out_max_distance, inout int face_tmin, inout int face_tmax)
+{
+    vec3 inv_direction = 1.f / direction;
+
+    //intersections with box planes parallel to x, y, z axis
+    vec3 t135 = (bounds_min - origin) * inv_direction;
+    vec3 t246 = (bounds_max - origin) * inv_direction;
+
+    vec3 min_values = min(t135, t246);
+    vec3 max_values = max(t135, t246);
+
+    float tmin = max(max(min_values.x, min_values.y), min_values.z);
+    float tmax = min(min(max_values.x, max_values.y), max_values.z);
+
+    face_tmin = faceID(tmin, t135.x, t246.x, t135.y, t246.y, t135.z, t246.z);
+    face_tmax = faceID(tmax, t135.x, t246.x, t135.y, t246.y, t135.z, t246.z);
+
+    min_distance = min(tmin, tmax);
+    out_max_distance = max(tmin, tmax);
+    return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
+}
 
 bool intersect_triangle(
 	const vec3 origin,

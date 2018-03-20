@@ -91,7 +91,7 @@ namespace gfx
             _packed_bytes.clear();
             const int count = int(std::distance(begin, end) / float(_shape));
             if (count <= 0) return _packed_bytes;
-            temporaries._get_vertex = [begin, get_vertex](size_t index) -> vec_type { return reinterpret_cast<vec_type&>(get_vertex(*std::next(begin, index))); };
+            _get_vertex = [begin, get_vertex](size_t index) -> vec_type { return reinterpret_cast<vec_type&>(get_vertex(*std::next(begin, index))); };
             
             _node_count = 0;
             _depth = 0;
@@ -114,7 +114,7 @@ namespace gfx
             {
                 vec_type& centroid = temporaries.centroids[i];
                 for (int c = 0; c < int(_shape); ++c)
-                    centroid += temporaries._get_vertex(i * int(_shape) + c);
+                    centroid += _get_vertex(i * int(_shape) + c);
                 centroid /= float(_shape);
                 bounds[omp_get_thread_num()] += centroid;
             }
@@ -161,6 +161,7 @@ namespace gfx
             _node_count = other._node_count;
             _depth = other._depth;
             _packed_bytes = other._packed_bytes;
+            _get_vertex = other._get_vertex;
             return *this;
         }
 
@@ -171,9 +172,179 @@ namespace gfx
             _node_count = other._node_count;
             _depth = other._depth;
             _packed_bytes = std::move(other._packed_bytes);
+            _get_vertex = std::move(other._get_vertex);
             return *this;
         }
 
+        bounds get_bounds() const
+        {
+            return _nodes[0].bounds;
+        }
+
+    private:
+        bool intersect_triangle(
+            const vec_dim_type origin,
+            const vec_dim_type direction,
+            const vec_dim_type v1,
+            const vec_dim_type v2,
+            const vec_dim_type v3,
+            float& t,
+            glm::vec2& barycentric) const noexcept
+        {
+            float float_epsilon = 1e-23f;
+            float border_epsilon = 1e-6f;
+
+            //Find vectors for two edges sharing V1
+            vec_dim_type e1 = v2 - v1;
+            vec_dim_type e2 = v3 - v1;
+
+            //if determinant is near zero, ray lies in plane of triangle
+            vec_dim_type P = glm::cross(vec_dim_type(direction), e2);
+            float det = glm::dot(e1, P);
+            if (det > -float_epsilon && det < float_epsilon)
+                return false;
+
+            //Calculate u parameter and test bound
+            float inv_det = 1.f / det;
+            vec_dim_type T = origin - v1;
+            barycentric.x = glm::dot(T, P) * inv_det;
+
+            //The intersection lies outside of the triangle
+            if (barycentric.x < -border_epsilon || barycentric.x > 1.f + border_epsilon)
+                return false;
+
+            //Calculate V parameter and test bound
+            vec_dim_type Q = glm::cross(vec_dim_type(T), vec_dim_type(e1));
+            barycentric.y = glm::dot(vec_dim_type(direction), Q) * inv_det;
+            //The intersection lies outside of the triangle
+            if (barycentric.y < -border_epsilon || barycentric.x + barycentric.y  > 1.f + border_epsilon)
+                return false;
+
+            return (t = glm::dot(e2, Q) * inv_det) > float_epsilon;
+        }
+
+        bool intersect_bounds(const vec_dim_type origin, const vec_dim_type direction, const bounds& bounds, const float max_distance, float* tmin) const noexcept
+        {
+            const vec_dim_type inv_direction = 1.f / direction;
+
+            //intersections with box planes parallel to x, y, z axis
+            const vec_dim_type t135 = (vec_dim_type(bounds.min) - origin) * inv_direction;
+            const vec_dim_type t246 = (vec_dim_type(bounds.max) - origin) * inv_direction;
+
+            const vec_dim_type min_values = min(t135, t246);
+            const vec_dim_type max_values = max(t135, t246);
+
+            const float t = glm::max(glm::max(min_values.x, min_values.y), min_values.z);
+            const float tmax = glm::min(glm::min(max_values.x, max_values.y), max_values.z);
+            if (tmin) *tmin = tmax;
+            return tmax >= 0 && t <= tmax && t <= max_distance;
+        }
+
+    public:
+        struct bvh_result
+        {
+            // The index of the nearest and farthest triangles. 
+            // (multiply by 3 to get the element index)
+            uint32_t near_triangle;
+
+            float near_distance;
+
+            // Only two barycentric coordinates are needed.
+            // Calculate the last one with z = 1 - bary.x - bary.y.
+            glm::vec2 near_barycentric;
+
+            bool hits;
+        };
+
+        template<typename It>
+        bvh_result bvh_hit(const glm::vec3 origin, const glm::vec3 direction, It begin, It end, const float max_distance) const 
+        {
+            bvh_result result;
+            result.near_distance = max_distance;
+            result.hits = false;
+            float current_distance = 0;
+
+            const node* root_node = _nodes.data();
+            const node* current_node = _nodes.data();
+
+            bool hits_scene = intersect_bounds(origin, direction,
+                current_node->bounds,
+                max_distance, nullptr);
+
+            uint32_t bitstack = 0;
+            uint32_t switchstack = 0;
+
+            while (hits_scene)
+            {
+                while (current_node->type == node_type::inner)
+                {
+                    const node* left = root_node + current_node->child_left;
+                    const node* right = root_node + current_node->child_right;
+                    float min_left = std::numeric_limits<float>::max();
+                    float min_right = std::numeric_limits<float>::max();
+                    bool hits_left = intersect_bounds(origin, direction, left->bounds, result.near_distance, &min_left);
+                    bool hits_right = intersect_bounds(origin, direction, right->bounds, result.near_distance, &min_right);
+
+                    if (!hits_left && !hits_right)
+                        break;
+
+                    bool nrm = min_left < min_right;
+                    const node* first = nrm ? left : right;
+                    const node* second = nrm ? right : left;
+                    bool hits_first = nrm ? hits_left : hits_right;
+                    bool hits_second = nrm ? hits_right : hits_left;
+
+                    switchstack = (switchstack << 1) | int(nrm);
+                    bitstack = (bitstack << 1) | int(hits_left && hits_right);
+                    current_node = hits_first ? first : second;
+                }
+
+                if (current_node->type == node_type::leaf)
+                {
+                    glm::vec2 current_barycentric;
+                    uint32_t start = current_node->child_left;
+                    uint32_t end = current_node->child_right;
+                    for (uint32_t i = start; i != end + 1; ++i)
+                    {
+                        vec_dim_type tv1 = vec_dim_type(_get_vertex(*std::next(begin, int(_shape)*i)));
+                        vec_dim_type tv2 = vec_dim_type(_get_vertex(*std::next(begin, int(_shape)*i+1)));
+                        vec_dim_type tv3 = vec_dim_type(_get_vertex(*std::next(begin, int(_shape)*i+2)));
+
+                        if (intersect_triangle(
+                            origin,
+                            direction,
+                            tv1, tv2, tv3,
+                            current_distance,
+                            current_barycentric) && current_distance < result.near_distance)
+                        {
+                            result.hits = true;
+                            result.near_distance = current_distance;
+                            result.near_barycentric = current_barycentric;
+                            result.near_triangle = i;
+
+                           /* if (_bvh_mode_current == bvh_mode_any)
+                                return result;*/
+                        }
+                    }
+                }
+
+                while ((bitstack & 1) == 0)
+                {
+                    if (bitstack == 0)
+                        return result;
+
+                    current_node = root_node + current_node->parent;
+                    bitstack = bitstack >> 1;
+                    switchstack = switchstack >> 1;
+                }
+
+                current_node = root_node +
+                    (((switchstack & 0x1) == 0x1) ? (root_node + current_node->parent)->child_right :
+                    (root_node + current_node->parent)->child_left);
+                bitstack = bitstack ^ 1;
+            }
+            return result;
+        }
 
     private:
         const std::vector<byte>& pack()
@@ -362,7 +533,7 @@ namespace gfx
                 node node;
                 for (int i = current_range.start; i <= current_range.end; ++i)
                     for (int j = 0; j < int(_shape); ++j)
-                        node.bounds += temporaries._get_vertex(i * int(_shape) + j);
+                        node.bounds += _get_vertex(i * int(_shape) + j);
 
                 node.type = node_type::inner;
                 node.parent = current_range.parent;
@@ -385,7 +556,7 @@ namespace gfx
                 auto&& new_leaf = _nodes[current_node];
                 for (int i = current_range.start; i <= current_range.end; ++i)
                     for (int j = 0; j < int(_shape); ++j)
-                        new_leaf.bounds += temporaries._get_vertex(i * int(_shape) + j);
+                        new_leaf.bounds += _get_vertex(i * int(_shape) + j);
 
                 new_leaf.type = node_type::leaf;
                 new_leaf.child_left = current_range.start;
@@ -414,7 +585,6 @@ namespace gfx
 
             std::vector<range> swap_index_ranges;
             std::vector<bounds> swap_centroid_bounds;
-            std::function<vec_type(size_t index)> _get_vertex;
         } temporaries;
 
         shape _shape;
@@ -423,6 +593,7 @@ namespace gfx
         size_t _index_stride;
         size_t _index_offset;
 
+        std::function<vec_type(size_t index)> _get_vertex;
         std::vector<node> _nodes;
         size_t _node_count;
         size_t _depth;
