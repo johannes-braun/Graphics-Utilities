@@ -16,6 +16,8 @@
 #include <opengl/framebuffer.hpp>
 #include <opengl/query.hpp>
 
+#include "bvh.hpp"
+
 std::unique_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
 
@@ -37,10 +39,11 @@ int main()
     window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
     
-    res::geometry_file file = res::load_geometry("../res/plane.dae");
+    res::geometry_file file = res::load_geometry("../res/cube.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
-    jpu::bvh<3> mesh_bvh; mesh_bvh.assign_to(mesh.indices, mesh.vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-    const std::vector<gl::byte> packed = mesh_bvh.pack();
+
+    gfx::bvh<3> gen_bvh(gfx::shape::triangle, sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
+    const std::vector<gl::byte>& packed = gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
 
     gl::buffer<res::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
     gl::buffer<res::index32> ibo(mesh.indices.begin(), mesh.indices.end());
@@ -59,26 +62,15 @@ int main()
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    const gl::sampler sampler;
-
-    std::vector<res::image> cubemap_images;
-    cubemap_images.emplace_back(load_image("../res/indoor/hdr/posx.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/indoor/hdr/negx.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/indoor/hdr/posy.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/indoor/hdr/negy.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/indoor/hdr/posz.hdr", res::image_type::f32, res::RGB));
-    cubemap_images.emplace_back(load_image("../res/indoor/hdr/negz.hdr", res::image_type::f32, res::RGB));
-
-    const int w = cubemap_images[0].width;
-    const int h = cubemap_images[0].height;
+    const auto[w, h, c] = res::load_image_info("../res/indoor/hdr/posx.hdr");
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
-    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[0].data.get());
-    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[1].data.get());
-    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[2].data.get());
-    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[3].data.get());
-    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[4].data.get());
-    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, cubemap_images[5].data.get());
-    cubemap_images.clear();
+    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/posx.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negx.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/posy.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negy.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/posz.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negz.hdr", res::image_type::f32, res::RGB).data.get());
+    const gl::sampler sampler;
 
     gl::buffer<tracer_data> data(1, GL_DYNAMIC_STORAGE_BIT);
     data[0].img = img.handle();
@@ -136,8 +128,9 @@ int main()
                     begin += mesh.vertices.size();
                 }
 
-                jpu::bvh<3> mesh_bvh; mesh_bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-                const std::vector<gl::byte> packed = mesh_bvh.pack();
+                gen_bvh = gfx::bvh<3>(gfx::shape::triangle, sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
+                const std::vector<gl::byte>& packed = gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
+
                 vbo = gl::buffer<res::vertex>(vertices.begin(), vertices.end());
                 ibo = gl::buffer<res::index32>(indices.begin(), indices.end());
                 bvh = gl::buffer<gl::byte>(packed.begin(), packed.end());
@@ -149,15 +142,13 @@ int main()
         }
         if (ImGui::Button("Save"))
         {
-            const char* path = tinyfd_saveFileDialog("Save Render", "../res", 0, nullptr, "All Files");
-
-            if (path)
+            if (const char* path = tinyfd_saveFileDialog("Save Render", "../res", 0, nullptr, "All Files"))
             {
                 std::vector<float> data(800 * 600 * 4);
                 render_texture->get_data(GL_RGBA, GL_FLOAT, 800 * 600 * 4 * sizeof(float), data.data());
 
                 std::vector<uint8_t> u8data(800 * 600 * 4);
-                for (int i = 0; i < 800 * 600; ++i)
+                for (int i = 0; i < 800 * 600 * 4; ++i)
                     u8data[i] = uint8_t(std::clamp(data[i] * 255, 0.f, 255.f));
 
                 stbi_write_png(path, 800, 600, 4, u8data.data(), 0);

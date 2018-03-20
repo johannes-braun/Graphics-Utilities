@@ -37,7 +37,14 @@ namespace res
         stbi_data data;
     };
 
-    image load_image(const filesystem::path& path, image_type type, components components = Auto) noexcept;
+    struct image_info
+    {
+        int width{ 0 };
+        int height{ 0 };
+        int components{ 0 };
+    };
 
+    image_info load_image_info(const filesystem::path& path) noexcept;
+    image load_image(const filesystem::path& path, image_type type, components components = Auto) noexcept;
     image load_svg_rasterized(const filesystem::path& path, float scale) noexcept;
 }

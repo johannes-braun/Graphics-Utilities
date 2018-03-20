@@ -12,6 +12,13 @@
 
 namespace res
 {
+    image_info load_image_info(const filesystem::path& path) noexcept
+    {
+        image_info info;
+        stbi_info(path.string().c_str(), &info.width, &info.height, &info.components);
+        return info;
+    }
+
     image load_image(const filesystem::path& path, const image_type type, components components) noexcept
     {
         image img;
