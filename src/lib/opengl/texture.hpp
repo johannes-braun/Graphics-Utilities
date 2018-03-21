@@ -2,6 +2,7 @@
 
 #include "gl.hpp"
 
+#include <glm/glm.hpp>
 #include <array>
 #include <cassert>
 #include <jpu/memory.hpp>
@@ -9,6 +10,34 @@
 
 namespace gl
 {
+    class texture;
+    struct pixel
+    {
+        friend texture;
+        pixel() = delete;
+        pixel(const pixel&) = delete;
+        pixel& operator=(const pixel&) = delete;
+        pixel& operator=(pixel&&) = delete;
+        ~pixel();
+
+        void set(const glm::vec4& color) noexcept;
+        const glm::vec4& get() const noexcept;
+        glm::vec4& get() noexcept;
+
+        operator const glm::vec4&() const noexcept;
+        operator glm::vec4&() noexcept;
+        pixel& operator=(const glm::vec4& color) noexcept;
+
+    private:
+        pixel(const texture* parent, glm::ivec3 position, int level) noexcept;
+        pixel(pixel&& other) = default;
+
+        glm::vec4 _color;
+        glm::ivec3 _position;
+        int _level;
+        const texture* _parent;
+    };
+
     enum class samples
     {
         x1 = 0,
@@ -23,6 +52,8 @@ namespace gl
     class texture
     {
     public:
+        friend pixel;
+
         explicit texture(GLenum type) noexcept;
         explicit texture(GLenum type, int width, GLenum internal_format, int levels = -1) noexcept;
         explicit texture(GLenum type, int width, int height, GLenum internal_format, int levels = -1) noexcept;
@@ -50,6 +81,10 @@ namespace gl
         void assign(int level, int x, int y, int z, int width, int height, int depth, GLenum format, GLenum type, const void* pixels) noexcept;
         void assign(GLenum format, GLenum type, const void* pixels) noexcept;
         void assign(int level, GLenum format, GLenum type, const void* pixels) noexcept;
+
+        pixel at(int x, int level) const;
+        pixel at(int x, int y, int level) const;
+        pixel at(int x, int y, int z, int level) const;
 
         void get_data(GLenum format, GLenum type, size_t size, void* target) const noexcept;
         void get_data(int level, GLenum format, GLenum type, size_t size, void* target) const noexcept;

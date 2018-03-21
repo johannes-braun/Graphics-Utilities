@@ -138,6 +138,8 @@ int main()
         tracer->bind_uniform_buffer(0, data);
         tracer->dispatch(800, 600);
 
+        render_texture->at(10, 10, 0) = glm::vec4(1, 0, 0, 1);
+
         framebuffer.blit(nullptr, GL_COLOR_BUFFER_BIT);
         timer.finish();
 

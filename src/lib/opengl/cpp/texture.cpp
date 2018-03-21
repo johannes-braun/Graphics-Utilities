@@ -3,6 +3,66 @@
 
 namespace gl
 {
+    void pixel::set(const glm::vec4& color) noexcept
+    {
+        _color = color;
+    }
+
+    const glm::vec4& pixel::get() const noexcept
+    {
+        return _color;
+    }
+
+    glm::vec4& pixel::get() noexcept
+    {
+        return _color;
+    }
+
+    pixel::operator const glm::vec4&() const noexcept
+    {
+        return get();
+    }
+
+    pixel::operator glm::vec4&() noexcept
+    {
+        return get();
+    }
+
+    pixel& pixel::operator=(const glm::vec4& color) noexcept
+    {
+        set(color);
+        return *this;
+    }
+
+    pixel::pixel(const texture* parent, glm::ivec3 position, int level) noexcept
+        : _parent(parent), _position(position), _level(level)
+    {
+        assert(_parent->_type != GL_TEXTURE_2D_MULTISAMPLE && _parent->_type != GL_TEXTURE_2D_MULTISAMPLE_ARRAY && "Cannot fetch pixel from multisample textures.");
+        glGetTextureSubImage(*_parent, _level, _position.x, _position.y, _position.z, 1, 1, 1, GL_RGBA, GL_FLOAT, sizeof(glm::vec4), &_color[0]);
+    }
+
+    pixel::~pixel()
+    {
+        switch (_parent->_type)
+        {
+        case GL_TEXTURE_1D:
+            glTextureSubImage1D(*_parent, _level, _position.x, 1, GL_RGBA, GL_FLOAT, &_color[0]);
+            break;
+        case GL_TEXTURE_1D_ARRAY:
+        case GL_TEXTURE_2D:
+        case GL_TEXTURE_CUBE_MAP:
+        case GL_TEXTURE_RECTANGLE:
+            glTextureSubImage2D(*_parent, _level, _position.x, _position.y, 1, 1, GL_RGBA, GL_FLOAT, &_color[0]);
+            break;
+        case GL_TEXTURE_CUBE_MAP_ARRAY:
+        case GL_TEXTURE_2D_ARRAY:
+        case GL_TEXTURE_3D:
+            glTextureSubImage3D(*_parent, _level, _position.x, _position.y, _position.z, 1, 1, 1, GL_RGBA, GL_FLOAT, &_color[0]);
+            break;
+        default: break;
+        }
+    }
+
     int max_levels(int width, int height, int depth)
     {
         return 1 + static_cast<uint32_t>(std::log2(std::max(width, std::max(height, depth))));
@@ -320,6 +380,21 @@ namespace gl
     texture::operator gl_texture_t() const noexcept
     {
         return _id;
+    }
+
+    pixel texture::at(int x, int level) const
+    {
+        return pixel(this, { x, 0, 0 }, level);
+    }
+
+    pixel texture::at(int x, int y, int level) const
+    {
+        return pixel(this, { x, y, 0 }, level);
+    }
+
+    pixel texture::at(int x, int y, int z, int level) const
+    {
+        return pixel(this, { x, y, z }, level);
     }
 
     void texture::init_handle() noexcept
