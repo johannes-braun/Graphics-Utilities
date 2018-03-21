@@ -13,6 +13,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <string_view>
 #include <optional>
 #include <jpu/memory.hpp>
 #include <jpu/log.hpp>

@@ -58,13 +58,12 @@ add_definitions(-DGLFW_INCLUDE_NONE -DSTBI_MSC_SECURE_CRT -DGLM_FORCE_RADIANS
 )
 
 list(APPEND INCLUDES "${EXT_INTERNAL_LIBRARIES}")
-include_directories(${INCLUDES})
 
 file(GLOB children RELATIVE ${EXT_INTERNAL_LIBRARIES} ${EXT_INTERNAL_LIBRARIES}/*)
 foreach(subdir ${children})
     if(IS_DIRECTORY ${EXT_INTERNAL_LIBRARIES}/${subdir})
         file(GLOB_RECURSE SRC_SOURCE "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.c" "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.cpp" "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.cc")
-        file(GLOB_RECURSE SRC_HEADERS "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.h" "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.hpp")
+        #file(GLOB_RECURSE SRC_HEADERS "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.h" "${EXT_INTERNAL_LIBRARIES}/${subdir}/*.hpp")
         if(NOT SRC_SOURCE)
             # Internal header only library
             set(success 0)
@@ -76,6 +75,7 @@ foreach(subdir ${children})
         endif()
     endif()
 endforeach()
+include_directories(${INCLUDES})
 
 ######## Add internal executables
 file(GLOB children RELATIVE ${EXT_INTERNAL_EXECUTABLES} ${EXT_INTERNAL_EXECUTABLES}/*)
@@ -83,8 +83,8 @@ foreach(subdir ${children})
     if(IS_DIRECTORY ${EXT_INTERNAL_EXECUTABLES}/${subdir})
         file(GLOB_RECURSE SRC_C "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.c")
         file(GLOB_RECURSE SRC_CPP "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.cpp")
-        file(GLOB_RECURSE SRC_H "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.h")
-        file(GLOB_RECURSE SRC_HPP "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.hpp")
+        #file(GLOB_RECURSE SRC_H "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.h")
+        #file(GLOB_RECURSE SRC_HPP "${EXT_INTERNAL_EXECUTABLES}/${subdir}/*.hpp")
         add_executable(${subdir} ${SRC_C} ${SRC_CPP} ${SRC_H} ${SRC_HPP} "${PROJECT_SOURCE_DIR}/src/res/default_app.rc")
         target_link_libraries(${subdir} ${LIBRARIES})
         set_target_properties(${subdir} PROPERTIES LINKER_LANGUAGE CXX)

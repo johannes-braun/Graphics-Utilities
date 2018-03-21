@@ -9,6 +9,7 @@
 #include <atomic>
 #include <utility>
 #include <omp.h>
+#include <stack>
 #include <glm/glm.hpp>
 
 namespace gfx
@@ -256,7 +257,7 @@ namespace gfx
             bool hits;
         };
 
-        bvh_result bvh_hit(const glm::vec3 origin, const glm::vec3 direction, const float max_distance) const 
+        bvh_result bvh_hit(const glm::vec3 origin, const glm::vec3 direction, const float max_distance) const
         {
             bvh_result result;
             result.near_distance = max_distance;
@@ -265,13 +266,9 @@ namespace gfx
 
             const node* root_node = _nodes.data();
             const node* current_node = _nodes.data();
+            std::stack<const node*> node_stack;
 
-            bool hits_scene = intersect_bounds(origin, direction,
-                current_node->bounds,
-                max_distance, nullptr);
-
-            uint32_t bitstack = 0;
-            uint32_t switchstack = 0;
+            bool hits_scene = intersect_bounds(origin, direction, current_node->bounds, max_distance, nullptr);
 
             while (hits_scene)
             {
@@ -293,8 +290,8 @@ namespace gfx
                     bool hits_first = nrm ? hits_left : hits_right;
                     bool hits_second = nrm ? hits_right : hits_left;
 
-                    switchstack = (switchstack << 1) | int(nrm);
-                    bitstack = (bitstack << 1) | int(hits_left && hits_right);
+                    if (hits_first && hits_second)
+                        node_stack.push(second);
                     current_node = hits_first ? first : second;
                 }
 
@@ -305,8 +302,6 @@ namespace gfx
                     uint32_t end = current_node->child_right;
                     for (uint32_t i = start; i != end + 1; ++i)
                     {
-                        if (i == 4)
-                            i = 4;
                         vec_dim_type tv1 = vec_dim_type(_get_vertex(int(_shape)*i));
                         vec_dim_type tv2 = vec_dim_type(_get_vertex(int(_shape)*i+1));
                         vec_dim_type tv3 = vec_dim_type(_get_vertex(int(_shape)*i+2));
@@ -322,27 +317,13 @@ namespace gfx
                             result.near_distance = current_distance;
                             result.near_barycentric = current_barycentric;
                             result.near_triangle = i;
-
-                           /* if (_bvh_mode_current == bvh_mode_any)
-                                return result;*/
                         }
                     }
                 }
 
-                while ((bitstack & 1) == 0)
-                {
-                    if (bitstack == 0)
-                        return result;
-
-                    current_node = root_node + current_node->parent;
-                    bitstack = bitstack >> 1;
-                    switchstack = switchstack >> 1;
-                }
-
-                current_node = root_node +
-                    (((switchstack & 0x1) == 0x1) ? (root_node + current_node->parent)->child_right :
-                    (root_node + current_node->parent)->child_left);
-                bitstack = bitstack ^ 1;
+                if (node_stack.empty()) return result;
+                current_node = node_stack.top();
+                node_stack.pop();
             }
             return result;
         }

@@ -10,6 +10,7 @@
 #include <memory>
 #include <jpu/log.hpp>
 #include <set>
+#include <cassert>
 
 namespace gl
 {
