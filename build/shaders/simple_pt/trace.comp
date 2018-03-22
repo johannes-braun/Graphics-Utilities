@@ -87,14 +87,13 @@ void main()
 
     vertex* vertices2 = (vertex*) vbo;
     
- //   line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f);
- //   imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
- //   return;
-
-
+    vec3 dbg;
+    line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f, dbg);
+    imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
+    return;
+    
     bvh_state_set_mode(bvh_mode_nearest);
-    bvh_result current_result = bvh_hit(origin.xyz, direction.xyz, 
-                bvh, ibo, vbo, 10000000000.f);
+    bvh_result current_result = bvh_hit(origin.xyz, direction.xyz, bvh, ibo, vbo, 10000000000.f);
 
     const vec4 last_color = imageLoad(img, pixel);
     vec4 color = vec4(0);
@@ -119,7 +118,7 @@ void main()
                 const vec2 uv = barycentric_resolve(uv, current_result);
                 const uint meta = vertices[triangles->a].meta;
                 const float ext = meta == 1 ? 1.f : 0.6f;
-                const float rough = meta == 1 ? 0.0f : 0.04f;
+                const float rough = meta == 1 ? 0.f : 0.04f;
 
                 random_sample = random_hammersley_2d(next_random() * count, 1/count);
                 vec3 hemisphere = sample_cosine_hemisphere(random_sample);
@@ -153,9 +152,12 @@ void main()
 
                         lighting[p].normal = vec4(normalize(barycentric_resolve(normal, lamp_result)), 0);
 
+                        const float rext = 1.4f;
+                        const float rrough = 0.0f;
+
                         const vec3 facet_normal = bsdf_local_to_world(
                             ggx_importance_hemisphere(
-                                ggx_importance_sample(random_sample, rough)
+                                ggx_importance_sample(random_sample, rrough)
                             ), lighting[p].normal.xyz
                         );
 
@@ -164,7 +166,6 @@ void main()
 
                         const bool internal = dot(lnorm, ldir) < 0;
                         const float eta = internal ? (1/1.5f) : 1.5f;
-                        const float rext = 1.f;
                         const float fresnel = bsdf_fresnel_coefficient(normalize(ldir), lnorm.xyz, 1.5f, rext);
                         const bool total = bsdf_is_total_reflection(eta, ldir, faceforward(lnorm, ldir, lnorm));
                         const float nrand = next_random();

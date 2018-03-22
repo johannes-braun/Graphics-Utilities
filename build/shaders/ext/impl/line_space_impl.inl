@@ -19,13 +19,13 @@ struct buffer_data
 };
 
 const ivec2 patch_indices[6] = {
-    ivec2( 0, 1 ),
-    ivec2( 0, 2 ),
     ivec2( 1, 2 ),
-    
-    ivec2( 0, 1 ),
     ivec2( 0, 2 ),
-    ivec2( 1, 2 ),
+    ivec2( 0, 1 ),
+
+    ivec2(1, 2),
+    ivec2(0, 2),
+    ivec2(0, 1),
 };
 
 int smallest_axis(const in vec3 vector)
@@ -43,9 +43,11 @@ int smallest_axis(const in vec3 vector)
         return 2;
 }
 
-line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float max_distance)
+line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float max_distance, inout vec3 dbg)
 {
     grid_ls* grid = (grid_ls*)grid_line_space;
+
+    
 
     int start_face, end_face;
     float temp_tmin, temp_tmax;
@@ -71,7 +73,7 @@ line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float
             int ls_index = index.x + index.y * grid->xyz_p.x + index.z * grid->xyz_p.x * grid->xyz_p.y;
             int axis = smallest_axis(tnext);
             
-            line l = get_line(grid->line_spaces, ls_index, origin, direction, max_distance);
+            line l = get_line(grid->line_spaces, ls_index, origin, direction, max_distance, dbg);
             if(l.triangle != -1)
                 return l;
 
@@ -88,7 +90,7 @@ line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float
     return result;
 }
 
-line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, float max_distance)
+line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, float max_distance, inout vec3 dbg)
 {
     buffer_data* line_space_data = ((buffer_data*)line_space) + index;
 
@@ -150,6 +152,8 @@ line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, floa
         const int start_count = start_size.x * start_size.y;
         const int end_count = end_size.x * end_size.y;
         const uint index = uint(end_count * (start_patch.y * start_size.x + start_patch.x) + end_patch.y * end_size.x  + end_patch.x);
+
+        dbg = vec3(index / 25.f, 0, 0);
 
         return line_set[index];
     }

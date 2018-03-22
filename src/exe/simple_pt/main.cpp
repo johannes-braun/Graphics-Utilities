@@ -40,10 +40,10 @@ int main()
     window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
 
-    res::geometry_file file = res::load_geometry("../res/sphaear.dae");
+    res::geometry_file file = res::load_geometry("../res/cube.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
 
-    gfx::bvh<3> gen_bvh(gfx::shape::triangle);
+    gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) {
         return mesh.vertices[index].position;
     });
@@ -51,7 +51,7 @@ int main()
 
     auto bound = gen_bvh.get_bounds();
 
-    int gx = 1, gy = gx, gz = gx;
+    int gx = 2, gy = gx, gz = gx;
     const glm::vec4 qsize = bound.size() / glm::vec4{ gx, gy, gz, 1 };
     std::vector<gfx::line_space> line_spaces;
     gl::buffer<gfx::line_space::data_type> line_space_datas(GL_DYNAMIC_STORAGE_BIT);
@@ -66,7 +66,7 @@ int main()
                 gfx::line_space_bounds lsb;
                 lsb.min = bound.min + glm::vec4(x, y, z, 1) * qsize;
                 lsb.max = lsb.min + qsize;
-                line_spaces.emplace_back(6, 6, 6).build(gen_bvh, lsb);
+                line_spaces.emplace_back(2, 2, 2).build(gen_bvh, lsb);
                 line_space_datas[z * gy * gx + y * gx + x] = (line_spaces.back().get_data());
             }
         }

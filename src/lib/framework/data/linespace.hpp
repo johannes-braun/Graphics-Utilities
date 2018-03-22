@@ -34,13 +34,13 @@ namespace gfx
         {
             const std::array<int, 6> sizes
             {
-                x * y,
-                x * z,
                 y * z,
-
-                x * y,
                 x * z,
-                y * z
+                x * y,
+
+                y * z,
+                x * z,
+                x * y,
             };
             _buffer_data.x = x;
             _buffer_data.y = y;
@@ -69,24 +69,24 @@ namespace gfx
 
             const std::array<glm::ivec2, 6> patch_indices
             {
-                glm::ivec2{ 0, 1},
-                glm::ivec2{ 0, 2 },
                 glm::ivec2{ 1, 2 },
-
+                glm::ivec2{ 0, 2 },
                 glm::ivec2{ 0, 1 },
-                glm::ivec2{ 0, 2 },
+
                 glm::ivec2{ 1, 2 },
+                glm::ivec2{ 0, 2 },
+                glm::ivec2{ 0, 1 },
             };
 
             const std::array<glm::ivec2, 6> patch_sizes
             {
-                glm::ivec2{ subdiv.x, subdiv.y },
-                glm::ivec2{ subdiv.x, subdiv.z },
                 glm::ivec2{ subdiv.y, subdiv.z },
+                glm::ivec2{ subdiv.x, subdiv.z },
+                glm::ivec2{ subdiv.x, subdiv.y },
 
-                glm::ivec2{ subdiv.x, subdiv.y },
-                glm::ivec2{ subdiv.x, subdiv.z },
                 glm::ivec2{ subdiv.y, subdiv.z },
+                glm::ivec2{ subdiv.x, subdiv.z },
+                glm::ivec2{ subdiv.x, subdiv.y },
             };
 
             _buffer_data.bounds = bounds;
@@ -96,7 +96,7 @@ namespace gfx
             for (int s = 0; s < 6; ++s)
             {
                 const glm::ivec2 patch_size_start = patch_sizes[s];
-                for (int e = 0; e < 6; ++e)
+                for (int e = 1; e < 6; ++e)
                 {
                     if (s == e)
                         continue;
@@ -106,8 +106,6 @@ namespace gfx
                     for(int psx = 0; psx < patch_size_start.x; ++psx)
                     for (int psy = 0; psy < patch_size_start.y; ++psy)
                     {
-                        if (psx == 1 && psy == 1 && (s % 3) == (e%3))
-                            s = s;
                         const int index_start = (psy * patch_size_start.x + psx) * patch_size_end.x * patch_size_end.y;
                         const int normal_axis_start = 2 - (s % 3);
                         const float normal_offset_start = s <= 2 ? (bounds.min[normal_axis_start]) : (bounds.max[normal_axis_start]);
@@ -127,12 +125,10 @@ namespace gfx
                             end_center[patch_indices[e].y] = (pey + 0.5f) * (bounds_size[patch_indices[e].y] / patch_sizes[e].y) + bounds.min[patch_indices[e].y];
 
                             const glm::vec3 direction = normalize(end_center - start_center);
-                            const glm::vec3 origin = start_center - 1e-3f*direction;
+                            const glm::vec3 origin = start_center - 1e-4f*direction;
 
-                            const auto hit = bvh.intersect_ray(origin, direction, 100000.f);
+                            const auto hit = bvh.intersect_ray(origin, direction, length(end_center - start_center));
                          
-                            if (!hit.hits)
-                               end_center = end_center;
                             _storages[s][e]->at(index_start + (pey * patch_size_end.x + pex)).triangle = hit.hits ? hit.indices.front().index / 3 : -1;
                         }
                     }
