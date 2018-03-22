@@ -7,8 +7,6 @@
 #include <res/geometry.hpp>
 #include <res/image.hpp>
 
-#include <jpu/geometry.hpp>
-
 #include <tinyfd/tinyfiledialogs.h>
 
 #include <opengl/pipeline.hpp>
@@ -16,8 +14,8 @@
 #include <opengl/framebuffer.hpp>
 #include <opengl/query.hpp>
 
-#include "bvh.hpp"
-#include "linespace.hpp"
+#include <framework/data/bvh.hpp>
+#include <framework/data/linespace.hpp>
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
@@ -45,10 +43,11 @@ int main()
     res::geometry_file file = res::load_geometry("../res/sphaear.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
 
-    gfx::bvh<3> gen_bvh(gfx::shape::triangle, sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
-    const std::vector<gl::byte>& packed = gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) {
+    gfx::bvh<3> gen_bvh(gfx::shape::triangle);
+    gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) {
         return mesh.vertices[index].position;
     });
+    const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
 
     auto bound = gen_bvh.get_bounds();
 
@@ -104,7 +103,7 @@ int main()
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    const auto[w, h, c] = res::load_image_info("../res/indoor/hdr/posx.hdr");
+    const auto [w, h, c] = res::load_image_info("../res/indoor/hdr/posx.hdr");
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
     cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/posx.hdr", res::image_type::f32, res::RGB).data.get());
     cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negx.hdr", res::image_type::f32, res::RGB).data.get());
@@ -180,8 +179,8 @@ int main()
                     begin += mesh.vertices.size();
                 }
 
-                gen_bvh = gfx::bvh<3>(gfx::shape::triangle, sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
-                const std::vector<gl::byte>& packed = gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
+                gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
+                const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
 
                 vbo = gl::buffer<res::vertex>(vertices.begin(), vertices.end());
                 ibo = gl::buffer<res::index32>(indices.begin(), indices.end());

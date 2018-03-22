@@ -87,9 +87,9 @@ void main()
 
     vertex* vertices2 = (vertex*) vbo;
     
-    line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f);
-    imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
-    return;
+ //   line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f);
+ //   imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
+ //   return;
 
 
     bvh_state_set_mode(bvh_mode_nearest);

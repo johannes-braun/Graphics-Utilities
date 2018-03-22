@@ -9,7 +9,7 @@
 #include <res/geometry.hpp>
 #include <res/presets.hpp>
 
-#include "../simple_pt/bvh.hpp"
+#include <framework/data/bvh.hpp>
 
 int main()
 {
@@ -17,14 +17,12 @@ int main()
     io::camera camera;
     io::default_cam_controller controller;
 
-    res::geometry_file geom = res::load_geometry("../res/cube.dae");
+    res::geometry_file geom = res::load_geometry("../res/bunny.dae");
     std::vector<res::vertex> vertices(geom.meshes.get_by_index(0).vertices.begin(), geom.meshes.get_by_index(0).vertices.end());
     std::vector<res::index32> indices(geom.meshes.get_by_index(0).indices.begin(), geom.meshes.get_by_index(0).indices.end());
 
-    gfx::bvh<3> gen_bvh(gfx::shape::triangle, sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
-    gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) {
-        return vertices[index].position;
-    });
+    gfx::bvh<3> gen_bvh(gfx::shape::triangle);
+    gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
 
     const auto texture = std::make_shared<gl::texture>(GL_TEXTURE_2D, 480, 320, GL_RGBA32F, 1);
     gl::framebuffer framebuffer;
@@ -42,16 +40,16 @@ int main()
             glm::vec3 direction = normalize(glm::vec3(camera_matrix * glm::vec4(uv, 0, 1)));
             glm::vec3 origin = glm::vec3(camera.transform.position);
 
-            const gfx::bvh<3>::bvh_result hit = gen_bvh.bvh_hit(origin, direction, 100000.f);
-
-            const int triangle_indices_start = hit.near_triangle * 3;
-            
+            const auto hit = gen_bvh.intersect_ray(origin, direction, 100000.f);
+                        
             glm::vec4 color(0, 0, 0, 1);
             
-            if (hit.hits)
+            if (hit)
             {
-                const glm::vec3 normal = glm::vec3(vertices[indices[triangle_indices_start]].normal);
-                color = glm::vec4(glm::abs(normal), 1);
+                const glm::vec3 normal = normalize([&, begin = hit.indices.begin()]() mutable {
+                    return vertices[indices[(begin++)->index]].normal + vertices[indices[(begin++)->index]].normal + vertices[indices[(begin++)->index]].normal;
+                }());
+                color = glm::vec4(normal, 1);
             }
 
             texture->at(x, y, 0) = color;

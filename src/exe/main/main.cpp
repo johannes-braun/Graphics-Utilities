@@ -5,7 +5,6 @@
 #include <glm/ext.hpp>
 #include <jpu/memory.hpp>
 #include <jpu/data.hpp>
-#include <jpu/geometry.hpp>
 
 #include "scene.hpp"
 
@@ -28,6 +27,7 @@
 #include "openal/listener.hpp"
 
 #include "framework/renderer.hpp"
+#include <framework/data/bvh.hpp>
 
 #include <stb_image.h>
 #include "framework/gizmo.hpp"
@@ -115,10 +115,10 @@ int main()
     gl::buffer<uint32_t> index_buffer(cylinder.meshes.get_by_index(0).indices.begin(), cylinder.meshes.get_by_index(0).indices.end(), GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     gl::buffer<res::vertex> vertex_buffer(cylinder.meshes.get_by_index(0).vertices.begin(), cylinder.meshes.get_by_index(0).vertices.end());
     index_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
-    jpu::bvh<3> obj_bvh;
-    obj_bvh.assign_to(index_buffer, cylinder.meshes.get_by_index(0).vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
+    gfx::bvh<3> obj_bvh(gfx::shape::triangle);
+    obj_bvh.sort(index_buffer.begin(), index_buffer.end(), [&](uint32_t index) { return cylinder.meshes.get_by_index(0).vertices[index].position; });
     index_buffer.flush();
-    std::vector<gl::byte> bvh_bytes = obj_bvh.pack();
+    std::vector<gl::byte> bvh_bytes = obj_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
     gl::buffer<gl::byte> bvh_buffer(bvh_bytes.begin(), bvh_bytes.end());
 
     struct mesh

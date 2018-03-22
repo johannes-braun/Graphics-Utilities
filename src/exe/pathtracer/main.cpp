@@ -6,7 +6,6 @@
 #include "opengl/framebuffer.hpp"
 #include "io/camera.hpp"
 #include "res/geometry.hpp"
-#include "jpu/impl/geometry/bvh/bvh.hpp"
 #include "res/image.hpp"
 #include "opengl/query.hpp"
 
@@ -19,6 +18,7 @@
 #include "framework/renderer.hpp"
 #include <GLFW/glfw3.h>
 #include "framework/gizmo.hpp"
+#include <framework/data/bvh.hpp>
 
 glm::ivec2 resolution{ 1280, 720 };
 jpu::ref_ptr<io::window> main_window;
@@ -32,10 +32,8 @@ public:
     mesh_proxy(const res::mesh& mesh)
     {
         std::vector<uint32_t> indices = mesh.indices;
-        jpu::bvh<3> bvh;
-        bvh.assign_to(indices, mesh.vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-
-        const std::vector<uint8_t> packed_bvh = bvh.pack();
+        bvh.sort(indices.begin(), indices.end(), [&](uint32_t i) { return mesh.vertices[i].position; });
+        const std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
         _vertex_buffer = gl::buffer<res::vertex>(mesh.vertices.begin(), mesh.vertices.end());
         _index_buffer = gl::buffer<uint32_t>(indices.begin(), indices.end());
         _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
@@ -75,19 +73,8 @@ public:
             base_offset += int(meshes[i].vertices.size());
         }
 
-        jpu::bvh<3> bvh;
-        bvh.assign_to(indices, vertices, &res::vertex::position, jpu::bvh_primitive_type::triangles);
-
-
-//        std::vector<res::vertex> opt_vertices(indices.size());
-//#pragma omp parallel for
-//        for (int i = 0; i < opt_vertices.size(); ++i)
-//        {
-//            opt_vertices[i] = vertices[indices[i]];
-//            indices[i] = i;
-//        }
-
-        const std::vector<uint8_t> packed_bvh = bvh.pack();
+        bvh.sort(indices.begin(), indices.end(), [&](uint32_t i) { return vertices[i].position; });
+        const std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
         _vertex_buffer = gl::buffer<res::vertex>(vertices.begin(), vertices.end());
         _index_buffer = gl::buffer<uint32_t>(indices.begin(), indices.end());
         _bvh_buffer = gl::buffer<gl::byte>(packed_bvh.begin(), packed_bvh.end());
@@ -102,6 +89,7 @@ public:
     }
 
 private:
+    gfx::bvh<3> bvh{ gfx::shape::triangle };
     gl::buffer<res::vertex> _vertex_buffer;
     gl::buffer<uint32_t> _index_buffer;
     gl::buffer<gl::byte> _bvh_buffer;

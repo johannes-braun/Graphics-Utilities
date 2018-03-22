@@ -5,12 +5,11 @@
 #include <memory>
 #include <res/image.hpp>
 #include <res/geometry.hpp>
-#include <jpu/geometry.hpp>
 #include <opengl/debug.hpp>
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
 #include <opengl/texture.hpp>
-#include "../test_all/bvh.hpp"
+#include <framework/data/bvh.hpp>
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
@@ -48,13 +47,14 @@ int main()
     gl::buffer<res::vertex> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<uint32_t> ibo(inds.begin(), inds.end(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     ibo.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
-    jpu::bvh<3> bvh;
-    bvh.assign_to(ibo, verts, &res::vertex::position, jpu::bvh_primitive_type::triangles);
+
+    gfx::bvh<3> bvh(gfx::shape::triangle);
+    bvh.sort(ibo.begin(), ibo.end(), [&](uint32_t index) { return verts[index].position; });
    
     ibo.flush();
     ibo.unmap();
 
-    std::vector<uint8_t> packed_bvh = bvh.pack();
+    std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
 
     gl::buffer<gl::byte> bvh_buffer(packed_bvh.begin(), packed_bvh.end());
 

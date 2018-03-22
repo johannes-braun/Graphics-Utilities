@@ -4,7 +4,6 @@
 #include <numeric>
 #include <jpu/log.hpp>
 #include <res/presets.hpp>
-#include "bvh.hpp"
 #include <numeric>
 
 int main()

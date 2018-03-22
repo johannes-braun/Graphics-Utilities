@@ -1,5 +1,7 @@
 #pragma once
 
+#include "bvh.hpp"
+
 #include <memory>
 #include <opengl/buffer.hpp>
 
@@ -127,11 +129,11 @@ namespace gfx
                             const glm::vec3 direction = normalize(end_center - start_center);
                             const glm::vec3 origin = start_center - 1e-3f*direction;
 
-                            const gfx::bvh<3>::bvh_result hit = bvh.bvh_hit(origin, direction, 100000.f);
+                            const auto hit = bvh.intersect_ray(origin, direction, 100000.f);
                          
                             if (!hit.hits)
                                end_center = end_center;
-                            _storages[s][e]->at(index_start + (pey * patch_size_end.x + pex)).triangle = hit.hits ? hit.near_triangle : -1;
+                            _storages[s][e]->at(index_start + (pey * patch_size_end.x + pex)).triangle = hit.hits ? hit.indices.front().index / 3 : -1;
                         }
                     }
                     _storages[s][e]->synchronize();
