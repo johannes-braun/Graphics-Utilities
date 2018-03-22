@@ -90,6 +90,7 @@ void main()
     vec3 dbg;
     line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f, dbg);
     imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
+    //imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(dbg, 1));//abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
     return;
     
     bvh_state_set_mode(bvh_mode_nearest);

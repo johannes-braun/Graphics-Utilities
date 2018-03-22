@@ -157,6 +157,48 @@ namespace gfx
         return tmax >= 0 && t <= tmax && t <= max_distance;
     }
 
+    inline bool intersect_ray_triangle(
+            const glm::vec3& origin,
+            const glm::vec3& direction,
+            const glm::vec3& v1,
+            const glm::vec3& v2,
+            const glm::vec3& v3,
+            glm::vec2& barycentric,
+            float& t)
+    {
+        using namespace glm;
+        float float_epsilon = 1e-23f;
+        float border_epsilon = 1e-6f;
+
+        //Find vectors for two edges sharing V1
+        vec3 e1 = v2 - v1;
+        vec3 e2 = v3 - v1;
+
+        //if determinant is near zero, ray lies in plane of triangle
+        vec3 P = cross(vec3(direction), e2);
+        float det = dot(e1, P);
+        if (det > -float_epsilon && det < float_epsilon)
+            return false;
+
+        //Calculate u parameter and test bound
+        float inv_det = 1.f / det;
+        vec3 T = vec3(origin) - v1;
+        barycentric.x = dot(T, P) * inv_det;
+
+        //The intersection lies outside of the triangle
+        if (barycentric.x < -border_epsilon || barycentric.x > 1.f + border_epsilon)
+            return false;
+
+        //Calculate V parameter and test bound
+        vec3 Q = cross(T, e1);
+        barycentric.y = dot(vec3(direction), Q) * inv_det;
+        //The intersection lies outside of the triangle
+        if (barycentric.y < -border_epsilon || barycentric.x + barycentric.y  > 1.f + border_epsilon)
+            return false;
+
+        return (t = dot(e2, Q) * inv_det) > float_epsilon;
+    }
+
     template<size_t Dimension>
     typename bvh<Dimension>::hit_result bvh<Dimension>::intersect_ray(const glm::vec3& origin, const glm::vec3& direction, const float max_distance, bool any) const
     {
@@ -174,8 +216,8 @@ namespace gfx
                 auto beg_iter = vectors.begin();
                 glm::vec2 barycentric;
                 float distance = 0;
-                const bool intersects = glm::intersectRayTriangle(origin, direction, *(beg_iter++), *(beg_iter++), *(beg_iter++), barycentric, distance);
-                if (intersects && distance < last.distance)
+                const bool intersects = intersect_ray_triangle(origin, direction, *(beg_iter++), *(beg_iter++), *(beg_iter++), barycentric, distance);
+                if (intersects && distance > 0 && distance < last.distance)
                 {
                     last.hits = true;
                     last.distance = distance;

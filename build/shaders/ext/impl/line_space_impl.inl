@@ -19,13 +19,13 @@ struct buffer_data
 };
 
 const ivec2 patch_indices[6] = {
-    ivec2( 1, 2 ),
-    ivec2( 0, 2 ),
     ivec2( 0, 1 ),
+    ivec2( 0, 2 ),
+    ivec2( 1, 2 ),
 
-    ivec2(1, 2),
-    ivec2(0, 2),
-    ivec2(0, 1),
+    ivec2( 0, 1 ),
+    ivec2( 0, 2 ),
+    ivec2( 1, 2 ),
 };
 
 int smallest_axis(const in vec3 vector)
@@ -47,6 +47,7 @@ line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float
 {
     grid_ls* grid = (grid_ls*)grid_line_space;
 
+   // return get_line(grid->line_spaces, 6, origin, direction, max_distance, dbg);
     
 
     int start_face, end_face;
@@ -147,13 +148,15 @@ line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, floa
         ivec2 start_patch = clamp(ivec2((start_offset / start_bounds_size) * start_size), ivec2(0), start_size - ivec2(1));
         ivec2 end_patch = clamp(ivec2((end_offset / end_bounds_size) * end_size), ivec2(0), end_size - ivec2(1));
 
+
         line* line_set = (line*)line_space_data->storages[start_face][end_face];
 
         const int start_count = start_size.x * start_size.y;
         const int end_count = end_size.x * end_size.y;
         const uint index = uint(end_count * (start_patch.y * start_size.x + start_patch.x) + end_patch.y * end_size.x  + end_patch.x);
 
-        dbg = vec3(index / 25.f, 0, 0);
+
+        dbg = vec3(start_offset, 0);
 
         return line_set[index];
     }

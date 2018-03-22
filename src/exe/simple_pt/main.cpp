@@ -40,7 +40,7 @@ int main()
     window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
 
-    res::geometry_file file = res::load_geometry("../res/cube.dae");
+    res::geometry_file file = res::load_geometry("../res/cube2.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
@@ -51,7 +51,7 @@ int main()
 
     auto bound = gen_bvh.get_bounds();
 
-    int gx = 2, gy = gx, gz = gx;
+    int gx = 4, gy = gx, gz = gx;
     const glm::vec4 qsize = bound.size() / glm::vec4{ gx, gy, gz, 1 };
     std::vector<gfx::line_space> line_spaces;
     gl::buffer<gfx::line_space::data_type> line_space_datas(GL_DYNAMIC_STORAGE_BIT);

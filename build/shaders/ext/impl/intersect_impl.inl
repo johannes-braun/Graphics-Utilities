@@ -48,12 +48,12 @@ bool intersect_bounds(
 	return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
 }
 int faceID(float t, float t1, float t2, float t3, float t4, float t5, float t6) {
-    return t == t1 ? 3 	//neg_x
-        : (t == t2 ? 0 	//pos_x
-            : (t == t3 ? 4 	//neg_y
-                : (t == t4 ? 1 	//pos_y
-                    : (t == t5 ? 5 	//neg_z
-                        : 2))));		//pos_z
+    return t == t1 ? 0 	//neg_x
+        : (t == t2 ? 3 	//pos_x
+            : (t == t3 ? 1 	//neg_y
+                : (t == t4 ? 4 	//pos_y
+                    : (t == t5 ? 2 	//neg_z
+                        : 5))));		//pos_z
 }
 
 bool intersect_bounds(
