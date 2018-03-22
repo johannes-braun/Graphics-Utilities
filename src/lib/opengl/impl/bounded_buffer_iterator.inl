@@ -98,7 +98,7 @@ namespace gl
     typename buffer<T>::bounded_buffer_iterator_base<Ptr, Inc> buffer<T>::bounded_buffer_iterator_base<Ptr, Inc>::operator-(ptrdiff_t offset) const noexcept
     {
         assert(valid() && "Iterator invalid");
-        bounded_buffer_iterator_base_impl<T, Ptr, Inc> new_it = *this;
+        auto new_it = *this;
         offset *= Inc;
         new_it._offset -= offset;
         return new_it;

@@ -21,7 +21,7 @@ int main()
     std::vector<res::vertex> vertices(geom.meshes.get_by_index(0).vertices.begin(), geom.meshes.get_by_index(0).vertices.end());
     std::vector<res::index32> indices(geom.meshes.get_by_index(0).indices.begin(), geom.meshes.get_by_index(0).indices.end());
 
-    gfx::bvh<3> gen_bvh(gfx::shape::triangle);
+    gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
 
     const auto texture = std::make_shared<gl::texture>(GL_TEXTURE_2D, 480, 320, GL_RGBA32F, 1);

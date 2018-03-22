@@ -65,6 +65,9 @@ namespace gfx
         temporaries.centroid_bounds.resize(0);
         temporaries.swap_index_ranges.resize(0);
         temporaries.swap_centroid_bounds.resize(0);
+
+        if (_mode != bvh_mode::persistent_iterators)
+            _get_vertex = [](size_t index) { return vec_type(); };
     }
 
     template<size_t Dimension>
@@ -92,7 +95,7 @@ namespace gfx
     }
 
     template<size_t Dimension>
-    bvh<Dimension>::bvh(shape s) : _shape(s)
+    bvh<Dimension>::bvh(shape s, bvh_mode mode) : _shape(s), _mode(mode)
     {
 
     }
@@ -157,6 +160,13 @@ namespace gfx
     template<size_t Dimension>
     typename bvh<Dimension>::hit_result bvh<Dimension>::intersect_ray(const glm::vec3& origin, const glm::vec3& direction, const float max_distance, bool any) const
     {
+        if (_mode != bvh_mode::persistent_iterators)
+        {
+            hit_result result;
+            result.distance = max_distance;
+            result.hits = false;
+            return result;
+        }
         switch (_shape)
         {
         case shape::triangle:

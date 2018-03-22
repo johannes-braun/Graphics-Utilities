@@ -21,6 +21,12 @@ namespace gfx
         triangle = 3,
     };
 
+    enum class bvh_mode
+    {
+        gpu_oriented = 0, // default setting, keeps does not keep _get_vertex alive, so cannot be used for cpu-based traversal.
+        persistent_iterators, // Keep _get_vertex and associated index iterators and captured variables alive. Enables cpu-based traversal, but needs more cautious usage.
+    };
+
     enum class node_type : uint32_t
     {
         inner = 0,
@@ -84,7 +90,7 @@ namespace gfx
             int32_t parent = -1;
         };
 
-        bvh(shape s);
+        bvh(shape s, bvh_mode mode = bvh_mode::gpu_oriented);
         bvh(const bvh& other);
         bvh& operator=(const bvh& other);
         bvh(bvh&& other) noexcept;
@@ -129,6 +135,7 @@ namespace gfx
         } temporaries;
 
         shape _shape;
+        bvh_mode _mode;
 
         intersect_function_type _custom_intersect;
         std::function<vec_type(size_t index)> _get_vertex;
