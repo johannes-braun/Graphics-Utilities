@@ -40,7 +40,7 @@ int main()
     window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
 
-    res::geometry_file file = res::load_geometry("../res/cube2.dae");
+    res::geometry_file file = res::load_geometry("../res/sphaear.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
@@ -50,25 +50,51 @@ int main()
     const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
 
     auto bound = gen_bvh.get_bounds();
+    struct buffer_data
+    {
+        gfx::line_space_bounds bounds;
+        int x;
+        int y;
+        int z;
+        int empty;
+        uint64_t storages[6][6];
+    };
 
-    int gx = 4, gy = gx, gz = gx;
+    struct ls_storage
+    {
+        std::array<std::array<std::unique_ptr<gl::buffer<gfx::line_space::line>>, 6>, 6> storages;
+    };
+
+    int gx = 32, gy = gx, gz = gx;
     const glm::vec4 qsize = bound.size() / glm::vec4{ gx, gy, gz, 1 };
-    std::vector<gfx::line_space> line_spaces;
-    gl::buffer<gfx::line_space::data_type> line_space_datas(GL_DYNAMIC_STORAGE_BIT);
+    std::vector<ls_storage> line_spaces;
+    gl::buffer<buffer_data> line_space_datas(GL_DYNAMIC_STORAGE_BIT);
     line_spaces.reserve(gx * gy * gz);
     line_space_datas.resize(gx * gy * gz);
     for (int z = 0; z < gz; ++z)
+    for (int y = 0; y < gy; ++y)
+    for (int x = 0; x < gx; ++x)
     {
-        for (int y = 0; y < gy; ++y)
+        int index = z * gy * gx + y * gx + x;
+        buffer_data& ls_data = line_space_datas[index];
+
+        gfx::line_space_bounds lsb;
+        ls_data.bounds.min = bound.min + glm::vec4(x, y, z, 1) * qsize;
+        ls_data.bounds.max = ls_data.bounds.min + qsize;
+
+        gfx::line_space ls(2, 2, 2);
+        ls.generate(gen_bvh, ls_data.bounds);
+        ls_data.x = ls.size_x();
+        ls_data.y = ls.size_y();
+        ls_data.z = ls.size_z();
+        ls_data.empty = ls.empty() ? 1 : 0;
+
+        ls_storage& storage = line_spaces.emplace_back();
+        for (int s = 0; s < 6; ++s)
+        for (int e = 0; e < 6; ++e)
         {
-            for (int x = 0; x < gx; ++x)
-            {
-                gfx::line_space_bounds lsb;
-                lsb.min = bound.min + glm::vec4(x, y, z, 1) * qsize;
-                lsb.max = lsb.min + qsize;
-                line_spaces.emplace_back(2, 2, 2).build(gen_bvh, lsb);
-                line_space_datas[z * gy * gx + y * gx + x] = (line_spaces.back().get_data());
-            }
+            storage.storages[s][e] = ls.empty() ? nullptr : std::make_unique<gl::buffer<gfx::line_space::line>>(ls.storage()[s][e].begin(), ls.storage()[s][e].end());
+            ls_data.storages[s][e] = (ls.empty() || e == s) ? 0ui64 : storage.storages[s][e]->handle();
         }
     }
     line_space_datas.synchronize();
@@ -111,6 +137,7 @@ int main()
     cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negy.hdr", res::image_type::f32, res::RGB).data.get());
     cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/posz.hdr", res::image_type::f32, res::RGB).data.get());
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negz.hdr", res::image_type::f32, res::RGB).data.get());
+    cubemap.generate_mipmaps();
     const gl::sampler sampler;
 
     gl::buffer<tracer_data> data(1, GL_DYNAMIC_STORAGE_BIT);

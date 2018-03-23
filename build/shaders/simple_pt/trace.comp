@@ -52,9 +52,9 @@ float next_random()
     return random_value(_current_prime = (_current_prime + 1) % 6);
 }
 
-vec3 environment(samplerCube map, vec3 direction, float clamp_color)
+vec3 environment(samplerCube map, vec3 direction, float clamp_color, int mip)
 {
-    return clamp(pow(textureLod(map, direction, 0).rgb, vec3(1/2.8f)), 0, clamp_color);
+    return clamp(pow(textureLod(map, direction, mip).rgb, vec3(1/2.8f)), 0, clamp_color);
 }
 
 struct light_path
@@ -63,6 +63,29 @@ struct light_path
     vec4 normal;
     vec4 color;
 };
+
+struct ls_result
+{
+    vec2 bary;
+    int triangle;
+    float distance;
+};
+
+ls_result resolve_line_space(vec3 orig, vec3 dir, uintptr_t gls, uintptr_t vers, uintptr_t indices, float maxdist)
+{
+    ls_result result;
+    
+    line hit_line = get_line_grid(grid_line_space, orig, dir, maxdist);
+    triangle* tri = (((triangle*)indices) + hit_line.triangle);
+    result.triangle = hit_line.triangle;
+
+    if (result.triangle == -1)
+        return result;
+
+    vertex* vertices = (vertex*)vers;
+    intersect_triangle_plane(orig, dir, vertices[tri->a].position.xyz, vertices[tri->b].position.xyz, vertices[tri->c].position.xyz, result.distance, result.bary);
+    return result;
+}
 
 const int bounce_count = 6;
 const int lpcount = 4;
@@ -84,13 +107,16 @@ void main()
     vec3 direction = normalize((camera_matrix * vec4(uv, 0, 1)).xyz);
     vec3 origin = camera_position.xyz;
 
+    ls_result ls_r = resolve_line_space(origin, direction, grid_line_space, vbo, ibo, 1.f / 0.f);
 
     vertex* vertices2 = (vertex*) vbo;
-    
-    vec3 dbg;
-    line hit_line = get_line_grid(grid_line_space, origin, direction, 1.f / 0.f, dbg);
-    imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
-    //imageStore(img, pixel, hit_line.triangle == -1 ? vec4(0) : vec4(dbg, 1));//abs(vertices2[(((triangle*) ibo) + hit_line.triangle)->a].normal.xyz), 1));
+    triangle* tri = (((triangle*)ibo) + ls_r.triangle);
+
+    vec2 lsbary = ls_r.bary;
+    float lsdist = ls_r.distance;
+    const vec3 lsnorm = vertices2[tri->b].normal.xyz * lsbary.x + vertices2[tri->c].position.xyz * lsbary.y + vertices2[tri->a].position.xyz * (1 - lsbary.x - lsbary.y);
+
+    imageStore(img, pixel, ls_r.triangle == -1 ? vec4(0) : vec4(lsnorm, 1));
     return;
     
     bvh_state_set_mode(bvh_mode_nearest);
@@ -101,6 +127,7 @@ void main()
     if(current_result.hits)
     {
         vec3 radiance = vec3(1);
+        bool was_diffuse = false;
         for(int i=0; i<bounce_count; ++i)
         {
             if(current_result.hits)
@@ -241,6 +268,7 @@ void main()
                 {
                     if(meta == 0)
                     {
+                        was_diffuse = true;
                         vec4 diffuse = vec4(1, 1, 1, 1);
                         direction = normalize(world_hemisphere);
                         color += vec4(light_color, 1) * INV_PI * vec4(radiance, 1) * diffuse;
@@ -264,13 +292,13 @@ void main()
             }
             else
             {
-                color += vec4(radiance * environment(cubemap, direction, 1.1f), 1);
+                color += vec4(radiance * environment(cubemap, direction, 1.1f, 3), 1);
                 break;
             }
         }
     }
     else
-        color = vec4(environment(cubemap, direction, 2.f), 0);
+        color = vec4(environment(cubemap, direction, 2.f, 0), 0);
 
     imageStore(img, pixel, mix(last_color, color, 1.f / frames));
 }

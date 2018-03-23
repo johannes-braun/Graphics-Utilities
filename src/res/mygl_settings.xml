@@ -18,6 +18,10 @@
     <extension>GL_NV_shader_buffer_store</extension>
     <extension>GL_NV_uniform_buffer_unified_memory</extension>
     <extension>GL_NV_vertex_buffer_unified_memory</extension>
+    <extension>GL_NV_gpu_program5</extension>
+    <extension>GL_NV_gpu_shader5</extension>
+    <extension>GL_NV_compute_program5</extension>
+    <extension>GL_NV_gpu_program5_mem_extended</extension>
   </extensions>
   <commands>
     <command>glEnableClientState</command>

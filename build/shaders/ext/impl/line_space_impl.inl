@@ -19,13 +19,13 @@ struct buffer_data
 };
 
 const ivec2 patch_indices[6] = {
-    ivec2( 0, 1 ),
-    ivec2( 0, 2 ),
-    ivec2( 1, 2 ),
+    ivec2(1, 2),
+    ivec2(0, 2),
+    ivec2(0, 1),
 
-    ivec2( 0, 1 ),
-    ivec2( 0, 2 ),
-    ivec2( 1, 2 ),
+    ivec2(1, 2),
+    ivec2(0, 2),
+    ivec2(0, 1),
 };
 
 int smallest_axis(const in vec3 vector)
@@ -43,12 +43,9 @@ int smallest_axis(const in vec3 vector)
         return 2;
 }
 
-line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float max_distance, inout vec3 dbg)
+line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float max_distance)
 {
     grid_ls* grid = (grid_ls*)grid_line_space;
-
-   // return get_line(grid->line_spaces, 6, origin, direction, max_distance, dbg);
-    
 
     int start_face, end_face;
     float temp_tmin, temp_tmax;
@@ -74,7 +71,7 @@ line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float
             int ls_index = index.x + index.y * grid->xyz_p.x + index.z * grid->xyz_p.x * grid->xyz_p.y;
             int axis = smallest_axis(tnext);
             
-            line l = get_line(grid->line_spaces, ls_index, origin, direction, max_distance, dbg);
+            line l = get_line(grid->line_spaces, ls_index, origin, direction, max_distance);
             if(l.triangle != -1)
                 return l;
 
@@ -91,16 +88,20 @@ line get_line_grid(uintptr_t grid_line_space, vec3 origin, vec3 direction, float
     return result;
 }
 
-line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, float max_distance, inout vec3 dbg)
+line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, float max_distance)
 {
     buffer_data* line_space_data = ((buffer_data*)line_space) + index;
+
+    line result;
+    result.triangle = -1;
+
+    if (line_space_data->xyz_p.w == 1)
+        return result;
 
     float min_t = 1.f / 0.f;
     float max_t = - (1.f / 0.f);
     bool bound_intersection = intersect_bounds(origin, direction, line_space_data->bounds_min.xyz, line_space_data->bounds_max.xyz, max_distance);
 
-    line result;
-    result.triangle = -1;
     if (bound_intersection)
     {
         const vec3 bounds_size = line_space_data->bounds_max.xyz - line_space_data->bounds_min.xyz;
@@ -148,15 +149,11 @@ line get_line(uintptr_t line_space, int index, vec3 origin, vec3 direction, floa
         ivec2 start_patch = clamp(ivec2((start_offset / start_bounds_size) * start_size), ivec2(0), start_size - ivec2(1));
         ivec2 end_patch = clamp(ivec2((end_offset / end_bounds_size) * end_size), ivec2(0), end_size - ivec2(1));
 
-
         line* line_set = (line*)line_space_data->storages[start_face][end_face];
 
         const int start_count = start_size.x * start_size.y;
         const int end_count = end_size.x * end_size.y;
         const uint index = uint(end_count * (start_patch.y * start_size.x + start_patch.x) + end_patch.y * end_size.x  + end_patch.x);
-
-
-        dbg = vec3(start_offset, 0);
 
         return line_set[index];
     }

@@ -127,3 +127,36 @@ bool intersect_triangle(
 	return (t = dot(e2, Q) * inv_det) > float_epsilon;
 }
 
+bool intersect_triangle_plane(
+    const vec3 origin,
+    const vec3 direction,
+    const vec3 v1,
+    const vec3 v2,
+    const vec3 v3,
+    inout float t,
+    inout vec2 barycentric)
+{
+    float float_epsilon = 1e-23f;
+    float border_epsilon = 1e-6f;
+
+    //Find vectors for two edges sharing V1
+    vec3 e1 = v2 - v1;
+    vec3 e2 = v3 - v1;
+
+    //if determinant is near zero, ray lies in plane of triangle
+    vec3 P = cross(vec3(direction), e2);
+    float det = dot(e1, P);
+    if (det > -float_epsilon && det < float_epsilon)
+        return false;
+
+    //Calculate u parameter and test bound
+    float inv_det = 1.f / det;
+    vec3 T = origin.xyz - v1;
+    barycentric.x = dot(T, P) * inv_det;
+
+    //Calculate V parameter and test bound
+    vec3 Q = cross(T, e1);
+    barycentric.y = dot(vec3(direction), Q) * inv_det;
+
+    return (t = dot(e2, Q) * inv_det) > float_epsilon;
+}
