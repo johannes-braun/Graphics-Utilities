@@ -974,15 +974,16 @@ namespace glshader::preprocessor
     processed_file preprocess_file(const fs::path& file_path, const std::vector<fs::path>& include_directories,
         const std::vector<definition>& definitions)
     {
-#if defined(glGetIntegerv) && defined(GL_NUM_EXTENSIONS) && defined(glGetStringi) && defined(GL_EXTENSIONS)
-        [[maybe_unused]] const static auto ext = [] {
-            int n;
-            glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-            for (auto i = 0; i < n; ++i)
-                extensions.emplace(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
-            return 0;
-        }();
-#endif
+        if (glGetIntegerv && glGetStringi)
+        {
+            [[maybe_unused]] const static auto ext = [] {
+                int n;
+                glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+                for (auto i = 0; i < n; ++i)
+                    extensions.emplace(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i)));
+                return 0;
+            }();
+        }
 
         processed_file processed;
         processed.version = -1;
