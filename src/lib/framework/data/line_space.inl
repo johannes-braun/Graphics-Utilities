@@ -14,6 +14,7 @@ namespace gfx
 
     void line_space::generate(const bvh<3>& bvh, line_space_bounds bounds)
     {
+        _bounds = bounds;
         glm::ivec3 subdiv;
         subdiv.x = _subdivision_x;
         subdiv.y = _subdivision_y;
@@ -116,5 +117,10 @@ namespace gfx
     bool line_space::empty() const noexcept
     {
         return _empty;
+    }
+
+    const line_space_bounds& line_space::bounds() const noexcept
+    {
+        return _bounds;
     }
 }

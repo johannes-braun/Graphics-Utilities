@@ -1,0 +1,62 @@
+layout(local_size_x = 32) in;
+
+struct spring
+{
+    int particle1;
+    int particle2;
+    float stiff;
+    float damping;
+    float length;
+    float _p;
+};
+
+struct vertex
+{
+    vec3 position;
+    uint meta;
+    vec3 normal;
+    uint meta2;
+    vec2 uv;
+    uint64_t meta3;
+};
+
+layout(binding = 0) uniform Data
+{
+    restrict vec4* spring_results; 
+    restrict vec4* particle_velocities; 
+    restrict spring* springs; 
+    restrict vertex* vertices;
+    restrict uint* vertex_springs;
+    int spring_count;
+    int vertex_count;
+};
+
+const int springs_per_particle = 12;
+
+void main()
+{
+    if(gl_GlobalInvocationID.x >= spring_count)
+        return;
+
+    spring s = springs[gl_GlobalInvocationID.x];
+    vertex v1 = vertices[s.particle1];
+    vertex v2 = vertices[s.particle2];
+    vec4 vel1 = particle_velocities[s.particle1];
+    vec4 vel2 = particle_velocities[s.particle2];
+
+    uint i1 = atomicIncWrap(vertex_springs + s.particle1, springs_per_particle);
+    uint i2 = atomicIncWrap(vertex_springs + s.particle2, springs_per_particle);
+
+    // Register springs as processed for indexing when integrating.
+    uint result1 = (springs_per_particle+1) * s.particle1 + i1;
+    uint result2 = (springs_per_particle+1) * s.particle2 + i2;
+
+    // Calculate spring forces
+    vec4 difference = vec4(v1.position - v2.position, 0);
+    vec4 total_force = s.stiff * (length(difference) - s.length) * normalize(difference);
+
+    // Put counteracting forces into the result buffer with a little damping
+    vec4 damping = s.damping * (vel2 - vel1);
+    spring_results[result1] = total_force;
+    spring_results[result2] = -spring_results[result1];
+}

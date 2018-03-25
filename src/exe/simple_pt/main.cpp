@@ -15,7 +15,8 @@
 #include <opengl/query.hpp>
 
 #include <framework/data/bvh.hpp>
-#include <framework/data/linespace.hpp>
+#include <framework/data/grid_line_space.hpp>
+#include <framework/data/gpu_data.hpp>
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
@@ -44,73 +45,41 @@ int main()
     res::mesh& mesh = file.meshes.get_by_index(0);
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
-    gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) {
-        return mesh.vertices[index].position;
-    });
+    gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
     const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
 
-    auto bound = gen_bvh.get_bounds();
-    struct buffer_data
+    gfx::grid_line_space grid(4, 4, 4, 3, 3, 3);
+    grid.generate(gen_bvh);
+
+    std::vector<std::array<std::array<std::unique_ptr<gl::buffer<gfx::line_space::line>>, 6>, 6>> line_space_storages(grid.size());
+    gl::buffer<gfx::gpu::line_space_data> line_space_datas(grid.size(), GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::gpu::grid_line_space_data> grid_line_space_datas(1, GL_DYNAMIC_STORAGE_BIT);
+
+    for (int index = 0; index < grid.size(); ++index)
     {
-        gfx::line_space_bounds bounds;
-        int x;
-        int y;
-        int z;
-        int empty;
-        uint64_t storages[6][6];
-    };
+        gfx::line_space& line_space = grid[index];
+        gfx::gpu::line_space_data& line_space_data = line_space_datas[index];
 
-    struct ls_storage
-    {
-        std::array<std::array<std::unique_ptr<gl::buffer<gfx::line_space::line>>, 6>, 6> storages;
-    };
+        line_space_data.bounds = line_space.bounds();
+        line_space_data.empty = line_space.empty();
+        line_space_data.x = line_space.size_x();
+        line_space_data.y = line_space.size_y();
+        line_space_data.z = line_space.size_z();
 
-    int gx = 32, gy = gx, gz = gx;
-    const glm::vec4 qsize = bound.size() / glm::vec4{ gx, gy, gz, 1 };
-    std::vector<ls_storage> line_spaces;
-    gl::buffer<buffer_data> line_space_datas(GL_DYNAMIC_STORAGE_BIT);
-    line_spaces.reserve(gx * gy * gz);
-    line_space_datas.resize(gx * gy * gz);
-    for (int z = 0; z < gz; ++z)
-    for (int y = 0; y < gy; ++y)
-    for (int x = 0; x < gx; ++x)
-    {
-        int index = z * gy * gx + y * gx + x;
-        buffer_data& ls_data = line_space_datas[index];
-
-        gfx::line_space_bounds lsb;
-        ls_data.bounds.min = bound.min + glm::vec4(x, y, z, 1) * qsize;
-        ls_data.bounds.max = ls_data.bounds.min + qsize;
-
-        gfx::line_space ls(2, 2, 2);
-        ls.generate(gen_bvh, ls_data.bounds);
-        ls_data.x = ls.size_x();
-        ls_data.y = ls.size_y();
-        ls_data.z = ls.size_z();
-        ls_data.empty = ls.empty() ? 1 : 0;
-
-        ls_storage& storage = line_spaces.emplace_back();
-        for (int s = 0; s < 6; ++s)
-        for (int e = 0; e < 6; ++e)
+        for (int start = 0; start < 6; ++start) for (int end = 0; end < 6; ++end)
         {
-            storage.storages[s][e] = ls.empty() ? nullptr : std::make_unique<gl::buffer<gfx::line_space::line>>(ls.storage()[s][e].begin(), ls.storage()[s][e].end());
-            ls_data.storages[s][e] = (ls.empty() || e == s) ? 0ui64 : storage.storages[s][e]->handle();
+            line_space_storages[index][start][end] = line_space.empty() ? nullptr : std::make_unique<gl::buffer<gfx::line_space::line>>(line_space.storage()[start][end].begin(), line_space.storage()[start][end].end());
+            line_space_data.storages[start][end] = (line_space.empty() || end == start) ? 0ui64 : line_space_storages[index][start][end]->handle();
         }
     }
+    grid_line_space_datas[0].bounds = grid.bounds();
+    grid_line_space_datas[0].x = grid.size_x();
+    grid_line_space_datas[0].y = grid.size_y();
+    grid_line_space_datas[0].z = grid.size_z();
+    grid_line_space_datas[0].line_spaces = line_space_datas.handle();
+
+    grid_line_space_datas.synchronize();
     line_space_datas.synchronize();
-    struct grid_ls
-    {
-        gfx::line_space_bounds bounds;
-        glm::ivec4 resolution;
-        uint64_t line_spaces;
-    };
-
-    gl::buffer<grid_ls> grid_line_space(1, GL_DYNAMIC_STORAGE_BIT);
-    grid_line_space[0].bounds = bound;
-    grid_line_space[0].resolution = { gx, gy, gz, 1 };
-    grid_line_space[0].line_spaces = line_space_datas.handle();
-    grid_line_space.synchronize();
-
 
     gl::buffer<res::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
     gl::buffer<res::index32> ibo(mesh.indices.begin(), mesh.indices.end());
@@ -145,7 +114,7 @@ int main()
     data[0].vbo = vbo.handle();
     data[0].ibo = ibo.handle();
     data[0].bvh = bvh.handle();
-    data[0].linespace = grid_line_space.handle();
+    data[0].linespace = grid_line_space_datas.handle();
     data[0].cubemap = sampler.sample(cubemap);
     data[0].frames = 10;
     data.synchronize();

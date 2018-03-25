@@ -34,6 +34,7 @@ namespace gl
     template<typename T>
     void compute_pipeline::bind_uniform_buffer(uint32_t index, const buffer<T>& buffer, size_t offset, size_t size) const noexcept
     {
+        glBindProgramPipeline(_id);
         glBufferAddressRangeNV(GL_UNIFORM_BUFFER_ADDRESS_NV, index, buffer.handle() + offset, (size == ~0) ? buffer.size() * sizeof(decltype(buffer[0])) : size);
     }
 }

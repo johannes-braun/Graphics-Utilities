@@ -26,15 +26,17 @@ namespace gfx
         int size_y() const noexcept;
         int size_z() const noexcept;
         bool empty() const noexcept;
+        const line_space_bounds& bounds() const noexcept;
 
     private:
         int _subdivision_x;
         int _subdivision_y;
         int _subdivision_z;
         bool _empty;
+        line_space_bounds _bounds;
 
         std::array<std::array<std::vector<line>, 6>, 6> _storages;
     };
 }
 
-#include "linespace.inl"
+#include "line_space.inl"
