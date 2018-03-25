@@ -12,6 +12,7 @@ layout(binding = 1) uniform Model
 {
     mat4 model_mat;
     mat4 normal_mat;
+    vec4 color;
 };
 
 out gl_PerVertex { vec4 gl_Position; };
