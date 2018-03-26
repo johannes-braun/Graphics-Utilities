@@ -129,7 +129,7 @@ int main(int argc, const char** args)
     glfwMakeContextCurrent(window);
 
     // Load OpenGL functions from system processes
-    mygl_load_gl();
+    mygl::load();
 
     // Add debug callback
     glDebugMessageCallback([](GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char *message, const void *userParam) {

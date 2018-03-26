@@ -97,7 +97,7 @@ namespace io
         {
             glfwMakeContextCurrent(_window);
 
-            mygl_load_gl();
+            mygl::load();
             glfwSwapInterval(0);
 
             gl::set_debug_callback([](gl::debug_source source, gl::debug_type type, uint32_t id,
