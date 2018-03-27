@@ -1,6 +1,6 @@
 #pragma once
 
-namespace winfw::platform::win32
+namespace winfw
 {
     enum keycode
     {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "win32_keys.hpp"
+#include "keys.hpp"
 #include <filesystem>
 
 namespace winfw
@@ -13,6 +13,7 @@ namespace winfw
         captured,
         center_captured
     };
+    enum class native_handle : uint64_t { null = 0 };
 
     struct point { long x, y; };
     struct rect { long left, top, right, bottom; };

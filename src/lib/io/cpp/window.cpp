@@ -63,6 +63,8 @@ namespace io
 
                 return false;
             };
+            
+
             _debug_callback = _instance.createDebugReportCallbackEXT(vk::DebugReportCallbackCreateInfoEXT(
                 vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning | vk::DebugReportFlagBitsEXT::ePerformanceWarning, &debugCallback, &_debug_callback_fun));
             if (!(_debug_callback_fun && _debug_callback)) throw std::runtime_error("Could not create debug callback.");

@@ -1,15 +1,10 @@
 
 #include <cstdint>
-#include "win32_window.hpp"
-#include "win32_monitor.hpp"
-#include "wgl_context.hpp"
+#include <winfw/window.hpp>
+#include <winfw/monitor.hpp>
+#include <winfw/gl_context.hpp>
 #include <mygl/gl.hpp>
 #include <jpu/log.hpp>
-
-namespace winfw
-{
-    using namespace platform::win32;
-}
 
 int main()
 {
@@ -18,12 +13,16 @@ int main()
         if (down && k == 'V' && winfw::is_key_down(winfw::key_control))
             std::wcout << winfw::get_clipboard_text();
     });
-    
     window.resize_callbacks.emplace_back([](int x, int y) {
-        log_i << "Resized to " << x << ", " << y;
-    });
+        log_i << "Resized to " << x << ", " << y;  
+    }); 
 
-    wgl::context context(window);
+    winfw::gl::context context(window, {
+        { GL_CONTEXT_MAJOR_VERSION_ARB, 4 },
+        { GL_CONTEXT_MINOR_VERSION_ARB, 6 },
+        { GL_CONTEXT_FLAGS_ARB, GL_CONTEXT_DEBUG_BIT_ARB },
+        { GL_CONTEXT_PROFILE_MASK_ARB, GL_CONTEXT_CORE_PROFILE_BIT_ARB },
+    });
     context.make_current();
     context.set_swap_interval(0);
     mygl::load();

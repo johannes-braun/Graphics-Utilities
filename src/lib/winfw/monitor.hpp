@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 
-namespace winfw::platform::win32
+namespace winfw
 {
     class window;
     struct monitor
@@ -14,7 +14,7 @@ namespace winfw::platform::win32
     private:
         friend window;
         friend std::vector<monitor> get_monitors() noexcept;
-        void* _handle;
+        native_handle _handle;
     };
 
     std::vector<monitor> get_monitors() noexcept;

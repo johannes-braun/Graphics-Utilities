@@ -1,10 +1,11 @@
 #define WINFW_HANDLES public:
+#include "../monitor.hpp"
 
-#include "win32_monitor.hpp"
-#include "win32_window.hpp"
+#if defined(WIN32)
+#include "../window.hpp"
 #include <Windows.h>
 
-namespace winfw::platform::win32
+namespace winfw
 {
     std::vector<monitor> get_monitors() noexcept
     {
@@ -40,7 +41,7 @@ namespace winfw::platform::win32
                 info.cbSize = sizeof(MONITORINFOEXW);
 
                 if (GetMonitorInfoW(handle, &info) && reinterpret_cast<monitor*>(data)->name == info.szDevice)
-                    reinterpret_cast<monitor*>(data)->_handle = handle;
+                    reinterpret_cast<monitor*>(data)->_handle = reinterpret_cast<native_handle&>(handle);
 
                 return true;
             }, reinterpret_cast<LPARAM>(&mon));
@@ -48,3 +49,4 @@ namespace winfw::platform::win32
         return result;
     }
 }
+#endif //defined(WIN32)
