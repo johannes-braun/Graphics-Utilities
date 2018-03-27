@@ -1,5 +1,3 @@
-#define WGL_PUBLIC_HANDLES
-#define WIN32_WINDOW_PUBLIC_HANDLES
 #define APIENTRY *
 #define WINGDIAPI
 #include <gl/GL.h>
@@ -7,11 +5,14 @@
 #undef WINGDIAPI
 #include "wgl.h"
 #include "wglext.h"
+
+#define WGL_HANDLES public:
+#define WINFW_HANDLES public:
 #include "wgl_context.hpp"
 
 namespace wgl
 {
-    context::context(const win32::window& window)
+    context::context(const winfw::platform::win32::window& window)
     {
         PIXELFORMATDESCRIPTOR desc{
             sizeof(PIXELFORMATDESCRIPTOR),

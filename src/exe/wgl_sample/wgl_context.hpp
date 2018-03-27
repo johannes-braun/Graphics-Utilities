@@ -1,25 +1,23 @@
 #pragma once
 
+#include "wgl_internal.hpp"
 #include "win32_window.hpp"
 
 namespace wgl
 {
     class context
     {
+        using handle = void*;
     public:
-        context(const win32::window& window);
+        context(const winfw::platform::win32::window& window);
         ~context();
 
         void make_current() const noexcept;
         void swap_buffers() const noexcept;
         void set_swap_interval(int i) const noexcept;
 
-#ifndef WGL_PUBLIC_HANDLES
-    private:
-#endif
+    WGL_HANDLES
         int(*wglSwapIntervalEXT)(int) = nullptr;
-
-        using handle = void*;
         handle _device_context;
         handle _context;
     };
