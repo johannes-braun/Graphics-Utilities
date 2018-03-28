@@ -30,7 +30,7 @@ namespace wf
     window::window(const std::wstring& title, int width, int height, int pos_x, int pos_y)
     {
         const HINSTANCE instance = GetModuleHandle(nullptr);
-
+        
         WNDCLASSW win_class{ 0 };
         win_class.lpfnWndProc = window_callback;
         win_class.hInstance = instance;

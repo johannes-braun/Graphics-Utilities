@@ -1,4 +1,4 @@
-#include "gui.hpp"
+#include "imgui.hpp"
 
 #include <vulkan/device.hpp>
 
@@ -10,24 +10,29 @@ namespace gfx
         wf::mouse_middle
     };
 
-    void gui::init()
+    // Save the default ImGui context.
+    // At execution termination, restore the default context and Shutdown ImGui.
+    // This is needed because for some reason ImGui needs a valid context on ImGui::Shutdown().
+    static class imgui_init
     {
-        // Save the default ImGui context.
-        // At execution termination, restore the default context and Shutdown ImGui.
-        // This is needed because for some reason ImGui needs a valid context on ImGui::Shutdown().
-        static class gui_init
-        {
-        public:
-            gui_init() : _m_default_context(ImGui::GetCurrentContext()) {}
-            ~gui_init()
-            {
-                ImGui::SetCurrentContext(_m_default_context);
-                ImGui::Shutdown();
-            }
-        private:
-            ImGuiContext * _m_default_context;
-        } imgui_init;
+    public:
+        imgui_init();
+        ~imgui_init();
+        ImGuiContext * default_context;
+    } imgui_init;
 
+    imgui_init::imgui_init()
+        : default_context(ImGui::GetCurrentContext())
+    {}
+
+    imgui_init::~imgui_init()
+    {
+        ImGui::SetCurrentContext(default_context);
+        ImGui::Shutdown();
+    }
+
+    void imgui::init()
+    {
         _context = ImGui::CreateContext();
         ImGui::SetCurrentContext(_context);
 
@@ -51,13 +56,14 @@ namespace gfx
         io.KeyMap[ImGuiKey_X] = 'X';
         io.KeyMap[ImGuiKey_Y] = 'Y';
         io.KeyMap[ImGuiKey_Z] = 'Z';
+
         apply_theme();
 
         io.UserData = this;
         io.RenderDrawListsFn = nullptr;
 
         io.SetClipboardTextFn = [](void* data, const char* text) {
-            wf::set_clipboard_text(std::wstring(text, text + strlen(text))); 
+            wf::set_clipboard_text(std::wstring(text, text + strlen(text)));
         };
         io.GetClipboardTextFn = [](void* data) {
             static std::string text;
@@ -93,14 +99,14 @@ namespace gfx
         });
     }
 
-    void gui::new_frame()
+    void imgui::begin()
     {
         _has_frame = true;
         ImGui::SetCurrentContext(_context);
 
         auto&& io = _context->IO;
         const wf::rect r = _window->get_rect();
-        io.DisplaySize = ImVec2(float(r.right-r.left), float(r.bottom - r.top));
+        io.DisplaySize = ImVec2(float(r.right - r.left), float(r.bottom - r.top));
         io.DisplayFramebufferScale = ImVec2(1, 1);
 
         io.DeltaTime = float(_window->time_update().count());
@@ -125,7 +131,7 @@ namespace gfx
         for (int i = 0; i < 3; i++)
         {
             // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
-            io.MouseDown[i] = _mouse_button_states[i] ||  wf::is_key_down(mouse_buttons[i]);
+            io.MouseDown[i] = _mouse_button_states[i] || wf::is_key_down(mouse_buttons[i]);
             _mouse_button_states[i] = false;
         }
 
@@ -135,19 +141,14 @@ namespace gfx
         ImGui::NewFrame();
     }
 
-    bool gui::is_initialized() const
-    {
-        return _has_frame;
-    }
-
-    void gui::render()
+    void imgui::draw()
     {
         ImGui::SetCurrentContext(_context);
         ImGui::Render();
         render_data(ImGui::GetDrawData());
     }
 
-    void gui::render_data(ImDrawData* draw_data)
+    void imgui::render_data(ImDrawData* draw_data)
     {
         auto&& io = _context->IO;
         const int fb_width = static_cast<int>(io.DisplaySize.x * io.DisplayFramebufferScale.x);
@@ -188,7 +189,7 @@ namespace gfx
         post_render();
     }
 
-    void gui::apply_theme() const
+    void imgui::apply_theme() const
     {
         auto atlas = _context->IO.Fonts;
         // Default Font
@@ -260,39 +261,39 @@ namespace gfx
 
     }
 
-    gui::gui(std::shared_ptr<wf::window> window, vkn::device* device, vkn::swapchain* swapchain) : _window(window),
+    imgui::imgui(std::shared_ptr<wf::window> window, vkn::device* device, vkn::swapchain* swapchain) : _window(window),
         _vk_impl(io::impl::gui_vk(device, swapchain)),
         _api(io::api::vulkan)
     {
         init();
     }
 
-    gui::gui(std::shared_ptr<wf::window> window) : _window(window), _gl_impl(io::impl::gui_gl(true)), _api(io::api::opengl)
+    imgui::imgui(std::shared_ptr<wf::window> window) : _window(window), _gl_impl(io::impl::gui_gl(true)), _api(io::api::opengl)
     {
         init();
     }
 
-    io::impl::gui_gl& gui::render_interface_gl()
+    io::impl::gui_gl& imgui::render_interface_gl()
     {
         return _gl_impl;
     }
 
-    const io::impl::gui_gl& gui::render_interface_gl() const
+    const io::impl::gui_gl& imgui::render_interface_gl() const
     {
         return _gl_impl;
     }
 
-    io::impl::gui_vk& gui::render_interface_vk()
+    io::impl::gui_vk& imgui::render_interface_vk()
     {
         return _vk_impl;
     }
 
-    const io::impl::gui_vk& gui::render_interface_vk() const
+    const io::impl::gui_vk& imgui::render_interface_vk() const
     {
         return _vk_impl;
     }
 
-    void gui::init_atlas()
+    void imgui::init_atlas()
     {
         switch (_api)
         {
@@ -305,7 +306,7 @@ namespace gfx
         }
     }
 
-    void gui::pre_render(ImDrawData* draw_data)
+    void imgui::pre_render(ImDrawData* draw_data)
     {
         switch (_api)
         {
@@ -318,7 +319,7 @@ namespace gfx
         }
     }
 
-    void gui::mid_render(const ImDrawCmd& pcmd, const int idx_buffer_offset, const int vtx_buffer_offset)
+    void imgui::mid_render(const ImDrawCmd& pcmd, const int idx_buffer_offset, const int vtx_buffer_offset)
     {
         switch (_api)
         {
@@ -331,7 +332,7 @@ namespace gfx
         }
     }
 
-    void gui::post_render()
+    void imgui::post_render()
     {
         switch (_api)
         {
@@ -344,9 +345,13 @@ namespace gfx
         }
     }
 
-    gui::~gui()
+    imgui::~imgui()
     {
         if (_context)
+        {
             ImGui::DestroyContext(_context);
+            if (imgui_init.default_context)
+                ImGui::SetCurrentContext(imgui_init.default_context);
+        }
     }
 }

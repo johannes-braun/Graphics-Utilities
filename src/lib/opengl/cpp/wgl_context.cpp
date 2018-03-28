@@ -1,4 +1,5 @@
 #include "../context.hpp"
+#include <mygl/gl.hpp>
 
 #if defined(WIN32)
 #include <Windows.h>
@@ -14,7 +15,7 @@ namespace gl
         assert(IsWindow(reinterpret_cast<HWND>(hnd)));
     } 
 
-    context::context(native_handle window, std::vector<std::pair<context_attribs, int>> context_attributes)
+    context::context(native_handle window, std::vector<std::pair<context_attribs, int>> context_attributes, const context * const shared)
     {
         check_handle(window);
         PIXELFORMATDESCRIPTOR desc{
@@ -47,9 +48,11 @@ namespace gl
         context_attributes.emplace_back(context_attribs(0), 0);
         int* attr = reinterpret_cast<int*>(&context_attributes[0].first);
 
-        _context = static_cast<native_handle>(reinterpret_cast<uint64_t>(wglCreateContextAttribsARB(native_dc(_device_context), nullptr, attr)));
+        _context = static_cast<native_handle>(reinterpret_cast<uint64_t>(wglCreateContextAttribsARB(native_dc(_device_context), reinterpret_cast<HGLRC>(shared ? shared->_context : native_handle::null), attr)));
         set_pixel_format({});
         wglDeleteContext(temp_context);
+        make_current();
+        mygl::load();
     }
 
     void context::set_pixel_format(std::vector<std::pair<pixel_format_attribs, int>> attributes)

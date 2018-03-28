@@ -12,29 +12,22 @@
 namespace gfx
 {
     // A wrapper which enables the rendering of ImGui elements.
-    class gui
+    class imgui
     {
     public:
         constexpr static int font_default = 0;
         constexpr static int font_large_light = 1;
         constexpr static int font_title = 2;
 
-        gui(std::shared_ptr<wf::window> window, vkn::device* device, vkn::swapchain* swapchain);
-
-        gui(std::shared_ptr<wf::window> window);
-
-        ~gui();
+        imgui(std::shared_ptr<wf::window> window, vkn::device* device, vkn::swapchain* swapchain);
+        imgui(std::shared_ptr<wf::window> window);
+        ~imgui();
 
         // Is called each frame and resets the current input states.
-        void new_frame();
-
-        // Returns true, if newFrame(...) is called at least once.
-        bool is_initialized() const;
-
-        void render();
+        void begin();
+        void draw();
 
     private:
-
         void init_atlas();
         void init();
         void pre_render(ImDrawData* draw_data);

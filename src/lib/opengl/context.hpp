@@ -11,12 +11,12 @@ namespace gl
 
     class context
     {
-    public: 
+    public:
         template<typename T, typename = std::enable_if_t<sizeof(T) == sizeof(void*)>>
-        context(T hnd, std::vector<std::pair<context_attribs, int>> context_attributes)
-            : context((check_handle(reinterpret_cast<native_handle&>(hnd)), reinterpret_cast<native_handle&>(hnd)), std::move(context_attributes))
+        context(T hnd, std::vector<std::pair<context_attribs, int>> context_attributes, const context * const shared = nullptr)
+            : context((check_handle(reinterpret_cast<native_handle&>(hnd)), reinterpret_cast<native_handle&>(hnd)), std::move(context_attributes), shared)
         {};
-        context(native_handle window, std::vector<std::pair<context_attribs, int>> context_attributes);
+        context(native_handle window, std::vector<std::pair<context_attribs, int>> context_attributes, const context * const shared = nullptr);
 
         ~context();
         void set_pixel_format(std::vector<std::pair<pixel_format_attribs, int>> attributes);
