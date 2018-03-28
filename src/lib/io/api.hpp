@@ -1,12 +1,10 @@
 #pragma once
 
-#include <GLFW/glfw3.h>
-
 namespace io
 {
     enum class api
     {
-        opengl = GLFW_OPENGL_API,
-        vulkan = GLFW_NO_API,
+        opengl = 0x00030001,
+        vulkan = 0,
     };
 }

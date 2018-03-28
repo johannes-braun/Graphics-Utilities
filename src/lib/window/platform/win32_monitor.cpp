@@ -5,7 +5,7 @@
 #include "../window.hpp"
 #include <Windows.h>
 
-namespace winfw
+namespace wf
 {
     std::vector<monitor> get_monitors() noexcept
     {

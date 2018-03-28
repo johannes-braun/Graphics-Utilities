@@ -3,7 +3,7 @@
 #include "keys.hpp"
 #include <filesystem>
 
-namespace winfw
+namespace wf
 {
     namespace files = std::experimental::filesystem;
 
@@ -22,7 +22,7 @@ namespace winfw
     using resize_fun = void(int x, int y);
     using maximize_fun = void(bool maximized);
     using minimize_fun = void(bool minimized);
-    using key_fun = void(int key, bool down);
+    using key_fun = void(int key, bool down, bool alt);
     using char_fun = void(wchar_t c);
     using scroll_fun = void(float x, float y);
 }

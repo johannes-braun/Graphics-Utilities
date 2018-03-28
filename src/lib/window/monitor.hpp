@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 
-namespace winfw
+namespace wf
 {
     class window;
     struct monitor

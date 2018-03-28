@@ -1,6 +1,6 @@
 #pragma once
 
-namespace winfw
+namespace wf
 {
     enum keycode
     {
