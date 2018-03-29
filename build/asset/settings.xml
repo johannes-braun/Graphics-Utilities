@@ -1,0 +1,8 @@
+<settings>
+  <window title="Game">
+    <size width="1280" height="720" fullscreen="false"/>
+    <multisample count="8"/>
+  </window>
+  
+  
+</settings>

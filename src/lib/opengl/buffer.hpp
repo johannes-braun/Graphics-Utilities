@@ -62,7 +62,7 @@ namespace gl
         buffer(GLbitfield usage = GL_ZERO) noexcept;
         explicit buffer(size_t count, GLbitfield usage = GL_ZERO);
         explicit buffer(size_t count, const T& init, GLbitfield usage = GL_ZERO);
-        explicit buffer(std::initializer_list<T> list, GLbitfield usage = GL_ZERO);
+        buffer(std::initializer_list<T> list, GLbitfield usage = GL_ZERO);
         template<typename It, typename = is_valid_iterator<It>>
         explicit buffer(It begin, It end, GLbitfield usage = GL_ZERO);
         ~buffer() noexcept;
