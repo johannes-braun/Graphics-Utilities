@@ -13,4 +13,6 @@ namespace game
 
     bool splash();
     bool run_splash();
+
+    extern float& progress;
 }

@@ -128,7 +128,7 @@ namespace gl
         void set(GLenum name, int value) const noexcept;
         void set(GLenum name, float value) const noexcept;
 
-        uint64_t sample(const texture& t) const noexcept;
+        uint64_t sample(gl_texture_t t) const noexcept;
 
     private:
         constexpr const static std::array<GLenum, 3> _float_parameters{

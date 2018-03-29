@@ -213,7 +213,7 @@ namespace gl
     template<typename ...As>
     void buffer<T>::emplace_back(As && ...value)
     {
-        push_back(std::move(T(std::forward<As&&>(value)...)));
+        push_back(std::move(T{ std::forward<As&&>(value)... }));
     }
 
     template<typename T>
@@ -392,17 +392,29 @@ namespace gl
     template<typename T>
     void buffer<T>::clear() noexcept
     {
+        const bool was_data_full_size = _data_full_size;
+        const GLbitfield map_access = _data_access;
+        if (was_data_full_size && _size != 0)
+            unmap();
         std::vector<uint8_t> temp(_size * sizeof(T), 0);
         glNamedBufferSubData(_id, 0, _size * sizeof(T), temp.data());
         _size = 0;
+        if (was_data_full_size)
+            map(map_access);
     }
 
     template<typename T>
     void buffer<T>::clear(const T& value) noexcept
     {
+        const bool was_data_full_size = _data_full_size;
+        const GLbitfield map_access = _data_access;
+        if (was_data_full_size && _size != 0)
+            unmap();
         std::vector<T> temp(_size, value);
         glNamedBufferSubData(_id, 0, _size * sizeof(T), temp.data());
         _size = 0;
+        if (was_data_full_size)
+            map(map_access);
     }
 
     template<typename T>

@@ -490,7 +490,7 @@ namespace gl
         glSamplerParameterf(_id, name, value);
     }
 
-    uint64_t sampler::sample(const texture& t) const noexcept
+    uint64_t sampler::sample(gl_texture_t t) const noexcept
     {
         if (!glGetTextureSamplerHandleARB)
             return 0;
