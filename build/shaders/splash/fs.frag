@@ -1,4 +1,5 @@
 layout(location = 0) in vec2 uv;
+layout(location =1) in vec4 col;
 
 layout(binding = 0, std140) uniform Data
 {
@@ -10,5 +11,6 @@ layout(location = 0) out vec4 color;
 
 void main()
 {
-    color = texture(img, uv);
+    color = col * texture(img, uv);
 }
+

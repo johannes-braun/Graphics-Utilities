@@ -8,6 +8,8 @@ bool menu() {
     ImGui::Begin("Lel");
     if (ImGui::Button("Run."))
         game::host::set_state(game::loop_ingame);
+    if (ImGui::Button("Splash!"))
+        game::host::set_state(game::prepare_splash);
     if (ImGui::Button("Quit."))
         game::host::set_state(game::do_quit);
     ImGui::End();
@@ -31,8 +33,6 @@ bool ingame() {
 
 int main()
 {
-    ("MyTest"+1)[2];
-
     if (!game::host::init("../asset/settings.xml"))
         return 1;
 
