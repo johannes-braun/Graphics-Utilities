@@ -1,6 +1,7 @@
 #pragma once
 
-#include <mygl/gl.hpp>
+#include "gl.hpp"
+
 #include <array>
 #include <type_traits>
 #include <cinttypes>
@@ -8,7 +9,6 @@
 #include <utility>
 #include <iterator>
 #include <memory>
-#include <jpu/log.hpp>
 #include <set>
 #include <cassert>
 

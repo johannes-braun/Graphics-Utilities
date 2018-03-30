@@ -1,9 +1,37 @@
 #pragma once
 
-#include "definition.hpp"
+#include <mygl/gl.hpp>
+#include <glsp/definition.hpp>
 
 #include <vector>
 #include <filesystem>
+
+#include <jpu/log.hpp>
+#define LOG_OUTPUT(x) tlog_i("GLShader") << (x)
+#define ERR_OUTPUT(x) tlog_e("GLShader") << (x)
+
+namespace glshader
+{
+    constexpr static const char* shader_cache_dir = "../cache/shaders";
+
+    constexpr const char* opengl_prefix = R"glsl(
+        #version 450 core
+        #extension GL_ARB_separate_shader_objects : require
+        #extension GL_ARB_bindless_texture : require
+        #extension GL_ARB_shading_language_420pack : require
+        #extension GL_NV_gpu_shader5 : require
+    )glsl";
+
+    constexpr const char* opengl_postfix = R"glsl(
+        layout(bindless_sampler) uniform;
+        layout(bindless_image) uniform;
+    )glsl";
+
+    constexpr static const char* glslc_default_flags = " -std=450core ";
+    constexpr static const char* glslc_location = "glslc";
+    constexpr static const char* glslc_temp_file_name = "shader_temp";
+}
+
 
 namespace glshader
 {

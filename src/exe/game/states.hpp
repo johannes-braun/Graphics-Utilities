@@ -11,8 +11,8 @@ namespace game
         loop_splash = 3,
     };
 
-    bool splash();
-    bool run_splash();
+    //bool splash();
+    //bool run_splash();
 
     extern float& progress;
 }

@@ -19,3 +19,6 @@
 [submodule "submodules/mygl"]
 	path = submodules/mygl
 	url = git@gitlab.uni-koblenz.de:johannesbraun/mygl.git
+[submodule "submodules/glshader"]
+	path = submodules/glshader
+	url = git@gitlab.uni-koblenz.de:johannesbraun/glshader.git

@@ -12,7 +12,7 @@ namespace game
 
 namespace game::host
 {
-    extern std::unique_ptr<io::window> window;
+    extern std::shared_ptr<io::window> window;
     extern std::map<int, std::function<bool()>> state_loops;
 
     bool init(const files::path& settings);

@@ -25,6 +25,9 @@ set(EXT_LIB_DEFAULTS -DCMAKE_VERBOSE_MAKEFILE=OFF
     -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>)
 
 include(${PROJECT_SOURCE_DIR}/add_libraries.cmake)
+list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glshader/include)
+list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/glshader/lib/glsp.lib)
+
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/glfw3/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/glfw3/lib/glfw3.lib)
 

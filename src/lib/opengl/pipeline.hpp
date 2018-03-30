@@ -4,13 +4,12 @@
 #include "uniform.hpp"
 #include "buffer.hpp"
 
-#include <jpu/memory.hpp>
-#include <jpu/log.hpp>
 #include <array>
 #include <map>
 #include <set>
 
 #include <type_traits>
+
 namespace gl
 {
     class pipeline;
@@ -102,40 +101,6 @@ namespace gl
         glm::ivec3 _group_sizes;
         gl_program_pipeline_t _id;
         std::shared_ptr<shader> _shader;
-    };
-
-
-    enum class primitive
-    {
-        points = GL_POINTS,
-        line_strip = GL_LINE_STRIP,
-        line_loop = GL_LINE_LOOP,
-        lines = GL_LINES,
-        line_strip_adj = GL_LINE_STRIP_ADJACENCY,
-        lines_adj = GL_LINES_ADJACENCY,
-        triangle_strip = GL_TRIANGLE_STRIP,
-        triangle_fan = GL_TRIANGLE_FAN,
-        triangles = GL_TRIANGLES,
-        triangle_strip_adj = GL_TRIANGLE_STRIP_ADJACENCY,
-        triangles_adj = GL_TRIANGLES_ADJACENCY,
-        patches = GL_PATCHES
-    };
-
-    enum class basic_primitive
-    {
-        points = GL_POINTS,
-        lines = GL_LINES,
-        lines_adj = GL_LINES_ADJACENCY,
-        triangles = GL_TRIANGLES,
-        triangles_adj = GL_TRIANGLES_ADJACENCY,
-        patches = GL_PATCHES
-    };
-
-    enum class index_type
-    {
-        u8 = GL_UNSIGNED_BYTE,
-        u16 = GL_UNSIGNED_SHORT,
-        u32 = GL_UNSIGNED_INT
     };
 }
 

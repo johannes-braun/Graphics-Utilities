@@ -121,7 +121,7 @@ struct material
 
 struct mesh
 {
-    mesh(mesh_proxy* proxy, const intptr_t material_addr, const glm::mat4 model)
+    mesh(mesh_proxy* proxy, const uintptr_t material_addr, const glm::mat4 model)
         : vertices(proxy->_vertex_buffer.handle()),
         elements(proxy->_index_buffer.handle()),
         bvh(proxy->_bvh_buffer.handle()),
@@ -130,10 +130,10 @@ struct mesh
         model(model)
     {}
 
-    intptr_t vertices;
-    intptr_t elements;
-    intptr_t bvh;
-    intptr_t material;
+    uintptr_t vertices;
+    uintptr_t elements;
+    uintptr_t bvh;
+    uintptr_t material;
     glm::mat4 inv_model;
     glm::mat4 model;
 };

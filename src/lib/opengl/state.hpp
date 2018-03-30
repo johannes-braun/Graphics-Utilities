@@ -2,11 +2,9 @@
 
 #include "pipeline.hpp"
 
-#include <jpu/memory.hpp>
-
 namespace gl
 {
-    class state : public jpu::ref_count
+    class state
     {
     public:
         state() noexcept;
@@ -16,7 +14,7 @@ namespace gl
         state& operator=(state&& other) noexcept;
         ~state() noexcept;
 
-        void capture(basic_primitive primitive) const noexcept;
+        void capture(GLenum primitive) const noexcept;
 
         operator gl_state_nv_t() const noexcept { return _id; }
 

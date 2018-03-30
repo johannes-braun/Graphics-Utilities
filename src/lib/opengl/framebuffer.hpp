@@ -6,7 +6,6 @@
 #include <variant>
 #include <memory>
 #include <vector>
-#include <jpu/memory.hpp>
 #include <map>
 #include <glm/detail/type_vec4.hpp>
 

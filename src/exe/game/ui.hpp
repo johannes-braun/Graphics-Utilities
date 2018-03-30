@@ -1,12 +1,14 @@
-#include "host.hpp"
-#include "states.hpp"
-#include "res/image.hpp"
+#pragma once
+
+#include <GLFW/glfw3.h>
+#include <opengl/gl.hpp>
+#include <opengl/buffer.hpp>
+#include <opengl/pipeline.hpp>
+#include <opengl/texture.hpp>
+#include <glm/glm.hpp>
 
 namespace game
 {
-    float _p = 0.f;
-    extern float& progress = _p;
-
     class ui
     {
     public:
@@ -115,67 +117,9 @@ namespace game
         gl::buffer<prop> _pbuf;
         gl::pipeline _pip;
     };
-
-    struct splash_info
-    {
-        gl::texture image{ GL_TEXTURE_2D };
-        gl::texture bg_img{ GL_TEXTURE_2D };
-    };
-
-    static ui& get_ui()
+    static ui& default_ui()
     {
         static ui x;
         return x;
-    }
-
-    static splash_info& ingo() {
-        static splash_info info;
-        return info;
-    }
-    double _splash_time;
-    bool splash()
-    {
-        static int i = [&]() {
-            const res::image img = res::load_svg_rasterized("../res/ui/logo.svg", 20.f);
-            ingo().image = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8);
-            ingo().image.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.data.get());
-            ingo().image.generate_mipmaps();
-            const res::image bg = res::load_image("../res/board.png", res::image_type::u8, res::RGBA);
-            ingo().bg_img = gl::texture(GL_TEXTURE_2D, bg.width, bg.height, GL_RGBA8);
-            ingo().bg_img.assign(GL_RGBA, GL_UNSIGNED_BYTE, bg.data.get());
-            ingo().bg_img.generate_mipmaps();
-            return 0;
-        }();
-
-        host::window->set_max_framerate(60.0);
-        _splash_time = glfwGetTime();
-        game::host::set_state(loop_splash);
-        return true;
-    }
-
-    bool run_splash()
-    {
-        float mx = sqrt(std::min(3.0f*(glfwGetTime() - _splash_time), 1.0));
-
-        int size = 256 * mx;
-        glm::vec4 start(0, 0, 0, 1);
-        glm::vec4 end(0.1f, 0.4f, 0.01f, 1.f);
-        glm::vec4 mid = mix(start, end, mx);
-        glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, &mid[0]);
-
-        int w, h; glfwGetFramebufferSize(*host::window, &w, &h);
-        get_ui().draw_quad({ 0, 0 }, { w,h }, { 0, 0 }, { w / 8, h / 8 }, ingo().bg_img);
-        get_ui().draw_quad({ w/2-size / 2, h/2-size / 2 }, { w / 2 + size / 2, h / 2 + size / 2 }, { 0, 1 }, { 1, 0 }, ingo().image);
-
-        // progress bar
-        get_ui().draw_quad({ 0, 0 }, { w, 24.f }, { 255, 255, 255, 64 });
-        get_ui().draw_quad({ 0, 0 }, { _p * w, 24.f }, { 255, 255, 255, 255 });
-
-        get_ui().draw();
-
-       /* if (glfwGetTime() - _splash_time > glm::pi<double>() || glfwGetKey(*game::host::window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            game::host::set_state(loop_menu);
-*/
-        return true;
     }
 }

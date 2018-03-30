@@ -1,8 +1,7 @@
 #pragma once
-
 #include "intersect_impl.inl"
 
-struct bvh_attribute
+struct bvh_attribute 
 {
     uint position_stride;
     uint position_offset;

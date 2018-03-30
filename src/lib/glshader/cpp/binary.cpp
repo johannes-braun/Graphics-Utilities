@@ -1,12 +1,16 @@
 #include "../binary.hpp"
-#include "../preprocessor.hpp"
-#include "../config.hpp"
+
+#include <glsp/glsp.hpp>
 
 #include <iterator>
 #include <sstream>
 #include <tuple>
 #include <fstream>
 #include <snappy.h>
+
+#ifndef LOG_OUTPUT
+#define LOG_OUTPUT(x) std::cout << (x) << '\n'
+#endif
 
 namespace glshader
 {
@@ -94,7 +98,7 @@ namespace glshader
         const std::vector<std::experimental::filesystem::path>& include_directories,
         const std::vector<definition>& definitions)
     {
-        auto proc = preprocessor::preprocess_file(file_path, include_directories, definitions);
+        auto proc = glsp::preprocess_file(file_path, include_directories, definitions);
 
         // Precompile shader
         auto src = opengl_prefix + proc.contents + opengl_postfix;
@@ -199,7 +203,7 @@ namespace glshader
             }
             if (!reload)
             {
-                LOG_OUTPUT << "Load cached shader binary...";
+                LOG_OUTPUT("Load cached shader binary...");
                 std::vector<char> compressed(header.binary_length);
                 input.read(reinterpret_cast<char*>(compressed.data()), header.binary_length);
 
@@ -231,7 +235,7 @@ namespace glshader
             {
             case shader_format::gl_binary:
             {
-                LOG_OUTPUT << "Compile OpenGL shader binary...";
+                LOG_OUTPUT("Compile OpenGL shader binary...");
                 auto[b, fmt, ds] = load_glbin(src, include_directories, definitions);
                 bin = std::move(b);
                 dependencies = std::move(ds);
@@ -239,7 +243,7 @@ namespace glshader
             } break;
             case shader_format::spirv:
             {
-                LOG_OUTPUT << "Compile SPIR-V shader binary...";
+                LOG_OUTPUT("Compile SPIR-V shader binary...");
                 auto[b, ds] = load_spirv(src, include_directories, definitions);
                 bin = std::move(b);
                 dependencies = std::move(ds);
@@ -274,7 +278,7 @@ namespace glshader
             out.write(reinterpret_cast<const char*>(out_compressed.data()), out_compressed.size());
             out.close();
 
-            LOG_OUTPUT << "Shader compilation successful";
+            LOG_OUTPUT("Shader compilation successful");
         }
 
         return { type, format, bin };

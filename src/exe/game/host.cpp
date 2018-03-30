@@ -2,7 +2,7 @@
 
 namespace game::host
 {
-    std::unique_ptr<io::window> window;
+    std::shared_ptr<io::window> window;
     std::map<int, std::function<bool()>> state_loops;
 
     int _current_state = 0;

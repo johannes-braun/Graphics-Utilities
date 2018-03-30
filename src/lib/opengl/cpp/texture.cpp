@@ -1,5 +1,7 @@
 #include "../texture.hpp"
 #include <algorithm>
+#include <cassert>
+#include <stdexcept>
 
 namespace gl
 {

@@ -26,7 +26,7 @@ namespace gl
             glDeleteStatesNV(1, &_id);
     }
 
-    void state::capture(basic_primitive primitive) const noexcept
+    void state::capture(GLenum primitive) const noexcept
     {
         glStateCaptureNV(_id, static_cast<GLenum>(primitive));
     }

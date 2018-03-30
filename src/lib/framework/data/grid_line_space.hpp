@@ -1,9 +1,12 @@
 #pragma once
 
 #include "line_space.hpp"
+#include <functional>
 
 namespace gfx
 {
+    std::function<void(float)> grid_updated;
+
     class grid_line_space
     {
     public:

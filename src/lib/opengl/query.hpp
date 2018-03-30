@@ -1,7 +1,6 @@
 #pragma once
 
 #include "gl.hpp"
-#include <jpu/memory.hpp>
 #include <type_traits>
 
 namespace gl

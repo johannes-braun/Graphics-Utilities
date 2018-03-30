@@ -104,3 +104,10 @@ execute_process(COMMAND ${CMAKE_COMMAND} ${EXT_LIB_DEFAULTS} ${EXT_LIB_ARGS} ${P
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/submodules/glfw3/build)
 execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/submodules/glfw3/build --target install
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/submodules/glfw3/build)
+    
+set(EXT_LIB_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${PROJECT_SOURCE_DIR}/external/cached/glshader -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_GENERATOR=${CMAKE_GENERATOR} -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM})
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/submodules/glshader/build)
+execute_process(COMMAND ${CMAKE_COMMAND} ${EXT_LIB_DEFAULTS} ${EXT_LIB_ARGS} ${PROJECT_SOURCE_DIR}/submodules/glshader
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/submodules/glshader/build)
+execute_process(COMMAND ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_BINARY_DIR}/submodules/glshader/build --target install
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/submodules/glshader/build)

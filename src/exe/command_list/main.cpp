@@ -112,7 +112,7 @@ int main()
     add_attrib(0, 3, GL_FLOAT, false, sizeof(res::vertex));
     add_attrib(1, 3, GL_FLOAT, false, sizeof(res::vertex));
     add_attrib(2, 2, GL_FLOAT, false, sizeof(res::vertex));
-    state.capture(gl::basic_primitive::triangles);
+    state.capture(GL_TRIANGLES);
 
     gl::command_buffer command_buffer;
     command_buffer.start();

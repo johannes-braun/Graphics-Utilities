@@ -22,6 +22,8 @@ namespace gfx
             lsb.min = _bounds.min + glm::vec4(x, y, z, 1) * qsize;
             lsb.max = lsb.min + qsize;
             ls.generate(bvh, lsb);
+
+            if(grid_updated) grid_updated(float(z * _count_y * _count_x + y * _count_x + x) / size());
         }
     }
 

@@ -9,7 +9,6 @@
 #include <any>
 #include <map>
 #include <glshader/binary.hpp>
-#include <jpu/memory.hpp>
 
 namespace gl
 {

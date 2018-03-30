@@ -4,9 +4,6 @@
 
 #include <glm/glm.hpp>
 #include <array>
-#include <cassert>
-#include <jpu/memory.hpp>
-#include <stdexcept>
 
 namespace gl
 {

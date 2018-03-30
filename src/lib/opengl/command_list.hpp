@@ -56,7 +56,7 @@ namespace gl
     };
     struct cmd_draw_elements_instanced : command<GL_DRAW_ELEMENTS_INSTANCED_COMMAND_NV, cmd_draw_elements_instanced>
     {
-        cmd_draw_elements_instanced(const primitive p, const u32 count, const u32 first_index = 0, const u32 base_vertex = 0, const u32 instance_count = 1, const u32 base_instance = 0) noexcept
+        cmd_draw_elements_instanced(const GLenum p, const u32 count, const u32 first_index = 0, const u32 base_vertex = 0, const u32 instance_count = 1, const u32 base_instance = 0) noexcept
             : mode(static_cast<u32>(p)), count(count), first_index(first_index), base_vertex(base_vertex), instance_count(instance_count), base_instance(base_instance)
         {}
         u32 mode;
@@ -68,7 +68,7 @@ namespace gl
     };
     struct cmd_draw_arrays_instanced : command<GL_DRAW_ARRAYS_INSTANCED_COMMAND_NV, cmd_draw_arrays_instanced>
     {
-        cmd_draw_arrays_instanced(const primitive p, const u32 count, const u32 first = 0, const u32 instance_count = 1, const u32 base_instance = 0) noexcept
+        cmd_draw_arrays_instanced(const GLenum p, const u32 count, const u32 first = 0, const u32 instance_count = 1, const u32 base_instance = 0) noexcept
             : mode(static_cast<u32>(p)), count(count), first(first), instance_count(instance_count), base_instance(base_instance)
         {}
         u32 mode;
