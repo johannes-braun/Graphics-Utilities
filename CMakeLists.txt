@@ -37,9 +37,6 @@ list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/openal-soft/lib/OpenAL32.
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/assimp/lib/assimp-vc140-mt.lib)
 
-list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/snappy/include)
-list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/snappy/lib/snappy.lib)
-
 list(APPEND INCLUDES ${EXT_EXTERNAL_LIBRARIES}/cached/pugixml/include)
 list(APPEND LIBRARIES ${EXT_EXTERNAL_LIBRARIES}/cached/pugixml/lib/pugixml.lib)
 

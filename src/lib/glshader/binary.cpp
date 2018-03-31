@@ -1,12 +1,12 @@
-#include "../binary.hpp"
+#include "binary.hpp"
 
-#include <glsp/glsp.hpp>
 
 #include <iterator>
 #include <sstream>
 #include <tuple>
 #include <fstream>
-#include <snappy.h>
+//#include <snappy.h>
+#include "huffman.hpp"
 
 #ifndef LOG_OUTPUT
 #define LOG_OUTPUT(x) std::cout << (x) << '\n'
@@ -52,7 +52,7 @@ namespace glshader
 
     std::tuple<std::vector<uint8_t>, std::vector<fs::path>> load_spirv(const std::experimental::filesystem::path& file_path,
         const std::vector<std::experimental::filesystem::path>& include_directories,
-        const std::vector<definition>& definitions)
+        const std::vector<glsp::definition>& definitions)
     {
         std::vector<std::string> dependencies = get_dependencies(glslc_location, file_path);
         std::vector<uint8_t> spirv;
@@ -96,7 +96,7 @@ namespace glshader
 
     std::tuple<std::vector<uint8_t>, uint32_t, std::vector<fs::path>> load_glbin(const std::experimental::filesystem::path& file_path,
         const std::vector<std::experimental::filesystem::path>& include_directories,
-        const std::vector<definition>& definitions)
+        const std::vector<glsp::definition>& definitions)
     {
         auto proc = glsp::preprocess_file(file_path, include_directories, definitions);
 
@@ -151,7 +151,7 @@ namespace glshader
     binary_shader load_binary_shader(const shader_format type,
         const std::experimental::filesystem::path& src,
         const std::vector<std::experimental::filesystem::path>& include_directories,
-        const std::vector<definition>& definitions,
+        const std::vector<glsp::definition>& definitions,
         const bool force)
     {
         fs::path dst = absolute(src);
@@ -204,17 +204,11 @@ namespace glshader
             if (!reload)
             {
                 LOG_OUTPUT("Load cached shader binary...");
-                std::vector<char> compressed(header.binary_length);
+                std::basic_string<uint8_t> compressed;
+                compressed.resize(header.binary_length);
                 input.read(reinterpret_cast<char*>(compressed.data()), header.binary_length);
-
-                size_t com_size;
-                snappy::GetUncompressedLength(
-                    compressed.data(),
-                    compressed.size(),
-                    &com_size
-                );
-                bin.resize(com_size);
-                snappy::RawUncompress(compressed.data(), compressed.size(), reinterpret_cast<char*>(bin.data()));
+                const auto unc = huffman::decode(compressed);
+                bin ={ unc.begin(), unc.end() };
                 format = header.binary_format;
             }
         }
@@ -264,8 +258,7 @@ namespace glshader
             auto deps = buf.str();
 
 
-            std::string out_compressed;
-            snappy::Compress(reinterpret_cast<const char*>(bin.data()), bin.size(), &out_compressed);
+            std::basic_string<uint8_t> out_compressed = huffman::encode(bin);
             header.version = 100;
             header.dependencies_length = static_cast<uint32_t>(deps.size());
             header.dependencies_count = static_cast<uint32_t>(dependencies.size());

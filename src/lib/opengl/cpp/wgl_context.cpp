@@ -12,7 +12,7 @@ namespace gl
 
     void context::check_handle(native_handle hnd) const
     {
-        assert(IsWindow(reinterpret_cast<HWND>(hnd)));
+        assert(hnd == native_handle(0) || IsWindow(reinterpret_cast<HWND>(hnd)));
     } 
 
     context::context(native_handle window, std::vector<std::pair<context_attribs, int>> context_attributes, const context * const shared)
@@ -21,7 +21,7 @@ namespace gl
         PIXELFORMATDESCRIPTOR desc{
             sizeof(PIXELFORMATDESCRIPTOR),
             1,
-            PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+            (window==native_handle(0) ? PFD_DRAW_TO_WINDOW : 0) | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
             PFD_TYPE_RGBA,
             32,
             0, 0, 0, 0, 0, 0,
@@ -34,8 +34,26 @@ namespace gl
             0,
             0, 0, 0
         };
+        HWND win;
 
-        _device_context = native_dc(GetDC(reinterpret_cast<HWND>(window)));
+        if (window==native_handle(0))
+        {
+            WNDCLASSW wnd{ 0 };
+            wnd.lpfnWndProc = [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) ->LRESULT {return DefWindowProcW(hWnd, msg, wParam, lParam); };
+            wnd.hInstance = GetModuleHandle(nullptr);
+            wnd.lpszClassName = L"temp_win_wgl";
+            //Register window class
+            RegisterClassW(&wnd);
+            win = CreateWindowExW(0, L"temp_win_wgl", L"", 0, 0, 0, 1, 1, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+            _own_window = reinterpret_cast<native_handle&>(win);
+            _is_window_owner = true;
+        }
+        else
+        {
+            _own_window = window;
+            _is_window_owner = false;
+        }
+        _device_context = native_dc(GetDC(reinterpret_cast<HWND>(_own_window)));
         int pixel_format = ChoosePixelFormat(native_dc(_device_context), &desc);
         SetPixelFormat(native_dc(_device_context), pixel_format, &desc);
 
@@ -47,12 +65,11 @@ namespace gl
 
         context_attributes.emplace_back(context_attribs(0), 0);
         int* attr = reinterpret_cast<int*>(&context_attributes[0].first);
-
         _context = static_cast<native_handle>(reinterpret_cast<uint64_t>(wglCreateContextAttribsARB(native_dc(_device_context), reinterpret_cast<HGLRC>(shared ? shared->_context : native_handle::null), attr)));
         set_pixel_format({});
-        wglDeleteContext(temp_context);
         make_current();
         mygl::load();
+        wglDeleteContext(temp_context);
     }
 
     void context::set_pixel_format(std::vector<std::pair<pixel_format_attribs, int>> attributes)
@@ -95,6 +112,9 @@ namespace gl
     {
         if (_context != native_handle::null)
             wglDeleteContext(reinterpret_cast<HGLRC>(_context));
+
+        if(_is_window_owner)
+            DestroyWindow(reinterpret_cast<HWND>(_own_window));
     }
 
     void context::make_current() const noexcept

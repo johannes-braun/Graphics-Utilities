@@ -13,7 +13,7 @@ namespace vkn
     }
 
     shader::shader(device* device, const vk::ShaderStageFlagBits type, const std::experimental::filesystem::path& path,
-        const std::vector<glshader::definition>& definitions)
+        const std::vector<glsp::definition>& definitions)
         : _device(device), _type(type), _path(path), _definitions(definitions)
     {
         _device->inc_ref();
@@ -21,7 +21,7 @@ namespace vkn
     }
 
     shader::shader(device* device, const std::experimental::filesystem::path& path,
-        const std::vector<glshader::definition>& definitions)
+        const std::vector<glsp::definition>& definitions)
         : shader(device, type_of(path.extension()), path, definitions)
     {
     }
@@ -48,7 +48,7 @@ namespace vkn
             reinterpret_cast<const uint32_t*>(bin.data.data())));
     }
 
-    void shader::reload(const std::vector<glshader::definition>& definitions)
+    void shader::reload(const std::vector<glsp::definition>& definitions)
     {
         _definitions = definitions;
         reload(true);

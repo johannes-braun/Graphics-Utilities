@@ -7,9 +7,6 @@
 [submodule "submodules/pugixml"]
 	path = submodules/pugixml
 	url = https://github.com/zeux/pugixml.git
-[submodule "submodules/snappy"]
-	path = submodules/snappy
-	url = https://github.com/google/snappy.git
 [submodule "submodules/glfw3"]
 	path = submodules/glfw3
 	url = https://github.com/glfw/glfw.git

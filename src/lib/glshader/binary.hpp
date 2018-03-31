@@ -1,14 +1,15 @@
 #pragma once
 
-#include <mygl/gl.hpp>
-#include <glsp/definition.hpp>
-
-#include <vector>
-#include <filesystem>
-
 #include <jpu/log.hpp>
 #define LOG_OUTPUT(x) tlog_i("GLShader") << (x)
 #define ERR_OUTPUT(x) tlog_e("GLShader") << (x)
+
+#include <mygl/gl.hpp>
+#include <glsp/definition.hpp>
+#include <glsp/glsp.hpp>
+
+#include <vector>
+#include <filesystem>
 
 namespace glshader
 {
@@ -56,6 +57,6 @@ namespace glshader
     binary_shader load_binary_shader(shader_format type,
         const std::experimental::filesystem::path& src,
         const std::vector<std::experimental::filesystem::path>& include_directories,
-        const std::vector<definition>& definitions,
+        const std::vector<glsp::definition>& definitions,
         bool force = false);
 }

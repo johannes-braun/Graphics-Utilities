@@ -13,7 +13,7 @@
 namespace gl
 {
     namespace files = std::experimental::filesystem;
-    using glshader::definition;
+    using glsp::definition;
 
     class shader
     {

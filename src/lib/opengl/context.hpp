@@ -29,6 +29,8 @@ namespace gl
         void check_handle(native_handle hnd) const;
 
         int(*swapIntervalEXT)(int) = nullptr;
+        bool _is_window_owner;
+        native_handle _own_window;
         native_handle _device_context;
         native_handle _context;
     };

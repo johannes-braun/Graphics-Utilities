@@ -20,14 +20,14 @@ namespace vkn
     class shader : public jpu::ref_count
     {
     public:
-        explicit shader(device* device, vk::ShaderStageFlagBits type, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
-        explicit shader(device* device, const std::experimental::filesystem::path& path, const std::vector<glshader::definition>& definitions = {});
+        explicit shader(device* device, vk::ShaderStageFlagBits type, const std::experimental::filesystem::path& path, const std::vector<glsp::definition>& definitions = {});
+        explicit shader(device* device, const std::experimental::filesystem::path& path, const std::vector<glsp::definition>& definitions = {});
 
         ~shader();
 
         vk::ShaderStageFlagBits type() const;
         void reload(bool force = false);
-        void reload(const std::vector<glshader::definition>& definitions);
+        void reload(const std::vector<glsp::definition>& definitions);
         operator vk::ShaderModule() const;
     private:
         static vk::ShaderStageFlagBits type_of(const std::experimental::filesystem::path& extension);
@@ -36,6 +36,6 @@ namespace vkn
         vk::ShaderModule _shader_module;
         vk::ShaderStageFlagBits _type;
         std::experimental::filesystem::path _path;
-        std::vector<glshader::definition> _definitions;
+        std::vector<glsp::definition> _definitions;
     };
 }
