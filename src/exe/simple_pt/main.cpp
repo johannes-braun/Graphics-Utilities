@@ -20,6 +20,11 @@
 
 #include "../game/splash.hpp"
 
+#define STB_RECT_PACK_IMPLEMENTATION
+#include "stb_rect_pack.h"
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
 std::shared_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
 
@@ -44,17 +49,19 @@ int main()
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("simple_pt/trace.comp"));
 
     game::splash splash(window);
+    splash.set_progress(0.05f, L"Loading Meshes");
 
     res::geometry_file file = res::load_geometry("../res/sphaear.dae");
     res::mesh& mesh = file.meshes.get_by_index(0);
+    splash.set_progress(0.08f, L"Building BVH");
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
     const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
 
-    splash.set_progress(0.1f);
-    gfx::grid_updated = [&](float f) mutable { splash.set_progress(0.1f + 0.3f * f); };
-    gfx::grid_line_space grid(1, 1, 1, 1, 1, 1);
+    splash.set_progress(0.1f, L"Building Line Space");
+    gfx::grid_updated = [&](float f) mutable { splash.set_progress(0.1f + 0.3f * f, L"Building Line Space: " + std::to_wstring(int(f*100)) + L"%"); };
+    gfx::grid_line_space grid(6, 6, 6, 2, 2, 2);
     grid.generate(gen_bvh);
 
     std::vector<std::array<std::array<std::unique_ptr<gl::buffer<gfx::line_space::line>>, 6>, 6>> line_space_storages(grid.size());
@@ -77,7 +84,7 @@ int main()
             line_space_storages[index][start][end] = line_space.empty() ? nullptr : std::make_unique<gl::buffer<gfx::line_space::line>>(line_space.storage()[start][end].begin(), line_space.storage()[start][end].end());
             line_space_data.storages[start][end] = (line_space.empty() || end == start) ? 0ui64 : line_space_storages[index][start][end]->handle();
         }
-        splash.set_progress(0.4f + 0.3f * (float(index+1) / grid.size()));
+        splash.set_progress(0.4f + 0.3f * (float(index+1) / grid.size()), L"Uploading Line Space data: " + std::to_wstring(int(index/float(grid.size()) * 100)) + L"%");
     }
     grid_line_space_datas[0].bounds = grid.bounds();
     grid_line_space_datas[0].x = grid.size_x();
@@ -87,7 +94,7 @@ int main()
 
     grid_line_space_datas.synchronize();
     line_space_datas.synchronize();
-    splash.set_progress(0.7f);
+    splash.set_progress(0.7f, L"Packing buffers");
 
     gl::buffer<res::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
     gl::buffer<res::index32> ibo(mesh.indices.begin(), mesh.indices.end());
@@ -105,7 +112,7 @@ int main()
     io::default_cam_controller controller;
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
-    splash.set_progress(0.8f);
+    splash.set_progress(0.8f, L"Loading Cube Map");
 
     const auto [w, h, c] = res::load_image_info("../res/indoor/hdr/posx.hdr");
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
@@ -117,7 +124,7 @@ int main()
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, load_image("../res/indoor/hdr/negz.hdr", res::image_type::f32, res::RGB).data.get());
     cubemap.generate_mipmaps();
     const gl::sampler sampler;
-    splash.set_progress(0.9f);
+    splash.set_progress(0.9f, L"Finishing up");
 
     gl::buffer<tracer_data> data(1, GL_DYNAMIC_STORAGE_BIT);
     data[0].img = img.handle();
@@ -128,7 +135,7 @@ int main()
     data[0].cubemap = sampler.sample(cubemap);
     data[0].frames = 10;
     data.synchronize();
-    splash.set_progress(1.f);
+    splash.set_progress(1.f, L"Finished loading");
 
     while (window->update())
     {

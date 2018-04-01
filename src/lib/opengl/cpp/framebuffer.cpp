@@ -345,9 +345,16 @@ namespace gl
         glBindFramebuffer(GL_FRAMEBUFFER, _id);
     }
 
-    void framebuffer::clear(int color_attachment, const glm::vec4& color) const noexcept
+    void framebuffer::clear(int color_attachment, const std::initializer_list<float>& color) const
     {
-        glClearNamedFramebufferfv(_id, GL_COLOR, color_attachment, &color[0]);
+        assert(color.size() >= 4 && "Length check failed!");
+        clear(color_attachment, std::data(color));
+    }
+
+    void framebuffer::clear(int color_attachment, const float* color) const
+    {
+        assert(color[0] == color[0] && color[3] == color[3] && "Length access check failed!");
+        glClearNamedFramebufferfv(_id, GL_COLOR, color_attachment, color);
     }
 
     void framebuffer::clear(float depth, int stencil) const noexcept

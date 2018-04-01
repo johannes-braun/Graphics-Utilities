@@ -6,9 +6,78 @@
 #include <opengl/pipeline.hpp>
 #include <opengl/texture.hpp>
 #include <glm/glm.hpp>
+#include <fstream>
+
+#include "stb_rect_pack.h"
+#include "stb_truetype.h"
 
 namespace game
 {
+
+    namespace files = std::experimental::filesystem;
+    struct glyph
+    {
+        float x0, y0, s0, t0; // top-left
+        float x1, y1, s1, t1; // bottom-right
+        float offx = 0, offy = 0;
+    };
+    struct font
+    {
+        constexpr static wchar_t first_char = L' ';
+        font(const files::path& ttf, float size, int atlas_dimension = 1024)
+            : _size(size), _atlas_dimension(atlas_dimension)
+        {
+            std::ifstream font_file(ttf, std::ios::binary);
+            font_file.seekg(0, std::ios::end);
+            size_t len = font_file.tellg();
+            font_file.seekg(0, std::ios::beg);
+            std::vector<uint8_t> data(len);
+            _characters.resize(512);
+            font_file.read(reinterpret_cast<char*>(data.data()), len);
+
+            std::vector<uint8_t> tex_data(atlas_dimension * atlas_dimension);
+
+            stbtt_pack_context pctx;
+            if (!stbtt_PackBegin(&pctx, tex_data.data(), atlas_dimension, atlas_dimension, 0, 1, nullptr))
+                throw "up";
+            stbtt_PackSetOversampling(&pctx, 2, 2);
+            if (!stbtt_PackFontRange(&pctx, data.data(), 0, size, first_char, 512, _characters.data()))
+                throw "up";
+            stbtt_PackEnd(&pctx);
+
+            std::vector<glm::u8vec4> rgba(_atlas_dimension * _atlas_dimension);
+            for (int i=0; i<rgba.size(); ++i)
+                rgba[i] = glm::u8vec4{ 255, 255, 255, tex_data[i] };
+            atlas = gl::texture(GL_TEXTURE_2D, atlas_dimension, atlas_dimension, GL_RGBA8, 1);
+            atlas.assign(GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+        }
+
+        glyph& at(wchar_t c) {
+            glyph g;
+            stbtt_GetPackedQuad(_characters.data(), _atlas_dimension, _atlas_dimension, c - first_char, &g.offx, &g.offy, reinterpret_cast<stbtt_aligned_quad*>(&g), 1);
+            g.y1 = -g.y1;
+            g.y0 = -g.y0;
+            return g;
+        }
+        const glyph& at(wchar_t c) const { return const_cast<font*>(this)->at(c); }
+        glyph& operator[](wchar_t c) { return at(c); }
+        const glyph& operator[](wchar_t c) const { return at(c); }
+
+        //glm::vec2 text_size(const std::wstring& text);
+
+        float size() const noexcept
+        {
+            return _size;
+        }
+
+        gl::texture atlas{ GL_TEXTURE_2D };
+
+    private:
+        float _size;
+        int _atlas_dimension;
+        std::vector<stbtt_packedchar> _characters;
+    };
+
     class ui
     {
     public:
@@ -103,6 +172,39 @@ namespace game
             _vbuf.emplace_back(vtx{ { max.x, max.y },{ uvmax.x, uvmax.y }, color });
             _ibuf.insert(_ibuf.end(), prim_quad.begin(), prim_quad.end());
             _indirects.push_back(ind);
+        }
+
+        void draw_text(const std::wstring& text, font* font, glm::vec2 bmin, glm::vec2 bmax, glm::u8vec4 color = { 255, 255, 255, 255 })
+        {
+            glm::vec2 base_pos{ bmin.x, bmax.y };
+            float adv = 0;
+            float advy = -font->size() + 0.2f*font->size();
+            for (const auto& c : text)
+            {
+                if (c == L' ')
+                {
+                    float fwidth = adv;
+                    const wchar_t* p = (&c);
+                    do
+                    {
+                        ++p;
+                        fwidth += font->at(*p).offx;
+                    } while (*p != '\0' && *p != ' ');
+                    if (fwidth > bmax.x-bmin.x)
+                    {
+                        advy -= font->size();
+                        adv = 0;
+                        if (-advy > bmax.y - bmin.y)
+                            break;
+                        if (c==' ')
+                            continue;
+                    }
+                }
+
+                game::glyph g = font->at(c);
+                draw_quad({ base_pos.x + g.x0 + adv, base_pos.y + g.y0 + advy }, { base_pos.x+g.x1 + adv, base_pos.y+g.y1 +advy }, { g.s0, g.t0 }, { g.s1, g.t1 }, font->atlas, color);
+                adv += g.offx;
+            }
         }
 
     private:

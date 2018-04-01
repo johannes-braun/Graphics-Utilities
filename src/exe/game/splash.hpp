@@ -24,8 +24,9 @@ namespace game
             _window->update();
         }
 
-        void set_progress(float f)
+        void set_progress(float f, const std::wstring& info)
         {
+            _info = info;
             const float step = 0.5f;
             const double sd = _window->get_swap_delay();
             _window->set_max_framerate(60.f);
@@ -43,6 +44,7 @@ namespace game
 
         void update()
         {
+            static game::font font("../res/ui/fonts/Poppins-SemiBold.ttf", 20);
             int size = 256 * _progress;
             glm::vec4 start(0, 0, 0, 1);
             glm::vec4 end(0.1f, 0.4f, 0.01f, 1.f);
@@ -54,14 +56,16 @@ namespace game
             default_ui().draw_quad({ w / 2 - size / 2, h / 2 - size / 2 }, { w / 2 + size / 2, h / 2 + size / 2 }, { 0, 1 }, { 1, 0 }, _logo);
 
             // progress bar
-            default_ui().draw_quad({ 0, 0 }, { w, 24.f }, { 255, 255, 255, 64 });
+            default_ui().draw_quad({ 0, 0 }, { w, 24.f }, { 255, 255, 255, 120 });
             default_ui().draw_quad({ 0, 0 }, { _progress * w, 24.f }, { 255, 255, 255, 255 });
+            default_ui().draw_text(_info, &font, { 8, 2 }, { w, 22.f }, { 0x00, 0x68, 0x3b, 255 });
             default_ui().draw();
         }
 
     private:
         std::shared_ptr<io::window> _window;
         float _progress = 0.f;
+        std::wstring _info;
         gl::texture _logo { GL_TEXTURE_2D };
         gl::texture _background { GL_TEXTURE_2D };
     };

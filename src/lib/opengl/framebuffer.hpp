@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 #include <map>
-#include <glm/detail/type_vec4.hpp>
+#include <cassert>
 
 namespace gl
 {
@@ -106,14 +106,24 @@ namespace gl
         attachment& emplace(GLenum type, const std::shared_ptr<texture>& a);
         attachment& emplace(GLenum type, const std::shared_ptr<renderbuffer>& a);
         void bind() const noexcept;
-        void clear(int color_attachment, const glm::vec4& color) const noexcept;
+
+        template<typename T> using base_t = std::decay_t<std::remove_const_t<T>>;
+        template<typename T, typename VT> using value_type_check_t = std::enable_if_t<std::is_same_v<typename base_t<T>::value_type, float>>;
+        template<typename T, typename = std::void_t<value_type_check_t<T, float>, decltype(std::declval<base_t<T>>()[0])>>
+        void clear(int color_attachment, const T& color) const
+        {
+            assert(color[0] == color[0] && color[3] == color[3] && "Length access check failed.");
+            clear(color_attachment, &color[0]);
+        }
+
+        void clear(int color_attachment, const std::initializer_list<float>& color) const;
+        void clear(int color_attachment, const float* color) const;
         void clear(float depth, int stencil) const noexcept;
 
         void set_readbuffer(GLenum attachment) noexcept;
         void set_drawbuffer(GLenum attachment) noexcept;
-        template<typename Container, typename = std::void_t<decltype(std::data(std::declval<Container>())),
-            std::enable_if_t<!std::is_same_v<Container, std::initializer_list<GLenum>> && std::is_same_v<typename Container::value_type, GLenum>>>>
-            void set_drawbuffers(Container attachments) noexcept;
+        template<typename Container, typename = std::void_t<decltype(std::data(std::declval<Container>())), std::enable_if_t<!std::is_same_v<Container, std::initializer_list<GLenum>> && std::is_same_v<typename Container::value_type, GLenum>>>>
+        void set_drawbuffers(Container attachments) noexcept;
         void set_drawbuffers(std::initializer_list<GLenum> attachments) noexcept;
         void blit(const framebuffer& other, GLbitfield mask, GLenum filter = GL_NEAREST) const noexcept;
         void blit(const framebuffer& other, int x, int y, int width, int height, GLbitfield mask, GLenum filter = GL_NEAREST) const noexcept;

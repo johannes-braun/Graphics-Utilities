@@ -46,7 +46,7 @@ namespace glshader
         gl_binary = make_tag("GBIN"),
         spirv = make_tag("SPRV")
     };
-    
+     
     struct binary_shader
     {
         shader_format type;
@@ -59,4 +59,29 @@ namespace glshader
         const std::vector<std::experimental::filesystem::path>& include_directories,
         const std::vector<glsp::definition>& definitions,
         bool force = false);
+
+    struct shader_binary
+    {
+        uint32_t format;
+        std::vector<uint8_t> data;
+    };
+
+    class compiler : public glsp::state
+    {
+    public:
+        compiler(const std::string& extension, const glsp::files::path& cache_dir);
+        void set_extension(const std::string& ext);
+        void set_cache_dir(const glsp::files::path& dir);
+        void set_default_prefix(const std::string& prefix);
+        void set_default_postfix(const std::string& postfix);
+
+        void compile(const glsp::files::path& shader, shader_format format, const std::vector<glsp::files::path>& includes ={}, const std::vector<glsp::definition>& definitions ={});
+
+    private:
+        std::string _default_prefix;
+        std::string _default_postfix;
+        std::string _extension;
+        glsp::files::path _cache_dir;
+    };
+
 }

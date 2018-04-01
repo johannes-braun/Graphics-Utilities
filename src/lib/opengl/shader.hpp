@@ -8,12 +8,25 @@
 #include <string_view>
 #include <any>
 #include <map>
-#include <glshader/binary.hpp>
+#include <glsp/glsp.hpp>
 
 namespace gl
 {
     namespace files = std::experimental::filesystem;
     using glsp::definition;
+
+    constexpr const char* opengl_prefix = R"glsl(
+        #version 450 core
+        #extension GL_ARB_separate_shader_objects : require
+        #extension GL_ARB_bindless_texture : require
+        #extension GL_ARB_shading_language_420pack : require
+        #extension GL_NV_gpu_shader5 : require
+    )glsl";
+
+    constexpr const char* opengl_postfix = R"glsl(
+        layout(bindless_sampler) uniform;
+        layout(bindless_image) uniform;
+    )glsl";
 
     class shader
     {

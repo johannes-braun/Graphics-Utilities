@@ -87,20 +87,26 @@ namespace gl
 
     void shader::reload()
     {
+        static glsp::compiler compiler = []() {
+            glsp::compiler compiler(".gbs", "../cache/shaders");
+            compiler.set_default_prefix(opengl_prefix);
+            compiler.set_default_postfix(opengl_postfix);
+            return compiler;
+        }();
+
         do
         {
-            try
+            glsp::shader_binary bin = compiler.compile(_path, glsp::format::gl_binary, false, _include_directories, _definitions);
+            if(!bin.data.empty())
             {
-                auto bin = load_binary_shader(glshader::shader_format::gl_binary, _path, _include_directories, _definitions);
                 if (_id != gl_shader_program_t::zero)
                     glDeleteProgram(_id);
                 _id = glCreateProgram();
                 glProgramParameteri(_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
                 glProgramBinary(_id, GLenum(bin.format), bin.data.data(), static_cast<int>(bin.data.size()));
             }
-            catch (const std::runtime_error& exception)
+            else
             {
-                tlog_e("GL Shader") << "Shader compilation failed: " << exception.what();
                 if (_id == gl_shader_program_t::zero)
                 {
                     tlog_h("GL Shader") << "Press [ENTER] to try again...";
