@@ -207,8 +207,8 @@ namespace glshader
                 std::basic_string<uint8_t> compressed;
                 compressed.resize(header.binary_length);
                 input.read(reinterpret_cast<char*>(compressed.data()), header.binary_length);
-                const auto unc = huffman::decode(compressed);
-                bin ={ unc.begin(), unc.end() };
+
+                bin = huffman::decode(compressed).to_container<decltype(bin)>();
                 format = header.binary_format;
             }
         }
@@ -257,18 +257,17 @@ namespace glshader
 
             auto deps = buf.str();
 
-
-            std::basic_string<uint8_t> out_compressed = huffman::encode(bin);
+            const std::vector<uint8_t> compressed =  huffman::encode(bin).to_container<decltype(compressed)>();
             header.version = 100;
             header.dependencies_length = static_cast<uint32_t>(deps.size());
             header.dependencies_count = static_cast<uint32_t>(dependencies.size());
             header.binary_format = format;
-            header.binary_length = static_cast<uint32_t>(out_compressed.size());
+            header.binary_length = static_cast<uint32_t>(compressed.size());
 
             std::ofstream out(dst, std::ios::binary);
             out.write(reinterpret_cast<const char*>(&header), sizeof(header));
             out.write(deps.data(), deps.size());
-            out.write(reinterpret_cast<const char*>(out_compressed.data()), out_compressed.size());
+            out.write(reinterpret_cast<const char*>(compressed.data()), compressed.size());
             out.close();
 
             LOG_OUTPUT("Shader compilation successful");

@@ -1,15 +1,16 @@
 #include "huffman.hpp"
+#include <list>
 
 namespace huffman
 {
     struct node {
         uint32_t f;
         uint8_t val;
-        int32_t left;
-        int32_t right;
-        int32_t parent;
+        node* left;
+        node* right;
+        node* parent;
         int8_t tag;
-        constexpr node(uint32_t f, uint8_t v, int32_t l, int32_t r, int32_t p, int8_t t)
+        constexpr node(uint32_t f, uint8_t v, node* l, node* r, node* p, int8_t t)
             : f(f), val(v), left(l), right(r), parent(p), tag(t) {}
     };
 
@@ -31,7 +32,7 @@ namespace huffman
         {
             if (histogram[i] > 0)
             {
-                nodes.emplace_back(histogram[i], uint8_t(i), -1, -1, -1, -1);
+                nodes.emplace_back(histogram[i], uint8_t(i), nullptr, nullptr, nullptr, -1);
                 queue.push(&nodes.back());
             }
         }
@@ -45,10 +46,10 @@ namespace huffman
                 node* right = queue.top();
                 queue.pop();
 
-                nodes.emplace_back(left->f + right->f, 0, int32_t(index_of(left)), int32_t(index_of(right)), -1, -1);
-                left->parent = index_of(&nodes.back());
+                nodes.emplace_back(left->f + right->f, 0, left, right, nullptr, -1);
+                left->parent = &nodes.back();
                 left->tag = 0;
-                right->parent = index_of(&nodes.back());
+                right->parent = &nodes.back();
                 right->tag = 1;
                 queue.push(&nodes.back());
             }
@@ -57,8 +58,8 @@ namespace huffman
     }
 
     struct code {
-        uint32_t signature;
         uint32_t length;
+        std::list<uint8_t> signature;
     };
 
     std::array<code, 256> generate_codes(const std::vector<node>& tree, const uint32_t leaf_nodes)
@@ -69,30 +70,30 @@ namespace huffman
             if (const auto it = std::find_if(tree.begin(), tree.begin() + leaf_nodes, [i](const node& n) { return n.val == uint8_t(i); }); it != tree.end())
             {
                 const node* n       = &*it;
-                codes[i].signature  = 0;
+                codes[i].signature.clear();
                 codes[i].length     = 0;
-                while (n->tag != -1)
+                auto ins_it         = codes[i].signature.end();
+                while (n->parent)
                 {
-                    codes[i].signature <<= 1;
-                    codes[i].signature |= (uint32_t(n->tag) & 0x1);
-                    n = &tree[n->parent];
+                    ins_it = codes[i].signature.emplace(ins_it, n->tag & 0x1);
+                    n = n->parent;
                     ++codes[i].length;
                 }
             }
         }
         return codes;
     }
-    std::basic_string<uint8_t> encode(const std::basic_string<uint8_t>& in)
+    stream encode(const std::basic_string<uint8_t>& in)
     {
         return encode(in.data(), in.size());
     }
 
-    std::basic_string<uint8_t> encode(const std::vector<uint8_t>& in)
+    stream encode(const std::vector<uint8_t>& in)
     {
         return encode(in.data(), in.size());
     }
 
-    std::basic_string<uint8_t> encode(const uint8_t* in, size_t in_length)
+    stream encode(const uint8_t* in, size_t in_length)
     {
         uint32_t count = 0;
         std::array<uint32_t, 256> histogram{ 0 };
@@ -124,21 +125,37 @@ namespace huffman
         };
 
         for (size_t x = 0; x < in_length; ++x)
-            for (int i=0; i<codes[in[x]].length; ++i)
-                write_bit(((codes[in[x]].signature & (1 << i)) >> i) & 0x1);
+            for (const auto bit : codes[in[x]].signature)
+                write_bit(bit);
 
         if (c != 0)
             stream.put(c);
 
-        return stream.str();
+        stream.seekp(0, std::ios::end);
+        size_t size = stream.tellp();
+        stream.seekp(0, std::ios::beg);
+        return { size, std::move(stream) };
     }
 
-    std::basic_string<uint8_t> decode(const std::basic_string<uint8_t>& in)
+    stream decode(const std::basic_string<uint8_t>& in)
     {
+        return decode(in.data(), in.size());
+    }
+
+    stream decode(const std::vector<uint8_t>& in)
+    {
+        return decode(in.data(), in.size());
+    }
+
+    stream decode(const uint8_t* in, size_t in_length)
+    {
+        if (in_length <= 256 * sizeof(uint32_t))
+            return stream{ 0, std::basic_stringstream<uint8_t>{} };
+
         std::basic_stringstream<uint8_t> stream;
         std::array<uint32_t, 256> histogram{ 0 };
         uint32_t count = 0;
-        memcpy(&histogram[0], in.data(), 256*sizeof(uint32_t));
+        memcpy(&histogram[0], in, 256*sizeof(uint32_t));
         int in_ptr = 256 * sizeof(uint32_t);
         for (int i=0; i<256; ++i)
         {
@@ -150,13 +167,13 @@ namespace huffman
 
         int bp = 0;
         uint8_t c = in[in_ptr++];
-        const auto read_bit = [&in, &in_ptr, &bp, &c]()
+        const auto read_bit = [&in, &in_length, &in_ptr, &bp, &c]()
         {
             uint8_t bit = (c >> bp) % 2;
             bp = (bp+1) & 0x7;
             if (bp==0)
             {
-                if (in_ptr < in.size())
+                if (in_ptr < in_length)
                     c = in[in_ptr++];
                 else
                     c = 0;
@@ -169,15 +186,18 @@ namespace huffman
         while (symb_count > 0)
         {
             const node* n = &nodes.back();
-            while (n->right != -1)
+            while (n->right)
             {
                 const uint32_t bit = read_bit();
-                n = &nodes[bit ? n->right : n->left];
+                n = bit ? n->right : n->left;
             }
             stream.put(n->val);
             --symb_count;
         }
 
-        return stream.str();
+        stream.seekp(0, std::ios::end);
+        size_t size = stream.tellp();
+        stream.seekp(0, std::ios::beg);
+        return { size, std::move(stream) };
     }
 }
