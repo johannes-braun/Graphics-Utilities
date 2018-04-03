@@ -3,10 +3,12 @@
 #include "ui_button.hpp"
 #include <memory>
 
+#include "window_manager.hpp"
+
 namespace game
 {
     constexpr float STACK_WIDTH = 104;
-
+/*
     class ui_window;
 
     class ui_layouter
@@ -27,7 +29,7 @@ namespace game
 
     private:
 
-    };
+    };*/
 
     class ui_window
     {
@@ -45,11 +47,11 @@ namespace game
             return _size;
         }
 
-        ui_window(std::shared_ptr<io::window> win, const std::wstring& title, glm::vec2 pos, glm::vec2 size, glm::u8vec4 background, glm::u8vec4 title_bar_color, glm::vec4 padding ={ 4, 4, 4, 4 })
-            : _title(title), _window(win), _pos(pos), _size(size), _background(background), _title_bar_color(title_bar_color), _scroll_offset{ 0 }, _padding(padding)
+        ui_window(const std::shared_ptr<gfx::ui::window_manager>& manager, const std::wstring& title, glm::vec2 pos, glm::vec2 size, glm::u8vec4 background, glm::u8vec4 title_bar_color, glm::vec4 padding ={ 4, 4, 4, 4 })
+            : _title(title), _manager(manager), _pos(pos), _size(size), _background(background), _title_bar_color(title_bar_color), _scroll_offset{ 0 }, _padding(padding)
         {
             _ui = &default_ui();
-            _scroll_callback = _window->callbacks->scroll_callback.add([&](GLFWwindow* w, double x, double y) {
+            _scroll_callback = _manager->get_window().callbacks->scroll_callback.add([&](GLFWwindow* w, double x, double y) {
                 double cx, cy;  glfwGetCursorPos(w, &cx, &cy);
                 int wi, he;     glfwGetFramebufferSize(w, &wi, &he);
                 cy = he - cy;
@@ -62,8 +64,7 @@ namespace game
 
         ~ui_window()
         {
-            if (_window)
-                _window->callbacks->scroll_callback.remove(_scroll_callback);
+            _manager->get_window().->callbacks->scroll_callback.remove(_scroll_callback);
         }
 
         struct anim
@@ -100,14 +101,14 @@ namespace game
 
         bool cursor_in_frame()
         {
-            int wi, he; glfwGetFramebufferSize(*_window, &wi, &he);
-            double cx, cy; glfwGetCursorPos(*_window, &cx, &cy);
+            int wi, he; glfwGetFramebufferSize(_manager->get_window(), &wi, &he);
+            double cx, cy; glfwGetCursorPos(_manager->get_window(), &cx, &cy);
             cy = he - cy;
             glm::vec2 bmin = _pos;
             glm::vec2 bmax = _pos + _size;
             return glm::clamp(glm::vec2(cx, cy), bmin, bmax) == glm::vec2(cx, cy);
         }
-
+/*
         bool is_topmost(ui_layouter& lo)
         {
             if (_minimized)
@@ -124,19 +125,19 @@ namespace game
                 }
             }
             return topmost;
-        }
+        }*/
 
         bool lock_click = false;
         bool _block_actions = false;
         
-        void draw_content(ui_layouter& lo, const font& title_font, const font& status_bar_font, std::function<void(ui_window& window, const glm::vec2& bmin, const glm::vec2& bmax)> draw_fun)
+        void draw_content(const font& title_font, const font& status_bar_font, std::function<void(ui_window& window, const glm::vec2& bmin, const glm::vec2& bmax)> draw_fun)
         {
             if (!_open)
                 return;
 
 
-            int wi, he; glfwGetFramebufferSize(*_window, &wi, &he);
-            double cx, cy; glfwGetCursorPos(*_window, &cx, &cy);
+            int wi, he; glfwGetFramebufferSize(_manager->get_window(), &wi, &he);
+            double cx, cy; glfwGetCursorPos(_manager->get_window(), &cx, &cy);
             cy = he - cy;
 
             _pos = glm::clamp(_pos, glm::vec2(0, 0), glm::vec2(wi, he) - glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he)));
@@ -151,7 +152,7 @@ namespace game
             _ui->push_list(frame_priority_layer, this);
             priority_layer = 0;
 
-            _block_actions = !is_topmost(lo);
+            _block_actions = (_manager->front_window_at(cx, cy) != this);
             if (_minimized || _maximized || lock_click || !is_topmost(lo))
             {
                 _block_transform = true;
@@ -173,7 +174,7 @@ namespace game
                 }
                 _smooth_scroll_offset = glm::max(glm::vec2(0), glm::min(_smooth_scroll_offset, _insert_position - _size + _padding.y + _padding.w));
                 _scroll_offset = _smooth_scroll_offset;
-                if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+                if (glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
                     _resize_state = -1;
             }
             else if (_move_state != -1)
@@ -183,7 +184,7 @@ namespace game
                 bmin -= (_action_cursor_position - glm::vec2{ cx, cy });
                 bmax = bmin + sz;
                 _action_cursor_position ={ cx, cy };
-                if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+                if (glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
                     _move_state = -1;
             }
             else if (!_block_transform && glm::clamp(glm::vec2(cx, cy), bmin + glm::vec2(0, handle_width*0.5f), bmax-glm::vec2(handle_width*0.5f, 0)) != glm::vec2(cx, cy) &&
@@ -192,7 +193,7 @@ namespace game
                 if (cx > bmax.x - 4.f)
                 {
                     _ui->set_cursor(CUR_HRESIZE);
-                    if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && is_topmost(lo))
+                    if (glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && (_manager->front_window_at(cx, cy) != this))
                     {
                         lo.bring_forward(this);
                         _action_cursor_position.x = cx;
@@ -202,7 +203,7 @@ namespace game
                 else if (cy < bmin.y + 4.f)
                 {
                     _ui->set_cursor(CUR_VRESIZE);
-                    if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && is_topmost(lo))
+                    if (glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && (_manager->front_window_at(cx, cy) != this))
                     {
                         lo.bring_forward(this);
                         _action_cursor_position.y = cy;
@@ -213,7 +214,7 @@ namespace game
             else if (!_block_transform && glm::clamp(glm::vec2(cx, cy), glm::vec2(bmin.x, bmax.y - title_bar_height), bmax) == glm::vec2(cx, cy))
             {
                 _ui->set_cursor(CUR_NORMAL);
-                if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                if (glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
                 {
                     lo.bring_forward(this);
                     _action_cursor_position ={ cx, cy };
@@ -221,16 +222,16 @@ namespace game
                 }
             }
             
-            if (!lock_click && glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            if (!lock_click && glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
             {
-                if (is_topmost(lo))
+                if ((_manager->front_window_at(cx, cy) != this))
                     lo.bring_forward(this);
                 lock_click = true;
             }
-            else if(glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+            else if(glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
                 lock_click = false;
 
-            if (_resize_state == -1 && _move_state==-1 && glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            if (_resize_state == -1 && _move_state==-1 && glfwGetMouseButton(_manager->get_window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
             {
                 _block_transform = true;
             }
@@ -290,7 +291,7 @@ namespace game
             //title bar actions
             if (_close_button)
             {
-                const auto state = _close_button->draw_inside(*_window, _ui, { bmax.x - 8 - 24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8, bmax.y - title_bar_height * 0.5f + 12 });
+                const auto state = _close_button->draw_inside(_manager->get_window(), _ui, { bmax.x - 8 - 24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8, bmax.y - title_bar_height * 0.5f + 12 });
                 if (state == STATE_RELEASE)
                 {
                     if (!_block_actions)
@@ -309,7 +310,7 @@ namespace game
             }
             if (_maximize_button)
             {
-                const auto state = _maximize_button->draw_inside(*_window, _ui, { bmax.x - 8 - 24-8-24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8-24-8, bmax.y - title_bar_height * 0.5f + 12 });
+                const auto state = _maximize_button->draw_inside(_manager->get_window(), _ui, { bmax.x - 8 - 24-8-24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8-24-8, bmax.y - title_bar_height * 0.5f + 12 });
                 if (state == STATE_RELEASE)
                 {
                     if (!_block_actions)
@@ -351,7 +352,7 @@ namespace game
             }
             if (!_minimized && _minimize_button)
             {
-                const auto state = _minimize_button->draw_inside(*_window, _ui, { bmax.x - 8 - 24-8-24-8-24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8-24-8-24-8, bmax.y - title_bar_height * 0.5f + 12 }, _alpha);
+                const auto state = _minimize_button->draw_inside(_manager->get_window(), _ui, { bmax.x - 8 - 24-8-24-8-24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8-24-8-24-8, bmax.y - title_bar_height * 0.5f + 12 }, _alpha);
                 if (state == STATE_RELEASE)
                 {
                     if (!_block_actions)
@@ -592,7 +593,7 @@ namespace game
             glm::vec2 right_bottom ={ left_top.x + size.x, left_top.y - size.y };
             glm::vec2 min ={ inset.first.x + left_top.x, inset.second.y - _last_insert_position.y -size.y };
             glm::vec2 max ={ inset.first.x + right_bottom.x, inset.second.y - _last_insert_position.y };
-            const auto state = button.draw_inside(*_window, _ui, min + _smooth_scroll_offset, max + _smooth_scroll_offset);
+            const auto state = button.draw_inside(_manager->get_window(), _ui, min + _smooth_scroll_offset, max + _smooth_scroll_offset);
             reset_draw_state();
             return _block_actions ? STATE_UP : state;
         }
@@ -601,6 +602,8 @@ namespace game
         int priority_layer = 0;
 
     private:
+        std::shared_ptr<gfx::ui::window_manager> _manager;
+
         bool _minimized = false;
         bool _maximized = false;
 
@@ -625,7 +628,7 @@ namespace game
         std::wstring _title;
         std::wstring _status = L"OK";
         friend ui_layouter;
-        std::shared_ptr<io::window> _window;
+        //std::shared_ptr<io::window> _window;
         std::function<void(GLFWwindow* w, double x, double y)>* _scroll_callback;
         ui* _ui;
         glm::vec2 _scroll_offset;
