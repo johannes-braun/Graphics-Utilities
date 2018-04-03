@@ -23,6 +23,15 @@ namespace game
         CUR_HRESIZE = GLFW_HRESIZE_CURSOR
     };
 
+    class ui_window;
+    struct ui_window_prioritizer
+    {
+        bool operator()(const std::pair<int, ui_window*>& w1, const std::pair<int, ui_window*>& w2) const
+        {
+            return w1.first < w2.first || (w1.first == w2.first && w1.second < w2.second);
+        }
+    };
+
     namespace files = std::experimental::filesystem;
     struct glyph
     {
@@ -159,18 +168,22 @@ namespace game
             glEnable(GL_BLEND);
             glEnable(GL_SCISSOR_TEST);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            for (const auto& ind : _indirects)
+
+            for (const auto& list : _indirects)
             {
-                if (ind.cmd)
+                for (const auto& ind : list.second)
                 {
-                    ind.cmd();
-                }
-                else
-                {
-                    _pbuf[0].has_texture = ind.texture != gl_texture_t::zero;
-                    _pbuf[0].tex = ind.texture != gl_texture_t::zero ? _sampler.sample(ind.texture) : 0;
-                    _pbuf.synchronize();
-                    _pip.draw(GL_TRIANGLES, _ibuf, GL_UNSIGNED_SHORT, ind.count, ind.base_index, ind.base_vertex);
+                    if (ind.cmd)
+                    {
+                        ind.cmd();
+                    }
+                    else
+                    {
+                        _pbuf[0].has_texture = ind.texture != gl_texture_t::zero;
+                        _pbuf[0].tex = ind.texture != gl_texture_t::zero ? _sampler.sample(ind.texture) : 0;
+                        _pbuf.synchronize();
+                        _pip.draw(GL_TRIANGLES, _ibuf, GL_UNSIGNED_SHORT, ind.count, ind.base_index, ind.base_vertex);
+                    }
                 }
             }
             glScissor(0, 0, w, h);
@@ -195,14 +208,14 @@ namespace game
             verts.emplace_back(vtx{ b,{ 0, 0 }, color });
             verts.emplace_back(vtx{ c,{ 0, 0 }, color });
             idxes.insert(idxes.end(), prim_triangle.begin(), prim_triangle.end());
-            _indirects.push_back(ind);
+            _indirects[{_current_prio, _current_window}].push_back(ind);
         }
 
         void draw_quad(glm::vec2 min, glm::vec2 max, glm::u8vec4 color) {
             draw_quad(min, max, { 0, 0 }, { 1, 1 }, gl_texture_t::zero, color);
         }
 
-        void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax, gl_texture_t texture, glm::u8vec4 color = { 255, 255, 255, 255 }) {
+        void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax, gl_texture_t texture, glm::u8vec4 color ={ 255, 255, 255, 255 }) {
             indirect ind;
             ind.base_vertex = verts.size();
             ind.base_index = idxes.size();
@@ -213,7 +226,7 @@ namespace game
             verts.emplace_back(vtx{ { max.x, min.y },{ uvmax.x, uvmin.y }, color });
             verts.emplace_back(vtx{ { max.x, max.y },{ uvmax.x, uvmax.y }, color });
             idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
-            _indirects.push_back(ind);
+            _indirects[{_current_prio, _current_window}].push_back(ind);
         }
 
         void draw_quad_shadow(glm::vec2 min, glm::vec2 max, glm::u8vec4 color ={ 0, 0, 0, 128 }) {
@@ -280,7 +293,7 @@ namespace game
             }
             id += 4;
 
-            _indirects.push_back(ind);
+            _indirects[{_current_prio, _current_window}].push_back(ind);
         }
 
         void scissor(glm::vec2 min, glm::vec2 max)
@@ -291,7 +304,7 @@ namespace game
             ind.count = 0;
             ind.texture = gl_texture_t(0);
             ind.cmd = [min, max]() { glScissor(std::ceil(min.x), std::ceil(min.y), std::ceil(max.x - min.x), std::ceil(max.y - min.y)); };
-            _indirects.push_back(ind);
+            _indirects[{_current_prio, _current_window}].push_back(ind);
         }
 
         std::pair<glm::vec2, glm::vec2> inset(glm::vec2 bmin, glm::vec2 bmax, glm::vec4 pad)
@@ -308,12 +321,12 @@ namespace game
             int count;
         };
 
-        private:
-            static bool may_delim_line(const wchar_t* c) noexcept
-            {
-                return *c==' ' || *c=='-';
-            }
-        public:
+    private:
+        static bool may_delim_line(const wchar_t* c) noexcept
+        {
+            return *c==' ' || *c=='-';
+        }
+    public:
 
         line_info line_width(const wchar_t* begin, const font& font, float max_width)
         {
@@ -336,7 +349,7 @@ namespace game
                     info.delim = L'\n';
                     return info;
                 }
-                if (may_delim_line(begin)) 
+                if (may_delim_line(begin))
                 {
                     at_last_delim.delim = *begin;
                     at_last_delim.count = info.count;
@@ -352,35 +365,35 @@ namespace game
                 ++begin;
             }
 
-           /* float adv = 0;
-            int id = 0;
-            for (auto ch = begin; *ch != '\0'; ++ch)
-            {
-                const wchar_t& c = *ch;
-                if (c == L' ')
-                {
-                    float fwidth = adv;
-                    const wchar_t* p = (&c);
-                    do
-                    {
-                        ++p;
-                        if (*p=='\0') break;
-                        fwidth += font[*p].offx;
-                    } while (*p != '\0' && *p != ' ');
-                    if (fwidth > max_width)
-                    {
-                        return { adv, *p };
-                    }
-                }
-                if (c == L'\n')
-                {
-                    return { adv, L'\n' };
-                }
+            /* float adv = 0;
+             int id = 0;
+             for (auto ch = begin; *ch != '\0'; ++ch)
+             {
+                 const wchar_t& c = *ch;
+                 if (c == L' ')
+                 {
+                     float fwidth = adv;
+                     const wchar_t* p = (&c);
+                     do
+                     {
+                         ++p;
+                         if (*p=='\0') break;
+                         fwidth += font[*p].offx;
+                     } while (*p != '\0' && *p != ' ');
+                     if (fwidth > max_width)
+                     {
+                         return { adv, *p };
+                     }
+                 }
+                 if (c == L'\n')
+                 {
+                     return { adv, L'\n' };
+                 }
 
-                game::glyph g = font[c];
-                adv += g.offx;
-            }
-            return { adv, '\0' };*/
+                 game::glyph g = font[c];
+                 adv += g.offx;
+             }
+             return { adv, '\0' };*/
         }
 
         glm::vec2 text_bounds(const std::wstring& text, const font& font, float max_width)
@@ -434,7 +447,19 @@ namespace game
             ALIGN_DEFAULT   = ALIGN_LEFT,
         };
 
-        glm::vec2 draw_text(const std::wstring& text, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color = { 255, 255, 255, 255 }, int max_lines = std::numeric_limits<int>::max())
+        void push_list(int prio, ui_window* window)
+        {
+            _current_window = window;
+            _current_prio = prio;
+        }
+
+        void pop_list()
+        {
+            _current_window = nullptr;
+            _current_prio = -1;
+        }
+
+        glm::vec2 draw_text(const std::wstring& text, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color ={ 255, 255, 255, 255 }, int max_lines = std::numeric_limits<int>::max())
         {
             indirect ind;
             ind.base_vertex = verts.size();
@@ -485,7 +510,7 @@ namespace game
                     max_width =  justify ? full_width : max_width;
                     offset_x = offset_factor * (full_width - max_width);
                     continue;
-                } 
+                }
 
                 if (-advy > -3.5f*font.size() && -advy < bmax.y-bmin.y+3.5f*font.size())
                 {
@@ -505,7 +530,7 @@ namespace game
                 width = std::max(width, adv);
             }
             ind.count = (id/4) * prim_quad.size();
-            _indirects.push_back(ind);
+            _indirects[{_current_prio, _current_window}].push_back(ind);
             return { width, -height };
         }
 
@@ -521,7 +546,9 @@ namespace game
         cursor_type _cursor = CUR_NORMAL;
         GLFWwindow* _win;
         gl::sampler _sampler;
-        std::vector<indirect> _indirects;
+        int _current_prio = -1;
+        ui_window* _current_window = nullptr;
+        std::map<std::pair<int, ui_window*>, std::vector<indirect>, ui_window_prioritizer> _indirects;
         std::vector<vtx> verts;
         std::vector<idx> idxes;
         gl::buffer<vtx> _vbuf;

@@ -17,7 +17,14 @@ namespace game
 
         void notify_minimized(ui_window* win);
         void notify_unminimized(ui_window* win);
+
+        void bring_forward(ui_window* win);
+        bool is_at_front(ui_window* win);
+        void register_ifnex(ui_window* win);
+
         std::vector<ui_window*> minimized;
+        std::map<ui_window*, int> prio_map;
+
     private:
 
     };
@@ -38,8 +45,8 @@ namespace game
             return _size;
         }
 
-        ui_window(std::shared_ptr<io::window> win, const std::wstring& title, glm::vec2 pos, glm::vec2 size, glm::u8vec4 background, glm::u8vec4 title_bar_color, glm::vec4 padding = {4, 4, 4, 4})
-            : _title(title), _window(win), _pos(pos), _size(size), _background(background), _title_bar_color(title_bar_color), _scroll_offset{0}, _padding(padding)
+        ui_window(std::shared_ptr<io::window> win, const std::wstring& title, glm::vec2 pos, glm::vec2 size, glm::u8vec4 background, glm::u8vec4 title_bar_color, glm::vec4 padding ={ 4, 4, 4, 4 })
+            : _title(title), _window(win), _pos(pos), _size(size), _background(background), _title_bar_color(title_bar_color), _scroll_offset{ 0 }, _padding(padding)
         {
             _ui = &default_ui();
             _scroll_callback = _window->callbacks->scroll_callback.add([&](GLFWwindow* w, double x, double y) {
@@ -55,7 +62,7 @@ namespace game
 
         ~ui_window()
         {
-            if(_window)
+            if (_window)
                 _window->callbacks->scroll_callback.remove(_scroll_callback);
         }
 
@@ -91,36 +98,76 @@ namespace game
             return anim(*this);
         }
 
+        bool cursor_in_frame()
+        {
+            int wi, he; glfwGetFramebufferSize(*_window, &wi, &he);
+            double cx, cy; glfwGetCursorPos(*_window, &cx, &cy);
+            cy = he - cy;
+            glm::vec2 bmin = _pos;
+            glm::vec2 bmax = _pos + _size;
+            return glm::clamp(glm::vec2(cx, cy), bmin, bmax) == glm::vec2(cx, cy);
+        }
+
+        bool is_topmost(ui_layouter& lo)
+        {
+            if (_minimized)
+                return true;
+            if (!cursor_in_frame())
+                return false;
+            bool topmost = true;
+            for (auto&& other : lo.prio_map)
+            {
+                if (other.second > frame_priority_layer && other.first->cursor_in_frame())
+                {
+                    topmost = false;
+                    break;
+                }
+            }
+            return topmost;
+        }
+
+        bool lock_click = false;
+        bool _block_actions = false;
+        
         void draw_content(ui_layouter& lo, const font& title_font, const font& status_bar_font, std::function<void(ui_window& window, const glm::vec2& bmin, const glm::vec2& bmax)> draw_fun)
-        {         
+        {
             if (!_open)
                 return;
 
-            glm::vec2 bmin = _pos;
-            glm::vec2 bmax = _pos + _size;
 
             int wi, he; glfwGetFramebufferSize(*_window, &wi, &he);
             double cx, cy; glfwGetCursorPos(*_window, &cx, &cy);
             cy = he - cy;
 
-            float handle_width = 16.f;
+            _pos = glm::clamp(_pos, glm::vec2(0, 0), glm::vec2(wi, he) - glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he)));
+            _size = glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he) - _pos);
 
-            if (_minimized)
+            glm::vec2 bmin = _pos;
+            glm::vec2 bmax = _pos + _size;
+
+            float handle_width = 16.f;
+            lo.register_ifnex(this);
+            frame_priority_layer = lo.prio_map[this];
+            _ui->push_list(frame_priority_layer, this);
+            priority_layer = 0;
+
+            _block_actions = !is_topmost(lo);
+            if (_minimized || _maximized || lock_click || !is_topmost(lo))
+            {
                 _block_transform = true;
+            }
 
             if (_resize_state != -1)
             {
                 if (_resize_state == 0)
                 {
                     _ui->set_cursor(CUR_HRESIZE);
-                    // X
                     bmax.x -= (_action_cursor_position.x - cx);
                     _action_cursor_position.x = cx;
                 }
                 if (_resize_state == 1)
                 {
                     _ui->set_cursor(CUR_VRESIZE);
-                    //y
                     bmin.y -= (_action_cursor_position.y - cy);
                     _action_cursor_position.y = cy;
                 }
@@ -145,8 +192,9 @@ namespace game
                 if (cx > bmax.x - 4.f)
                 {
                     _ui->set_cursor(CUR_HRESIZE);
-                    if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                    if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && is_topmost(lo))
                     {
+                        lo.bring_forward(this);
                         _action_cursor_position.x = cx;
                         _resize_state = 0;
                     }
@@ -154,8 +202,9 @@ namespace game
                 else if (cy < bmin.y + 4.f)
                 {
                     _ui->set_cursor(CUR_VRESIZE);
-                    if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                    if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && is_topmost(lo))
                     {
+                        lo.bring_forward(this);
                         _action_cursor_position.y = cy;
                         _resize_state = 1;
                     }
@@ -166,10 +215,20 @@ namespace game
                 _ui->set_cursor(CUR_NORMAL);
                 if (glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
                 {
+                    lo.bring_forward(this);
                     _action_cursor_position ={ cx, cy };
                     _move_state = 1;
                 }
             }
+            
+            if (!lock_click && glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            {
+                if (is_topmost(lo))
+                    lo.bring_forward(this);
+                lock_click = true;
+            }
+            else if(glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+                lock_click = false;
 
             if (_resize_state == -1 && _move_state==-1 && glfwGetMouseButton(*_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
             {
@@ -183,13 +242,18 @@ namespace game
             if (glm::any(glm::lessThan(bmax, bmin)))
             {
                 bmin = bmax;
-                return;
             }
+
+            _action_cursor_position = glm::clamp(_action_cursor_position, glm::vec2(0, 0), glm::vec2(wi, he));
 
             _pos = bmin;
             _size = bmax - bmin;
+            _pos = glm::clamp(_pos, glm::vec2(0, 0), glm::vec2(wi, he) - glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he)));
+            _size = glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he) - _pos);
+            bmin = _pos;
+            bmax = _pos + _size;
 
-            _insert_position = { 0,0 };
+            _insert_position ={ 0,0 };
             _ui->scissor({ 0, 0 }, { wi, he });
             if (!_minimized)
             {
@@ -220,23 +284,26 @@ namespace game
             _ui->scissor({ bmin.x, std::clamp(bmax.y - title_bar_height, bmin.y, bmax.y) }, bmax);
             _ui->draw_quad({ bmin.x, bmax.y - title_bar_height }, bmax, _title_bar_color);
             _ui->draw_quad({ bmin.x + 8, bmax.y - title_bar_height * 0.5f - 12 }, { bmin.x + 8 + 24, bmax.y - title_bar_height * 0.5f + 12 }, { 0, 1 }, { 1, 0 }, _icon);
-            if(!_minimized)
-                _ui->draw_text(_title, title_font, 0, { bmin.x + 8 + 24 + 8, bmax.y - 0.5f*(title_bar_height + title_font.size()) }, { bmax.x, bmax.y - 0.5f*(title_bar_height - title_font.size()) }, ui::ALIGN_LEFT, {255, 255, 255, uint8_t(_alpha * 255)}, 1);
+            if (!_minimized)
+                _ui->draw_text(_title, title_font, 0, { bmin.x + 8 + 24 + 8, bmax.y - 0.5f*(title_bar_height + title_font.size()) }, { bmax.x, bmax.y - 0.5f*(title_bar_height - title_font.size()) }, ui::ALIGN_LEFT, { 255, 255, 255, uint8_t(_alpha * 255) }, 1);
 
             //title bar actions
             if (_close_button)
-            { 
+            {
                 const auto state = _close_button->draw_inside(*_window, _ui, { bmax.x - 8 - 24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8, bmax.y - title_bar_height * 0.5f + 12 });
                 if (state == STATE_RELEASE)
                 {
-                    log_i << "Closed.";
-                    if (_minimized)
+                    if (!_block_actions)
                     {
-                        lo.notify_unminimized(this);
+                        log_i << "Closed.";
+                        if (_minimized)
+                        {
+                            lo.notify_unminimized(this);
+                        }
+                        animate().to_size({ STACK_WIDTH, title_bar_height }).to_pos(_pos + _size - glm::vec2(STACK_WIDTH, title_bar_height)).with_end([this]() {
+                            _open = false;
+                        });
                     }
-                    animate().to_size({ STACK_WIDTH, title_bar_height }).to_pos(_pos + _size - glm::vec2(STACK_WIDTH, title_bar_height)).with_end([this]() {
-                        _open = false;
-                    });
                     _close_button->set_state(STATE_UP);
                 }
             }
@@ -245,37 +312,40 @@ namespace game
                 const auto state = _maximize_button->draw_inside(*_window, _ui, { bmax.x - 8 - 24-8-24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8-24-8, bmax.y - title_bar_height * 0.5f + 12 });
                 if (state == STATE_RELEASE)
                 {
-                    if (_minimized || _maximized)
+                    if (!_block_actions)
                     {
-                        if (_minimized)
+                        if (_minimized || _maximized)
                         {
-                            lo.win_stack_position.x -= STACK_WIDTH;
-                            if (lo.win_stack_position.x < 0)
+                            if (_minimized)
                             {
-                                lo.win_stack_position.y -= title_bar_height;
-                                lo.win_stack_position.x = ((wi - int(STACK_WIDTH)) / int(STACK_WIDTH)) * STACK_WIDTH;
+                                lo.win_stack_position.x -= STACK_WIDTH;
+                                if (lo.win_stack_position.x < 0)
+                                {
+                                    lo.win_stack_position.y -= title_bar_height;
+                                    lo.win_stack_position.x = ((wi - int(STACK_WIDTH)) / int(STACK_WIDTH)) * STACK_WIDTH;
+                                }
+                                lo.notify_unminimized(this);
                             }
-                            lo.notify_unminimized(this);
-                        }
 
-                        _anim_to_size = _size_before_action;
-                        _anim_to_pos = _pos_before_action;
-                        _anim_to_alpha = 1.f;
-                        _minimized = false;
-                        _maximized = false;
-                        _run_anim = true;
-                        _on_anim_end = []() {};
+                            _anim_to_size = _size_before_action;
+                            _anim_to_pos = _pos_before_action;
+                            _anim_to_alpha = 1.f;
+                            _minimized = false;
+                            _maximized = false;
+                            _run_anim = true;
+                            _on_anim_end = []() {};
+                        }
+                        else
+                        {
+                            _pos_before_action = _pos;
+                            _size_before_action = _size;
+                            _anim_to_size ={ wi, he };
+                            _anim_to_pos ={ 0, 0 };
+                            _run_anim = true;
+                            _on_anim_end = [this]() { _maximized = true; };
+                        }
+                        log_i << "Maximized.";
                     }
-                    else
-                    {
-                        _pos_before_action = _pos;
-                        _size_before_action = _size;
-                        _anim_to_size ={ wi, he };
-                        _anim_to_pos ={ 0, 0 };
-                        _run_anim = true;
-                        _on_anim_end = [this]() { _maximized = true; };
-                    }
-                    log_i << "Maximized.";
                     _maximize_button->set_state(STATE_UP);
                 }
             }
@@ -284,24 +354,27 @@ namespace game
                 const auto state = _minimize_button->draw_inside(*_window, _ui, { bmax.x - 8 - 24-8-24-8-24, bmax.y - title_bar_height * 0.5f - 12 }, { bmax.x - 8-24-8-24-8, bmax.y - title_bar_height * 0.5f + 12 }, _alpha);
                 if (state == STATE_RELEASE)
                 {
-                    log_i << "Minimized.";
-                    _pos_before_action = _pos;
-                    _size_before_action = _size;
-                    _anim_to_alpha = 0.f;
-                    _anim_to_size ={ STACK_WIDTH, title_bar_height };
-                    _anim_to_pos =lo.win_stack_position;
-                    if (lo.win_stack_position.x + _anim_to_size.x + STACK_WIDTH > wi)
+                    if (!_block_actions)
                     {
-                        lo.win_stack_position ={ 0, lo.win_stack_position.y + title_bar_height };
+                        log_i << "Minimized.";
+                        _pos_before_action = _pos;
+                        _size_before_action = _size;
+                        _anim_to_alpha = 0.f;
+                        _anim_to_size ={ STACK_WIDTH, title_bar_height };
+                        _anim_to_pos =lo.win_stack_position;
+                        if (lo.win_stack_position.x + _anim_to_size.x + STACK_WIDTH > wi)
+                        {
+                            lo.win_stack_position ={ 0, lo.win_stack_position.y + title_bar_height };
+                        }
+                        else
+                        {
+                            lo.win_stack_position.x += _anim_to_size.x;
+                        }
+                        _run_anim = true;
+                        _on_anim_end = [&, this]() {
+                            _minimized = true; lo.notify_minimized(this);
+                        };
                     }
-                    else
-                    {
-                        lo.win_stack_position.x += _anim_to_size.x;
-                    }
-                    _run_anim = true;
-                    _on_anim_end = [&, this]() { 
-                        _minimized = true; lo.notify_minimized(this); 
-                    };
                     _minimize_button->set_state(STATE_UP);
                 }
             }
@@ -323,9 +396,12 @@ namespace game
                 }
             }
 
-            _smooth_scroll_offset = glm::mix(_smooth_scroll_offset, _scroll_offset, float(10.f * _window->delta_time()));
-            _ui->scissor({ 0, 0 }, { wi, he});
+            _pos = glm::clamp(_pos, glm::vec2(0, 0), glm::vec2(wi, he) - glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he)));
+            _size = glm::clamp(_size, glm::vec2(STACK_WIDTH, title_bar_height), glm::vec2(wi, he) - _pos);
 
+            _smooth_scroll_offset = glm::mix(_smooth_scroll_offset, _scroll_offset, float(10.f * _window->delta_time()));
+            _ui->scissor({ 0, 0 }, { wi, he });
+            _ui->pop_list();
         }
 
         void reset_draw_state()
@@ -404,7 +480,7 @@ namespace game
             }
             _insert_position = _last_insert_position;
             _insert_position += _ui->draw_text(text, font, _smooth_scroll_offset.y - _last_insert_position.y, { inset.first.x + _last_insert_position.x, inset.first.y }, inset.second, align, color, max_lines);
-            if(align & ui::ALIGN_RIGHT)
+            if (align & ui::ALIGN_RIGHT)
                 _insert_position.x = inset.second.x;
             reset_draw_state();
         }
@@ -483,7 +559,7 @@ namespace game
             _ui->draw_quad(min + _smooth_scroll_offset, max + _smooth_scroll_offset, uv0, uv1, texture, tint);
             reset_draw_state();
         }
-             
+
         ui_button_state draw_button(ui_button& button, glm::vec2 size)
         {
             std::pair<glm::vec2, glm::vec2> inset = _ui->inset(_pos, _pos+_size, _padding);
@@ -518,8 +594,11 @@ namespace game
             glm::vec2 max ={ inset.first.x + right_bottom.x, inset.second.y - _last_insert_position.y };
             const auto state = button.draw_inside(*_window, _ui, min + _smooth_scroll_offset, max + _smooth_scroll_offset);
             reset_draw_state();
-            return state;
+            return _block_actions ? STATE_UP : state;
         }
+
+        int frame_priority_layer = 0;
+        int priority_layer = 0;
 
     private:
         bool _minimized = false;
@@ -559,19 +638,44 @@ namespace game
         bool _no_inset = false;
         glm::vec4 _padding;
         glm::u8vec4 _background;
-        
+
 
         int _resize_state = -1;
         int _move_state = -1;
         glm::vec2 _action_cursor_position;
     };
 
-    void ui_layouter::notify_minimized(ui_window* win)
+    inline bool ui_layouter::is_at_front(ui_window* win)
+    {
+        return prio_map.count(win) != 0 && prio_map[win] == prio_map.size() - 1;
+    }
+
+    inline void ui_layouter::register_ifnex(ui_window* win)
+    {
+        if (prio_map.count(win) == 0)
+            prio_map[win] = prio_map.size() -1;
+    }
+
+    inline void ui_layouter::bring_forward(ui_window* win)
+    {
+        if (is_at_front(win) || !win->is_topmost(*this)) return;
+        const int last = prio_map[win];
+        prio_map[win] = prio_map.size() - 1;
+        for (auto&& item : prio_map)
+        {
+            if (item.first != win && item.second > last)
+            {
+                item.second = std::max(0, item.second-1);
+            }
+        }
+    }
+
+    inline void ui_layouter::notify_minimized(ui_window* win)
     {
         minimized.push_back(win);
     }
 
-    void ui_layouter::notify_unminimized(ui_window* win)
+    inline void ui_layouter::notify_unminimized(ui_window* win)
     {
         auto it = std::find(minimized.begin(), minimized.end(), win);
         if (it == minimized.end())
