@@ -256,11 +256,11 @@ namespace gl
     template<typename It, typename>
     inline typename buffer<T>::iterator buffer<T>::insert(iterator at, It begin, It end)
     {
-        iterator retval;
+        iterator retval = this->end();
         const bool was_data_full_size = _data_full_size;
         const GLbitfield map_access = _data_access;
         auto end_it = this->end();
-        if (was_data_full_size && _size != 0)
+        if (is_mapped() && !was_data_full_size && _size != 0)
             unmap();
 
         const auto dist = std::distance(begin, end);
@@ -277,7 +277,6 @@ namespace gl
                         reserved = static_cast<size_t>(std::max(1.0, static_cast<double>(reserved)) * compute_size_increase());
                     reserve(reserved);
                 }
-                glFinish();
 
                 _size = new_size;
                 const size_t insert_position = at._offset;
@@ -288,15 +287,39 @@ namespace gl
                 else
                     retval = at;
 
-                if (_size > 1 && (std::distance(&*begin, &*std::prev(end)) != _size - 1))
+                if (_size > 1 && (std::distance(&*begin, &*std::prev(end)) != dist - 1))
                 {
-                    std::vector<T> temp(begin, end);
-                    glNamedBufferSubData(_id, insert_position * sizeof(T), dist * sizeof(T), temp.data());
+                    if (was_data_full_size)
+                    {
+                        if (!_data)
+                            map(map_access);
+                        _data_size = _size;
+                        size_t pos = 0;
+                        for (auto b = begin; b != end; ++b, ++pos)
+                        {
+                            memcpy(_data+insert_position, &*b, sizeof(T));
+                        }
+                    }
+                    else
+                    {
+                        std::vector<T> temp(begin, end);
+                        glNamedBufferSubData(_id, insert_position * sizeof(T), dist * sizeof(T), temp.data());
+                    }
                 }
                 else
                 {
                     const T* data = &*begin;
-                    glNamedBufferSubData(_id, insert_position * sizeof(T), dist * sizeof(T), data);
+                    if (was_data_full_size)
+                    {
+                        if (!_data)
+                            map(map_access);
+                        _data_size = _size;
+                        memcpy(_data + insert_position, data, dist * sizeof(T));
+                    }
+                    else
+                    {
+                        glNamedBufferSubData(_id, insert_position * sizeof(T), dist * sizeof(T), data);
+                    }
                 }
             }
             else
@@ -317,14 +340,26 @@ namespace gl
                     retval = std::rotate(at, at + dist, end_it);
                 else
                     retval = at;
-                std::vector<T> temp(begin, end);
-                glNamedBufferSubData(_id, insert_position * sizeof(T), dist * sizeof(T), temp.data());
+
+                if (was_data_full_size)
+                {
+                    if (!_data)
+                        map(map_access);
+                    _data_size = _size;
+                    size_t pos = 0;
+                    for (auto b = begin; b != end; ++b, ++pos)
+                    {
+                        memcpy(_data+pos, &*b, sizeof(T));
+                    }
+                }
+                else
+                {
+                    std::vector<T> temp(begin, end);
+                    glNamedBufferSubData(_id, insert_position * sizeof(T), dist * sizeof(T), temp.data());
+                }
             }
         }
-      
-        if (was_data_full_size)
-            map(map_access);
-
+       
         return retval;
     }
 
@@ -442,7 +477,7 @@ namespace gl
     {
         if ((_usage & GL_DYNAMIC_STORAGE_BIT) != GL_DYNAMIC_STORAGE_BIT)
             throw std::invalid_argument("Cannot reserve or resize a buffer without GL_DYNAMIC_STORAGE_BIT set.");
-        if (size == _reserved_size)
+        if (size <= _reserved_size)
             return;
         const bool was_mapped = is_mapped();
         size_t map_size = _data_size;
@@ -471,6 +506,9 @@ namespace gl
             if (!data_full_size && map_size > 0)
                 map(map_offset, map_size, map_access);
         }
+        _data_full_size = data_full_size;
+        if (_data_full_size && was_mapped)
+            map(map_access);
         _reserved_size = size;
         _size = std::min(_size, size);
         init_handle();

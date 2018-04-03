@@ -44,7 +44,7 @@ namespace game
 
         void update()
         {
-            static game::font font("../res/ui/fonts/Poppins-SemiBold.ttf", 20);
+            static game::font font("../res/ui/fonts/Poppins-SemiBold.ttf", 16);
             int size = 256 * _progress;
             glm::vec4 start(0, 0, 0, 1);
             glm::vec4 end(0.1f, 0.4f, 0.01f, 1.f);
@@ -58,7 +58,7 @@ namespace game
             // progress bar
             default_ui().draw_quad({ 0, 0 }, { w, 24.f }, { 255, 255, 255, 120 });
             default_ui().draw_quad({ 0, 0 }, { _progress * w, 24.f }, { 255, 255, 255, 255 });
-            default_ui().draw_text(_info, &font, { 8, 2 }, { w, 22.f }, { 0x00, 0x68, 0x3b, 255 });
+            default_ui().draw_text(_info, font, 0, { 8, 4 }, { w, 20.f }, game::ui::ALIGN_DEFAULT, { 0x00, 0x68, 0x3b, 255 });
             default_ui().draw();
         }
 
