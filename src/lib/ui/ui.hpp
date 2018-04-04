@@ -81,8 +81,6 @@ namespace game
         glyph operator[](wchar_t c) { return at(c); }
         const glyph operator[](wchar_t c) const { return at(c); }
 
-        //glm::vec2 text_size(const std::wstring& text);
-
         float size() const noexcept
         {
             return _size;
@@ -364,36 +362,6 @@ namespace game
                 ++info.count;
                 ++begin;
             }
-
-            /* float adv = 0;
-             int id = 0;
-             for (auto ch = begin; *ch != '\0'; ++ch)
-             {
-                 const wchar_t& c = *ch;
-                 if (c == L' ')
-                 {
-                     float fwidth = adv;
-                     const wchar_t* p = (&c);
-                     do
-                     {
-                         ++p;
-                         if (*p=='\0') break;
-                         fwidth += font[*p].offx;
-                     } while (*p != '\0' && *p != ' ');
-                     if (fwidth > max_width)
-                     {
-                         return { adv, *p };
-                     }
-                 }
-                 if (c == L'\n')
-                 {
-                     return { adv, L'\n' };
-                 }
-
-                 game::glyph g = font[c];
-                 adv += g.offx;
-             }
-             return { adv, '\0' };*/
         }
 
         glm::vec2 text_bounds(const std::wstring& text, const font& font, float max_width)

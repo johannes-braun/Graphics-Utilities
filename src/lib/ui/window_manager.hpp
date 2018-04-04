@@ -33,10 +33,10 @@ namespace gfx::ui
         window* front_window_at(float x, float y);
 
         io::window& get_window();
-        game::ui& get_ui();
+        //game::ui& get_ui();
 
     private:
-        game::ui _ui;
+        //game::ui _ui;
         std::shared_ptr<io::window> _base_window;
         std::map<window*, window_info> _windows;
     };

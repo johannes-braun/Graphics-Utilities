@@ -51,7 +51,7 @@ namespace gl
                 unmap();
             glDeleteBuffers(1, &_id);
         }
-        glCreateBuffers(1, _id);
+        glCreateBuffers(1, &_id);
         if ((_usage & GL_DYNAMIC_STORAGE_BIT) == GL_DYNAMIC_STORAGE_BIT)
         {
             glNamedBufferStorage(_id, _reserved_size * sizeof(T), nullptr, _usage);
@@ -62,7 +62,7 @@ namespace gl
             std::vector<T> temp(_size);
             glGetNamedBufferSubData(other, 0, _size * sizeof(T), temp.data());
             glNamedBufferStorage(_id, _reserved_size * sizeof(T), nullptr, _usage);
-            glNamedBufferSubData(other, _id, 0, 0, other.size() * sizeof(T), temp.data());
+            glNamedBufferSubData(_id, 0, other.size() * sizeof(T), temp.data());
         }
         init_handle();
 

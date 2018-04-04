@@ -5,7 +5,7 @@
 namespace gfx::ui
 {
     window_manager::window_manager(const std::shared_ptr<io::window>& base)
-        : _base_window(base), _ui(*base)
+        : _base_window(base)// , _ui(*base)
     {
 
     }
@@ -64,8 +64,8 @@ namespace gfx::ui
         return *_base_window;
     }
 
-    game::ui& window_manager::get_ui()
+    /*game::ui& window_manager::get_ui()
     {
         return _ui;
-    }
+    }*/
 }

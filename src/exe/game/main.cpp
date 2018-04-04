@@ -2,23 +2,18 @@
 #include "states.hpp"
 #include "splash.hpp"
 #include <random>
-#include "ui.hpp"
-#include "ui_window.hpp"
+//#include "ui.hpp"
+//#include "ui_window.hpp"
 #include <fstream>
 #include <numeric>
 
-#define STB_RECT_PACK_IMPLEMENTATION
-#include "stb_rect_pack.h"
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
+#include <ui/draw_list.hpp>
+#include <ui/window.hpp>
 
 bool menu() {
-    float col[] = { 0.5f, 0.5f, 0.5f, 1 };
+    float col[] = { 0.3f, 0.3f, 0.3f, 1 };
     glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, col);
     glfwSwapInterval(0);
-    static game::font fnt("../res/ui/fonts/Poppins-Regular.ttf", 16);
-    static game::font title("../res/ui/fonts/Poppins-SemiBold.ttf", 20);
-    static std::wstring txt = L"Es gibt im Moment in diese Mannschaft, oh, einige Spieler vergessen ihnen Profi was sie sind. Ich lese nicht sehr viele Zeitungen, aber ich habe gehört viele Situationen. Erstens: wir haben nicht offensiv gespielt. Es gibt keine deutsche Mannschaft spielt offensiv und die Name offensiv wie Bayern. Letzte Spiel hatten wir in Platz drei Spitzen: Elber, Jancka und dann Zickler. Wir müssen nicht vergessen Zickler. Zickler ist eine Spitzen mehr, Mehmet eh mehr Basler. Ist klar diese Wörter, ist möglich verstehen, was ich hab gesagt? Danke. Offensiv, offensiv ist wie machen wir in Platz. Zweitens: ich habe erklärt mit diese zwei Spieler: nach Dortmund brauchen vielleicht Halbzeit Pause. Ich habe auch andere Mannschaften gesehen in Europa nach diese Mittwoch. Ich habe gesehen auch zwei Tage die Training. Ein Trainer ist nicht ein Idiot! Ein Trainer sei sehen was passieren in Platz. In diese Spiel es waren zwei, drei diese Spieler waren schwach wie eine Flasche leer! Haben Sie gesehen Mittwoch, welche Mannschaft hat gespielt Mittwoch? Hat gespielt Mehmet oder gespielt Basler oder hat gespielt Trapattoni? Diese Spieler beklagen mehr als sie spielen! Wissen Sie, warum die Italienmannschaften kaufen nicht diese Spieler? Weil wir haben gesehen viele Male solche Spiel! Haben gesagt sind nicht Spieler für die italienisch Meisters! Strunz! Strunz ist zwei Jahre hier, hat gespielt 10 Spiele, ist immer verletzt! Was erlauben Strunz? Letzte Jahre Meister Geworden mit Hamann, eh, Nerlinger. Diese Spieler waren Spieler! Waren Meister geworden! Ist immer verletzt! Hat gespielt 25 Spiele in diese Mannschaft in diese Verein. Muß respektieren die andere Kollegen! haben viel nette kollegen! Stellen Sie die Kollegen die Frage! Haben keine Mut an Worten, aber ich weiß, was denken über diese Spieler. Mussen zeigen jetzt, ich will, Samstag, diese Spieler müssen zeigen mich, seine Fans, müssen alleine die Spiel gewinnen. Muß allein die Spiel gewinnen! Ich bin müde jetzt Vater diese Spieler, eh der Verteidiger diese Spieler. Ich habe immer die Schuld über diese Spieler. Einer ist Mario, einer andere ist Mehmet! Strunz ich spreche nicht, hat gespielt nur 25 Prozent der Spiel. Ich habe fertig! ...wenn es gab Fragen, ich kann Worte wiederholen...\nEs gibt im Moment in diese Mannschaft, oh, einige Spieler vergessen ihnen Profi was sie sind. Ich lese nicht sehr viele Zeitungen, aber ich habe gehört viele Situationen. Erstens: wir haben nicht offensiv gespielt. Es gibt keine deutsche Mannschaft spielt offensiv und die Name offensiv wie Bayern. Letzte Spiel hatten wir in Platz drei Spitzen: Elber, Jancka und dann Zickler. Wir müssen nicht vergessen Zickler. Zickler ist eine Spitzen mehr, Mehmet eh mehr Basler.";
     static gl::texture close_icon = []() {
         const res::image img = res::load_svg_rasterized("../res/ui/icons/ic_close_white_24px.svg", 1.f);
         gl::texture ico(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
@@ -49,7 +44,11 @@ bool menu() {
         ico.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.data.get());
         return ico;
     }();
-
+    static gfx::ui::font fnt("../res/ui/fonts/Poppins-Regular.ttf", 16);
+    static gfx::ui::font title("../res/ui/fonts/Poppins-SemiBold.ttf", 20);
+    static std::wstring txt = L"Es gibt im Moment in diese Mannschaft, oh, einige Spieler vergessen ihnen Profi was sie sind. Ich lese nicht sehr viele Zeitungen, aber ich habe gehört viele Situationen. Erstens: wir haben nicht offensiv gespielt. Es gibt keine deutsche Mannschaft spielt offensiv und die Name offensiv wie Bayern. Letzte Spiel hatten wir in Platz drei Spitzen: Elber, Jancka und dann Zickler. Wir müssen nicht vergessen Zickler. Zickler ist eine Spitzen mehr, Mehmet eh mehr Basler. Ist klar diese Wörter, ist möglich verstehen, was ich hab gesagt? Danke. Offensiv, offensiv ist wie machen wir in Platz. Zweitens: ich habe erklärt mit diese zwei Spieler: nach Dortmund brauchen vielleicht Halbzeit Pause. Ich habe auch andere Mannschaften gesehen in Europa nach diese Mittwoch. Ich habe gesehen auch zwei Tage die Training. Ein Trainer ist nicht ein Idiot! Ein Trainer sei sehen was passieren in Platz. In diese Spiel es waren zwei, drei diese Spieler waren schwach wie eine Flasche leer! Haben Sie gesehen Mittwoch, welche Mannschaft hat gespielt Mittwoch? Hat gespielt Mehmet oder gespielt Basler oder hat gespielt Trapattoni? Diese Spieler beklagen mehr als sie spielen! Wissen Sie, warum die Italienmannschaften kaufen nicht diese Spieler? Weil wir haben gesehen viele Male solche Spiel! Haben gesagt sind nicht Spieler für die italienisch Meisters! Strunz! Strunz ist zwei Jahre hier, hat gespielt 10 Spiele, ist immer verletzt! Was erlauben Strunz? Letzte Jahre Meister Geworden mit Hamann, eh, Nerlinger. Diese Spieler waren Spieler! Waren Meister geworden! Ist immer verletzt! Hat gespielt 25 Spiele in diese Mannschaft in diese Verein. Muß respektieren die andere Kollegen! haben viel nette kollegen! Stellen Sie die Kollegen die Frage! Haben keine Mut an Worten, aber ich weiß, was denken über diese Spieler. Mussen zeigen jetzt, ich will, Samstag, diese Spieler müssen zeigen mich, seine Fans, müssen alleine die Spiel gewinnen. Muß allein die Spiel gewinnen! Ich bin müde jetzt Vater diese Spieler, eh der Verteidiger diese Spieler. Ich habe immer die Schuld über diese Spieler. Einer ist Mario, einer andere ist Mehmet! Strunz ich spreche nicht, hat gespielt nur 25 Prozent der Spiel. Ich habe fertig! ...wenn es gab Fragen, ich kann Worte wiederholen...\nEs gibt im Moment in diese Mannschaft, oh, einige Spieler vergessen ihnen Profi was sie sind. Ich lese nicht sehr viele Zeitungen, aber ich habe gehört viele Situationen. Erstens: wir haben nicht offensiv gespielt. Es gibt keine deutsche Mannschaft spielt offensiv und die Name offensiv wie Bayern. Letzte Spiel hatten wir in Platz drei Spitzen: Elber, Jancka und dann Zickler. Wir müssen nicht vergessen Zickler. Zickler ist eine Spitzen mehr, Mehmet eh mehr Basler.";
+    
+    /*
     static game::ui_layouter layouter;
     static game::ui_window settings(game::host::window, L"My Settings", { 20, 20 }, { 350, 450 }, { 0xe0, 0xe0, 0xe0, 255 }, { 0x00, 0x68, 0x3b, 0xff }, {16, 24, 16, 24});
     static game::ui_window other(game::host::window, L"Other Window", { 0, 120 }, { 250, 150 }, { 0xe0, 0xe0, 0xe0, 255 }, { 0xb7, 0x1c, 0x1c, 0xff }, { 16, 24, 16, 24 });
@@ -124,7 +123,89 @@ bool menu() {
     other6.draw_content(layouter, title, fnt, empty_window_content);
     other7.draw_content(layouter, title, fnt, empty_window_content);
 
-    game::default_ui().draw();
+    game::default_ui().draw();*/
+
+    static gl::pipeline pipeline = []() {
+        gl::pipeline p;
+        p[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("ui/vs.vert");
+        p[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("ui/fs.frag");
+        return p;
+    }();
+
+    static gfx::ui::draw_list list(game::host::window);
+
+    pipeline.bind();
+    glm::vec2 size(6, 6);
+    glm::vec2 offset(0, -1);
+    list.push_rounded_quad({ 100-size.x+offset.x, 100-size.y+offset.y }, { 430+size.x+offset.x, 220+size.y+offset.y }, { 0, 1 }, { 1, 0 }, { 0, 0, 0, 60 }, { 0, 0, 0, 0 }, 12, gfx::ui::CORNER_ALL);
+    list.push_rounded_quad({ 100, 100 }, { 430, 220 }, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, 4, gfx::ui::CORNER_ALL);
+    list.push_rounded_quad({ 100, 180 }, { 430, 220 }, { 0, 1 }, { 1, 0 }, { 0x00, 0x68, 0x3b, 255 }, { 0x00, 0x68, 0x3b, 255 }, 4, gfx::ui::CORNER_TOP_LEFT | gfx::ui::CORNER_TOP_RIGHT);
+    list.push_quad({ 100, 178 }, { 430, 180 }, { 0, 1 }, { 1, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 60 }, { gfx::ui::GRADIENT_VERTICAL });
+    list.push_quad({ 100 + 8, 180 + 8 }, { 100 + 8 + 24, 180 + 8 + 24 }, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, {}, gfx::ui::GRADIENT_NONE, window_icon);
+    list.push_text(L"This is a Window", title, 0, { 100 + 8 + 24 + 8, 180 }, { 414, 210 }, gfx::ui::ALIGN_LEFT);
+    list.push_quad({ 430 - 8 - 24, 180 + 8 }, { 430 - 8, 180 + 8 + 24 }, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, {}, gfx::ui::GRADIENT_NONE, close_icon);
+    list.push_quad({ 430 - 8 - 24-8-24, 180 + 8 }, { 430 - 8 - 24-8, 180 + 8 + 24 }, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, {}, gfx::ui::GRADIENT_NONE, maximize_icon);
+    list.push_quad({ 430 - 8 - 24-8-24-8-24, 180 + 8 }, { 430 - 8 - 24-8-24-8, 180 + 8 + 24 }, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, {}, gfx::ui::GRADIENT_NONE, minimize_icon);
+    list.push_scissor(100, 100, 330, 80);
+    list.push_text(txt, fnt, 0, { 100+16, 100+16 }, { 430-16, 180-16 }, gfx::ui::ALIGN_JUSTIFY, { 0, 0, 0, 196 });
+    
+    //float rounding = 5.f;
+    //bool top_left = true;
+    //bool top_right = true;
+    //bool bottom_right = false;
+    //bool bottom_left = true;
+
+    //glm::vec2 shadow_offset(0, -2);
+    //glm::vec2 shadow_size(0, 0);
+
+    //if (bottom_left)    list.push_rounding({ 100 - shadow_size.x+shadow_offset.x, 100- shadow_size.y+shadow_offset.y }, rounding, 1.f, 1.5f, 5, { 0, 0, 0, 255 }, { 0, 0, 0, 0 });
+    //if (bottom_right)   list.push_rounding({ 150 + shadow_size.x+shadow_offset.x, 100- shadow_size.y+shadow_offset.y }, rounding, 0.5f, 1.0f, 5, { 0, 0, 0, 255 }, { 0, 0, 0, 0 });
+    //if (top_left)       list.push_rounding({ 100 - shadow_size.x+shadow_offset.x, 150+ shadow_size.y+shadow_offset.y }, rounding, 1.5f, 2.0f, 5, { 0, 0, 0, 255 }, { 0, 0, 0, 0 });
+    //if (top_right)      list.push_rounding({ 150 + shadow_size.x+shadow_offset.x, 150+ shadow_size.y+shadow_offset.y }, rounding, 0.0f, 0.5f, 5, { 0, 0, 0, 255 }, { 0, 0, 0, 0 });
+
+    //// left
+    //if(bottom_left && top_left) list.push_quad({ 100-rounding - shadow_size.x+shadow_offset.x, 100- shadow_size.y+shadow_offset.y }, { 100 - shadow_size.x+shadow_offset.x, 150+shadow_size.y+shadow_offset.y }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 0 }, { 0, 0, 0, 255 }, gfx::ui::GRADIENT_HORIZONTAL);
+    //// top
+    //if (top_left && top_right) list.push_quad({ 100 - shadow_size.x+shadow_offset.x, 150 + shadow_size.y+shadow_offset.y }, { 150 + shadow_size.x+shadow_offset.x, 150+rounding+ shadow_size.y+shadow_offset.y }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 255 }, { 0, 0, 0, 0 }, gfx::ui::GRADIENT_VERTICAL);
+    ////right
+    //if (bottom_right && top_right) list.push_quad({ 150 + shadow_size.x+shadow_offset.x, 100- shadow_size.y+shadow_offset.y }, { 150+rounding + shadow_size.x+shadow_offset.x, 150+ shadow_size.y+shadow_offset.y }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 255 }, { 0, 0, 0, 0 }, gfx::ui::GRADIENT_HORIZONTAL);
+    ////bottom
+    //if (bottom_left && bottom_right) list.push_quad({ 100 - shadow_size.x+shadow_offset.x, 100-rounding- shadow_size.y+shadow_offset.y },    { 150 + shadow_size.x+shadow_offset.x, 100-shadow_size.y+shadow_offset.y }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 0 }, { 0, 0, 0, 255 }, gfx::ui::GRADIENT_VERTICAL);
+
+    //list.push_quad(
+    //    { 100 - shadow_size.x+shadow_offset.x - ((!(bottom_left && top_left)) * rounding), 100- shadow_size.y+shadow_offset.y - ((!(bottom_left && bottom_right)) * rounding) },
+    //    { 150 + shadow_size.x+shadow_offset.x + ((!(bottom_right && top_right)) * rounding), 150+ shadow_size.y+shadow_offset.y + ((!(top_left && top_right)) * rounding) },
+    //    { 0, 0 }, { 1, 1 }, { 0, 0, 0, 255 }, {0,0,0,0}, gfx::ui::GRADIENT_NONE);
+
+   /* rounding = 4.f;
+    list.push_rounding({ 100, 100 }, rounding, 1.f, 1.5f, 3, { 255,255,255, 255 }, { 255,255,255, 255 });
+    list.push_rounding({ 150, 100 }, rounding, 0.5f, 1.0f, 3, { 255,255,255, 255 }, { 255,255,255, 255 });
+    list.push_rounding({ 100, 150 }, rounding, 1.5f, 2.0f, 3, { 255,255,255, 255 }, { 255,255,255, 255 });
+    list.push_rounding({ 150, 150 }, rounding, 0.0f, 0.5f, 3, { 255,255,255, 255 }, { 255,255,255, 255 });
+    list.push_quad({ 100, 100-rounding }, { 150, 100 }, { 0, 0 }, { 1, 1 }, { 255,255,255, 255 }, { 0, 0, 0, 255 }, gfx::ui::GRADIENT_NONE);
+    list.push_quad({ 100, 150 }, { 150, 150+rounding }, { 0, 0 }, { 1, 1 }, { 255,255,255, 255 }, { 0, 0, 0, 0 }, gfx::ui::GRADIENT_NONE);
+    list.push_quad({ 100-rounding, 100 }, { 100, 150 }, { 0, 0 }, { 1, 1 }, { 255,255,255, 255 }, { 0, 0, 0, 255 }, gfx::ui::GRADIENT_NONE);
+    list.push_quad({ 150, 100 }, { 150+rounding, 150 }, { 0, 0 }, { 1, 1 }, { 255,255,255, 255 }, { 0, 0, 0, 0 }, gfx::ui::GRADIENT_NONE);
+    list.push_quad({ 100, 100 }, { 150, 150 }, { 0, 0 }, { 1, 1 }, { 255,255,255, 255 }, { 0,0,0,0 }, gfx::ui::GRADIENT_NONE);*/
+
+    /*int base_index = list.index_count();
+    int base_vertex = list.vertex_count();
+    list.push_vertices({ gfx::ui::draw_vtx{ {100, 100 },{ 0, 0 },{ 255, 255, 255, 255 } } });
+    int res = 6;
+    for (int i=0; i<res+1; ++i)
+    {
+        float progress = 0.5f * glm::pi<float>() * i * (1/float(res-1));
+        const glm::vec2 pos{ glm::sin(progress), glm::cos(progress) };
+        list.push_vertices({ gfx::ui::draw_vtx{glm::vec2(100, 100) + 4.f*pos, {0, 0}, {255, 255, 255, 255}} });
+        if (i != 0)
+        {
+            list.push_indices({ uint16_t(base_index), uint16_t(i-1), uint16_t(i) });
+        }
+    }
+    list.push_draw_command(list.index_count() - base_index, base_index, base_vertex);*/
+
+   // list.push_quad({ 20, 20 }, { 120, 320 }, { 0, 1 }, { 1, 0 }, {255, 255, 255, 255}, image);
+    list.draw(pipeline);
 
     ImGui::Begin("Lel");
     if (ImGui::Button("Run."))
@@ -250,6 +331,11 @@ auto stb_load_image(const std::string& path, int& w, int&h)
 
 int main()
 {
+    sizeof(std::unique_ptr<int>);
+    sizeof(std::unique_ptr<int, free_deleter>);
+    sizeof(std::unique_ptr<int, void(*)(void*)>);
+    sizeof(std::shared_ptr<int>);
+    sizeof(std::weak_ptr<int>);
    /* gl::context contikz(gl::native_handle::null, { { GL_CONTEXT_FLAGS_ARB, GL_CONTEXT_DEBUG_BIT_ARB } });
 
     glsp::state preproc_state;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui.hpp"
+#include <ui/ui.hpp>
 #include "res/image.hpp"
 #include <io/window.hpp>
 
