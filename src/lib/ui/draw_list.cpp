@@ -80,10 +80,10 @@ namespace gfx::ui
     void draw_list::push_rounded_quad(glm::vec2 min, glm::vec2 max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, float radius, corner corners, gl_texture_t texture)
     {
         const float rounding = radius;
-        bool top_left = corners & CORNER_TOP_LEFT;
-        bool top_right = corners & CORNER_TOP_RIGHT;
-        bool bottom_right = corners & CORNER_BOTTOM_RIGHT;
-        bool bottom_left = corners & CORNER_BOTTOM_LEFT;
+        bool top_left = (radius > 0) && corners & CORNER_TOP_LEFT;
+        bool top_right = (radius > 0) && corners & CORNER_TOP_RIGHT;
+        bool bottom_right = (radius > 0) && corners & CORNER_BOTTOM_RIGHT;
+        bool bottom_left = (radius > 0) && corners & CORNER_BOTTOM_LEFT;
 
         min += radius;
         max -= radius;
@@ -107,8 +107,9 @@ namespace gfx::ui
             { 0, 0 }, { 1, 1 }, color1, color2, gfx::ui::GRADIENT_NONE);
     }
 
-    glm::vec2 draw_list::push_text(const std::wstring& text, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color, int max_lines)
+    glm::vec2 draw_list::push_text(const std::wstring& t, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color, int max_lines)
     {
+        std::wstring text = max_lines == 1 ? font.ellipsize_end(t, bmax.x - bmin.x) : t;
         const int first_vertex  = _vertices.size();
         const int first_index   = _indices.size();
         const gl_texture_t atlas = font.get_atlas();

@@ -76,6 +76,32 @@ namespace gfx::ui
         return _atlas;
     }
 
+    std::wstring font::ellipsize_end(const std::wstring& in, float max_width) const
+    {
+        max_width -= 3 * at('.').offx;
+        if (max_width < 0)
+            return L"";
+        size_t len = 0;
+        for (auto it = in.begin(); it != in.end(); ++it)
+        {
+            if (*it > first_char)
+            {
+                const glyph g = at(*it);
+                max_width -= g.offx;
+                if (max_width < 0)
+                {
+                    std::wstring result(in.begin(), in.begin() + len);
+                    result.insert(result.end(), '.');
+                    result.insert(result.end(), '.');
+                    result.insert(result.end(), '.');
+                    return result;
+                }
+            }
+            ++len;
+        }
+        return in;
+    }
+
     font::line_info font::line_width(const wchar_t* begin, float max_width) const noexcept
     {
         line_info info;

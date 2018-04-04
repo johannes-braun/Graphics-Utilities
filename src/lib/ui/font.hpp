@@ -35,6 +35,7 @@ namespace gfx::ui
         const gl::texture& get_atlas() const noexcept;
 
         line_info line_width(const wchar_t* begin, float max_width) const noexcept;
+        std::wstring ellipsize_end(const std::wstring& in, float max_width) const;
 
     private:
         static constexpr bool may_delim_line(const wchar_t* c) noexcept

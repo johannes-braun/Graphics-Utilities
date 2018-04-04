@@ -1,135 +1,124 @@
 #pragma once
 
+#include <string>
 #include "draw_list.hpp"
+#include "font.hpp"
 
 namespace gfx::ui
 {
-    class rect
+    class window_manager;
+
+    struct rect
     {
         glm::vec2 min;
         glm::vec2 max;
+        rect& inset(float left, float top, float right, float bottom);
+        const rect& inset(float left, float top, float right, float bottom) const;
+        bool contains(glm::vec2 point) const noexcept;
     };
 
-    template<typename T, typename = void> struct has_op_deref : std::false_type { };
-    template<typename T> struct has_op_deref<T, std::void_t<decltype(std::declval<T>().operator*())>> : std::true_type {};
-    template<typename R> constexpr bool has_op_deref_v = has_op_deref<R>::value;
-
-    template<typename T, typename = void> struct has_op_arr : std::false_type { };
-    template<typename T> struct has_op_arr<T, std::void_t<decltype(std::declval<T>().operator->())>> : std::true_type {};
-    template<typename R> constexpr bool has_op_arr_v = has_op_arr<R>::value;
-    
-    template<typename T>
-    class property
+    enum win_state
     {
-    public:
-        using getter_type = std::function<T()>;
-        using setter_type = std::function<void(const T&)>;
-
-        property() : value() {};
-        template<typename... Args, typename = decltype(T(std::declval<Args&&>()...))>
-        property(Args&&... args) : value(std::forward<Args&&>(args)...) {}
-        
-        property(getter_type getter, setter_type setter) : get(getter), set(setter) {};
-
-        operator const T&() const noexcept { return get(); }
-        getter_type get = [this]() -> T { return value; };
-        setter_type set = [this](const T& v) { value = v; };
-
-        template<typename R, typename = std::enable_if_t<std::is_convertible_v<T, R>>>
-        property& operator=(property<R>&& other)
-        {
-            set(other.get());
-            return *this;
-        }
-
-        template<typename R, typename = std::enable_if_t<std::is_convertible_v<T, R>>>
-        property& operator=(const property<R>& other)
-        {
-            set(other.get());
-            return *this;
-        }
-
-        template<typename = std::void_t<std::enable_if_t<std::is_pointer_v<T> || has_op_deref_v<T>>>>
-        decltype(value.operator*()) operator*() const {
-            return get().operator*();
-        }
-        template<typename = std::void_t<std::enable_if_t<std::is_pointer_v<T> || has_op_arr_v<T>>>>
-        decltype(std::declval<const T>().operator->()) operator->() const {
-            return get().operator->();
-        }
-        template<typename = std::void_t<std::enable_if_t<std::is_pointer_v<T> || has_op_arr_v<T>>>>
-        decltype(std::declval<T>().operator->()) operator->() {
-            return get().operator->();
-        }
-
-        template<typename = std::void_t<std::enable_if_t<!std::is_pointer_v<T> && !has_op_deref_v<T>>>>
-        T& operator*() {
-            return get();
-        }
-        template<typename = std::void_t<std::enable_if_t<!std::is_pointer_v<T> && !has_op_deref_v<T>>>>
-        const T& operator*() const {
-            return get();
-        }
-        template<typename = std::void_t<std::enable_if_t<!std::is_pointer_v<T> && !has_op_deref_v<T>>>>
-        T* operator->() {
-            return &get();
-        }
-        template<typename = std::void_t<std::enable_if_t<!std::is_pointer_v<T> && !has_op_deref_v<T>>>>
-        const T* operator->() const {
-            return &get();
-        }
-
-        template<typename... Args, typename = decltype(std::declval<T>()(std::declval<Args>()...))>
-        auto operator()(Args... args)
-        {
-            return value(args);
-        }
-
-        property& operator++() {
-            set(get() + 1);
-            return *this;
-        }
-
-        property operator++(int) {
-            property tmp;
-            tmp.value = this->value;
-            tmp.get = this->get;
-            tmp.set = this->set;
-            set(get() + 1);
-            return tmp;
-        }
-
-        T value;
+        WIN_NORMAL = 0,
+        WIN_MINIMIZED = 1,
+        WIN_MAXIMIZED = 2
     };
+
+    constexpr float default_title_bar_size = 32;
+    constexpr float default_grip_size = 4.f;
 
     class window
     {
     public:
-        window(const std::shared_ptr<io::window>& window, rect initial_rect);
+        template<typename T> class anim;
+        template<typename T> class anim_creator;
+
+        window(const std::shared_ptr<io::window>& window, window_manager* wm, const std::wstring& title, rect initial_rect);
         const rect& get_rect() const noexcept;
-        void fill(std::function<void(const window& window)> content);
+        rect get_extended_rect() const noexcept;
+        rect get_content_rect() const noexcept;
+        void fill(const font& title_font, std::function<void(window& window)> content);
+
+        void move_by(glm::vec2 by);
+        void resize_by(glm::vec2 by);
+        void set_contains_cursor(bool contains);
+
+        rect title_area() const noexcept;
+        rect grip_left() const noexcept;
+        rect grip_right() const noexcept;
+        rect grip_top() const noexcept;
+        rect grip_bottom() const noexcept;
+
+        draw_list& list();
+        win_state state() const noexcept;
+
+        template<typename T>
+        anim_creator<T> animate() { return anim_creator<T>{*this}; }
 
     private:
-        property<std::shared_ptr<window>> mdb = std::make_shared<window>(nullptr, rect{});
+        void handle_animations() noexcept;
 
-        void bla()
-        {
-            property<window> winprop(nullptr, rect {});
+        win_state _state = WIN_NORMAL;
 
-            my_int = 37;
-            mdb->get_rect();
-            winprop->get_rect();
-
-            winprop = window(nullptr, rect{});
-        }
-
-        property<int> my_int = 7;
-        property<int> my_other_int {
-            [this]() -> int { return my_int.value; },
-            [this](const int&) { return my_int = 8; },
-        };
-
+        window_manager* _window_manager;
+        std::shared_ptr<io::window> _window;
+        std::vector<anim<glm::vec2>> _2f_animations;
+        std::vector<anim<float>> _1f_animations;
+        std::wstring _title;
         draw_list _list;
         rect _rect;
+        rect _default_rect;
+        float _title_bar_size = default_title_bar_size;
+        float _grip_size = default_grip_size;
+
+        float _shadow_alpha = 1.f;
+        float _title_alpha = 1.f;
+        float _actions_alpha = 1.f;
+        float _title_bar_rounding = 4.f;
+
+        bool _contains_cursor = false;
+    };
+
+    template<typename T>
+    class window::anim
+    {
+    public:
+        friend anim_creator;
+        anim(T begin, T end, double duration, std::function<void(float, const T&)> on_update) : begin(begin), end(end), duration(duration), alpha(0), on_update(on_update) {}
+        void update(double dt) { on_update(alpha=std::clamp(alpha + dt/duration, 0.0, 1.0), (1-alpha) * begin + alpha * end); }
+        bool finished() { return alpha == 1.0; }
+
+    private:
+        T begin;
+        T end;
+        float alpha;
+        double duration;
+        std::function<void(float a, const T& val)> on_update;
+    };
+
+    template<>
+    class window::anim_creator<glm::vec2>
+    {
+    public:
+        friend window;
+        anim_creator& to_position(glm::vec2 position)
+        {
+            _w._2f_animations.emplace_back(_w._rect.min, position, 0.120, [win = &_w](float a, const glm::vec2& val) {
+                const glm::vec2 size = win->_rect.max-win->_rect.min;
+                win->_rect.min = val;
+                win->_rect.max = win->_rect.min + size;
+            });
+            return *this;
+        }
+        anim_creator& to_size(glm::vec2 size) {
+            _w._2f_animations.emplace_back(_w._rect.max - _w._rect.min, size, 0.120, [win = &_w](float a, const glm::vec2& val) {
+                win->_rect.max = win->_rect.min + val;
+            });
+            return *this;
+        }
+
+    private:
+        anim_creator(window& w) : _w(w) {}
+        window& _w;
     };
 }
