@@ -120,7 +120,7 @@ namespace gfx::ui
     void window_manager::notify_minimize(window* w)
     {
         _minimized.push_back(w);
-        _minimize_position += glm::vec2(104+8+24+2, 0);
+        _minimize_position += glm::vec2(104+8+24, 0);
     }
 
     void window_manager::notify_unminimize(window* w)
@@ -129,12 +129,12 @@ namespace gfx::ui
         if (it != _minimized.end())
         {
             it = _minimized.erase(it);
-            _minimize_position -= glm::vec2(104+8+24+2, 0);
+            _minimize_position -= glm::vec2(104+8+24, 0);
         }
 
         for (; it < _minimized.end(); ++it)
         {
-            (*it)->animate<glm::vec2>().to_position((**it).get_rect().min - glm::vec2(104+8+24+2, 0));
+            (*it)->animate<glm::vec2>().to_position((**it).get_rect().min - glm::vec2(104+8+24, 0));
         }
     }
 
@@ -258,12 +258,7 @@ namespace gfx::ui
         _ui_draw_list.push_rounded_quad({ -8, -8 }, { 51, 52 }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 80 }, { 0,0,0,0 }, 12, CORNER_ALL);
         _ui_draw_list.push_rounded_quad({ -8, -8 }, { 48, 48 }, { 0, 0 }, { 1, 1 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, 8, CORNER_ALL);
         _ui_draw_list.push_quad({ 8, 8 }, { 40, 40 }, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, {}, GRADIENT_NONE, window_icon);
-
-        _ui_draw_list.push_rounded_quad({ scrsize.x - 102, -8 }, { scrsize.x+8, 52 }, { 0, 0 }, { 1, 1 }, { 0, 0, 0, 80 }, { 0,0,0,0 }, 12, CORNER_ALL);
-        _ui_draw_list.push_rounded_quad({ scrsize.x - 100, -8 }, { scrsize.x+8, 48 }, { 0, 0 }, { 1, 1 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, 8, CORNER_ALL);
-        _ui_draw_list.push_quad({ 48, 32 }, { scrsize.x - 100, 34 }, {}, {}, { 0, 0, 0, 90 }, {0, 0, 0, 0}, GRADIENT_VERTICAL);
-        _ui_draw_list.push_quad({ 48, 0 }, { scrsize.x - 100, 32 }, {}, {}, { 255, 255, 255, 255 }, {}, GRADIENT_NONE);
-
+        
         struct comparator { bool operator()(const std::pair<int, window*>& lhs, const std::pair<int, window*>& rhs) { return lhs.first > rhs.first; }; };
         std::priority_queue<std::pair<int, window*>, std::vector<std::pair<int, window*>>, comparator> queue;
 

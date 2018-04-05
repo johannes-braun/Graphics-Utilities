@@ -67,10 +67,18 @@ namespace gfx::ui
             { _rect.max.x - 8 - 24-8-24-8-24-8, _rect.max.y - 0.5f*(_title_bar_size-title_font.size()) }, gfx::ui::ALIGN_LEFT, {255, 255, 255, 255*_title_alpha}, 1);
 
         const auto make_action_button = [&, this](gl_texture_t img, rect r) {
-            _list.push_quad(r.min, r.max, { 0, 1 }, { 1, 0 }, { 255, 255, 255, _actions_alpha*255 }, {}, gfx::ui::GRADIENT_NONE, img);
             const auto cur_pos = _window_manager->get_cursor_position();
-            return _window_manager->front_window_at(cur_pos.x, cur_pos.y) == this &&
-                r.contains(_window_manager->get_cursor_position()) && _window_manager->get_mouse_left_state() == MOUSE_PRESS;
+            bool active = _window_manager->front_window_at(cur_pos.x, cur_pos.y) == this;
+            bool inside = r.contains(_window_manager->get_cursor_position());
+
+            float off = 0.f;
+            if (active && inside && _window_manager->get_mouse_left_state() == MOUSE_UP)
+                off = 4.f;
+            else if(active && inside && _window_manager->get_mouse_left_state() == MOUSE_DOWN)
+                off = 6.f;
+
+            _list.push_quad(r.min + off, r.max - off, { 0, 1 }, { 1, 0 }, { 255, 255, 255, _actions_alpha*255 }, {}, gfx::ui::GRADIENT_NONE, img);
+            return active && inside && _window_manager->get_mouse_left_state() == MOUSE_PRESS;
         };
 
         if(make_action_button(close_icon, { { _rect.max.x - 8 - 24, _rect.max.y - 0.5f*(_title_bar_size + 24) }, { _rect.max.x - 8, _rect.max.y - 0.5f*(_title_bar_size - 24) } }))

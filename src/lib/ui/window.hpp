@@ -24,6 +24,7 @@ namespace gfx::ui
     {
     public:
         friend layout;
+        friend linear_layout;
         friend scroll_layout;
         template<typename T> class anim;
         template<typename T> class anim_creator;

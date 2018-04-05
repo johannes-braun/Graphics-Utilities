@@ -31,6 +31,22 @@ namespace gfx::ui
         window* _parent = nullptr;
     };
 
+    class linear_layout : public layout
+    {
+    public:
+        friend window;
+
+        virtual rect get_rect() const noexcept override;
+        void add_content_height(float h) noexcept;
+        void force_layout(const rect& new_area) override;
+
+    private:
+        linear_layout(window* parent, const rect& area);
+        virtual void update() override;
+
+        rect _layout_rect;
+    };
+
     class scroll_layout : public layout
     {
     public:
