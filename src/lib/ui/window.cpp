@@ -4,24 +4,6 @@
 
 namespace gfx::ui
 {
-    rect& rect::inset(float left, float top, float right, float bottom)
-    {
-        min += glm::vec2{ left, bottom };
-        max -= glm::vec2{ right, top };
-        return *this;
-    }
-
-    const rect& rect::inset(float left, float top, float right, float bottom) const
-    {
-        rect r = *this;
-        return r.inset(left, top, right, bottom);
-    }
-
-    bool rect::contains(glm::vec2 point) const noexcept
-    {
-        return clamp(point, min, max) == point;
-    }
-
     window::window(const std::shared_ptr<io::window>& window, window_manager* wm, const std::wstring& title, rect initial_rect)
         : _window_manager(wm), _window(window), _list(window), _title(title), _rect(initial_rect)
     {

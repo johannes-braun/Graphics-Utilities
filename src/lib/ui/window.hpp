@@ -3,19 +3,12 @@
 #include <string>
 #include "draw_list.hpp"
 #include "font.hpp"
+#include "layout.hpp"
+#include "rect.hpp"
 
 namespace gfx::ui
 {
     class window_manager;
-
-    struct rect
-    {
-        glm::vec2 min;
-        glm::vec2 max;
-        rect& inset(float left, float top, float right, float bottom);
-        const rect& inset(float left, float top, float right, float bottom) const;
-        bool contains(glm::vec2 point) const noexcept;
-    };
 
     enum win_state
     {
@@ -30,6 +23,8 @@ namespace gfx::ui
     class window
     {
     public:
+        friend layout;
+        friend scroll_layout;
         template<typename T> class anim;
         template<typename T> class anim_creator;
 
@@ -55,11 +50,25 @@ namespace gfx::ui
         template<typename T>
         anim_creator<T> animate() { return anim_creator<T>{*this}; }
 
+        template<typename T, typename = std::enable_if_t<std::is_base_of_v<layout, T>>>
+        T& in_layout(const std::string& id, rect area)
+        {
+            if (_layouts.count(id) == 0)
+            {
+                _layouts.emplace(id, std::move(std::unique_ptr<T>(new T(this, area))));
+                _layouts.at(id)->force_layout(area);
+            }
+            else if (_layouts.at(id)->get_clip_rect() != area)
+                _layouts.at(id)->force_layout(area);
+            return static_cast<T&>(*_layouts[id]);
+        }
+
     private:
         void handle_animations() noexcept;
 
         win_state _state = WIN_NORMAL;
 
+        std::unordered_map<std::string, std::unique_ptr<layout>> _layouts;
         window_manager* _window_manager;
         std::shared_ptr<io::window> _window;
         std::vector<anim<glm::vec2>> _2f_animations;

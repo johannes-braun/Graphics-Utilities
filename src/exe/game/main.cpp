@@ -53,10 +53,18 @@ bool menu() {
 
     gfx::ui::window* main_window = window_manager.make_window(L"Main Window", { {300, 300}, {550, 600} });
     main_window->fill(title, [](gfx::ui::window& window) {
-        const gfx::ui::rect win_rect = window.get_content_rect();
-        const gfx::ui::rect win_rect_padded = win_rect.inset(24, 16, 24, 16);
+        gfx::ui::rect win_rect_padded = window.get_content_rect().inset(24, 16, 24, 16);
+        window.in_layout<gfx::ui::scroll_layout>("main_layout", win_rect_padded).fill([](gfx::ui::layout& l, gfx::ui::window& w) {
+            static_cast<gfx::ui::scroll_layout&>(l).add_content_height(w.list().push_text(txt, fnt, 0, l.get_rect().min, l.get_rect().max, gfx::ui::ALIGN_JUSTIFY, { 0, 0, 0, 196 }).y);
+        });
+    });
 
-        window.list().push_text(txt, fnt, 0, win_rect_padded.min, win_rect_padded.max, gfx::ui::ALIGN_JUSTIFY, { 0, 0, 0, 196 });
+    window_manager.make_window(L"Info Window", { { 200, 100 },{ 450, 300 } })->fill(title, [&](gfx::ui::window& window) {
+        gfx::ui::rect win_rect_padded = window.get_content_rect().inset(24, 16, 24, 16);
+        window.in_layout<gfx::ui::scroll_layout>("main_layout", win_rect_padded).fill([&](gfx::ui::layout& l, gfx::ui::window& w) {
+            static_cast<gfx::ui::scroll_layout&>(l).add_content_height(w.list().push_text(L"Framerate: " + std::to_wstring(int(1.f/game::host::window->delta_time())),
+                fnt, 0, l.get_rect().min, l.get_rect().max, gfx::ui::ALIGN_JUSTIFY, { 255, 128, 0, 196 }).y);
+        });
     });
 
     gfx::ui::window* secondary_window = window_manager.make_window(L"Secondary Window", { { 500, 200 },{ 750, 400 } });
@@ -66,7 +74,7 @@ bool menu() {
 
         window.list().push_text(txt, fnt, 0, win_rect_padded.min, win_rect_padded.max, gfx::ui::ALIGN_JUSTIFY, { 0, 0, 0, 196 });
     });
-    
+
     window_manager.make_window(L"2Secondary Window", { { 500, 200 },{ 750, 400 } })->fill(title, [](gfx::ui::window& window) {});
     window_manager.make_window(L"77Secondary Window", { { 500, 200 },{ 750, 400 } })->fill(title, [](gfx::ui::window& window) {});
 
