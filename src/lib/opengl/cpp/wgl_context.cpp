@@ -21,7 +21,7 @@ namespace gl
         PIXELFORMATDESCRIPTOR desc{
             sizeof(PIXELFORMATDESCRIPTOR),
             1,
-            (window==native_handle(0) ? PFD_DRAW_TO_WINDOW : 0) | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+            DWORD((window==native_handle(0) ? PFD_DRAW_TO_WINDOW : 0) | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER),
             PFD_TYPE_RGBA,
             32,
             0, 0, 0, 0, 0, 0,
@@ -35,7 +35,6 @@ namespace gl
             0, 0, 0
         };
         HWND win;
-
         if (window==native_handle(0))
         {
             WNDCLASSW wnd{ 0 };

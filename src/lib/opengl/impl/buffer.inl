@@ -4,29 +4,28 @@ namespace gl
 {
 
     template<typename T>
-    buffer<T>::buffer(const buffer& other) noexcept
-        : buffer(other._usage)
+    buffer<T>::buffer(const buffer& other) noexcept : buffer(other._usage) 
     {
         operator=(std::forward<const buffer&>(other));
     }
 
     template<typename T>
-    buffer<T>::buffer(buffer&& other) noexcept
+    buffer<T>::buffer(buffer&& other) noexcept 
     {
         operator=(std::forward<buffer&&>(other));
     }
 
     template<typename T>
-    buffer<T>& buffer<T>::operator=(const buffer& other) noexcept
+    buffer<T>& buffer<T>::operator=(const buffer& other) noexcept 
     {
-        _usage = other._usage;
-        _size = other._size;
-        _reserved_size = _size;
-        _data_size = other._data_size;
-        _data_offset = other._data_offset;
+        _usage          = other._usage;
+        _size           = other._size;
+        _reserved_size  = _size;
+        _data_size      = other._data_size;
+        _data_offset    = other._data_offset;
         _data_full_size = other._data_full_size;
-        _data_access = other._data_access;
-        _usage = other._usage;
+        _data_access    = other._data_access;
+        _usage          = other._usage;
 
         if (other._id == gl_buffer_t::zero)
         {
@@ -35,11 +34,11 @@ namespace gl
             return *this;
         }
 
-        const size_t last_size = _size;
-        const size_t last_data_size = _data_size;
-        const size_t last_data_offset = _data_offset;
-        const bool was_data_full_size = _data_full_size;
-        const GLbitfield map_access = _data_access;
+        const size_t last_size          = _size;
+        const size_t last_data_size     = _data_size;
+        const size_t last_data_offset   = _data_offset;
+        const bool was_data_full_size   = _data_full_size;
+        const GLbitfield map_access     = _data_access;
         if (was_data_full_size && _size != 0)
             unmap();
 
@@ -76,33 +75,34 @@ namespace gl
     template<typename T>
     buffer<T>& buffer<T>::operator=(buffer&& other) noexcept
     {
-        _id = other._id;
-        _data = other._data;
-        _cached = std::move(other._cached);
-        _cached_index = other._cached_index;
-        _usage = other._usage;
-        _size = other._size;
-        _reserved_size = other._reserved_size;
-        _data_size = other._data_size;
-        _data_offset = other._data_offset;
+        _id             = other._id;
+        _data           = other._data;
+        _cached         = std::move(other._cached);
+        _cached_index   = other._cached_index;
+        _usage          = other._usage;
+        _size           = other._size;
+        _reserved_size  = other._reserved_size;
+        _data_size      = other._data_size;
+        _data_offset    = other._data_offset;
         _data_full_size = other._data_full_size;
-        _data_access = other._data_access;
-        _handle = other._handle;
+        _data_access    = other._data_access;
+        _handle         = other._handle;
 
-        other._id = gl_buffer_t::zero;
-        other._data = nullptr;
+        other._id               = gl_buffer_t::zero;
+        other._data             = nullptr;
         for (auto&& c : _cached) {
-            c.first = -1; c.second = nullptr;
+            c.first             = -1; 
+            c.second            = nullptr;
         }
-        other._cached_index = 0;
-        other._usage = GL_ZERO;
-        other._size = 0;
-        other._reserved_size = 0;
-        other._data_size = 0;
-        other._data_offset = 0;
-        other._data_full_size = false;
-        other._data_access = GL_ZERO;
-        other._handle = 0ui64;
+        other._cached_index     = 0;
+        other._usage            = GL_ZERO;
+        other._size             = 0;
+        other._reserved_size    = 0;
+        other._data_size        = 0;
+        other._data_offset      = 0;
+        other._data_full_size   = false;
+        other._data_access      = GL_ZERO;
+        other._handle           = 0ui64;
 
         return *this;
     }
@@ -220,10 +220,12 @@ namespace gl
     template<typename It, typename>
     inline void buffer<T>::assign(iterator start, It begin, It end)
     {
-        const bool was_data_full_size = _data_full_size;
-        const GLbitfield map_access = _data_access;
-        if (was_data_full_size && _size != 0)
-            unmap();
+        const bool was_data_full_size   = _data_full_size;
+        const GLbitfield map_access     = _data_access;
+        const size_t map_offset         = _data_offset;
+        const size_t map_size           = _data_size;
+        const bool was_mapped           = is_mapped() && !was_data_full_size && _size != 0;
+        if (was_mapped) unmap();
         if constexpr(iterator_has_difference_v<It>)
         {
             const ptrdiff_t size = end - begin;
@@ -233,23 +235,42 @@ namespace gl
 
             if (size > 0)
             {
-                glNamedBufferSubData(_id, start._offset * sizeof(T), size * sizeof(T), data);
+                if (was_data_full_size)
+                {
+                    memcpy(_data, data, size * sizeof(T));
+                }
+                else
+                {
+                    glNamedBufferSubData(_id, start._offset * sizeof(T), size * sizeof(T), data);
+                }
             }
         }
         else
         {
-            std::vector<T> temp(begin, end);
-            const ptrdiff_t size = temp.size();
+            const ptrdiff_t size = std::distance(begin, end);
             if (size > ptrdiff_t(_size) - start._offset)
                 throw std::out_of_range("Range out of bounds.");
 
             if (size > 0)
             {
-                glNamedBufferSubData(_id, start._offset * sizeof(T), size * sizeof(T), temp.data());
+                if (is_mapped() && was_data_full_size)
+                {
+                    memcpy(_data, data, size * sizeof(T));
+                    size_t pos = 0;
+                    for (auto b = begin; b != end; ++b, ++pos)
+                    {
+                        memcpy(_data+start._offset + pos, &*b, sizeof(T));
+                    }
+                }
+                else
+                {
+                    std::vector<T> temp(begin, end);
+                    glNamedBufferSubData(_id, start._offset * sizeof(T), size * sizeof(T), temp.data());
+                }
             }
         }
-        if (was_data_full_size)
-            map(map_access);
+        if (was_mapped)
+            map(map_offset, map_size, map_access);
     }
 
     template<typename T>
@@ -257,11 +278,14 @@ namespace gl
     inline typename buffer<T>::iterator buffer<T>::insert(iterator at, It begin, It end)
     {
         iterator retval = this->end();
-        const bool was_data_full_size = _data_full_size;
-        const GLbitfield map_access = _data_access;
-        auto end_it = this->end();
-        if (is_mapped() && !was_data_full_size && _size != 0)
-            unmap();
+        iterator end_it = this->end();
+
+        const bool was_data_full_size   = _data_full_size;
+        const GLbitfield map_access     = _data_access;
+        const size_t map_offset         = _data_offset;
+        const size_t map_size           = _data_size;
+        const bool was_mapped           = is_mapped() && !was_data_full_size && _size != 0;
+        if (was_mapped) unmap();
 
         const auto dist = std::distance(begin, end);
 
@@ -297,7 +321,7 @@ namespace gl
                         size_t pos = 0;
                         for (auto b = begin; b != end; ++b, ++pos)
                         {
-                            memcpy(_data+insert_position, &*b, sizeof(T));
+                            memcpy(_data+insert_position+pos, &*b, sizeof(T));
                         }
                     }
                     else
@@ -359,6 +383,9 @@ namespace gl
                 }
             }
         }
+
+        if (was_mapped)
+            map(map_offset, map_size, map_access);
        
         return retval;
     }
@@ -695,10 +722,8 @@ namespace gl
     template<typename T>
     typename buffer<T>::bounded_buffer_data buffer<T>::iterate() noexcept
     {
-        if (_data)
-            return bounded_buffer_data(this, _data_size);
-        else
-            return bounded_buffer_data(this, _size);
+        if (_data)  return bounded_buffer_data(this, _data_size);
+        else        return bounded_buffer_data(this, _size);
     }
 
     template<typename T>

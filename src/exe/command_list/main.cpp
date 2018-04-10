@@ -5,7 +5,6 @@
 #include <memory>
 #include <res/image.hpp>
 #include <res/geometry.hpp>
-#include <opengl/debug.hpp>
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
 #include <opengl/texture.hpp>

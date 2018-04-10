@@ -1,5 +1,4 @@
 #include "../state.hpp"
-#include "../debug.hpp"
 
 namespace gl
 {

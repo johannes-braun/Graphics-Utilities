@@ -2,7 +2,6 @@
 
 #include <stb_image.h>
 #include <vulkan/detail.hpp>
-#include <opengl/debug.hpp>
 
 namespace io
 {
@@ -102,36 +101,30 @@ namespace io
             mygl::load();
             glfwSwapInterval(0);
 
-            gl::set_debug_callback([](gl::debug_source source, gl::debug_type type, uint32_t id,
-                gl::debug_severity severity, const char* message) {
+            glDebugMessageCallback([](GLenum source, GLenum type, const uint32_t id, const GLenum severity, int /*length*/, const char* message, const void* user_param) {
                 switch (severity)
                 {
-                case gl::debug_severity::high:
-                    tlog_e("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
-                        get_debug_enum_desc(type) << "\" -- " << message;
-                    break;
-                case gl::debug_severity::medium:
-                    tlog_w("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
-                        get_debug_enum_desc(type) << "\" -- " << message;
-                    break;
-                case gl::debug_severity::low:
-                    tlog_d("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
-                        get_debug_enum_desc(type) << "\" -- " << message;
-                    break;
-                case gl::debug_severity::notification:
-                    tlog_v("OpenGL Debug") << "source=\"" << get_debug_enum_desc(source) << "\", type=\"" <<
-                        get_debug_enum_desc(type) << "\" -- " << message;
-                    break;
+                case GL_DEBUG_SEVERITY_HIGH:
+                    tlog_e("OpenGL Debug") << message; break;
+                case GL_DEBUG_SEVERITY_MEDIUM:
+                    tlog_e("OpenGL Debug") << message; break;
+                case GL_DEBUG_SEVERITY_LOW:
+                    tlog_e("OpenGL Debug") << message; break;
+                case GL_DEBUG_SEVERITY_NOTIFICATION:
+                    tlog_e("OpenGL Debug") << message; break;
                 default: break;
                 }
-            });
-            set_debug_callback_enabled(gl::debug_severity::medium, false);
-            set_debug_callback_enabled(gl::debug_severity::notification, false);
-            set_debug_callback_enabled(gl::debug_severity::low, false);
+            }, nullptr);
+            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, false);
+            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
+            glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
+
             _gui = jpu::make_ref<io::gui>(_window);
             glDepthFunc(GL_GEQUAL);
             glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
             glClearDepth(0);
+            glClearStencil(0);
+            glStencilMask(~0);
         }
     }
 
@@ -211,7 +204,7 @@ namespace io
         {
             glfwSwapBuffers(_window);
             glBindFramebuffer(GL_FRAMEBUFFER, gl_framebuffer_t::zero);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         }
         else if (_api == api::vulkan)
         {
