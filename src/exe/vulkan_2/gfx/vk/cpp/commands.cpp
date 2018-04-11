@@ -1,5 +1,7 @@
 #include "../commands.hpp"
 #include "../device.hpp"
+#include "../framebuffer.hpp"
+#include "../renderpass.hpp"
 
 namespace gfx::vk
 {
@@ -96,5 +98,23 @@ namespace gfx::vk
     void command_buffer::end() const noexcept
     {
         vkEndCommandBuffer(_command_buffer);
+    }
+
+    void command_buffer::begin_renderpass(const renderpass& pass, const framebuffer& fb, VkRect2D area, VkSubpassContents contents, array_view<clear_value> clear_values) const noexcept
+    {
+        VkRenderPassBeginInfo info;
+        info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        info.pNext = nullptr;
+        info.clearValueCount = uint32_t(clear_values.size());
+        info.pClearValues = reinterpret_cast<const VkClearValue*>(clear_values.data());
+        info.framebuffer = fb;
+        info.renderPass = pass;
+        info.renderArea = area;
+        vkCmdBeginRenderPass(_command_buffer, &info, contents);
+    }
+
+    void command_buffer::end_renderpass() const noexcept
+    {
+        vkCmdEndRenderPass(_command_buffer);
     }
 }

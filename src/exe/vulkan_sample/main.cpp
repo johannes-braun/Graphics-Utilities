@@ -291,6 +291,16 @@ void createMultisampleRenderpass()
     if (msaa_renderpass)
         msaa_renderpass.reset();
 
+    vk::AttachmentReference color_reference(0, vk::ImageLayout::eColorAttachmentOptimal);
+    vk::AttachmentReference resolve_reference(1, vk::ImageLayout::eColorAttachmentOptimal);
+    vk::AttachmentReference depth_reference(2, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+    vk::SubpassDescription subpass;
+    subpass.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+        .setColorAttachmentCount(1)
+        .setPColorAttachments(sample_count == vk::SampleCountFlagBits::e1 ? &resolve_reference : &color_reference)
+        .setPResolveAttachments(sample_count == vk::SampleCountFlagBits::e1 ? nullptr : &resolve_reference)
+        .setPDepthStencilAttachment(&depth_reference);
+
     const auto color_attachment_sampled = vk::AttachmentDescription().setFormat(vk::Format::eB8G8R8A8Unorm)
         .setSamples(sample_count)
         .setLoadOp(vk::AttachmentLoadOp::eClear)
@@ -317,17 +327,6 @@ void createMultisampleRenderpass()
         .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
         .setInitialLayout(vk::ImageLayout::eUndefined)
         .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-    vk::AttachmentReference color_reference(0, vk::ImageLayout::eColorAttachmentOptimal);
-    vk::AttachmentReference resolve_reference(1, vk::ImageLayout::eColorAttachmentOptimal);
-    vk::AttachmentReference depth_reference(2, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-    vk::SubpassDescription subpass;
-    subpass.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-        .setColorAttachmentCount(1)
-        .setPColorAttachments(sample_count == vk::SampleCountFlagBits::e1 ? &resolve_reference : &color_reference)
-        .setPResolveAttachments(sample_count == vk::SampleCountFlagBits::e1 ? nullptr : &resolve_reference)
-        .setPDepthStencilAttachment(&depth_reference);
 
     std::array<vk::SubpassDependency, 2> dependencies;
     dependencies[0].setSrcSubpass(VK_SUBPASS_EXTERNAL)

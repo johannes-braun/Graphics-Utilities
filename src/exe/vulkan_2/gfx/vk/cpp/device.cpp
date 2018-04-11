@@ -47,6 +47,11 @@ namespace gfx::vk
         vkDestroyDevice(_device, nullptr);
     }
 
+    void device::wait_idle() const noexcept
+    {
+        vkDeviceWaitIdle(_device);
+    }
+
     device::operator VkDevice() const noexcept { return _device; }
 
     queue::queue(const std::shared_ptr<device>& device, uint32_t family, uint32_t index)
@@ -107,6 +112,6 @@ namespace gfx::vk
         info.waitSemaphoreCount     = uint32_t(wsems.size());
         info.pWaitSemaphores        = wsems.data();
         
-        vkQueueSubmit(_queue, 1, &info, *fence);
+        vkQueueSubmit(_queue, 1, &info, fence?*fence:nullptr);
     }
 }

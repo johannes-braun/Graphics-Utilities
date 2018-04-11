@@ -20,6 +20,9 @@
 #include "gfx/vk/fence.hpp"
 #include "gfx/vk/surface.hpp"
 #include "gfx/vk/commands.hpp"
+#include "gfx/vk/image.hpp"
+#include "gfx/vk/renderpass.hpp"
+#include "gfx/vk/framebuffer.hpp"
 
 constexpr gfx::vk::app_info default_app_info                { "My App", { 1, 0 }, "My Engine", { 1, 0 } };
 constexpr std::array<const char*, 3> layers                 { "VK_LAYER_LUNARG_standard_validation", "VK_LAYER_LUNARG_core_validation", "VK_LAYER_LUNARG_parameter_validation" };
@@ -31,8 +34,6 @@ constexpr uint32_t queue_index_compute       = 1;
 constexpr uint32_t queue_index_transfer      = 2;
 constexpr uint32_t queue_index_present       = 3;
 constexpr std::array<float, 4> queue_priorities = { 0.9f, 1.f, 0.5f, 0.9f };
-
-std::atomic_bool close_window = false;
 
 struct worker {
     worker() = default;
@@ -74,6 +75,8 @@ private:
     std::mutex _command_mutex;
 };
 
+std::atomic_bool close_window = false;
+std::atomic_bool terminate_threads = false;
 worker main_thread_worker;
 
 int main()
@@ -91,7 +94,7 @@ int main()
                 glfwSetWindowShouldClose(w, true);
         });
 
-        while (!close_window)
+        while (!terminate_threads)
         {
             auto now = std::chrono::steady_clock::now();
             main_thread_worker.consume();
@@ -100,6 +103,7 @@ int main()
             while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - now).count() < (1/120));
         }
 
+        glfwDestroyWindow(window);
         glfwTerminate();
     });
 
@@ -120,6 +124,7 @@ int main()
             return phys_device;
         return nullptr;
     }();
+    auto surface = std::make_shared<gfx::vk::surface>(main_gpu, window.load());
 
     std::vector<VkQueueFamilyProperties> properties = main_gpu->get_queue_family_properties();
     const auto graphics_queue_iter = std::find_if(properties.begin(), properties.end(), [](const VkQueueFamilyProperties& p) { return (p.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0; });
@@ -127,7 +132,9 @@ int main()
     const auto transfer_queue_iter = std::find_if(properties.begin(), properties.end(), [](const VkQueueFamilyProperties& p) { return (p.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0; });
     const auto present_queue_iter  = std::find_if(properties.begin(), properties.end(), [&](const VkQueueFamilyProperties& p) { 
         size_t family = &p - &properties[0];
-        return glfwGetPhysicalDevicePresentationSupport(*main_instance, *main_gpu, family);
+        VkBool32 supported = true;
+        vkGetPhysicalDeviceSurfaceSupportKHR(*main_gpu, family, *surface, &supported);
+        return glfwGetPhysicalDevicePresentationSupport(*main_instance, *main_gpu, family) && supported;
     });
 
     struct queue_data { uint32_t family, index; };
@@ -150,7 +157,6 @@ int main()
     std::vector<gfx::vk::queue> queues;
     for (auto&& data : queue_datas) queues.emplace_back(device, data.family, data.index);
 
-    auto surface            = std::make_shared<gfx::vk::surface>(main_gpu, window.load());
     auto capabilities       = surface->capabilities();
     auto formats            = surface->formats();
     auto present_modes      = surface->present_modes();
@@ -161,11 +167,32 @@ int main()
     auto primary_buffers    = command_pool->allocate_buffers(uint32_t(images.size()), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     auto swap_semaphore     = std::make_shared<gfx::vk::semaphore>(device);
     auto render_semaphore   = std::make_shared<gfx::vk::semaphore>(device);
+
+    std::vector<std::shared_ptr<gfx::vk::fence>> fences(uint32_t(images.size()));
+    for(int i=0; i<images.size(); ++i) fences[i] = std::make_shared<gfx::vk::fence>(device, VK_FENCE_CREATE_SIGNALED_BIT);
+
+    gfx::vk::subpass_info subpass(VK_PIPELINE_BIND_POINT_GRAPHICS, {}, gfx::vk::attachment_reference{ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+    auto dependencies = gfx::vk::subpass_dependencies()
+        .to(0, VK_DEPENDENCY_BY_REGION_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+        .finish(VK_DEPENDENCY_BY_REGION_BIT);
+    auto color_attachment = gfx::vk::attachment_description({}, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT)
+        .on_load(VK_IMAGE_LAYOUT_UNDEFINED, VK_ATTACHMENT_LOAD_OP_CLEAR)
+        .on_store(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ATTACHMENT_STORE_OP_STORE);
+    auto renderpass = std::make_shared<gfx::vk::renderpass>(device, color_attachment, subpass, dependencies);
+
+    std::vector<std::shared_ptr<gfx::vk::image_view>> swapchain_views(images.size());
+    std::vector<std::shared_ptr<gfx::vk::framebuffer>> swapchain_framebuffers(images.size());
+    #pragma omp parallel for
+    for (int i=0; i<images.size(); ++i)
+    {
+        swapchain_views[i] = images[i]->create_view(VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+        swapchain_framebuffers[i] = std::make_shared<gfx::vk::framebuffer>(renderpass, 1280, 720, swapchain_views[i]);
+    }
     
     while (!close_window)
     {
         auto now = std::chrono::steady_clock::now();
-        while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - now).count() < 1.f);
+        while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - now).count() < 0.1f);
 
         main_thread_worker.enqueue([&]() {
             if (glfwGetKey(window.load(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -174,10 +201,17 @@ int main()
         log_i << "Updated";
 
         uint32_t image = swapchain->next_image(swap_semaphore).second;
+        fences[image]->wait();
+        fences[image]->reset();
+        primary_buffers[image]->reset(0);
         primary_buffers[image]->begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+        primary_buffers[image]->begin_renderpass(*renderpass, *swapchain_framebuffers[image], { 0, 0, 1280, 720 }, VK_SUBPASS_CONTENTS_INLINE, {{ glm::vec4(1, 0, 0, 1) }});
 
+        primary_buffers[image]->end_renderpass();
         primary_buffers[image]->end();
-        queues[queue_index_present].submit(primary_buffers[image], render_semaphore, swap_semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        queues[queue_index_present].submit(primary_buffers[image], render_semaphore, swap_semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, fences[image]);
         queues[queue_index_present].present(render_semaphore, swapchain, image);
     }
+    device->wait_idle();
+    terminate_threads = true;
 }

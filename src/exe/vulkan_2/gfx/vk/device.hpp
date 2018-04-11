@@ -37,6 +37,7 @@ namespace gfx::vk
         device(device&&) = default;
         device& operator=(device&&) = default;
 
+        void wait_idle() const noexcept;
         operator VkDevice() const noexcept;
 
     private:

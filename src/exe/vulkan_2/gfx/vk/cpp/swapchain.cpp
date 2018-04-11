@@ -43,6 +43,7 @@ namespace gfx::vk
             _images[i] = std::shared_ptr<image>(new image());
             _images[i]->_owning = false;
             _images[i]->_image = imgs[i];
+            _images[i]->_device = _device;
         }
     }
 
