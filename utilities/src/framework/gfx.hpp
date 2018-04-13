@@ -7,7 +7,7 @@ namespace gfx
 {
     namespace files = std::experimental::filesystem;
 
-    struct file
+   /* struct file
     {
         constexpr static const char* global_res_directory = SOURCE_DIRECTORY "/global/res";
         constexpr static const char* local_res_directory = "../res";
@@ -26,5 +26,5 @@ namespace gfx
         operator const files::path&() const noexcept { return path; }
 
         files::path path;
-    };
+    };*/
 }

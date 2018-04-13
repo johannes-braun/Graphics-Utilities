@@ -3,7 +3,7 @@
 #include <ui/ui.hpp>
 #include "res/image.hpp"
 #include <io/window.hpp>
-#include <framework/gfx.hpp>
+#include <framework/file.hpp>
 
 namespace game
 {
@@ -11,14 +11,14 @@ namespace game
     {
     public:
         splash(const std::shared_ptr<io::window>& window) : _window(window) {
-            const res::image img = res::load_svg_rasterized(gfx::file("ui/logo.svg"), 20.f);
+            const gfx::image_file img("ui/logo.svg", 20.f);
             _logo = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8);
-            _logo.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.data.get());
+            _logo.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
             _logo.generate_mipmaps();
 
-            const res::image bg = res::load_image(gfx::file("board.png"), res::image_type::u8, res::RGBA);
+            const gfx::image_file bg("board.png", gfx::bits::b8, 4);
             _background = gl::texture(GL_TEXTURE_2D, bg.width, bg.height, GL_RGBA8);
-            _background.assign(GL_RGBA, GL_UNSIGNED_BYTE, bg.data.get());
+            _background.assign(GL_RGBA, GL_UNSIGNED_BYTE, bg.bytes());
             _background.generate_mipmaps();
 
             update();

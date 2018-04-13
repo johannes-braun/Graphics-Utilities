@@ -1,6 +1,6 @@
 #include "host.hpp"
 #include "states.hpp"
-#include "res/image.hpp"
+#include <framework/file.hpp>
 
 namespace game
 {
@@ -136,13 +136,14 @@ namespace game
     bool splash()
     {
         static int i = [&]() {
-            const res::image img = res::load_svg_rasterized("../res/ui/logo.svg", 20.f);
+            gfx::image_file img("ui/logo.svg", 20.f);
             ingo().image = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8);
-            ingo().image.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.data.get());
+            ingo().image.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
             ingo().image.generate_mipmaps();
-            const res::image bg = res::load_image("../res/board.png", res::image_type::u8, res::RGBA);
+
+            const gfx::image_file bg("board.png", gfx::bits::b8, 4);
             ingo().bg_img = gl::texture(GL_TEXTURE_2D, bg.width, bg.height, GL_RGBA8);
-            ingo().bg_img.assign(GL_RGBA, GL_UNSIGNED_BYTE, bg.data.get());
+            ingo().bg_img.assign(GL_RGBA, GL_UNSIGNED_BYTE, bg.bytes());
             ingo().bg_img.generate_mipmaps();
             return 0;
         }();

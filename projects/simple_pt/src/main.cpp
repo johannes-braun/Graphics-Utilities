@@ -24,7 +24,7 @@
 #include "stb_rect_pack.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
-#include <framework/gfx.hpp>
+#include <framework/file.hpp>
 
 std::shared_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
@@ -54,8 +54,8 @@ int main()
     game::splash splash(window);
     splash.set_progress(0.05f, L"Loading Meshes");
 
-    res::geometry_file file = res::load_geometry(gfx::file("sphaear.dae"));
-    res::mesh& mesh = file.meshes.get_by_index(0);
+    gfx::scene_file file("sphaear.dae");
+    gfx::scene_file::mesh& mesh = file.meshes.begin()->second;
     splash.set_progress(0.08f, L"Building BVH");
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
@@ -117,14 +117,13 @@ int main()
     std::uniform_real_distribution<float> dist(0.f, 1.f);
     splash.set_progress(0.8f, L"Loading Cube Map");
 
-    const auto [w, h, c] = res::load_image_info(gfx::file("indoor/posx.hdr"));
+    const auto [w, h, c] =  gfx::image_file::info("indoor/posx.hdr");
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
-    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, load_image(gfx::file("indoor/posx.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, load_image(gfx::file("indoor/negx.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, load_image(gfx::file("indoor/posy.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, load_image(gfx::file("indoor/negy.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, load_image(gfx::file("indoor/posz.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, load_image(gfx::file("indoor/negz.hdr"), res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posx.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posy.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negy.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posz.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negz.hdr", gfx::bits::b32, 3).bytes());
     cubemap.generate_mipmaps();
     const gl::sampler sampler;
     splash.set_progress(0.9f, L"Finishing up");
@@ -173,17 +172,17 @@ int main()
             constexpr const char *fs[6] = { "*.dae", "*.fbx", "*.obj", "*.stl", "*.ply", "*.blend" };
             if (const char* item = tinyfd_openFileDialog("Open Mesh", "../", 6, fs, "mesh", false))
             {
-                res::geometry_file file = res::load_geometry(item);
+                gfx::scene_file file(item);
                 std::vector<uint32_t> indices;
                 std::vector<res::vertex> vertices;
                 size_t begin = 0;
                 int mid = 0;
                 for (const auto& mesh : file.meshes)
                 {
-                    vertices.reserve(vertices.size() + mesh.vertices.size());
-                    const glm::mat4 model_matrix = static_cast<glm::mat4>(mesh.transform);
+                    vertices.reserve(vertices.size() + mesh.second.vertices.size());
+                    const glm::mat4 model_matrix = static_cast<glm::mat4>(mesh.second.transform);
                     const glm::mat4 normal_matrix = transpose(inverse(model_matrix));
-                    for (auto vertex : mesh.vertices) {
+                    for (auto vertex : mesh.second.vertices) {
                         vertex.position = glm::vec3(model_matrix * glm::vec4(vertex.position, 1));
                         vertex.normal = glm::vec3(normal_matrix * glm::vec4(vertex.normal, 0));
                         if (mid >= 1)
@@ -191,9 +190,9 @@ int main()
                         vertices.emplace_back(std::move(vertex));
                     }
                     ++mid;
-                    indices.reserve(indices.size() + mesh.indices.size());
-                    for (auto index : mesh.indices) indices.emplace_back(uint32_t(index + begin));
-                    begin += mesh.vertices.size();
+                    indices.reserve(indices.size() + mesh.second.indices.size());
+                    for (auto index : mesh.second.indices) indices.emplace_back(uint32_t(index + begin));
+                    begin += mesh.second.vertices.size();
                 }
 
                 gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });

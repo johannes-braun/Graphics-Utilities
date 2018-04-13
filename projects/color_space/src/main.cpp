@@ -12,6 +12,7 @@
 #include <opengl/framebuffer.hpp>
 #include <numeric>
 #include <framework/gfx.hpp>
+#include <framework/file.hpp>
 
 jpu::ref_ptr<io::window> main_window;
 
@@ -120,14 +121,14 @@ int main()
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    res::image icon = load_image(gfx::file("ui/logo.png"), res::image_type::u8, res::RGBA);
-    res::image cursor = load_image(gfx::file("cursor.png"), res::image_type::u8, res::RGBA);
+    gfx::image_file icon("ui/logo.png", gfx::bits::b8, 4);
+    gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
-    main_window->set_icon(icon.width, icon.height, icon.data.get());
-    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
+    main_window->set_icon(icon.width, icon.height, icon.bytes());
+    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.bytes(), 0, 0));
     main_window->set_max_framerate(60.0);
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
       /*  if (action == GLFW_PRESS && key == GLFW_KEY_P)
@@ -142,19 +143,19 @@ int main()
     const auto src_data = tinyfd_openFileDialog("Open Image", "../", 2, fs, "Images", false);
     if (!src_data) return 0;
 
-    res::image picture = res::load_image(src_data, res::image_type::u8, res::RGB);
+    gfx::image_file picture(src_data, gfx::bits::b8, 3);
     gl::texture texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
-    texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
+    texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.bytes());
     texture.generate_mipmaps();
     const gl::sampler sampler;
 
-    glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.data.get());
-    axis_transformation trafo = principal_axis_transformation(begin, picture.num_pixels());
-    glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
+    glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.bytes());
+    axis_transformation trafo = principal_axis_transformation(begin, picture.pixel_count());
+    glm::vec3 average = glm::vec3(std::accumulate(begin, begin + picture.pixel_count(), glm::u8vec3(0))) / (picture.pixel_count() * 255.f);
 
-    auto grid_image = load_image(gfx::file("grid.jpg"), res::image_type::u8, res::RGBA);
+    gfx::image_file grid_image("grid.jpg", gfx::bits::b8, 4);
     gl::texture grid(GL_TEXTURE_2D, grid_image.width, grid_image.height, GL_RGBA8);
-    grid.assign(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.data.get());
+    grid.assign(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.bytes());
     grid.generate_mipmaps();
 
     gl::pipeline points_pipeline;
@@ -224,24 +225,24 @@ int main()
         {
             if (const auto src = tinyfd_openFileDialog("Open Image", "../", 2, fs, "Images", false))
             {
-                picture = res::load_image(src_data, res::image_type::u8, res::RGB);
+                gfx::image_file picture(src_data, gfx::bits::b8, 3);
                 texture = gl::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
-                texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.data.get());
+                texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.bytes());
                 texture.generate_mipmaps();
 
-                glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.data.get());
-                trafo = principal_axis_transformation(begin, picture.num_pixels());
-                average = glm::vec3(std::accumulate(begin, begin + picture.num_pixels(), glm::u8vec3(0))) / (picture.num_pixels() * 255.f);
+                glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.bytes());
+                trafo = principal_axis_transformation(begin, picture.pixel_count());
+                average = glm::vec3(std::accumulate(begin, begin + picture.pixel_count(), glm::u8vec3(0))) / (picture.pixel_count() * 255.f);
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
-            glm::u8vec3* data_cast = reinterpret_cast<glm::u8vec3*>(picture.data.get());
-            std::vector<glm::u8vec3> new_img(picture.num_pixels());
+            glm::u8vec3* data_cast = reinterpret_cast<glm::u8vec3*>(picture.bytes());
+            std::vector<glm::u8vec3> new_img(picture.pixel_count());
 
 #pragma omp parallel for schedule(static)
-            for (int p = 0; p < picture.num_pixels(); ++p)
+            for (int p = 0; p < picture.pixel_count(); ++p)
                 new_img[p] = clamp(glm::vec3(patmat * glm::vec4(glm::vec3(data_cast[p]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
 
             constexpr const char *ext[1] = { "*.png" };

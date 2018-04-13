@@ -9,7 +9,7 @@
 #include <opengl/state.hpp>
 #include <opengl/texture.hpp>
 #include <framework/data/bvh.hpp>
-#include <framework/gfx.hpp>
+#include <framework/file.hpp>
 
 std::unique_ptr<io::window> window;
 std::unique_ptr<gfx::renderer> renderer;
@@ -22,15 +22,15 @@ const glm::vec3 background = { 0.8f, 0.94f, 1.f };
 
 int main()
 {
-    const res::image logo = res::load_svg_rasterized(gfx::file("ui/logo.svg"), 10.f);
-    const res::image cursor = load_image(gfx::file("cursor.png"), res::image_type::u8, res::RGBA);
+    gfx::image_file logo("ui/logo.svg", 10.f);
+    gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
     glfwWindowHint(GLFW_SAMPLES, start_samples);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
     window = std::make_unique<io::window>(io::api::opengl, start_width, start_height, "Simple Rendering");
-    window->set_icon(logo.width, logo.height, logo.data.get());
-    window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
+    window->set_icon(logo.width, logo.height, logo.bytes());
+    window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.bytes(), 0, 0));
     window->callbacks->framebuffer_size_callback.add([](GLFWwindow*, int x, int y) {
         renderer->resize(x, y, start_samples);
         glViewportIndexedf(0, 0, 0, float(x), float(y));
@@ -41,9 +41,9 @@ int main()
     io::camera camera;
     io::default_cam_controller controller;
 
-    const auto scene = res::load_geometry(gfx::file("bunny.dae"));
-    const auto& verts = scene.meshes.get_by_index(0).vertices;
-    const auto& inds = scene.meshes.get_by_index(0).indices;
+    gfx::scene_file scene("bunny.dae");
+    const auto& verts = scene.meshes.begin()->second.vertices;
+    const auto& inds = scene.meshes.begin()->second.indices;
     gl::buffer<res::vertex> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<uint32_t> ibo(inds.begin(), inds.end(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     ibo.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
@@ -62,9 +62,9 @@ int main()
     pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("simple.vert");
     pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("simple.frag");
 
-    const res::image image_texture_content = load_image(gfx::file("brick.png"), res::image_type::u8, res::RGBA);
+    const gfx::image_file image_texture_content("brick.png", gfx::bits::b8, 4);
     gl::texture image_texture(GL_TEXTURE_2D, image_texture_content.width, image_texture_content.height, GL_RGBA8);
-    image_texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.data.get());
+    image_texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, image_texture_content.bytes());
     image_texture.generate_mipmaps();
 
     const gl::sampler sampler;
@@ -139,9 +139,9 @@ int main()
         if (ImGui::Button("Assign data!"))
         {
             if(vbo.empty())
-                vbo.insert(vbo.begin(), scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end());
+                vbo.insert(vbo.begin(), scene.meshes.begin()->second.vertices.begin(), scene.meshes.begin()->second.vertices.end());
             else
-                vbo.assign(vbo.begin(), scene.meshes.get_by_index(0).vertices.begin(), scene.meshes.get_by_index(0).vertices.end());
+                vbo.assign(vbo.begin(), scene.meshes.begin()->second.vertices.begin(), scene.meshes.begin()->second.vertices.end());
         }
 
         ImGui::End();

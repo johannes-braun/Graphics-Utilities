@@ -2,7 +2,7 @@
 #include <res/geometry.hpp>
 #include <opengl/buffer.hpp>
 #include <jpu/log.hpp>
-#include <framework/gfx.hpp>
+#include <framework/file.hpp>
 
 std::unique_ptr<io::window> main_window;
 
@@ -37,9 +37,9 @@ int main(int argc, const char** argv)
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
     main_window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "Topology");
 
-    res::geometry_file geometry = res::load_geometry(gfx::file("bunny.dae"));
-    std::vector<res::vertex>& mesh_vertices = geometry.meshes.get_by_index(0).vertices;
-    std::vector<uint32_t>& mesh_indices = geometry.meshes.get_by_index(0).indices;
+    gfx::scene_file geometry("bunny.dae");
+    std::vector<res::vertex>& mesh_vertices = geometry.meshes.begin()->second.vertices;
+    std::vector<uint32_t>& mesh_indices = geometry.meshes.begin()->second.indices;
 
     faces.resize(mesh_indices.size() / 3);
     vertices.resize(mesh_vertices.size());

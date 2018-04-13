@@ -10,7 +10,7 @@
 #include <res/presets.hpp>
 
 #include <framework/data/bvh.hpp>
-#include <framework/gfx.hpp>
+#include <framework/file.hpp>
 
 int main()
 {
@@ -19,9 +19,9 @@ int main()
     io::camera camera;
     io::default_cam_controller controller;
 
-    res::geometry_file geom = res::load_geometry(gfx::file("bunny.dae"));
-    std::vector<res::vertex> vertices(geom.meshes.get_by_index(0).vertices.begin(), geom.meshes.get_by_index(0).vertices.end());
-    std::vector<res::index32> indices(geom.meshes.get_by_index(0).indices.begin(), geom.meshes.get_by_index(0).indices.end());
+    gfx::scene_file geom("bunny.dae");
+    std::vector<res::vertex> vertices(geom.meshes.begin()->second.vertices.begin(), geom.meshes.begin()->second.vertices.end());
+    std::vector<res::index32> indices(geom.meshes.begin()->second.indices.begin(), geom.meshes.begin()->second.indices.end());
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });

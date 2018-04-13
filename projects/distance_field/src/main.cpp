@@ -6,7 +6,7 @@
 #include "res/image.hpp"
 #include "framework/renderer.hpp"
 #include "framework/gizmo.hpp"
-#include "framework/gfx.hpp"
+#include "framework/file.hpp"
 
 std::unique_ptr<gfx::renderer> main_renderer;
 std::unique_ptr<io::window> main_window;
@@ -16,14 +16,14 @@ int main(int argc, const char** argv)
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    res::image icon = load_image(gfx::file("ui/logo.png"), res::image_type::u8, res::RGB);
-    res::image cursor = load_image(gfx::file("cursor.png"), res::image_type::u8, res::RGBA);
+    gfx::image_file icon("ui/logo.png", gfx::bits::b8, 4);
+    gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     main_window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "My Window");
-    main_window->set_icon(icon.width, icon.height, icon.data.get());
-    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.data.get(), 0, 0));
+    main_window->set_icon(icon.width, icon.height, icon.bytes());
+    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.bytes(), 0, 0));
     main_window->set_max_framerate(60.f);
     main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
@@ -35,12 +35,12 @@ int main(int argc, const char** argv)
 
     int w, h, c; stbi_info(gfx::file("indoor/posx.hdr").path.string().c_str(), &w, &h, &c);
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
-    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, res::load_image(gfx::file("indoor/posx.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, res::load_image(gfx::file("indoor/negx.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, res::load_image(gfx::file("indoor/posy.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, res::load_image(gfx::file("indoor/negy.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, res::load_image(gfx::file("indoor/posz.hdr"), res::image_type::f32, res::RGB).data.get());
-    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, res::load_image(gfx::file("indoor/negz.hdr"), res::image_type::f32, res::RGB).data.get());
+    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posx.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negx.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posy.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negy.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posz.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negz.hdr", gfx::bits::b32, 3).bytes());
     cubemap.generate_mipmaps();
     
     io::camera cam;

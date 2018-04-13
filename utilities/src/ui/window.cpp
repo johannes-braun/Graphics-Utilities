@@ -1,6 +1,6 @@
 #include "window.hpp"
 #include "window_manager.hpp"
-#include "res/image.hpp"
+#include <framework/file.hpp>
 
 namespace gfx::ui
 {
@@ -35,9 +35,9 @@ namespace gfx::ui
     void window::fill(const font& title_font, std::function<void(window& window)> content)
     {
         static const auto load_svg = [](const auto& path, float scale = 1.f) {
-            const res::image img = res::load_svg_rasterized(path, scale);
+            const gfx::image_file img(path, scale);
             gl::texture ico(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
-            ico.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.data.get());
+            ico.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
             return ico;
         };
         static gl::texture close_icon = load_svg("../res/ui/icons/ic_close_white_24px.svg");

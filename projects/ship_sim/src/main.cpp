@@ -8,6 +8,8 @@
 #include <opengl/framebuffer.hpp>
 #include <framework/gfx.hpp>
 
+#include <framework/file.hpp>
+
 struct spring
 {
     int particle1;
@@ -27,9 +29,9 @@ int main()
     io::camera camera;
     io::default_cam_controller controller;
 
-    res::geometry_file ship_file = res::load_geometry(gfx::file("ship.dae"));
-    gl::buffer<res::vertex> ship_vbo(ship_file.meshes.get_by_index(0).vertices.begin(), ship_file.meshes.get_by_index(0).vertices.end());
-    gl::buffer<res::index32> ship_ibo(ship_file.meshes.get_by_index(0).indices.begin(), ship_file.meshes.get_by_index(0).indices.end());
+    gfx::scene_file ship_file("ship.dae");
+    gl::buffer<res::vertex> ship_vbo(ship_file.meshes.begin()->second.vertices.begin(), ship_file.meshes.begin()->second.vertices.end());
+    gl::buffer<res::index32> ship_ibo(ship_file.meshes.begin()->second.indices.begin(), ship_file.meshes.begin()->second.indices.end());
 
     gl::pipeline ship_pipeline;
     ship_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("ship.vert");
@@ -45,12 +47,12 @@ int main()
     gl::buffer<res::vertex> sail_vertices(size * size + fsize * fsize, GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<res::index32> sail_indices((size - 1) * (size - 1) * 6 + (fsize-1) * (fsize-1) * 6, GL_DYNAMIC_STORAGE_BIT);
 
-    res::image sail_image = res::load_image(gfx::file("sail.jpg"), res::image_type::u8, res::RGBA);
+    gfx::image_file sail_image("sail.jpg", gfx::bits::b8, 4);
     gl::texture sail(GL_TEXTURE_2D, sail_image.width, sail_image.height, GL_RGBA8);
-    sail.assign(GL_RGBA, GL_UNSIGNED_BYTE, sail_image.data.get());
+    sail.assign(GL_RGBA, GL_UNSIGNED_BYTE, sail_image.bytes());
     sail.generate_mipmaps();
     const gl::sampler sampler;
-
+    
     int i=0; 
     for (int y = 0; y < size; ++y) for (int x = 0; x < size; ++x)
     {

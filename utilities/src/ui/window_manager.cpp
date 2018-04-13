@@ -1,7 +1,7 @@
 #include "window_manager.hpp"
 #include <cassert>
 #include <algorithm>
-#include <res/image.hpp>
+#include <framework/file.hpp>
 
 namespace gfx::ui
 {
@@ -248,9 +248,9 @@ namespace gfx::ui
             _action();
 
         static gl::texture window_icon = []() {
-            const res::image img = res::load_svg_rasterized("../res/ui/logo.svg", 1.f);
+            const gfx::image_file img("../res/ui/logo.svg", 1.f);
             gl::texture ico(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
-            ico.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.data.get());
+            ico.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
             return ico;
         }();
 
