@@ -1,8 +1,0 @@
-layout(local_size_x = 64) in;
-
-layout(location=0) restrict writeonly buffer Permutation { uint perm[]; };
-
-void main()
-{
-    perm[gl_GlobalInvocationID.x] = gl_GlobalInvocationID.x;
-}
