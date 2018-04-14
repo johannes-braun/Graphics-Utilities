@@ -2,11 +2,10 @@
 
 #include <cinttypes>
 #include <AL/al.h>
-#include <jpu/memory.hpp>
 
 namespace al
 {
-    class buffer : public jpu::ref_count
+    class buffer
     {
     public:
         buffer();

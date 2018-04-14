@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-#include <vulkan/device.hpp>
-#include <vulkan/swapchain.hpp>
-#include <vulkan/vulkan_ext.h>
+//#include <vulkan/vulkan.hpp>
+//#include <vulkan/device.hpp>
+//#include <vulkan/swapchain.hpp>
+//#include <vulkan/vulkan_ext.h>
 #include <opengl/gl.hpp>
 
 #include "cursor.hpp"
@@ -15,8 +15,7 @@
 
 #include <string_view>
 #include <optional>
-#include <jpu/memory.hpp>
-#include <jpu/log.hpp>
+#include <gfx/log.hpp>
 #include <filesystem>
 #include <functional>
 
@@ -41,7 +40,7 @@ namespace io
         const GLFWvidmode* _mode;
     };
 
-    class window : public jpu::ref_count
+    class window
     {
     public:
         window(api api, int width, int height, std::string_view title, std::optional<monitor> monitor = {});
@@ -53,7 +52,7 @@ namespace io
 
         void set_icon(int w, int h, const void* data) const;
         void set_monitor(std::optional<monitor> monitor);
-        void set_cursor(cursor* cursor) { _cursor = cursor; glfwSetCursor(_window, *_cursor); }
+        void set_cursor(cursor* cursor) { _cursor = std::shared_ptr<io::cursor>(cursor); glfwSetCursor(_window, *_cursor); }
 
         bool update();
 
@@ -106,7 +105,7 @@ namespace io
 
     private:
         api _api;
-        jpu::ref_ptr<io::gui> _gui;
+        std::shared_ptr<io::gui> _gui;
         int _width_before_monitor{ 0 };
         int _height_before_monitor{ 0 };
         int _position_before_monitor_x{ 0 };
@@ -115,9 +114,9 @@ namespace io
         double _last_time{ 0 };
         double _swap_delay{ 0.f };
         GLFWwindow * _window{ nullptr };
-        jpu::ref_ptr<cursor> _cursor;
+        std::shared_ptr<cursor> _cursor;
 
-        vk::SurfaceKHR _surface;
+       /* vk::SurfaceKHR _surface;
         vk::Instance _instance;
         vk::PhysicalDevice _physical_device;
         jpu::ref_ptr<vkn::device> _device;
@@ -137,6 +136,6 @@ namespace io
             return user_data ? (*reinterpret_cast<window::debug_callback*>(user_data))(static_cast<vk::DebugReportFlagBitsEXT>(flags),
                 static_cast<vk::DebugReportObjectTypeEXT>(obj_type),
                 obj, location, code, layer_prefix, msg) : false;
-        }
+        }*/
     };
 }

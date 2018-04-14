@@ -1,8 +1,8 @@
 #include <io/window.hpp>
-#include <res/geometry.hpp>
 #include <opengl/buffer.hpp>
-#include <jpu/log.hpp>
-#include <framework/file.hpp>
+#include <gfx/geometry.hpp>
+#include <gfx/log.hpp>
+#include <gfx/file.hpp>
 
 std::unique_ptr<io::window> main_window;
 
@@ -38,8 +38,8 @@ int main(int argc, const char** argv)
     main_window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "Topology");
 
     gfx::scene_file geometry("bunny.dae");
-    std::vector<res::vertex>& mesh_vertices = geometry.meshes.begin()->second.vertices;
-    std::vector<uint32_t>& mesh_indices = geometry.meshes.begin()->second.indices;
+    std::vector<gfx::vertex>& mesh_vertices = geometry.meshes.begin()->vertices;
+    std::vector<gfx::index32>& mesh_indices = geometry.meshes.begin()->indices;
 
     faces.resize(mesh_indices.size() / 3);
     vertices.resize(mesh_vertices.size());

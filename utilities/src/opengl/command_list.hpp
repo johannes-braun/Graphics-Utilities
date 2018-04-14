@@ -9,7 +9,6 @@
 
 namespace gl
 {
-#pragma pack(push, 1)
     template<GLenum Token, class Command>
     struct command
     {
@@ -79,9 +78,14 @@ namespace gl
     };
     struct cmd_element_address : command<GL_ELEMENT_ADDRESS_COMMAND_NV, cmd_element_address>
     {
+        union overlapper64 {
+            uint64_t QWORD;
+            uint32_t DWORD[2];
+        };
+
         cmd_element_address(const u64 address, const u32 type_size) noexcept 
-            : address(address), type_size(type_size) {}
-        u64 address;
+            : address{ overlapper64{ address }.DWORD[0], overlapper64{ address }.DWORD[1] }, type_size(type_size) {}
+        u32 address[2];
         u32 type_size;
     };
     struct cmd_attribute_address : command<GL_ATTRIBUTE_ADDRESS_COMMAND_NV, cmd_attribute_address>
@@ -161,7 +165,6 @@ namespace gl
         {}
         front_face front_face;
     };
-#pragma pack(pop, 1)
 
     class command_buffer
     {

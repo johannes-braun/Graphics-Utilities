@@ -5,10 +5,10 @@
 #include <window/monitor.hpp>
 #include <opengl/context.hpp>
 #include <mygl/gl.hpp>
-#include <jpu/log.hpp>
 
 #include <window/imgui.hpp>
-#include <framework/gfx.hpp>
+#include <gfx/file.hpp>
+#include <gfx/log.hpp>
 
 int main()
 {

@@ -1,35 +1,33 @@
-#include <jpu/memory.hpp>
-#include <jpu/data.hpp>
-#include "io/window.hpp"
+#include "gfx/window.hpp"
 #include "io/camera.hpp"
 #include "stb_image.h"
-#include "res/image.hpp"
-#include "framework/renderer.hpp"
-#include "framework/gizmo.hpp"
-#include "framework/file.hpp"
+#include "gfx/renderer.hpp"
+#include "gfx/gizmo.hpp"
+#include "gfx/file.hpp"
+#include "gfx/imgui.hpp"
 
 std::unique_ptr<gfx::renderer> main_renderer;
-std::unique_ptr<io::window> main_window;
+std::shared_ptr<gfx::window> main_window;
 std::unique_ptr<gl::pipeline> mypeline;
 
 int main(int argc, const char** argv)
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    gfx::image_file icon("ui/logo.png", gfx::bits::b8, 4);
     gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "My Window");
-    main_window->set_icon(icon.width, icon.height, icon.bytes());
-    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.bytes(), 0, 0));
+    main_window = std::make_shared<gfx::window>(gfx::api::opengl, "My Window", 1280, 720);
+    main_window->set_icon(gfx::image_file("ui/logo.png", gfx::bits::b8, 4));
     main_window->set_max_framerate(60.f);
-    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
+    main_window->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
         if (action == GLFW_PRESS && key == GLFW_KEY_P)
             mypeline->reload();
     });
     main_renderer = std::make_unique<gfx::renderer>(1280, 720, 4);
+
+    gfx::imgui imgui(main_window);
 
     const gl::sampler sampler;
 
@@ -53,6 +51,7 @@ int main(int argc, const char** argv)
 
     while(main_window->update())
     {
+        imgui.new_frame();
         ImGui::Begin("Bla");
         ImGui::Value("DT", 1000 * static_cast<float>(main_window->delta_time()));
         ImGui::End();
@@ -70,5 +69,6 @@ int main(int argc, const char** argv)
         mypeline->draw(GL_TRIANGLES, 3);
 
         main_renderer->draw(main_window->delta_time());
+        imgui.render();
     }
 }

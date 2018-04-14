@@ -1,20 +1,23 @@
-#include <jpu/memory.hpp>
-#include <jpu/data.hpp>
-#include "io/window.hpp"
 #include "io/camera.hpp"
-#include "stb_image.h"
-#include "stb_image_write.h"
-#include "res/image.hpp"
-#include "res/presets.hpp"
 #include "tinyfd/tinyfiledialogs.h"
+
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "eigen3/Eigen/Eigenvalues"
 #include <opengl/framebuffer.hpp>
 #include <numeric>
-#include <framework/gfx.hpp>
-#include <framework/file.hpp>
+#include <gfx/geometry.hpp>
+#include <gfx/file.hpp>
+#include <gfx/window.hpp>
+#include <gfx/imgui.hpp>
 
-jpu::ref_ptr<io::window> main_window;
+#include <imgui/imgui.h>
+
+#include <opengl/pipeline.hpp>
+#include <opengl/shader.hpp>
+#include <opengl/buffer.hpp>
+
+std::shared_ptr<gfx::window> main_window;
 
 struct axis_transformation
 {
@@ -121,20 +124,20 @@ int main()
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    gfx::image_file icon("ui/logo.png", gfx::bits::b8, 4);
     gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = jpu::make_ref<io::window>(io::api::opengl, 1280, 720, "My Window");
-    main_window->set_icon(icon.width, icon.height, icon.bytes());
-    main_window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.bytes(), 0, 0));
+    main_window = std::make_shared<gfx::window>(gfx::api::opengl, "My Window", 1280, 720);
+    main_window->set_icon(gfx::image_file("ui/logo.png", gfx::bits::b8, 4));
     main_window->set_max_framerate(60.0);
-    main_window->callbacks->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
+    main_window->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
       /*  if (action == GLFW_PRESS && key == GLFW_KEY_P)
             for (auto&& p : graphics_pipelines)
                 p->reload_stages();*/
     });
+
+    gfx::imgui imgui(main_window);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -178,9 +181,9 @@ int main()
     cube_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("cube.vert");
     cube_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("cube.frag");
     
-    namespace cube = res::presets::cube;
-    gl::buffer<res::vertex> vbo(cube::vertices.begin(), cube::vertices.end());
-    gl::buffer<uint32_t> ibo(cube::indices.begin(), cube::indices.end());
+    namespace cube = gfx::cube_preset;
+    gl::buffer<gfx::vertex> vbo(cube::vertices.begin(), cube::vertices.end());
+    gl::buffer<gfx::index32> ibo(cube::indices.begin(), cube::indices.end());
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_DEPTH_TEST);
@@ -194,6 +197,8 @@ int main()
 
     while (main_window->update())
     {
+        imgui.new_frame();
+
         gl::framebuffer::zero().clear(0, { 0.15f, 0.15f, 0.15f, 1.f });
         gl::framebuffer::zero().clear(0.f, 0);
 
@@ -274,8 +279,8 @@ int main()
         glFrontFace(GL_CW);
 
         cube_pipeline.bind();
-        cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(res::vertex, position));
-        cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(res::vertex, uv));
+        cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(gfx::vertex, position));
+        cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(gfx::vertex, uv));
 
         cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = sampler.sample(grid);
@@ -298,5 +303,7 @@ int main()
         glfwGetFramebufferSize(*main_window, &w, &h);
         glViewportIndexedf(0, 0, 0, float(w), float(h));
         glEnable(GL_DEPTH_TEST);
+
+        imgui.render();
     }
 }

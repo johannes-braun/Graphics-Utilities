@@ -5,7 +5,6 @@
 #include "impl/gui_gl.hpp"
 
 #include <array>
-#include <jpu/memory.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 #include <GLFW/glfw3.h>
@@ -14,7 +13,7 @@ namespace io
 {
     // A wrapper which enables the rendering of ImGui elements via OpenGL.
     // INFO: A Gui Instance is found in every Window.
-    class gui : public jpu::ref_count
+    class gui
     {
     public:
         constexpr static int font_default = 0;

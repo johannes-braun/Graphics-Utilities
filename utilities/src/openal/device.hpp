@@ -1,11 +1,11 @@
 #pragma once
 
 #include <AL/alc.h>
-#include <jpu/memory.hpp>
+#include <cinttypes>
 
 namespace al
 {
-    class default_device : public jpu::ref_count
+    class default_device
     {
     public:
         explicit default_device(const char* name = nullptr);
@@ -16,7 +16,7 @@ namespace al
         ALCdevice* _device;
     };
     
-    class record_device : public jpu::ref_count
+    class record_device
     {
     public:
         explicit record_device(const char* name, uint32_t frequency, ALCenum format, int buffer_size);

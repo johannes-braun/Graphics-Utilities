@@ -1,10 +1,9 @@
 #pragma once
 #include <glm/gtx/quaternion.hpp>
-#include <jpu/memory.hpp>
 
 namespace al
 {
-    class listener : public jpu::ref_count
+    class listener
     {
     public:
         listener();

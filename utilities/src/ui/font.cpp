@@ -5,7 +5,7 @@
 #include "stb_truetype.h"
 
 #include <fstream>
-#include <jpu/log.hpp>
+#include <gfx/log.hpp>
 
 namespace gfx::ui
 {

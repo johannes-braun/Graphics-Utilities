@@ -1,11 +1,10 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <jpu/memory.hpp>
 
 namespace io
 {
-    class cursor : public jpu::ref_count
+    class cursor
     {
     public:
         cursor(const int w, const int h, const void* data, const int hotspot_x, const int hotspot_y)

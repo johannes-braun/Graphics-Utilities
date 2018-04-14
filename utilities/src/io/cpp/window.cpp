@@ -1,7 +1,7 @@
 #include "../window.hpp"
 
 #include <stb_image.h>
-#include <vulkan/detail.hpp>
+//#include <vulkan/detail.hpp>
 
 namespace io
 {
@@ -33,7 +33,7 @@ namespace io
 
         if (_api == api::vulkan)
         {
-            vk::ApplicationInfo application_info(title.data(), VK_MAKE_VERSION(1, 0, 0), title.data(), VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_0);
+            /*vk::ApplicationInfo application_info(title.data(), VK_MAKE_VERSION(1, 0, 0), title.data(), VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_0);
             auto extensions = vkn::detail::instance_extensions();
             auto layers = vkn::detail::instance_layers();
 
@@ -92,7 +92,7 @@ namespace io
                 vk::CommandBufferLevel::ePrimary,
                 static_cast<uint32_t>(_swapchain->images().size())));
             _memory_fence = _device->createFence({ vk::FenceCreateFlagBits::eSignaled });
-            _semaphore_render_finished = _device->createSemaphore({});
+            _semaphore_render_finished = _device->createSemaphore({});*/
         }
         else if (_api == api::opengl)
         {
@@ -119,7 +119,7 @@ namespace io
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
             glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
 
-            _gui = jpu::make_ref<io::gui>(_window);
+            _gui = std::make_shared<io::gui>(_window);
             glDepthFunc(GL_GEQUAL);
             glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
             glClearDepth(0);
@@ -134,12 +134,12 @@ namespace io
         switch (_api)
         {
         case api::vulkan:
-            _swapchain.reset();
+           /* _swapchain.reset();
             _device->destroyFence(_memory_fence);
             _device->destroySemaphore(_semaphore_render_finished);
             _instance.destroyDebugReportCallbackEXT(_debug_callback);
             _instance.destroySurfaceKHR(_surface);
-            _instance.destroy();
+            _instance.destroy();*/
             break;
         case api::opengl: break;
         default: break;
@@ -155,9 +155,9 @@ namespace io
 
     bool window::update()
     {
-        if (_api == api::vulkan)
+       /* if (_api == api::vulkan)
             _gui->render_interface_vk().set_next_command_buffer(_current_primary_command_buffer);
-
+*/
         if (_gui->is_initialized())
             _gui->render();
         else
@@ -165,30 +165,30 @@ namespace io
 
         if (_api == api::vulkan)
         {
-            if (_current_primary_command_buffer)
-            {
-                _current_primary_command_buffer.end();
+            //if (_current_primary_command_buffer)
+            //{
+            //    _current_primary_command_buffer.end();
 
-                // Submit primary command buffer for rendering
-                std::array<vk::CommandBuffer, 1> command_buffers{ _current_primary_command_buffer };
-                const auto wait_semaphores = { _swapchain->swap_semaphore() };
+            //    // Submit primary command buffer for rendering
+            //    std::array<vk::CommandBuffer, 1> command_buffers{ _current_primary_command_buffer };
+            //    const auto wait_semaphores = { _swapchain->swap_semaphore() };
 
-                vk::PipelineStageFlags stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-                vk::SubmitInfo render_submit_info;
-                render_submit_info.setCommandBufferCount(static_cast<uint32_t>(std::size(command_buffers)))
-                    .setPCommandBuffers(std::data(command_buffers))
-                    .setSignalSemaphoreCount(1)
-                    .setPSignalSemaphores(&_semaphore_render_finished)
-                    .setWaitSemaphoreCount(static_cast<uint32_t>(std::size(wait_semaphores)))
-                    .setPWaitSemaphores(std::data(wait_semaphores))
-                    .setPWaitDstStageMask(&stage_flags);
-                _device->queue(vk::QueueFlagBits::eGraphics).queue.submit(render_submit_info, _memory_fence);
+            //    vk::PipelineStageFlags stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+            //    vk::SubmitInfo render_submit_info;
+            //    render_submit_info.setCommandBufferCount(static_cast<uint32_t>(std::size(command_buffers)))
+            //        .setPCommandBuffers(std::data(command_buffers))
+            //        .setSignalSemaphoreCount(1)
+            //        .setPSignalSemaphores(&_semaphore_render_finished)
+            //        .setWaitSemaphoreCount(static_cast<uint32_t>(std::size(wait_semaphores)))
+            //        .setPWaitSemaphores(std::data(wait_semaphores))
+            //        .setPWaitDstStageMask(&stage_flags);
+            //    _device->queue(vk::QueueFlagBits::eGraphics).queue.submit(render_submit_info, _memory_fence);
 
-                vk::SwapchainKHR sc = *_swapchain;
-                const auto present_semaphores = { _semaphore_render_finished };
-                const auto image = { _swapchain->current_image() };
-                _device->queue(vk::QueueFlagBits::eGraphics).queue.presentKHR(vk::PresentInfoKHR(static_cast<uint32_t>(std::size(present_semaphores)), std::data(present_semaphores), 1, &sc, std::data(image)));
-            }
+            //    vk::SwapchainKHR sc = *_swapchain;
+            //    const auto present_semaphores = { _semaphore_render_finished };
+            //    const auto image = { _swapchain->current_image() };
+            //    _device->queue(vk::QueueFlagBits::eGraphics).queue.presentKHR(vk::PresentInfoKHR(static_cast<uint32_t>(std::size(present_semaphores)), std::data(present_semaphores), 1, &sc, std::data(image)));
+            //}
         }
         glfwPollEvents();
 
@@ -208,13 +208,13 @@ namespace io
         }
         else if (_api == api::vulkan)
         {
-            _swapchain->swap();
+           /* _swapchain->swap();
 
             _device->waitForFences(_memory_fence, true, std::numeric_limits<uint64_t>::max());
             _device->resetFences(_memory_fence);
 
             _current_primary_command_buffer = _primary_command_buffers[_swapchain->current_image()];
-            _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+            _current_primary_command_buffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));*/
         }
 
         while (_last_time > glfwGetTime() - _swap_delay)

@@ -1,14 +1,11 @@
 #include <io/window.hpp>
 #include <io/camera.hpp>
 
-#include <res/geometry.hpp>
-#include <res/image.hpp>
-
 #include <opengl/pipeline.hpp>
 #include <opengl/framebuffer.hpp>
-#include <framework/gfx.hpp>
 
-#include <framework/file.hpp>
+#include <gfx/file.hpp>
+#include <gfx/geometry.hpp>
 
 struct spring
 {
@@ -30,8 +27,8 @@ int main()
     io::default_cam_controller controller;
 
     gfx::scene_file ship_file("ship.dae");
-    gl::buffer<res::vertex> ship_vbo(ship_file.meshes.begin()->second.vertices.begin(), ship_file.meshes.begin()->second.vertices.end());
-    gl::buffer<res::index32> ship_ibo(ship_file.meshes.begin()->second.indices.begin(), ship_file.meshes.begin()->second.indices.end());
+    gl::buffer<gfx::vertex> ship_vbo(ship_file.meshes.begin()->vertices.begin(), ship_file.meshes.begin()->vertices.end());
+    gl::buffer<gfx::index32> ship_ibo(ship_file.meshes.begin()->indices.begin(), ship_file.meshes.begin()->indices.end());
 
     gl::pipeline ship_pipeline;
     ship_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("ship.vert");
@@ -44,8 +41,8 @@ int main()
 
     constexpr int size = 10;
     constexpr int fsize = 5;
-    gl::buffer<res::vertex> sail_vertices(size * size + fsize * fsize, GL_DYNAMIC_STORAGE_BIT);
-    gl::buffer<res::index32> sail_indices((size - 1) * (size - 1) * 6 + (fsize-1) * (fsize-1) * 6, GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::vertex> sail_vertices(size * size + fsize * fsize, GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::index32> sail_indices((size - 1) * (size - 1) * 6 + (fsize-1) * (fsize-1) * 6, GL_DYNAMIC_STORAGE_BIT);
 
     gfx::image_file sail_image("sail.jpg", gfx::bits::b8, 4);
     gl::texture sail(GL_TEXTURE_2D, sail_image.width, sail_image.height, GL_RGBA8);
@@ -60,9 +57,9 @@ int main()
         sail_vertices[y * size + x].uv = uv;
         sail_vertices[y * size + x].position = { uv.x * 3.6f-1.8f, uv.y*2.31257f + 1.55686f, 0.438 };
         sail_vertices[y * size + x].normal = { 0, 0, 1 };
-        sail_vertices[y * size + x].meta = 0;
-        sail_vertices[y * size + x].meta2 = (y == 0 || y == size-1) && x%3==0;
-        sail_vertices[y * size + x].meta3 = 0;
+        sail_vertices[y * size + x].metadata_position = 0;
+        sail_vertices[y * size + x].metadata_normal = (y == 0 || y == size-1) && x%3==0;
+        sail_vertices[y * size + x].metadata_uv = 0ll;
 
         if (x < size - 1 && y < size - 1)
         {
@@ -82,9 +79,9 @@ int main()
         sail_vertices[size * size + y * fsize + x].uv = uv;
         sail_vertices[size * size + y * fsize + x].position = { uv.x, 0.33f*uv.y + 4.6f, uv.x+ 0.428 };
         sail_vertices[size * size + y * fsize + x].normal = { 1, 0, 0 };
-        sail_vertices[size * size + y * fsize + x].meta = 0;
-        sail_vertices[size * size + y * fsize + x].meta2 = (x == 0) && x % 2 == 0;
-        sail_vertices[size * size + y * fsize + x].meta3 = 0;
+        sail_vertices[size * size + y * fsize + x].metadata_position = 0;
+        sail_vertices[size * size + y * fsize + x].metadata_normal = (x == 0) && x % 2 == 0;
+        sail_vertices[size * size + y * fsize + x].metadata_uv = 0ll;
 
         if (x < fsize - 1 && y < fsize - 1)
         {
@@ -129,7 +126,7 @@ int main()
             springs.push_back(spring{ size * size + s, size * size + e, 100.f, 0.1f, distance(p1, p2) });
     }
 
-    res::transform ship_transform;
+    gfx::transform ship_transform;
 
     struct sail_sim_data { 
         uintptr_t spring_results;
@@ -197,9 +194,9 @@ int main()
         model_buffer.synchronize();
 
         ship_pipeline.bind();
-        ship_pipeline.bind_attribute(0, ship_vbo, 3, GL_FLOAT, offsetof(res::vertex, position), sizeof(res::vertex));
-        ship_pipeline.bind_attribute(1, ship_vbo, 3, GL_FLOAT, offsetof(res::vertex, normal), sizeof(res::vertex));
-        ship_pipeline.bind_attribute(2, ship_vbo, 2, GL_FLOAT, offsetof(res::vertex, uv), sizeof(res::vertex));
+        ship_pipeline.bind_attribute(0, ship_vbo, 3, GL_FLOAT, offsetof(gfx::vertex, position), sizeof(gfx::vertex));
+        ship_pipeline.bind_attribute(1, ship_vbo, 3, GL_FLOAT, offsetof(gfx::vertex, normal), sizeof(gfx::vertex));
+        ship_pipeline.bind_attribute(2, ship_vbo, 2, GL_FLOAT, offsetof(gfx::vertex, uv), sizeof(gfx::vertex));
         ship_pipeline.bind_uniform_buffer(0, data_buffer);
         ship_pipeline.bind_uniform_buffer(1, model_buffer);
         ship_pipeline.draw(GL_TRIANGLES, ship_ibo, GL_UNSIGNED_INT);
@@ -212,9 +209,9 @@ int main()
         model_buffer.synchronize();
 
         ship_pipeline.bind();
-        ship_pipeline.bind_attribute(0, sail_vertices, 3, GL_FLOAT, offsetof(res::vertex, position), sizeof(res::vertex));
-        ship_pipeline.bind_attribute(1, sail_vertices, 3, GL_FLOAT, offsetof(res::vertex, normal), sizeof(res::vertex));
-        ship_pipeline.bind_attribute(2, sail_vertices, 2, GL_FLOAT, offsetof(res::vertex, uv), sizeof(res::vertex));
+        ship_pipeline.bind_attribute(0, sail_vertices, 3, GL_FLOAT, offsetof(gfx::vertex, position), sizeof(gfx::vertex));
+        ship_pipeline.bind_attribute(1, sail_vertices, 3, GL_FLOAT, offsetof(gfx::vertex, normal), sizeof(gfx::vertex));
+        ship_pipeline.bind_attribute(2, sail_vertices, 2, GL_FLOAT, offsetof(gfx::vertex, uv), sizeof(gfx::vertex));
         ship_pipeline.bind_uniform_buffer(0, data_buffer);
         ship_pipeline.bind_uniform_buffer(1, model_buffer);
         ship_pipeline.draw(GL_TRIANGLES, sail_indices, GL_UNSIGNED_INT);

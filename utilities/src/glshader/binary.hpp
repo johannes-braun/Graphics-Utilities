@@ -1,6 +1,6 @@
 #pragma once
 
-#include <jpu/log.hpp>
+#include <gfx/log.hpp>
 #define LOG_OUTPUT(x) tlog_i("GLShader") << (x)
 #define ERR_OUTPUT(x) tlog_e("GLShader") << (x)
 

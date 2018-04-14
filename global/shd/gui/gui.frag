@@ -3,7 +3,11 @@ layout(location=1) in vec4 color;
 
 layout(location=0) out vec4 out_color;
 
-uniform sampler2D img;
+layout(binding=0) uniform Data
+{
+    mat4 projection;
+    sampler2D img;
+};
 
 #define TEXTURE_RAW
 

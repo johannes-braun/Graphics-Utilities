@@ -1,17 +1,17 @@
-#include <io/window.hpp>
 #include <io/camera.hpp>
-#include <framework/renderer.hpp>
-#include <framework/gizmo.hpp>
 #include <memory>
-#include <res/image.hpp>
-#include <res/geometry.hpp>
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
 #include <opengl/texture.hpp>
-#include <framework/data/bvh.hpp>
-#include <framework/file.hpp>
 
-std::unique_ptr<io::window> window;
+#include <gfx/renderer.hpp>
+#include <gfx/gizmo.hpp>
+#include <gfx/data/bvh.hpp>
+#include <gfx/file.hpp>
+#include <gfx/imgui.hpp>
+#include <gfx/window.hpp>
+
+std::shared_ptr<gfx::window> window;
 std::unique_ptr<gfx::renderer> renderer;
 
 constexpr int start_width = 800;
@@ -22,29 +22,29 @@ const glm::vec3 background = { 0.8f, 0.94f, 1.f };
 
 int main()
 {
-    gfx::image_file logo("ui/logo.svg", 10.f);
     gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
     glfwWindowHint(GLFW_SAMPLES, start_samples);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-    window = std::make_unique<io::window>(io::api::opengl, start_width, start_height, "Simple Rendering");
-    window->set_icon(logo.width, logo.height, logo.bytes());
-    window->set_cursor(new io::cursor(cursor.width, cursor.height, cursor.bytes(), 0, 0));
-    window->callbacks->framebuffer_size_callback.add([](GLFWwindow*, int x, int y) {
+    window = std::make_shared<gfx::window>(gfx::api::opengl, "Simple Rendering", start_width, start_height);
+    window->set_icon(gfx::image_file("ui/logo.svg", 10.f));
+    window->framebuffer_size_callback.add([](GLFWwindow*, int x, int y) {
         renderer->resize(x, y, start_samples);
         glViewportIndexedf(0, 0, 0, float(x), float(y));
     });
     renderer = std::make_unique<gfx::renderer>(start_width, start_height, start_samples);
     renderer->set_clear_color(glm::vec4(background, 1.f));
     
+    gfx::imgui gui(window);
+
     io::camera camera;
     io::default_cam_controller controller;
 
     gfx::scene_file scene("bunny.dae");
-    const auto& verts = scene.meshes.begin()->second.vertices;
-    const auto& inds = scene.meshes.begin()->second.indices;
-    gl::buffer<res::vertex> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
+    const auto& verts = scene.meshes.begin()->vertices;
+    const auto& inds = scene.meshes.begin()->indices;
+    gl::buffer<gfx::vertex> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<uint32_t> ibo(inds.begin(), inds.end(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     ibo.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
 
@@ -54,7 +54,7 @@ int main()
     ibo.flush();
     ibo.unmap();
 
-    std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
+    std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(gfx::vertex), offsetof(gfx::vertex, position), sizeof(uint32_t), 0);
 
     gl::buffer<gl::byte> bvh_buffer(packed_bvh.begin(), packed_bvh.end());
 
@@ -69,7 +69,7 @@ int main()
 
     const gl::sampler sampler;
 
-    res::transform light_transform;
+    gfx::transform light_transform;
     light_transform.position = { 4, 3, 4 };
     glm::vec3 light_color(100, 100, 100);
 
@@ -89,7 +89,7 @@ int main()
         alignas(16) glm::vec3 light_color;
         alignas(16) glm::vec3 background;
         alignas(16) uint64_t indices;
-        alignas(8) uint64_t vertices;
+        alignas(8)  uint64_t vertices;
         alignas(16) uint64_t bvh_buffer;
     };
 
@@ -109,16 +109,16 @@ int main()
         glEnableVertexAttribArray(a); 
         glVertexAttribFormatNV(a, c, t, n, int(s)); 
     };
-    add_attrib(0, 3, GL_FLOAT, false, sizeof(res::vertex));
-    add_attrib(1, 3, GL_FLOAT, false, sizeof(res::vertex));
-    add_attrib(2, 2, GL_FLOAT, false, sizeof(res::vertex));
+    add_attrib(0, 3, GL_FLOAT, false, sizeof(gfx::vertex));
+    add_attrib(1, 3, GL_FLOAT, false, sizeof(gfx::vertex));
+    add_attrib(2, 2, GL_FLOAT, false, sizeof(gfx::vertex));
     state.capture(GL_TRIANGLES);
 
     gl::command_buffer command_buffer;
     command_buffer.start();
-    command_buffer.push(gl::cmd_attribute_address{ 0, vbo.handle() + offsetof(res::vertex, position) });
-    command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(res::vertex, normal) });
-    command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(res::vertex, uv) });
+    command_buffer.push(gl::cmd_attribute_address{ 0, vbo.handle() + offsetof(gfx::vertex, position) });
+    command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(gfx::vertex, normal) });
+    command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(gfx::vertex, uv) });
     command_buffer.push(gl::cmd_element_address{ ibo.handle(), sizeof(uint32_t) });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_VERTEX_SHADER, uniform_buffer1.handle() });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_FRAGMENT_SHADER, uniform_buffer2.handle() });
@@ -127,6 +127,7 @@ int main()
 
     while (window->update())
     {
+        gui.new_frame();
         controller.update(camera, *window, window->delta_time());
 
         ImGui::Begin("My Window");
@@ -139,9 +140,9 @@ int main()
         if (ImGui::Button("Assign data!"))
         {
             if(vbo.empty())
-                vbo.insert(vbo.begin(), scene.meshes.begin()->second.vertices.begin(), scene.meshes.begin()->second.vertices.end());
+                vbo.insert(vbo.begin(), scene.meshes.begin()->vertices.begin(), scene.meshes.begin()->vertices.end());
             else
-                vbo.assign(vbo.begin(), scene.meshes.begin()->second.vertices.begin(), scene.meshes.begin()->second.vertices.end());
+                vbo.assign(vbo.begin(), scene.meshes.begin()->vertices.begin(), scene.meshes.begin()->vertices.end());
         }
 
         ImGui::End();
@@ -167,5 +168,6 @@ int main()
         renderer->draw(window->delta_time());
 
         gizmo.render();
+        gui.render();
     }
 }

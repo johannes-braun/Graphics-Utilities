@@ -4,9 +4,6 @@
 #include <io/window.hpp>
 #include <io/camera.hpp>
 
-#include <res/geometry.hpp>
-#include <res/image.hpp>
-
 #include <tinyfd/tinyfiledialogs.h>
 
 #include <opengl/pipeline.hpp>
@@ -14,9 +11,9 @@
 #include <opengl/framebuffer.hpp>
 #include <opengl/query.hpp>
 
-#include <framework/data/bvh.hpp>
-#include <framework/data/grid_line_space.hpp>
-#include <framework/data/gpu_data.hpp>
+#include <gfx/data/bvh.hpp>
+#include <gfx/data/grid_line_space.hpp>
+#include <gfx/data/gpu_data.hpp>
 
 #include "splash.hpp"
 
@@ -24,7 +21,9 @@
 #include "stb_rect_pack.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
-#include <framework/file.hpp>
+
+#include <gfx/file.hpp>
+#include <gfx/geometry.hpp>
 
 std::shared_ptr<io::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
@@ -46,6 +45,16 @@ struct tracer_data
 
 int main()
 {
+    glm::vec3 position(0, 1, 0);
+    glm::quat rotation = glm::angleAxis(glm::radians(28.f), normalize(glm::vec3(1, 1, 0)));
+    glm::vec3 scale(2, 0.5f, 2);
+    glm::mat4 a = translate(glm::mat4(1.f), position) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.f), scale);
+
+    gfx::transform tf(position, scale, rotation);
+    glm::mat4 tfm = tf;
+
+    gfx::transform ttf(tfm);
+
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
     window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
@@ -55,12 +64,12 @@ int main()
     splash.set_progress(0.05f, L"Loading Meshes");
 
     gfx::scene_file file("sphaear.dae");
-    gfx::scene_file::mesh& mesh = file.meshes.begin()->second;
+    gfx::scene_file::mesh& mesh = *(file.meshes.begin());
     splash.set_progress(0.08f, L"Building BVH");
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
-    const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
+    const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex), offsetof(gfx::vertex, position), sizeof(uint32_t), 0);
 
     splash.set_progress(0.1f, L"Building Line Space");
     gfx::grid_updated = [&](float f) mutable { splash.set_progress(0.1f + 0.3f * f, L"Building Line Space: " + std::to_wstring(int(f*100)) + L"%"); };
@@ -99,8 +108,8 @@ int main()
     line_space_datas.synchronize();
     splash.set_progress(0.7f, L"Packing buffers");
 
-    gl::buffer<res::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
-    gl::buffer<res::index32> ibo(mesh.indices.begin(), mesh.indices.end());
+    gl::buffer<gfx::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
+    gl::buffer<gfx::index32> ibo(mesh.indices.begin(), mesh.indices.end());
     gl::buffer<gl::byte> bvh(packed.begin(), packed.end());
 
     gl::query timer(GL_TIME_ELAPSED);
@@ -174,32 +183,32 @@ int main()
             {
                 gfx::scene_file file(item);
                 std::vector<uint32_t> indices;
-                std::vector<res::vertex> vertices;
+                std::vector<gfx::vertex> vertices;
                 size_t begin = 0;
                 int mid = 0;
                 for (const auto& mesh : file.meshes)
                 {
-                    vertices.reserve(vertices.size() + mesh.second.vertices.size());
-                    const glm::mat4 model_matrix = static_cast<glm::mat4>(mesh.second.transform);
+                    vertices.reserve(vertices.size() + mesh.vertices.size());
+                    const glm::mat4 model_matrix = static_cast<glm::mat4>(mesh.transform);
                     const glm::mat4 normal_matrix = transpose(inverse(model_matrix));
-                    for (auto vertex : mesh.second.vertices) {
+                    for (auto vertex : mesh.vertices) {
                         vertex.position = glm::vec3(model_matrix * glm::vec4(vertex.position, 1));
                         vertex.normal = glm::vec3(normal_matrix * glm::vec4(vertex.normal, 0));
                         if (mid >= 1)
-                            vertex.meta = 1;
+                            vertex.metadata_position = 1;
                         vertices.emplace_back(std::move(vertex));
                     }
                     ++mid;
-                    indices.reserve(indices.size() + mesh.second.indices.size());
-                    for (auto index : mesh.second.indices) indices.emplace_back(uint32_t(index + begin));
-                    begin += mesh.second.vertices.size();
+                    indices.reserve(indices.size() + mesh.indices.size());
+                    for (auto index : mesh.indices) indices.emplace_back(uint32_t(index + begin));
+                    begin += mesh.vertices.size();
                 }
 
                 gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
-                const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(res::vertex), offsetof(res::vertex, position), sizeof(uint32_t), 0);
+                const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex), offsetof(gfx::vertex, position), sizeof(uint32_t), 0);
 
-                vbo = gl::buffer<res::vertex>(vertices.begin(), vertices.end());
-                ibo = gl::buffer<res::index32>(indices.begin(), indices.end());
+                vbo = gl::buffer<gfx::vertex>(vertices.begin(), vertices.end());
+                ibo = gl::buffer<gfx::index32>(indices.begin(), indices.end());
                 bvh = gl::buffer<gl::byte>(packed.begin(), packed.end());
                 data[0].vbo = vbo.handle();
                 data[0].ibo = ibo.handle();

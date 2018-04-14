@@ -6,11 +6,9 @@
 #include <opengl/texture.hpp>
 #include <opengl/framebuffer.hpp>
 
-#include <res/geometry.hpp>
-#include <res/presets.hpp>
-
-#include <framework/data/bvh.hpp>
-#include <framework/file.hpp>
+#include <gfx/data/bvh.hpp>
+#include <gfx/file.hpp>
+#include <gfx/geometry.hpp>
 
 int main()
 {
@@ -20,8 +18,8 @@ int main()
     io::default_cam_controller controller;
 
     gfx::scene_file geom("bunny.dae");
-    std::vector<res::vertex> vertices(geom.meshes.begin()->second.vertices.begin(), geom.meshes.begin()->second.vertices.end());
-    std::vector<res::index32> indices(geom.meshes.begin()->second.indices.begin(), geom.meshes.begin()->second.indices.end());
+    std::vector<gfx::vertex> vertices(geom.meshes.begin()->vertices.begin(), geom.meshes.begin()->vertices.end());
+    std::vector<gfx::index32> indices(geom.meshes.begin()->indices.begin(), geom.meshes.begin()->indices.end());
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });

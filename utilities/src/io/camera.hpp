@@ -4,7 +4,7 @@
 #include "cursor_controls.hpp"
 
 #include <glm/glm.hpp>
-#include <res/transform.hpp>
+#include <gfx/geometry.hpp>
 #include <mygl/gl.hpp>
 #include <GLFW/glfw3.h>
 
@@ -23,7 +23,7 @@ namespace io
 
         glm::mat4 projection(int width, int height) const;
 
-        res::transform transform;
+        gfx::transform transform;
         float field_of_view = glm::radians(80.f);
         float clip_near = 0.1f;
         float clip_far = 1000.f;

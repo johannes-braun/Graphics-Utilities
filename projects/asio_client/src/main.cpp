@@ -1,7 +1,7 @@
 #include <array>
 #include <iostream>
 #include <asio.hpp>
-#include <jpu/log.hpp>
+#include <gfx/log.hpp>
 
 using asio::ip::tcp;
 

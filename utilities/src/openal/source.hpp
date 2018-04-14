@@ -1,12 +1,11 @@
 #pragma once
 
-#include <jpu/memory.hpp>
 #include <AL/al.h>
 #include <glm/glm.hpp>
 
 namespace al
 {
-    class source : public jpu::ref_count
+    class source
     {
     public:
         source();

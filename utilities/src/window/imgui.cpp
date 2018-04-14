@@ -1,7 +1,5 @@
 #include "imgui.hpp"
 
-#include <vulkan/device.hpp>
-
 namespace gfx
 {
     constexpr std::array<wf::keycode, 3> mouse_buttons{

@@ -8,7 +8,8 @@
 #include <vector>
 #include <array>
 #include <functional>
-#include <jpu/log.hpp>
+#include <gfx/log.hpp>
+#include <gfx/window.hpp>
 
 #include "gfx/vk/instance.hpp"
 #include "gfx/vk/debug_callback.hpp"
@@ -78,35 +79,30 @@ std::atomic_bool close_window = false;
 std::atomic_bool terminate_threads = false;
 worker main_thread_worker;
 
+std::unique_ptr<gfx::window> window;
+
 int main()
 {
-    std::atomic<GLFWwindow*> window = nullptr;
+    std::atomic_bool window_created = false;
     main_thread_worker = worker([&]() {
-        glfwInit();
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwSetErrorCallback([](int code, const char* msg) { tlog_e("GLFW Callback") << "[ Code: " << code << " ]: " << msg; });
-        window.store(glfwCreateWindow(1280, 720, "Vulkan Sample 2", nullptr, nullptr));
-
-        glfwSetCharCallback(window.load(), [](GLFWwindow* w, uint32_t c) {
+        window = std::make_unique<gfx::window>(gfx::api::vulkan, "Vulkan V2", 1280, 720);
+        window->char_callback.add([](GLFWwindow* w, uint32_t c) {
             log_i << "Polled";
             if (c == 'x')
                 glfwSetWindowShouldClose(w, true);
         });
+        window_created = true;
 
         while (!terminate_threads)
         {
             auto now = std::chrono::steady_clock::now();
             main_thread_worker.consume();
-            glfwPollEvents();
-            close_window = glfwWindowShouldClose(window.load());
+            close_window = !window->update();
             while (std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::steady_clock::now() - now).count() < (1/240.f));
         }
-
-        glfwDestroyWindow(window);
-        glfwTerminate();
     });
 
-    while (!window.load()) void(0);
+    while (!window_created) void(0);
 
     uint32_t count = 0; const char** extensions = glfwGetRequiredInstanceExtensions(&count);
     std::vector<const char*> final_instance_extensions(extensions, extensions+count);
@@ -123,7 +119,7 @@ int main()
             return phys_device;
         return nullptr;
     }();
-    auto surface = std::make_shared<gfx::vk::surface>(main_gpu, window.load());
+    auto surface = std::make_shared<gfx::vk::surface>(main_gpu, *window);
 
     std::vector<VkQueueFamilyProperties> properties = main_gpu->get_queue_family_properties();
     const auto graphics_queue_iter = std::find_if(properties.begin(), properties.end(), [](const VkQueueFamilyProperties& p) { return (p.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0; });
@@ -193,8 +189,8 @@ int main()
         const auto now = std::chrono::steady_clock::now();
 
         main_thread_worker.enqueue([&]() {
-            if (glfwGetKey(window.load(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
-                glfwSetWindowShouldClose(window.load(), true);
+            if (glfwGetKey(*window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+                glfwSetWindowShouldClose(*window, true);
         });
         log_i << "Updated";
 

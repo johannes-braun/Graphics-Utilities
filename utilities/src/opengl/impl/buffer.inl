@@ -237,7 +237,7 @@ namespace gl
             {
                 if (was_data_full_size)
                 {
-                    memcpy(_data, data, size * sizeof(T));
+                    memcpy(_data+start._offset * sizeof(T), data, size * sizeof(T));
                 }
                 else
                 {

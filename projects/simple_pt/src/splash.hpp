@@ -1,9 +1,8 @@
 #pragma once
 
 #include <ui/ui.hpp>
-#include "res/image.hpp"
 #include <io/window.hpp>
-#include <framework/file.hpp>
+#include <gfx/file.hpp>
 
 namespace game
 {

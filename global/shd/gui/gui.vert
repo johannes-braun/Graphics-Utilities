@@ -5,7 +5,11 @@ layout(location=2) in vec4 color;
 layout(location=0) out vec2 out_uv;
 layout(location=1) out vec4 out_color;
 
-uniform mat4 projection;
+layout(binding=0) uniform Data
+{
+    mat4 projection;
+    sampler2D img;
+};
 
 out gl_PerVertex
 {

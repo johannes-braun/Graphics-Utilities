@@ -1,14 +1,13 @@
 #pragma once
 
 #include <vector>
-#include <jpu/memory.hpp>
 #include <AL/alc.h>
 
 namespace al
 {
     class default_device;
 
-    class context : public jpu::ref_count
+    class context
     {
     public:
         using attr_list = std::vector<std::pair<int, int>>;
