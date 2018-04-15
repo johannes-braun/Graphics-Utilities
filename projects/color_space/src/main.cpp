@@ -1,7 +1,3 @@
-#include "tinyfd/tinyfiledialogs.h"
-
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "eigen3/Eigen/Eigenvalues"
 #include <opengl/framebuffer.hpp>
 #include <numeric>
@@ -125,29 +121,22 @@ int main()
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
-
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "My Window", 1280, 720);
+    gfx::window_hints hints;
+    hints[GLFW_SAMPLES] = 8;
+    hints[GLFW_OPENGL_DEBUG_CONTEXT] = true;
+    main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "My Window", 1280, 720, hints);
     main_window->set_icon(gfx::image_file("ui/logo.png", gfx::bits::b8, 4));
     main_window->set_max_framerate(60.0);
-    main_window->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
-      /*  if (action == GLFW_PRESS && key == GLFW_KEY_P)
-            for (auto&& p : graphics_pipelines)
-                p->reload_stages();*/
-    });
 
     gfx::imgui imgui(main_window);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    constexpr const char *fs[2] = { "*.jpg", "*.png" };
-    const auto src_data = tinyfd_openFileDialog("Open Image", "../", 2, fs, "Images", false);
-    if (!src_data) return 0;
+    const auto source_data = gfx::file::open_dialog("Open Image", "../", { "*.jpg", "*.png" }, "Image Files");
+    if (!source_data) return 0;
 
-    gfx::image_file picture(src_data, gfx::bits::b8, 3);
+    gfx::image_file picture(*source_data, gfx::bits::b8, 3);
     gl::texture texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
     texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.bytes());
     texture.generate_mipmaps();
@@ -229,9 +218,9 @@ int main()
 
         if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
         {
-            if (const auto src = tinyfd_openFileDialog("Open Image", "../", 2, fs, "Images", false))
+            if (const auto source_data = gfx::file::open_dialog("Open Image", "../", { "*.jpg", "*.png" }, "Image Files");)
             {
-                gfx::image_file picture(src_data, gfx::bits::b8, 3);
+                gfx::image_file picture(*source_data, gfx::bits::b8, 3);
                 texture = gl::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
                 texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.bytes());
                 texture.generate_mipmaps();
@@ -244,16 +233,14 @@ int main()
         ImGui::SameLine();
         if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
-            glm::u8vec3* data_cast = reinterpret_cast<glm::u8vec3*>(picture.bytes());
+            glm::u8vec3* data_cast = static_cast<glm::u8vec3*>(picture.bytes());
             std::vector<glm::u8vec3> new_img(picture.pixel_count());
+            std::transform(data_cast, data_cast + picture.pixel_count(), new_img.begin(), [&patmat](const glm::u8vec3& vec) {
+                return clamp(glm::vec3(patmat * glm::vec4(glm::vec3(vec) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
+            });
 
-#pragma omp parallel for schedule(static)
-            for (int p = 0; p < picture.pixel_count(); ++p)
-                new_img[p] = clamp(glm::vec3(patmat * glm::vec4(glm::vec3(data_cast[p]) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
-
-            constexpr const char *ext[1] = { "*.png" };
-            if (const auto dst = tinyfd_saveFileDialog("Save output", "../", 1, ext, "PNG"))
-                stbi_write_png(dst, picture.width, picture.height, 3, new_img.data(), 0);
+            if (const auto dst = gfx::file::save_dialog("Save output", "../", { "*.png" }, "PNG"))
+                gfx::image_file::save_png(*dst, picture.width, picture.height, 3, &new_img[0][0]);
         }
         ImGui::End();
 

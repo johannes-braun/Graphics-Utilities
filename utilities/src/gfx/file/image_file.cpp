@@ -12,6 +12,31 @@
 
 namespace gfx
 {
+    void image_file::save_png(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data)
+    {
+        stbi_write_png(path.string().c_str(), int(width), int(height), channels, data, 0);
+    }
+
+    void image_file::save_bmp(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data)
+    {
+        stbi_write_bmp(path.string().c_str(), int(width), int(height), channels, data);
+    }
+
+    void image_file::save_tga(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data)
+    {
+        stbi_write_tga(path.string().c_str(), int(width), int(height), channels, data);
+    }
+
+    void image_file::save_jpg(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data, int quality)
+    {
+        stbi_write_jpg(path.string().c_str(), int(width), int(height), channels, data, quality);
+    }
+
+    void image_file::save_hdr(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const float* data)
+    {
+        stbi_write_hdr(path.string().c_str(), int(width), int(height), channels, data);
+    }
+
     image_info image_file::info(const files::path& path) noexcept
     {
         int w, h, c; stbi_info(gfx::file("indoor/posx.hdr").path.string().c_str(), &w, &h, &c);
@@ -77,7 +102,7 @@ namespace gfx
 
         NSVGimage* parsed = nsvgParseFromFile(file::path.string().c_str(), "px", 96);
 
-        auto&& vec = std::get<std::vector<uint8_t>>(data = std::vector<uint8_t>(raster_scale*raster_scale*parsed->width*parsed->height * 4));
+        auto&& vec = std::get<std::vector<uint8_t>>(data = std::vector<uint8_t>(size_t(raster_scale*raster_scale*parsed->width*parsed->height * 4)));
         channels = 4;
         channel_bits = bits::b8;
         width = static_cast<int>(raster_scale*parsed->width);

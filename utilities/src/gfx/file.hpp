@@ -7,11 +7,13 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <optional>
 
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <nanosvg.h>
 #include <nanosvgrast.h>
+#include <tinyfd/tinyfiledialogs.h>
 
 namespace gfx
 {
@@ -33,7 +35,19 @@ namespace gfx
         operator const files::path&() const noexcept;
         files::path path;
 
+        file() = default;
         file(const files::path& path);
+
+        static std::optional<file> open_dialog(const std::string& title, const files::path& default_path);
+        static std::optional<file> open_dialog(const std::string& title, const files::path& default_path, const std::vector<std::string>& filters);
+        static std::optional<file> open_dialog(const std::string& title, const files::path& default_path, const std::vector<std::string>& filters, const std::string& filter_description);
+        static std::vector<file>   open_dialog_multi(const std::string& title, const files::path& default_path);
+        static std::vector<file>   open_dialog_multi(const std::string& title, const files::path& default_path, const std::vector<std::string>& filters);
+        static std::vector<file>   open_dialog_multi(const std::string& title, const files::path& default_path, const std::vector<std::string>& filters, const std::string& filter_description);
+
+        static std::optional<file> save_dialog(const std::string& title, const files::path& default_path);
+        static std::optional<file> save_dialog(const std::string& title, const files::path& default_path, const std::vector<std::string>& filters);
+        static std::optional<file> save_dialog(const std::string& title, const files::path& default_path, const std::vector<std::string>& filters, const std::string& filter_description);
     };
 
 
@@ -47,6 +61,11 @@ namespace gfx
     struct image_file : file
     {
         static image_info info(const files::path& path) noexcept;
+        static void save_png(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data);
+        static void save_bmp(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data);
+        static void save_tga(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data);
+        static void save_jpg(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data, int quality = 95);
+        static void save_hdr(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const float* data);
 
         image_file(const files::path& path, bits channel_bits, uint16_t channels);
         image_file(const files::path& svg, float raster_scale);
