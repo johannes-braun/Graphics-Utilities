@@ -1,39 +1,35 @@
 #pragma once
 
-#include "button_press.hpp"
-#include "cursor_controls.hpp"
+#include "input.hpp"
+#include "geometry.hpp"
+#include "window.hpp"
 
 #include <glm/glm.hpp>
-#include <gfx/geometry.hpp>
 #include <mygl/gl.hpp>
 #include <GLFW/glfw3.h>
 
-namespace io
+namespace gfx
 {
     struct camera
     {
         glm::mat4 view() const;
+        glm::mat4 projection() const;
 
-        glm::mat4 projection() const
-        {
-            int last_viewport[4];
-            glGetIntegerv(GL_VIEWPORT, last_viewport);
-            return projection(last_viewport[2], last_viewport[3]);
-        }
-
-        glm::mat4 projection(int width, int height) const;
-
-        gfx::transform transform;
+        transform transform;
         float field_of_view = glm::radians(80.f);
         float clip_near = 0.1f;
         float clip_far = 1000.f;
         bool negative_y = false;
         bool inverse_z = true;
+
+        int screen_width = 100;
+        int screen_height = 100;
     };
 
-    struct default_cam_controller
+    struct camera_controller
     {
-        void update(camera& camera, GLFWwindow* window, double delta_time);
+        camera_controller(const std::shared_ptr<gfx::window>& window);
+        void update(camera& camera);
 
         float rotation_speed = 1.f;
         float movement_speed = 12.f;
@@ -47,6 +43,10 @@ namespace io
 
         mouse_button grab_action{ GLFW_MOUSE_BUTTON_RIGHT };
     private:
+        camera* _cam_ptr = nullptr;
+        transform _target_transform;
+
+        std::shared_ptr<gfx::window> _window;
         cursor_controls _cursor_controls;
     };
 }

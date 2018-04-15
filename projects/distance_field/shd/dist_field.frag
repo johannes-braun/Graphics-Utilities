@@ -116,7 +116,7 @@ void main()
         const float eps = 0.1f;
         float shad = march_soft_shadow(pt + eps * normal, normalize(vec3(0.1f, 0.5, -1)), eps, 50.f, 3);
 
-        float fresnel = bsdf_fresnel(c_dir, normal, 0.4f, 1.f);
+        float fresnel = bsdf_fresnel(c_dir, normal, 0.8f, 0.f);
 
         float ao_fac = 0.06f;
         float ds = map(pt + ao_fac * normal);

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ui/ui.hpp>
-#include <io/window.hpp>
+#include <gfx/window.hpp>
 #include <gfx/file.hpp>
 
 namespace game
@@ -9,7 +9,7 @@ namespace game
     class splash
     {
     public:
-        splash(const std::shared_ptr<io::window>& window) : _window(window) {
+        splash(const std::shared_ptr<gfx::window>& window) : _window(window) {
             const gfx::image_file img("ui/logo.svg", 20.f);
             _logo = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8);
             _logo.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
@@ -28,7 +28,7 @@ namespace game
         {
             _info = info;
             const float step = 0.5f;
-            const double sd = _window->get_swap_delay();
+            const double sd = _window->swap_delay();
             _window->set_max_framerate(60.f);
             update();
             _window->update();
@@ -63,7 +63,7 @@ namespace game
         }
 
     private:
-        std::shared_ptr<io::window> _window;
+        std::shared_ptr<gfx::window> _window;
         float _progress = 0.f;
         std::wstring _info;
         gl::texture _logo { GL_TEXTURE_2D };

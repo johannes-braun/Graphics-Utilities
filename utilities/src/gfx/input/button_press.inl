@@ -1,6 +1,6 @@
 #pragma once
 
-namespace io
+namespace gfx
 {
     template <int(*GetKey)(GLFWwindow*, int)>
     button<GetKey>::button(const int key)

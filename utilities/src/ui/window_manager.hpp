@@ -3,7 +3,7 @@
 #include <vector>
 #include <map>
 #include <memory>
-#include <io/window.hpp>
+#include <gfx/window.hpp>
 #include "ui.hpp"
 #include "window.hpp"
 #include "opengl/pipeline.hpp"
@@ -27,13 +27,13 @@ namespace gfx::ui
     class window_manager
     {
     public:
-        window_manager(const std::shared_ptr<io::window>& base);
+        window_manager(const std::shared_ptr<gfx::window>& base);
         void bring_to_front(const std::wstring& name);
         window_info& info(const std::wstring& name);
         window* front_window_at(float x, float y);
         const std::wstring* front_window_name_at(float x, float y);
 
-        io::window& get_base_window();
+        gfx::window& get_base_window();
         window* make_window(const std::wstring& name, rect initial_rect);
         window* get_window(const std::wstring& name) const noexcept;
         
@@ -59,7 +59,7 @@ namespace gfx::ui
         draw_list _ui_draw_list;
 
         std::vector<window*> _minimized;
-        std::shared_ptr<io::window> _base_window;
+        std::shared_ptr<gfx::window> _base_window;
         std::vector<std::unique_ptr<window>> _window_storage;
         std::unordered_map<std::wstring, window_info> _windows;
         gl::pipeline _base_pipeline;

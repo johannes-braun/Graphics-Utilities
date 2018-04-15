@@ -2,7 +2,7 @@
 
 namespace game::host
 {
-    std::shared_ptr<io::window> window;
+    std::shared_ptr<gfx::window> window;
     std::map<int, std::function<bool()>> state_loops;
 
     int _current_state = 0;
@@ -41,7 +41,7 @@ namespace game::host
 #if not defined(NDEBUG)
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif
-        window = std::make_unique<io::window>(io::api::opengl, ws.width, ws.height, ws.title);
+        window = std::make_unique<gfx::window>(gfx::apis::opengl::name, ws.title, ws.width, ws.height);
 
         return true;
     }

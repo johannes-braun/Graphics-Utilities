@@ -1,4 +1,3 @@
-#include <io/camera.hpp>
 #include <memory>
 #include <opengl/command_list.hpp>
 #include <opengl/state.hpp>
@@ -10,6 +9,7 @@
 #include <gfx/file.hpp>
 #include <gfx/imgui.hpp>
 #include <gfx/window.hpp>
+#include <gfx/camera.hpp>
 
 std::shared_ptr<gfx::window> window;
 std::unique_ptr<gfx::renderer> renderer;
@@ -27,7 +27,7 @@ int main()
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
     glfwWindowHint(GLFW_SAMPLES, start_samples);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-    window = std::make_shared<gfx::window>(gfx::api::opengl, "Simple Rendering", start_width, start_height);
+    window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "Simple Rendering", start_width, start_height);
     window->set_icon(gfx::image_file("ui/logo.svg", 10.f));
     window->framebuffer_size_callback.add([](GLFWwindow*, int x, int y) {
         renderer->resize(x, y, start_samples);
@@ -38,8 +38,8 @@ int main()
     
     gfx::imgui gui(window);
 
-    io::camera camera;
-    io::default_cam_controller controller;
+    gfx::camera camera;
+    gfx::camera_controller controller(window);
 
     gfx::scene_file scene("bunny.dae");
     const auto& verts = scene.meshes.begin()->vertices;
@@ -128,7 +128,7 @@ int main()
     while (window->update())
     {
         gui.new_frame();
-        controller.update(camera, *window, window->delta_time());
+        controller.update(camera);
 
         ImGui::Begin("My Window");
         ImGui::ColorEdit3("Light Color", &light_color[0], ImGuiColorEditFlags_HDR);

@@ -6,11 +6,11 @@ namespace gfx
     struct window_handler
     {
         friend window;
-        window_handler(window& w) : _window(w) {}
+        window_handler(window& w);
         virtual ~window_handler() = default;
 
     protected:
-        window& get_window() const noexcept { return _window; }
+        window& get_window() const noexcept;
         virtual void do_update() = 0;
 
     private:

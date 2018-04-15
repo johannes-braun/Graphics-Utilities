@@ -85,7 +85,7 @@ int main()
 {
     std::atomic_bool window_created = false;
     main_thread_worker = worker([&]() {
-        window = std::make_unique<gfx::window>(gfx::api::vulkan, "Vulkan V2", 1280, 720);
+        window = std::make_unique<gfx::window>(gfx::apis::vulkan::name, "Vulkan V2", 1280, 720);
         window->char_callback.add([](GLFWwindow* w, uint32_t c) {
             log_i << "Polled";
             if (c == 'x')

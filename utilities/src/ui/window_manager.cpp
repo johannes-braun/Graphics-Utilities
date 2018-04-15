@@ -5,7 +5,7 @@
 
 namespace gfx::ui
 {
-    window_manager::window_manager(const std::shared_ptr<io::window>& base)
+    window_manager::window_manager(const std::shared_ptr<gfx::window>& base)
         : _ui_draw_list(base), _base_window(base)
     {
         _base_pipeline[GL_VERTEX_SHADER] = std::make_shared<gl::shader>("ui/vs.vert");
@@ -80,7 +80,7 @@ namespace gfx::ui
         return _windows.count(name) != 0 ? _windows.at(name).window : nullptr;
     }
 
-    io::window& window_manager::get_base_window()
+    gfx::window& window_manager::get_base_window()
     {
         return *_base_window;
     }

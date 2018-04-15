@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <opengl/buffer.hpp>
 #include <opengl/texture.hpp>
-#include <io/window.hpp>
+#include <gfx/window.hpp>
 #include <functional>
 #include <memory>
 
@@ -60,7 +60,7 @@ namespace gfx::ui
     class draw_list
     {
     public:
-        draw_list(const std::shared_ptr<io::window>& window);
+        draw_list(const std::shared_ptr<gfx::window>& window);
         void push_triangle(const draw_vtx& a, const draw_vtx& b, const draw_vtx& c, gl_texture_t texture = gl_texture_t::zero);
         void push_quad(const glm::vec2& min, const glm::vec2& max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, gradient gradient, gl_texture_t texture = gl_texture_t::zero);
         void push_scissor(int x, int y, int width, int height);
@@ -79,7 +79,7 @@ namespace gfx::ui
         size_t vertex_count() const noexcept;
 
     private:
-        std::shared_ptr<io::window> _window;
+        std::shared_ptr<gfx::window> _window;
 
         std::vector<draw_cmd> _commands;
         std::vector<draw_idx> _indices;

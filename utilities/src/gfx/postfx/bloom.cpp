@@ -26,7 +26,7 @@ namespace gfx::fx
         _quarter_framebuffer[GL_COLOR_ATTACHMENT1] = _quarter_attachments[1];
         _full_framebuffer[GL_COLOR_ATTACHMENT0] = _full_attachment;
     }
-    void bloom::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
+    void bloom::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postfx_provider & provider, double delta_time)
     {
         provider.begin_draw();
         provider.last_target().generate_mipmaps();

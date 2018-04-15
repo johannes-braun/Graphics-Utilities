@@ -62,7 +62,7 @@ namespace gfx
         using vec_dim_type = glm::vec<Dimension, float, glm::packed_highp>;
         using intersect_function_type = std::function<hit_result(hit_result last, int index, const std::list<vec_dim_type>&)>;
 
-        using bounds = gfx::bounds<float, vec_size, 4 * std::clamp<size_t>(1 << (Dimension - 1), 0, 4)>;
+        using bounds = gfx::bounds<float, vec_size, 4 * std::clamp<size_t>(1ll << (Dimension - 1), 0, 4)>;
 
         struct node
         {

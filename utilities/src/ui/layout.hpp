@@ -2,7 +2,7 @@
 
 #include <functional>
 #include "rect.hpp"
-#include <io/window.hpp>
+#include <gfx/window.hpp>
 
 namespace gfx::ui
 {

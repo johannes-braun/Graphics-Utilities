@@ -3,7 +3,7 @@
 
 int main()
 {
-    gfx::window window(gfx::api::opengl, "Title", 1280, 720);
+    gfx::window window("opengl", "Title", 1280, 720);
     window.set_icon(gfx::image_file("ui/logo.svg", 1.f));
     
     while(window.update())

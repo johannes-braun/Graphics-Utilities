@@ -1,6 +1,6 @@
-#include "../cursor_controls.hpp"
+#include "../input.hpp"
 
-namespace io
+namespace gfx
 {
     void cursor_controls::set_mode(GLFWwindow* window, cursor_mode mode)
     {

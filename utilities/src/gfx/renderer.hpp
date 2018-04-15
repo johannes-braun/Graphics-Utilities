@@ -6,7 +6,7 @@
 #include <opengl/pipeline.hpp>
 #include <opengl/buffer.hpp>
 #include <glm/glm.hpp>
-#include "postprocess.hpp"
+#include "postfx.hpp"
 
 namespace gfx
 {
@@ -16,18 +16,15 @@ namespace gfx
         renderer(int width, int height, uint32_t samples);
         ~renderer();
 
-        void resize(int width, int height, uint32_t samples);
+        void bind();
+        void draw(double delta_time, const gl::framebuffer& target_framebuffer = gl::framebuffer::zero());
         void reload_pipelines();
+
+        void resize(int width, int height, uint32_t samples);
         void set_clear_color(glm::vec4 color);
         void set_clear_depth(float depth);
 
-        void bind();
-        void draw(double delta_time, const gl::framebuffer& target_framebuffer = gl::framebuffer::zero());
-
-        const gl::framebuffer& main_framebuffer() const
-        {
-            return _main_framebuffer;
-        }
+        const gl::framebuffer& main_framebuffer() const;
 
         bool enabled = true;
         bool enable_tonemap = true;
@@ -40,7 +37,7 @@ namespace gfx
         int _current_samples{ 0 };
         glm::ivec2 _full_resolution{ 0, 0 };
 
-        std::shared_ptr<postprocess_provider> _pp_provider;
+        std::shared_ptr<postfx_provider> _pp_provider;
 
         gl::framebuffer _main_framebuffer;
         std::array<std::shared_ptr<gl::texture>, 2> _msaa_attachments;
@@ -51,7 +48,7 @@ namespace gfx
         struct pass
         {
             std::string name;
-            std::shared_ptr<postprocess_pass> p;
+            std::shared_ptr<postfx_pass> p;
             bool enabled = true;
         };
         std::vector<pass> _passes;

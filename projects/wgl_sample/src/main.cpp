@@ -6,6 +6,8 @@
 #include <opengl/context.hpp>
 #include <mygl/gl.hpp>
 
+#include <opengl/shader.hpp>
+
 #include <window/imgui.hpp>
 #include <gfx/file.hpp>
 #include <gfx/log.hpp>
@@ -34,11 +36,11 @@ int main()
     context.make_current();
     context.set_pixel_format({ {GL_SAMPLE_BUFFERS_ARB, true}, {GL_SAMPLES_ARB, 8} });
     context.set_swap_interval(0);
-    auto gui = std::make_shared<gfx::imgui>(window);
+    //auto gui = std::make_shared<wf::imgui>(window);
 
     gl::context other_ctx(wintwo->get_native_handle(), {}, &context);
     other_ctx.make_current();
-    auto other_gui = std::make_shared<gfx::imgui>(wintwo);
+   // auto other_gui = std::make_shared<wf::imgui>(wintwo);
 
     wf::set_clipboard_text(L"Autschi");
 
@@ -47,7 +49,7 @@ int main()
         if (window && window->poll())
         {
             context.make_current();
-            gui->begin();
+            //gui->begin();
             float col[]{ 0.3f, 0.55f, 1.f, 1.f };
             glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, col);
 
@@ -56,14 +58,14 @@ int main()
             ImGui::DragFloat("Blubas", &f);
             ImGui::End();
 
-            gui->draw();
+            //gui->draw();
             context.swap_buffers();
         }
         else window.reset();
         if (wintwo && wintwo->poll())
         {
             other_ctx.make_current();
-            other_gui->begin();
+            //other_gui->begin();
             float col[]{ 0.8f, 0.45f, 0.2f, 1.f };
             glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, col);
 
@@ -72,7 +74,7 @@ int main()
             ImGui::DragFloat("Exceletat", &f);
             ImGui::End();
 
-            other_gui->draw();
+            //other_gui->draw();
             other_ctx.swap_buffers();
         }
         else wintwo.reset();

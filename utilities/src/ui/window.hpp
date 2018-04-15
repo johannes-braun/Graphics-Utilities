@@ -29,7 +29,7 @@ namespace gfx::ui
         template<typename T> class anim;
         template<typename T> class anim_creator;
 
-        window(const std::shared_ptr<io::window>& window, window_manager* wm, const std::wstring& title, rect initial_rect);
+        window(const std::shared_ptr<gfx::window>& window, window_manager* wm, const std::wstring& title, rect initial_rect);
         const rect& get_rect() const noexcept;
         rect get_extended_rect() const noexcept;
         rect get_content_rect() const noexcept;
@@ -71,7 +71,7 @@ namespace gfx::ui
 
         std::unordered_map<std::string, std::unique_ptr<layout>> _layouts;
         window_manager* _window_manager;
-        std::shared_ptr<io::window> _window;
+        std::shared_ptr<gfx::window> _window;
         std::vector<anim<glm::vec2>> _2f_animations;
         std::vector<anim<float>> _1f_animations;
         std::wstring _title;

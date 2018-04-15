@@ -2,7 +2,7 @@
 
 namespace gfx::ui
 {
-    draw_list::draw_list(const std::shared_ptr<io::window>& window)
+    draw_list::draw_list(const std::shared_ptr<gfx::window>& window)
         : _window(window), _prop_buffer(1, GL_DYNAMIC_STORAGE_BIT),
         _index_buffer(GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT),
         _vertex_buffer(GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)

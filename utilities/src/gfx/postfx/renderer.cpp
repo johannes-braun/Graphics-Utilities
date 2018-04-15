@@ -1,12 +1,12 @@
-#include "renderer.hpp"
+#include "../renderer.hpp"
 #include <random>
 #include <numeric>
 #include <GLFW/glfw3.h>
-#include "log.hpp"
-#include "postfx/bloom.hpp"
-#include "postfx/ssao.hpp"
-#include "postfx/fxaa.hpp"
-#include "postfx/auto_exposure.hpp"
+#include "../log.hpp"
+#include "bloom.hpp"
+#include "ssao.hpp"
+#include "fxaa.hpp"
+#include "auto_exposure.hpp"
 
 namespace gfx
 {
@@ -17,7 +17,7 @@ namespace gfx
         _passes.push_back({ "Bloom", std::make_shared<gfx::fx::bloom>(), true });
         _passes.push_back({ "FXAA", std::make_shared<gfx::fx::fxaa>(), true });
 
-        _pp_provider = std::make_shared<postprocess_provider>(glm::ivec2{width, height}, 3);
+        _pp_provider = std::make_shared<postfx_provider>(glm::ivec2{width, height}, 3);
         resize(width, height, samples);
     }
 
@@ -91,5 +91,10 @@ namespace gfx
         
         _pp_provider->framebuffer().blit(target_framebuffer, GL_COLOR_BUFFER_BIT, GL_LINEAR);
         target_framebuffer.bind();
+    }
+
+    const gl::framebuffer& renderer::main_framebuffer() const
+    {
+        return _main_framebuffer;
     }
 }

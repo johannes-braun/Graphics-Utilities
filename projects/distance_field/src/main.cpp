@@ -1,10 +1,10 @@
 #include "gfx/window.hpp"
-#include "io/camera.hpp"
 #include "stb_image.h"
 #include "gfx/renderer.hpp"
 #include "gfx/gizmo.hpp"
 #include "gfx/file.hpp"
 #include "gfx/imgui.hpp"
+#include "gfx/camera.hpp"
 
 std::unique_ptr<gfx::renderer> main_renderer;
 std::shared_ptr<gfx::window> main_window;
@@ -16,9 +16,10 @@ int main(int argc, const char** argv)
 
     gfx::image_file cursor("cursor.png", gfx::bits::b8, 4);
 
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = std::make_shared<gfx::window>(gfx::api::opengl, "My Window", 1280, 720);
+    gfx::window_hints hints;
+    hints[GLFW_SAMPLES]                 = 4;
+    hints[GLFW_OPENGL_DEBUG_CONTEXT]    = true;
+    main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "My Window", 1280, 720, hints);
     main_window->set_icon(gfx::image_file("ui/logo.png", gfx::bits::b8, 4));
     main_window->set_max_framerate(60.f);
     main_window->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
@@ -41,8 +42,8 @@ int main(int argc, const char** argv)
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negz.hdr", gfx::bits::b32, 3).bytes());
     cubemap.generate_mipmaps();
     
-    io::camera cam;
-    io::default_cam_controller cam_controller;
+    gfx::camera cam;
+    gfx::camera_controller cam_controller(main_window);
     cam.transform.position = glm::vec3(0, 0, 5);
     
     mypeline = std::make_unique<gl::pipeline>();
@@ -56,7 +57,7 @@ int main(int argc, const char** argv)
         ImGui::Value("DT", 1000 * static_cast<float>(main_window->delta_time()));
         ImGui::End();
     
-        cam_controller.update(cam, *main_window, main_window->delta_time());
+        cam_controller.update(cam);
 
         main_renderer->bind();
 

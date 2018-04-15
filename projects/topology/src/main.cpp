@@ -1,10 +1,10 @@
-#include <io/window.hpp>
+#include <gfx/window.hpp>
 #include <opengl/buffer.hpp>
 #include <gfx/geometry.hpp>
 #include <gfx/log.hpp>
 #include <gfx/file.hpp>
 
-std::unique_ptr<io::window> main_window;
+std::shared_ptr<gfx::window> main_window;
 
 struct vertex
 {
@@ -35,7 +35,7 @@ int main(int argc, const char** argv)
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-    main_window = std::make_unique<io::window>(io::api::opengl, 1280, 720, "Topology");
+    main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "Topology", 1280, 720);
 
     gfx::scene_file geometry("bunny.dae");
     std::vector<gfx::vertex>& mesh_vertices = geometry.meshes.begin()->vertices;

@@ -11,7 +11,7 @@ namespace gfx::fx
         _tonemap_pipeline[GL_VERTEX_SHADER] = screen_vertex_shader();
         _tonemap_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("postfx/filter/const_multiply.frag");
     }
-    void auto_exposure::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postprocess_provider & provider, double delta_time)
+    void auto_exposure::run(const std::array<std::shared_ptr<gl::texture>, 2>& base_attachments, postfx_provider & provider, double delta_time)
     {
         provider.begin_draw();
         constexpr auto adaption_speed = 0.4f;

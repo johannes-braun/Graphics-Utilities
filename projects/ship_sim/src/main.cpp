@@ -1,11 +1,12 @@
-#include <io/window.hpp>
-#include <io/camera.hpp>
-
 #include <opengl/pipeline.hpp>
 #include <opengl/framebuffer.hpp>
 
 #include <gfx/file.hpp>
 #include <gfx/geometry.hpp>
+#include <gfx/window.hpp>
+#include <gfx/imgui.hpp>
+#include <gfx/log.hpp>
+#include <gfx/camera.hpp>
 
 struct spring
 {
@@ -21,10 +22,12 @@ int main()
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    io::window window(io::api::opengl, 1280, 720, "Ship Sim");
-    io::camera camera;
-    io::default_cam_controller controller;
+    gfx::window_hints hints;
+    hints[GLFW_SAMPLES] = 8;
+    auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "Ship Sim", 1280, 720, hints);
+    gfx::imgui imgui(window);
+    gfx::camera camera;
+    gfx::camera_controller controller(window);
 
     gfx::scene_file ship_file("ship.dae");
     gl::buffer<gfx::vertex> ship_vbo(ship_file.meshes.begin()->vertices.begin(), ship_file.meshes.begin()->vertices.end());
@@ -173,15 +176,16 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
     int frame = 0;
-    while (window.update())
+    while (window->update())
     {
+        imgui.new_frame();
         gl::framebuffer::zero().clear(0, { 0.5f, 0.9f, 1.f, 1.f });
         gl::framebuffer::zero().clear(0.f, 0);
 
-        ship_transform.position += -ship_transform.forward() * 4.f * window.delta_time();
-        ship_transform.rotation *= glm::angleAxis(glm::radians(40.f * float(window.delta_time())), glm::vec3(0, 1, 0));
+        ship_transform.position += -ship_transform.forward() * 4.f * window->delta_time();
+        ship_transform.rotation *= glm::angleAxis(glm::radians(40.f * float(window->delta_time())), glm::vec3(0, 1, 0));
 
-        controller.update(camera, window, window.delta_time());
+        controller.update(camera);
         data_buffer[0].projection_mat = camera.projection();
         data_buffer[0].view_mat = camera.view();
         data_buffer.synchronize();
@@ -223,8 +227,8 @@ int main()
             float fac = 1.f;
             if ((frame = std::min(frame+1, 3)) == 2)
                 fac = 2.f;
-            sail_timings_buffer[0].delta = window.delta_time();
-            sail_timings_buffer[0].deltav = window.delta_time() / fac;
+            sail_timings_buffer[0].delta = window->delta_time();
+            sail_timings_buffer[0].deltav = window->delta_time() / fac;
             sail_timings_buffer[0].time = glfwGetTime();
             sail_timings_buffer.synchronize();
 
@@ -251,7 +255,7 @@ int main()
 
         ImGui::Begin("Settings");
         ImGui::Checkbox("Integ", &integ);
-        ImGui::Value("DT", float(window.delta_time()));
+        ImGui::Value("DT", float(window->delta_time()));
         if (ImGui::Button("Print"))
         {
             for (auto&& vert : sail_vertices)
@@ -264,6 +268,8 @@ int main()
             sail_normals_pipeline.reload();
         }
         ImGui::End();
+
+        imgui.render();
     }
 
     return 0;

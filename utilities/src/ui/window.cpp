@@ -4,7 +4,7 @@
 
 namespace gfx::ui
 {
-    window::window(const std::shared_ptr<io::window>& window, window_manager* wm, const std::wstring& title, rect initial_rect)
+    window::window(const std::shared_ptr<gfx::window>& window, window_manager* wm, const std::wstring& title, rect initial_rect)
         : _window_manager(wm), _window(window), _list(window), _title(title), _rect(initial_rect)
     {
 

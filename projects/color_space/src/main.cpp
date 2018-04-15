@@ -1,4 +1,3 @@
-#include "io/camera.hpp"
 #include "tinyfd/tinyfiledialogs.h"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -6,6 +5,8 @@
 #include "eigen3/Eigen/Eigenvalues"
 #include <opengl/framebuffer.hpp>
 #include <numeric>
+
+#include <gfx/camera.hpp>
 #include <gfx/geometry.hpp>
 #include <gfx/file.hpp>
 #include <gfx/window.hpp>
@@ -128,7 +129,7 @@ int main()
 
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-    main_window = std::make_shared<gfx::window>(gfx::api::opengl, "My Window", 1280, 720);
+    main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "My Window", 1280, 720);
     main_window->set_icon(gfx::image_file("ui/logo.png", gfx::bits::b8, 4));
     main_window->set_max_framerate(60.0);
     main_window->key_callback.add([](GLFWwindow*, int key, int, int action, int mods) {
@@ -191,9 +192,9 @@ int main()
     glCullFace(GL_BACK);
     glLineWidth(4.f);
 
-    io::camera cam;
-    io::default_cam_controller cam_controller;
-    cam.transform.position = glm::vec3(0, 0, 5);
+    gfx::camera camera;
+    camera.transform.position = glm::vec3(0, 0, 5);
+    gfx::camera_controller controller(main_window);
 
     while (main_window->update())
     {
@@ -256,24 +257,24 @@ int main()
         }
         ImGui::End();
 
-        cam_controller.update(cam, *main_window, main_window->delta_time());
+        controller.update(camera);
 
         points_pipeline.bind();
         points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         points_pipeline[GL_VERTEX_SHADER]->uniform<uint64_t>("picture") = id;
-        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         points_pipeline.draw(GL_POINTS, texture.width() * texture.height());
 
         glDisable(GL_DEPTH_TEST);
         center_pipeline.bind();
         center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         center_pipeline[GL_VERTEX_SHADER]->uniform<glm::vec3>("center") = average;
         center_pipeline.draw(GL_POINTS, 1);
         glEnable(GL_DEPTH_TEST);
 
         gizmo_pipeline.bind();
-        gizmo_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        gizmo_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         gizmo_pipeline.draw(GL_LINES, 6);
 
         glFrontFace(GL_CW);
@@ -282,7 +283,7 @@ int main()
         cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(gfx::vertex, position));
         cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(gfx::vertex, uv));
 
-        cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = cam.projection() * cam.view();
+        cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = sampler.sample(grid);
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
         cube_pipeline.draw(GL_TRIANGLES, ibo, GL_UNSIGNED_INT);

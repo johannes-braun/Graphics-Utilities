@@ -32,12 +32,12 @@ namespace gfx::ui
 
     scroll_layout::~scroll_layout()
     {
-        _parent->_window->callbacks->scroll_callback.remove(_callback);
+        _parent->_window->scroll_callback.remove(_callback);
     }
 
     scroll_layout::scroll_layout(window* parent, const rect& area)
         : layout(parent, area), _scroll(0), _smooth_scroll(_scroll - area.max.y - (area.max.y - area.min.y)), _scroll_rect(area), _last_scroll_rect(area),
-        _callback(_parent->_window->callbacks->scroll_callback.add([this](GLFWwindow* w, double x, double y) {
+        _callback(_parent->_window->scroll_callback.add([this](GLFWwindow* w, double x, double y) {
 
         const auto cur_pos = _parent->_window_manager->get_cursor_position();
         bool active = _parent->_window_manager->front_window_at(cur_pos.x, cur_pos.y) == _parent;

@@ -1,9 +1,6 @@
 #include <memory>
 #include <random>
 
-#include <io/window.hpp>
-#include <io/camera.hpp>
-
 #include <tinyfd/tinyfiledialogs.h>
 
 #include <opengl/pipeline.hpp>
@@ -24,8 +21,12 @@
 
 #include <gfx/file.hpp>
 #include <gfx/geometry.hpp>
+#include <gfx/window.hpp>
+#include <gfx/imgui.hpp>
+#include <gfx/camera.hpp>
 
-std::shared_ptr<io::window> window;
+
+std::shared_ptr<gfx::window> window;
 std::unique_ptr<gl::compute_pipeline> tracer;
 
 struct tracer_data
@@ -57,8 +58,9 @@ int main()
 
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    window = std::make_unique<io::window>(io::api::opengl, 800, 600, "Simple PT");
+    window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "Simple PT", 800, 600);
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("trace.comp"));
+    gfx::imgui imgui(window);
 
     game::splash splash(window);
     splash.set_progress(0.05f, L"Loading Meshes");
@@ -120,8 +122,8 @@ int main()
     gl::framebuffer framebuffer;
     framebuffer[GL_COLOR_ATTACHMENT0] = render_texture;
 
-    io::camera camera;
-    io::default_cam_controller controller;
+    gfx::camera camera;
+    gfx::camera_controller controller(window);
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
     splash.set_progress(0.8f, L"Loading Cube Map");
@@ -150,7 +152,8 @@ int main()
 
     while (window->update())
     {
-        controller.update(camera, *window, window->delta_time());
+        imgui.new_frame();
+        controller.update(camera);
         const glm::mat4 camera_matrix = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
 
         timer.start();
@@ -231,6 +234,7 @@ int main()
             }
         }
         ImGui::End();
+        imgui.render();
     }
 
     return 0;

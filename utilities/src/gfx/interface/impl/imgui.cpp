@@ -84,11 +84,11 @@ namespace gfx
                 io.AddInputCharacter(static_cast<unsigned short>(c));
         });
 
-        switch (_window->context_api())
-        {
-        case api::opengl: _handler = std::make_unique<imgui_handler_opengl>(*this); break;
-        case api::vulkan: _handler = std::make_unique<imgui_handler_vulkan>(*this); break;
-        }
+
+        if(_window->context_api() == "opengl")
+            _handler = std::make_unique<imgui_handler_opengl>(*this);
+        else if (_window->context_api() == "vulkan")
+            _handler = std::make_unique<imgui_handler_vulkan>(*this);
     }
 
     imgui::~imgui()

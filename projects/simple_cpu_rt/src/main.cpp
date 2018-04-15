@@ -1,21 +1,21 @@
 #include <memory>
 
-#include <io/window.hpp>
-#include <io/camera.hpp>
-
 #include <opengl/texture.hpp>
 #include <opengl/framebuffer.hpp>
 
 #include <gfx/data/bvh.hpp>
 #include <gfx/file.hpp>
 #include <gfx/geometry.hpp>
+#include <gfx/window.hpp>
+#include <gfx/camera.hpp>
 
 int main()
 {
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
-    io::window main_window(io::api::opengl, 480, 320, "CPU Raytracer");
-    io::camera camera;
-    io::default_cam_controller controller;
+    auto main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "CPU Raytracer", 480, 320);
+
+    gfx::camera camera;
+    gfx::camera_controller controller(main_window);
 
     gfx::scene_file geom("bunny.dae");
     std::vector<gfx::vertex> vertices(geom.meshes.begin()->vertices.begin(), geom.meshes.begin()->vertices.end());
@@ -29,9 +29,9 @@ int main()
     framebuffer[GL_COLOR_ATTACHMENT0] = texture;
 
     int y = 0;
-    while (main_window.update())
+    while (main_window->update())
     {
-        controller.update(camera, main_window, main_window.delta_time());
+        controller.update(camera);
         const glm::mat4 camera_matrix = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
 
         for (int x = 0; x < 480; ++x)
