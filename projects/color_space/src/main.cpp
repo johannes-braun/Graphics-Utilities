@@ -218,7 +218,7 @@ int main()
 
         if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
         {
-            if (const auto source_data = gfx::file::open_dialog("Open Image", "../", { "*.jpg", "*.png" }, "Image Files");)
+            if (const auto source_data = gfx::file::open_dialog("Open Image", "../", { "*.jpg", "*.png" }, "Image Files"))
             {
                 gfx::image_file picture(*source_data, gfx::bits::b8, 3);
                 texture = gl::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
