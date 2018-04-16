@@ -76,6 +76,9 @@ namespace gfx::vk
 
         void begin_renderpass(const renderpass& pass, const framebuffer& fb, VkRect2D area, VkSubpassContents contents, array_view<clear_value> clear_values) const noexcept;
         void end_renderpass() const noexcept;
+
+        void barrier(VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkDependencyFlags dependencies, array_view<VkBufferMemoryBarrier> barriers) const noexcept;
+
     private:
         command_buffer() = default;
 

@@ -22,6 +22,8 @@
 #include "gfx/vk/image.hpp"
 #include "gfx/vk/renderpass.hpp"
 #include "gfx/vk/framebuffer.hpp"
+#include "gfx/vk/memory.hpp"
+#include "gfx/vk/buffer.hpp"
 #include <mutex>
 
 constexpr gfx::vk::app_info default_app_info                { "My App", { 1, 0 }, "My Engine", { 1, 0 } };
@@ -152,16 +154,16 @@ int main()
     std::vector<gfx::vk::queue> queues;
     for (auto&& data : queue_datas) queues.emplace_back(device, data.family, data.index);
 
-    auto capabilities       = surface->capabilities();
-    auto formats            = surface->formats();
-    auto present_modes      = surface->present_modes();
-    const auto swapchain          = surface->create_default_swapchain(device, queues[queue_index_present].family(), 4);
-    auto images             = swapchain->images();
-    auto command_pool       = std::make_shared<gfx::vk::command_pool>(device, queues[queue_index_graphics].family(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-    auto command_buffer     = std::make_shared<gfx::vk::command_buffer>(command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    auto primary_buffers    = command_pool->allocate_buffers(uint32_t(images.size()), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    const auto swap_semaphore     = std::make_shared<gfx::vk::semaphore>(device);
-    const auto render_semaphore   = std::make_shared<gfx::vk::semaphore>(device);
+    auto capabilities           = surface->capabilities();
+    auto formats                = surface->formats();
+    auto present_modes          = surface->present_modes();
+    const auto swapchain        = surface->create_default_swapchain(device, queues[queue_index_present].family(), 4);
+    auto images                 = swapchain->images();
+    auto command_pool           = std::make_shared<gfx::vk::command_pool>(device, queues[queue_index_graphics].family(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    const auto command_buffer   = std::make_shared<gfx::vk::command_buffer>(command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    auto primary_buffers        = command_pool->allocate_buffers(uint32_t(images.size()), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    const auto swap_semaphore   = std::make_shared<gfx::vk::semaphore>(device);
+    const auto render_semaphore = std::make_shared<gfx::vk::semaphore>(device);
 
     std::vector<std::shared_ptr<gfx::vk::fence>> fences(uint32_t(images.size()));
     for(int i=0; i<images.size(); ++i) fences[i] = std::make_shared<gfx::vk::fence>(device, VK_FENCE_CREATE_SIGNALED_BIT);
@@ -183,7 +185,19 @@ int main()
         swapchain_views[i] = images[i]->create_view(VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
         swapchain_framebuffers[i] = std::make_shared<gfx::vk::framebuffer>(renderpass, 1280, 720, swapchain_views[i]);
     }
-        
+
+    gfx::vk::multi_block_allocator allocator(device);
+    
+    uint32_t buf_families[] ={ queue_datas[queue_index_transfer].family, queue_datas[queue_index_graphics].family };
+    auto buffer = std::make_shared<gfx::vk::proxy_buffer>(device, 256, 0, VK_SHARING_MODE_CONCURRENT, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, buf_families);
+    buffer->bind_memory(allocator.allocate(buffer->requirements(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+
+    command_buffer->begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    const auto barrier = buffer->memory_barrier(256, 0, 0, VK_ACCESS_TRANSFER_READ_BIT, queue_datas[queue_index_graphics].family, queue_datas[queue_index_transfer].family);
+    command_buffer->barrier(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, barrier);
+    command_buffer->end();
+    queues[queue_index_transfer].submit(command_buffer);
+
     while (!close_window)
     {
         const auto now = std::chrono::steady_clock::now();

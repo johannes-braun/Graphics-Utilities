@@ -114,4 +114,9 @@ namespace gfx::vk
         
         vkQueueSubmit(_queue, 1, &info, fence?*fence:nullptr);
     }
+
+    void queue::wait_idle() const noexcept
+    {
+        vkQueueWaitIdle(_queue);
+    }
 }

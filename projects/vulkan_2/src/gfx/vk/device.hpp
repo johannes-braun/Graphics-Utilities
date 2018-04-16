@@ -13,6 +13,7 @@ namespace gfx::vk
     class swapchain;
     class command_buffer;
     class fence;
+    class block_allocator;
 
     struct queue_info {
         queue_info(uint32_t family_index);
@@ -30,6 +31,7 @@ namespace gfx::vk
     class device
     {
     public:
+        friend block_allocator;
         device(const std::shared_ptr<physical_device>& physical_device, array_view<const char*> layers, array_view<const char*> extensions, array_view<queue_info> queue_infos, const VkPhysicalDeviceFeatures& features);
         ~device();
         device(const device&) = delete;
@@ -57,7 +59,7 @@ namespace gfx::vk
         void submit(array_view<std::shared_ptr<command_buffer>> command_buffers, const std::shared_ptr<fence>& fence) const noexcept;
         void submit(array_view<std::shared_ptr<command_buffer>> command_buffers, array_view<std::shared_ptr<semaphore>> signal_sem, const std::shared_ptr<fence>& fence = nullptr) const noexcept;
         void submit(array_view<std::shared_ptr<command_buffer>> command_buffers, array_view<std::shared_ptr<semaphore>> signal_sem = nullptr, array_view<std::shared_ptr<semaphore>> wait_sem = nullptr, array_view<VkPipelineStageFlags> wait_stages = nullptr, const std::shared_ptr<fence>& fence = nullptr) const noexcept;
-
+        void wait_idle() const noexcept;
     private:
         std::shared_ptr<device> _device;
         VkQueue _queue;

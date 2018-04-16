@@ -117,4 +117,10 @@ namespace gfx::vk
     {
         vkCmdEndRenderPass(_command_buffer);
     }
+
+    void command_buffer::barrier(VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkDependencyFlags dependencies, array_view<VkBufferMemoryBarrier> barriers) const noexcept
+    {
+        vkCmdPipelineBarrier(_command_buffer, src_stage, dst_stage, dependencies, 0, nullptr,
+            uint32_t(barriers.size()), barriers.data(), 0, nullptr);
+    }
 }
