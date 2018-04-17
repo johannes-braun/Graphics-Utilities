@@ -3,11 +3,24 @@
 namespace gl
 {
     template<typename T>
-    void pipeline::bind_attribute(uint32_t index, const buffer<T>& buffer, int components, GLenum type, bool normalized, size_t offset, size_t stride) const noexcept
+    void pipeline::bind_attribute(uint32_t index, uint32_t divisor, const buffer<T>& buffer, int components, GLenum type, size_t offset, size_t stride) const noexcept
+    {
+        bind_attribute(index, divisor, buffer, components, type, true, offset, stride);
+    }
+
+    template<typename T>
+    void pipeline::bind_attribute(uint32_t index, uint32_t divisor, const buffer<T>& buffer, int components, GLenum type, bool normalized, size_t offset, size_t stride ) const noexcept
     {
         glEnableVertexAttribArray(index);
+        glVertexAttribDivisor(index, divisor);
         glVertexAttribFormatNV(index, components, type, normalized, int(stride));
         glBufferAddressRangeNV(GL_VERTEX_ATTRIB_ARRAY_ADDRESS_NV, index, buffer.handle() + offset, buffer.size() * sizeof(decltype(buffer[0])));
+    }
+
+    template<typename T>
+    void pipeline::bind_attribute(uint32_t index, const buffer<T>& buffer, int components, GLenum type, bool normalized, size_t offset, size_t stride) const noexcept
+    {
+        bind_attribute(index, 0, buffer, components, type, false, offset, stride);
     }
 
     template<typename T>

@@ -17,7 +17,8 @@ namespace gfx
         _sampler = gl::sampler();
         _sampler.set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        ImGui::GetIO().Fonts->TexID = reinterpret_cast<ImTextureID>(static_cast<uint64_t>(_sampler.sample(*_fonts_atlas)));
+        _sampler.set(GL_TEXTURE_MAX_LEVEL, 1);
+        ImGui::GetIO().Fonts->TexID = reinterpret_cast<ImTextureID>(static_cast<uint64_t>(gl_texture_t(*_fonts_atlas)));
 
         _render_data.map(GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
         _render_data.emplace_back();
@@ -75,21 +76,22 @@ namespace gfx
         _render_data[0].image = 0;
 
         _graphics_pipeline.bind();
-        _graphics_pipeline.bind_attribute(0, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, pos));
-        _graphics_pipeline.bind_attribute(1, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, uv));
-        _graphics_pipeline.bind_attribute(2, _vertex_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(ImDrawVert, col));
+        _graphics_pipeline.bind_attribute(0, 0, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, pos));
+        _graphics_pipeline.bind_attribute(1, 0, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, uv));
+        _graphics_pipeline.bind_attribute(2, 0, _vertex_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(ImDrawVert, col));
         _graphics_pipeline.bind_uniform_buffer(0, _render_data);
     }
 
     void imgui_handler_opengl::draw(const ImDrawCmd& cmd, const uint32_t index_offset, const uint32_t vertex_offset)
     {
-        _render_data[0].image = reinterpret_cast<uint64_t>(cmd.TextureId);
+        _render_data[0].image = _sampler.sample(gl_texture_t(reinterpret_cast<uint32_t>(cmd.TextureId)));
         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
 
         glScissor(int(cmd.ClipRect.x), int(int(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
             int(cmd.ClipRect.z - cmd.ClipRect.x), int(cmd.ClipRect.w - cmd.ClipRect.y));
 
         _graphics_pipeline.draw(GL_TRIANGLES, _index_buffer, GLenum(GL_UNSIGNED_BYTE + sizeof(ImDrawIdx)), cmd.ElemCount, index_offset, vertex_offset);
+        glFinish();
     }
 
     void imgui_handler_opengl::finalize()

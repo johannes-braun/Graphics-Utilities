@@ -64,9 +64,16 @@ namespace gl
         void bind_attribute(uint32_t index, const buffer<T>& buffer, int components, GLenum type, bool normalized, size_t offset = 0, size_t stride = sizeof(T)) const noexcept;
 
         template<typename T>
+        void bind_attribute(uint32_t index, uint32_t divisor, const buffer<T>& buffer, int components, GLenum type, size_t offset = 0, size_t stride = sizeof(T)) const noexcept;
+
+        template<typename T>
+        void bind_attribute(uint32_t index, uint32_t divisor, const buffer<T>& buffer, int components, GLenum type, bool normalized, size_t offset = 0, size_t stride = sizeof(T)) const noexcept;
+
+        template<typename T>
         void bind_uniform_buffer(uint32_t index, const buffer<T>& buffer, size_t offset = 0, size_t size = ~0) const noexcept;
 
         void draw(GLenum primitive, size_t count, size_t first = 0) const noexcept;
+        void draw_instanced(GLenum primitive, size_t count, size_t instances, size_t first_vertex = 0, size_t first_instance = 0) const noexcept;
 
         template<typename T>
         void draw(GLenum primitive, const buffer<T>& index_buffer, GLenum type, size_t count = ~0ui64, size_t first_index = 0, size_t first_vertex = 0) const noexcept;
