@@ -29,17 +29,17 @@ int main()
 
     struct instance
     {
-        glm::vec2 offset;
-        glm::u8vec4 color;
+        alignas(16) glm::vec2 offset;
+        alignas(8) glm::u8vec4 color;
     };
     gl::buffer<instance> instances(GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
     instances.map(GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
 
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
-    for (size_t i = 0; i < 100; i++)
+    for (size_t i = 0; i < 5000; i++)
     {
-        instances.push_back(instance{ {dist(gen) * 100.f, dist(gen) * 100.f }, glm::u8vec4(dist(gen) * 255, dist(gen) * 255, dist(gen) * 255, 255) });
+        instances.push_back(instance{ {dist(gen) * 200.f, dist(gen) * 200.f }, glm::u8vec4(dist(gen) * 255, dist(gen) * 255, dist(gen) * 255, 255) });
     }
 
     gl::buffer<glm::mat4> matrices(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
