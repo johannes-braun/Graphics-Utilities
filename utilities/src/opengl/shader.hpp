@@ -31,7 +31,7 @@ namespace gl
     class shader
     {
     public:
-        static void set_include_directories(files::path include_directories);
+        static void set_include_directory(files::path include_directories);
         static void set_include_directories(std::vector<files::path> include_directories);
 
         explicit shader(const files::path& path, const std::vector<definition>& definitions = {});

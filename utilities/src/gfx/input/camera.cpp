@@ -32,10 +32,10 @@ namespace gfx
             _target_transform = camera.transform;
         }
 
-        const rect2f win_rect = _window->get_rect();
-        const glm::vec2 size = win_rect.size();
-        camera.screen_width = size.x;
-        camera.screen_height = size.y;
+        const rect2f win_rect   = _window->get_rect();
+        const glm::vec2 size    = win_rect.size();
+        camera.screen_width     = int(size.x);
+        camera.screen_height    = int(size.y);
 
         grab_action.update(*_window);
         btn_forward.update(*_window);
@@ -62,7 +62,7 @@ namespace gfx
             static_cast<float>(btn_backward.state() == button_state::down) - static_cast<float>(btn_forward.state() == button_state::down)
             }) * (glfwGetKey(*_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 10.f : (glfwGetKey(*_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0.1f : 1.f)) * static_cast<float>(_window->delta_time()) * movement_speed;
 
-        float alpha = glm::clamp(20.f * _window->delta_time(), 0.0, 1.0);
+        const float alpha = float(glm::clamp(20.0 * _window->delta_time(), 0.0, 1.0));
         camera.transform.position = mix(camera.transform.position, _target_transform.position, alpha);
         camera.transform.scale = mix(camera.transform.scale, _target_transform.scale, alpha);
         camera.transform.rotation = glm::slerp(camera.transform.rotation, _target_transform.rotation, alpha);

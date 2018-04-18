@@ -198,6 +198,8 @@ int main()
     command_buffer->end();
     queues[queue_index_transfer].submit(command_buffer);
 
+
+
     while (!close_window)
     {
         const auto now = std::chrono::steady_clock::now();

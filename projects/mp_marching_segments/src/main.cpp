@@ -4,7 +4,7 @@
 
 int main()
 {
-    gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
+    gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
     auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[Mesh Processing] Marching Segments", 1280, 720);
     gfx::imgui imgui(window);
     gfx::image_file img("brick.png", gfx::bits::b8, 4);

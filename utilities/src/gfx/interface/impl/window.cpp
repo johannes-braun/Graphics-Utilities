@@ -18,7 +18,7 @@ namespace gfx
         for (const auto& h : hints)
             glfwWindowHint(h.first, h.second);
 
-        glfwWindowHint(GLFW_CLIENT_API, api_manager::info(_api).api_type);
+        glfwWindowHint(GLFW_CLIENT_API, int(api_manager::info(_api).api_type));
 
         glfwSetErrorCallback([](int code, const char* msg) { tlog_e("GLFW Callback") << "[ Code: " << code << " ]: " << msg; });
         _window = std::unique_ptr<GLFWwindow, glfw_delete_window>(glfwCreateWindow(int(width), int(height), title.data(), nullptr, _share ? _share->_window.get() : nullptr));

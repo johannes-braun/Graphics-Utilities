@@ -6,7 +6,7 @@
 
 int main()
 {
-    gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
+    gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
     gfx::window_hints hints;
     hints[GLFW_SAMPLES] = 8;
     const auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[CG3] Voronoi Cones", 1280, 720, hints);

@@ -8,17 +8,6 @@ namespace gfx
     imgui::imgui(const std::shared_ptr<window>& w) noexcept
         : _window(w)
     {
-        static struct gui_init {
-            gui_init() : _m_default_context(ImGui::GetCurrentContext()) {}
-            ~gui_init()
-            {
-                ImGui::SetCurrentContext(_m_default_context);
-                ImGui::Shutdown();
-            }
-        private:
-            ImGuiContext * _m_default_context;
-        } imgui_init;
-
         _context = ImGui::CreateContext();
         ImGui::SetCurrentContext(_context);
 
@@ -110,11 +99,11 @@ namespace gfx
         glfwGetFramebufferSize(*_window, &display_w, &display_h);
         io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
         io.DisplayFramebufferScale = ImVec2(w > 0 ? (static_cast<float>(display_w) / w) : 0, h > 0 ? (static_cast<float>(display_h) / h) : 0);
-        io.DeltaTime = _window->delta_time();
+        io.DeltaTime = float(_window->delta_time());
 
         if (glfwGetWindowAttrib(*_window, GLFW_FOCUSED))
         {
-            if (io.WantMoveMouse)
+            if (io.WantSetMousePos)
             {
                 glfwSetCursorPos(*_window, static_cast<double>(io.MousePos.x), static_cast<double>(io.MousePos.y));
             }
@@ -234,7 +223,6 @@ namespace gfx
         style->Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
         style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
         style->Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
-        style->Colors[ImGuiCol_ComboBg] = ImVec4(0.19f, 0.18f, 0.21f, 1.00f);
         style->Colors[ImGuiCol_CheckMark] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
         style->Colors[ImGuiCol_SliderGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
         style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
@@ -250,9 +238,6 @@ namespace gfx
         style->Colors[ImGuiCol_ResizeGrip] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
         style->Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
         style->Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
-        style->Colors[ImGuiCol_CloseButton] = ImVec4(0.40f, 0.39f, 0.38f, 0.16f);
-        style->Colors[ImGuiCol_CloseButtonHovered] = ImVec4(0.40f, 0.39f, 0.38f, 0.39f);
-        style->Colors[ImGuiCol_CloseButtonActive] = ImVec4(0.40f, 0.39f, 0.38f, 1.00f);
         style->Colors[ImGuiCol_PlotLines] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
         style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
         style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);

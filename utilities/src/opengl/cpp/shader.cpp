@@ -11,7 +11,7 @@ namespace gl
         _include_directories = include_directories;
     }
 
-    void shader::set_include_directories(files::path include_directories)
+    void shader::set_include_directory(files::path include_directories)
     {
         _include_directories = { include_directories };
     }

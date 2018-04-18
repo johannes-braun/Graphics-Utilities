@@ -169,7 +169,7 @@ namespace gl
 
     void pipeline::draw_instanced(GLenum primitive, size_t count, size_t instances, size_t first_vertex, size_t first_instance) const noexcept
     {
-        glDrawArraysInstancedBaseInstance(primitive, first_vertex, count, instances, first_instance);
+        glDrawArraysInstancedBaseInstance(primitive, int(first_vertex), int(count), int(instances), uint32_t(first_instance));
     }
 
     compute_pipeline::compute_pipeline(const std::shared_ptr<shader>& shader) noexcept
