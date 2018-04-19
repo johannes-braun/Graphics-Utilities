@@ -33,14 +33,16 @@ void main()
     vec4 color_10 = texelFetch(tex, ivec2(pixel) + ivec2(1, 0), 0);
     vec4 color_11 = texelFetch(tex, ivec2(pixel) + ivec2(1, 1), 0);
 
-    float val_00 = dot(luma, color_00);
-    float val_01 = dot(luma, color_01);
-    float val_10 = dot(luma, color_10);
-    float val_11 = dot(luma, color_11);
+    float val_00 = dot(luma, color_00)-0.5f;
+    float val_01 = dot(luma, color_01)-0.5f;
+    float val_10 = dot(luma, color_10)-0.5f;
+    float val_11 = dot(luma, color_11)-0.5f;
 
     float v00_01 = (((val_01-val_00)/val_00));
     float v01_11 = ((val_01-val_11)/val_11);
     float v11_10 = ((val_11-val_10)/val_10);
+
+
 
     pixel = in_pixel[0];
     gl_Position = vp * vec4(

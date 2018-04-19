@@ -198,6 +198,101 @@ int main()
     command_buffer->end();
     queues[queue_index_transfer].submit(command_buffer);
 
+    VkGraphicsPipelineCreateInfo info;
+    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    info.basePipelineHandle = nullptr;
+    info.basePipelineIndex = 0;
+    info.flags = 0;
+    info.pNext = nullptr;
+    info.renderPass = *renderpass;
+    info.subpass = 0;
+
+    VkPipelineLayoutCreateInfo loi;
+    loi.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    loi.flags = 0;
+    loi.pNext = nullptr;
+    loi.pushConstantRangeCount = 0;
+    loi.pPushConstantRanges = nullptr;
+    loi.setLayoutCount = 0;
+    loi.pSetLayouts = nullptr;
+    VkPipelineLayout layout;
+    vkCreatePipelineLayout(*device, &loi, nullptr, &layout);
+    info.layout = layout;
+
+    VkPipelineColorBlendStateCreateInfo blend_state;
+    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    blend_state.pNext = nullptr;
+    blend_state.flags = 0;
+    blend_state.logicOpEnable = false;
+    blend_state.attachmentCount = 0;
+    info.pColorBlendState = &blend_state;
+
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_state;
+    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depth_stencil_state.pNext = nullptr;
+    depth_stencil_state.depthTestEnable = true;
+    depth_stencil_state.depthWriteEnable = true;
+    depth_stencil_state.minDepthBounds = 0.f;
+    depth_stencil_state.maxDepthBounds = 1.f;
+    depth_stencil_state.depthBoundsTestEnable = true;
+    depth_stencil_state.depthCompareOp = VK_COMPARE_OP_GREATER;
+    depth_stencil_state.stencilTestEnable = false;
+    info.pDepthStencilState = &depth_stencil_state;
+
+    VkPipelineDynamicStateCreateInfo dynamic_state;
+    dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_state.pNext = nullptr;
+    dynamic_state.flags = 0;
+    const auto dynamic_states ={ VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_VIEWPORT };
+    dynamic_state.dynamicStateCount = uint32_t(std::size(dynamic_states));
+    dynamic_state.pDynamicStates = std::data(dynamic_states);
+    info.pDynamicState = &dynamic_state;
+
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_state;
+    input_assembly_state.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    input_assembly_state.flags = 0;
+    input_assembly_state.pNext = nullptr;
+    input_assembly_state.primitiveRestartEnable = true;
+    input_assembly_state.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    info.pInputAssemblyState = &input_assembly_state;
+
+    info.pMultisampleState = nullptr;
+
+    VkPipelineRasterizationStateCreateInfo rasterization_state;
+    rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterization_state.flags = 0;
+    rasterization_state.pNext = nullptr;
+    rasterization_state.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterization_state.depthBiasEnable = false;
+    rasterization_state.depthClampEnable = false;
+    rasterization_state.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterization_state.lineWidth = 1.f;
+    rasterization_state.rasterizerDiscardEnable = false;
+    rasterization_state.polygonMode = VK_POLYGON_MODE_FILL;
+    info.pRasterizationState = &rasterization_state;
+
+    info.pTessellationState = nullptr;
+    
+    VkPipelineVertexInputStateCreateInfo vertex_input_state;
+    vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertex_input_state.flags = 0;
+    vertex_input_state.pNext = nullptr;
+    vertex_input_state.pVertexBindingDescriptions = nullptr;
+    vertex_input_state.vertexBindingDescriptionCount = 0;
+    vertex_input_state.pVertexAttributeDescriptions = nullptr;
+    vertex_input_state.vertexAttributeDescriptionCount = 0;
+    info.pVertexInputState = &vertex_input_state;
+
+    VkPipelineViewportStateCreateInfo viewport_state;
+    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_state.flags = 0;
+    viewport_state.pNext = nullptr;
+    viewport_state.scissorCount = 0;
+    viewport_state.viewportCount = 0;
+    info.pViewportState = &viewport_state;
+
+    VkPipelineShaderStageCreateInfo fs;
+    
 
 
     while (!close_window)

@@ -18,7 +18,7 @@ namespace gfx
         _sampler.set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAX_LEVEL, 1);
-        ImGui::GetIO().Fonts->TexID = reinterpret_cast<ImTextureID>(static_cast<uint64_t>(gl_texture_t(*_fonts_atlas)));
+        ImGui::GetIO().Fonts->TexID = static_cast<uint64_t>(gl_texture_t(*_fonts_atlas));
 
         _render_data.map(GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
         _render_data.emplace_back();
@@ -84,7 +84,7 @@ namespace gfx
 
     void imgui_handler_opengl::draw(const ImDrawCmd& cmd, const uint32_t index_offset, const uint32_t vertex_offset)
     {
-        _render_data[0].image = _sampler.sample(gl_texture_t(reinterpret_cast<uint32_t>(cmd.TextureId)));
+        _render_data[0].image = _sampler.sample(gl_texture_t(cmd.TextureId));
         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
 
         glScissor(int(cmd.ClipRect.x), int(int(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),

@@ -19,3 +19,6 @@
 [submodule "submodules/glshader"]
 	path = submodules/glshader
 	url = git@gitlab.uni-koblenz.de:johannesbraun/glshader.git
+[submodule "submodules/spirv-cross"]
+	path = submodules/spirv-cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

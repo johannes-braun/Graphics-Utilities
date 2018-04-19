@@ -11,6 +11,9 @@
 
 #pragma once
 
+#include <cinttypes>
+#define ImTextureID uint64_t
+
 //---- Define assertion handler. Defaults to calling assert().
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 
