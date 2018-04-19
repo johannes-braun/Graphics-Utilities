@@ -1,3 +1,4 @@
 *.vcxproj
 *.vs
 *.vscode
+/build
