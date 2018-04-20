@@ -13,7 +13,7 @@ layout(location=0) out vec2 pixel;
 
 void main()
 {
-    ivec2 sz = textureSize(tex, 0);
+    ivec2 sz = textureSize(tex, 0)-1;
     float px = (gl_VertexID % sz.x);
     float pz = (gl_VertexID / sz.x);
 

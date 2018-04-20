@@ -25,37 +25,78 @@ out gl_PerVertex
 
 layout(location=0) out vec2 pixel;
 
-const vec4 luma = vec4(0.299, 0.587, 0.114, 0);
+const vec4 luma = vec4(0.299, 0.587, 0.114, 1);
 void main()
 {
-    vec4 color_00 = texelFetch(tex, ivec2(pixel), 0);
-    vec4 color_01 = texelFetch(tex, ivec2(pixel) + ivec2(0, 1), 0);
-    vec4 color_10 = texelFetch(tex, ivec2(pixel) + ivec2(1, 0), 0);
-    vec4 color_11 = texelFetch(tex, ivec2(pixel) + ivec2(1, 1), 0);
+    vec4 color_00 = texelFetch(tex, ivec2(in_pixel[0]), 0);
+    vec4 color_01 = texelFetch(tex, ivec2(in_pixel[0]) + ivec2(0, 1), 0);
+    vec4 color_10 = texelFetch(tex, ivec2(in_pixel[0]) + ivec2(1, 0), 0);
+    vec4 color_11 = texelFetch(tex, ivec2(in_pixel[0]) + ivec2(1, 1), 0);
 
-    float val_00 = dot(luma, color_00)-0.5f;
-    float val_01 = dot(luma, color_01)-0.5f;
-    float val_10 = dot(luma, color_10)-0.5f;
-    float val_11 = dot(luma, color_11)-0.5f;
-
-    float v00_01 = (((val_01-val_00)/val_00));
-    float v01_11 = ((val_01-val_11)/val_11);
-    float v11_10 = ((val_11-val_10)/val_10);
-
-
+    float val_00 = (dot(luma, color_00)-0.5f);
+    float val_01 = (dot(luma, color_01)-0.5f);
+    float val_10 = (dot(luma, color_10)-0.5f);
+    float val_11 = (dot(luma, color_11)-0.5f);
 
     pixel = in_pixel[0];
-    gl_Position = vp * vec4(
-        gl_in[0].gl_Position.x + 1,
-        gl_in[0].gl_Position.y,
-        gl_in[0].gl_Position.z + v11_10,
-        1);
-    EmitVertex();
-    gl_Position = vp * vec4(
-        gl_in[0].gl_Position.x,
-        gl_in[0].gl_Position.y,
-        gl_in[0].gl_Position.z + v00_01,
-        1);
-    EmitVertex();
-    EndPrimitive();
+
+    int count = 0;
+   // if (val_00 * val_10 < 0)
+    {
+        vec3 p1 = gl_in[0].gl_Position.xyz + vec3(0, 0, 0);
+        vec3 p2 = gl_in[0].gl_Position.xyz + vec3(1, 0, 0);
+        gl_Position.a = 1;
+        gl_Position.xyz = mix(p1, p2, val_00/(val_10 - val_00));
+        gl_Position = vp * gl_Position;
+        EmitVertex();
+        ++count;
+    }
+
+    //if (val_00 * val_01 < 0)
+    {
+        vec3 p1 = gl_in[0].gl_Position.xyz + vec3(0, 0, 0);
+        vec3 p2 = gl_in[0].gl_Position.xyz + vec3(0, 0, 1);
+        gl_Position.a = 1;
+        gl_Position.xyz = mix(p1, p2, val_01/(val_01 - val_00));
+        gl_Position = vp * gl_Position;
+        EmitVertex();
+        ++count;
+        if (count == 2)
+        {
+            count = 0;
+            EndPrimitive();
+        }
+    }
+
+    //if (val_10 * val_11 < 0)
+    {
+        vec3 p1 = gl_in[0].gl_Position.xyz + vec3(1, 0, 0);
+        vec3 p2 = gl_in[0].gl_Position.xyz + vec3(1, 0, 1);
+        gl_Position.a = 1;
+        gl_Position.xyz = mix(p1, p2, val_11/(val_11 - val_10));
+        gl_Position = vp * gl_Position;
+        EmitVertex();
+        ++count;
+        if (count == 2)
+        {
+            count = 0;
+            EndPrimitive();
+        }
+    }
+
+    //if (val_01 * val_11 < 0)
+    {
+        vec3 p1 = gl_in[0].gl_Position.xyz + vec3(0, 0, 1);
+        vec3 p2 = gl_in[0].gl_Position.xyz + vec3(1, 0, 1);
+        gl_Position.a = 1;
+        gl_Position.xyz = mix(p1, p2, val_11/(val_11 - val_01));
+        gl_Position = vp * gl_Position;
+        EmitVertex();
+        ++count;
+        if (count == 2)
+        {
+            count = 0;
+            EndPrimitive();
+        }
+    }
 }

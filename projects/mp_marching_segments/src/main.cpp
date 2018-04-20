@@ -7,7 +7,7 @@ int main()
     gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
     auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[Mesh Processing] Marching Segments", 1280, 720);
     gfx::imgui imgui(window);
-    gfx::image_file img("brick.png", gfx::bits::b8, 4);
+    gfx::image_file img("blocky.png", gfx::bits::b8, 4);
     gl::texture texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
     texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
     gl::sampler sampler;
@@ -36,7 +36,7 @@ int main()
         buf[0].tex = sampler.sample(texture);
         pp.bind();
         pp.bind_uniform_buffer(0, buf);
-        pp.draw(GL_POINTS, img.width*img.height);
+        pp.draw(GL_POINTS, (img.width-1)*(img.height-1));
 
         imgui.render();
     }

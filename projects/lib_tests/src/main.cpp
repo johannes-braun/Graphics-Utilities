@@ -36,6 +36,10 @@ namespace sdf
             return count;
         }
 
+        void append(const bundle& b) { _stream << b._stream.str(); }
+
+        std::basic_string<float> stream_data() const { return _stream.str(); }
+
     private:
         std::basic_stringstream<float> _stream;
     };
@@ -60,6 +64,7 @@ namespace sdf
         friend op;
 
         std::string str() const { return _state_code.str() + ")"; }
+        const bundle<float>& get_bundle() const noexcept { return _data; }
 
     private:
         int _size;
@@ -73,6 +78,7 @@ namespace sdf
         friend modifier;
         friend primitive;
         std::string str() const { return _state_code.str() + ")"; }
+        const bundle<float>& get_bundle() const noexcept { return _data; }
 
     private:
         int _size;
@@ -81,61 +87,58 @@ namespace sdf
         bundle<float> _data;
     };
 
-    struct op
+    struct named_code
     {
-        using return_type = distance;
+    public:
+        named_code(const std::string& name, const std::string& code)
+            : _name(name), _code(code) {}
 
-        op(const std::string& name, const std::string& code)
-            : _name(name), _code(code), _state_code("") {}
-        // op can reference (op, op), (op, primitive), (primitive, op) or (primitive, primitive)
-        // returns a distance
+        const std::string& name() const noexcept { return _name; }
+        const std::string& code() const noexcept { return _code; }
 
-        template<typename... Ts>
-        distance_instance operator()(const distance_instance& lhs, const distance_instance& rhs, const Ts& ... ts) const;
-
-    private:
-        int _id_offset;
-        std::stringstream _state_code;
+    protected:
         std::string _name;
         std::string _code;
     };
 
-    struct primitive
+    struct op : named_code
+    {
+        using return_type = distance;
+
+        op(const std::string& name, const std::string& code) : named_code(name, code) {}
+
+        template<typename... Ts>
+        distance_instance operator()(const distance_instance& lhs, const distance_instance& rhs, const Ts& ... ts) const;
+    };
+
+    struct primitive : named_code
     {
         friend op;
         friend distance_instance;
         using return_type = distance;
 
-        primitive(const std::string& name, const std::string& code)
-            : _name(name), _code(code) {}
-        // primitive can reference (root_pos) or (modifier)
-        // returns a distance to the primitive
-        
+        primitive(const std::string& name, const std::string& code) : named_code(name, code) {}
+
         template<typename... Ts>
         distance_instance operator()(const position_instance& mod, const Ts& ... ts) const;
-        
+
         template<typename... Ts>
         distance_instance operator()(const Ts& ... ts) const
         {
             distance_instance instance;
-            std::vector<int> x = {serialize(ts, instance._data)...};
+            std::vector<int> x ={ serialize(ts, instance._data)... };
             instance._size = std::accumulate(x.begin(), x.end(), 0);
             instance._offset = 0;
             instance._state_code << _name << "(sdf_position"; // TODO: parameters.
             return instance;
         }
-
-    private:
-        std::string _name;
-        std::string _code;
     };
 
-    struct modifier
+    struct modifier : named_code
     {
         using return_type = position;
 
-        modifier(const std::string& name, const std::string& code)
-            : _name(name), _code(code) {}
+        modifier(const std::string& name, const std::string& code) : named_code(name, code) {}
 
         template<typename... Ts>
         position_instance operator()(const Ts& ... ts) const
@@ -144,14 +147,9 @@ namespace sdf
             std::vector<int> x ={ serialize(ts, instance._data)... };
             instance._size = std::accumulate(x.begin(), x.end(), 0);
             instance._offset = 0;
-            instance._state_code << _name << "(sdf_position"; // TODO: parameters.
+            instance._state_code << _name << "(sdf_position";
             return instance;
         }
-        // modifier can reference (root_pos) or (modifier) 
-        // returns a modified position
-    private:
-        std::string _name;
-        std::string _code;
     };
 
 
@@ -159,62 +157,100 @@ namespace sdf
     distance_instance primitive::operator()(const position_instance& mod, const Ts& ... ts) const
     {
         distance_instance instance;
+        instance._data.append(mod._data);
         std::vector<int> x ={ serialize(ts, instance._data)... };
         instance._size = std::accumulate(x.begin(), x.end(), 0);
         instance._offset = mod._offset + mod._size;
-        instance._state_code << _name << "(" << mod._state_code.str() << ", " << mod._offset << ")"; // TODO: parameters.
+        instance._state_code << _name << "(" << mod._state_code.str() << ", sdf_index_offset(" << mod._size << "))"; // TODO: parameters.
         return instance;
     }
-
-    struct root_position
-    {
-        constexpr static const char* code = "position";
-    };
 
     template<typename... Ts>
     distance_instance op::operator()(const distance_instance& lhs, const distance_instance& rhs, const Ts& ... ts) const
     {
         distance_instance instance;
+        instance._data.append(lhs._data);
+        instance._data.append(rhs._data);
         std::vector<int> x ={ serialize(ts, instance._data)... };
-        instance._state_code << _name << "(" << lhs._state_code.str() << ", sdf_base_id + " << lhs._offset << "), " << rhs._state_code.str()  << ", sdf_base_id + " << lhs._offset <<"+"<< lhs._size << ")";
+        instance._state_code << _name << "(" << lhs._state_code.str() << ", sdf_index_offset(" << lhs._size << ")), " << rhs._state_code.str()  << ", sdf_index_offset(" << rhs._size << "))";
         instance._size = std::accumulate(x.begin(), x.end(), 0);
         instance._offset = lhs._offset +lhs._size + rhs._size + std::accumulate(x.begin(), x.end(), 0);
         return instance;
     }
+
+    std::string build_function(const sdf::op& code)
+    {
+        std::stringstream str;
+        str << "float " << code.name() << "(float sdf_op_lhs, float sdf_op_rhs, int sdf_id) {\n"
+            << code.code() << ";\n}\n";
+        return str.str();
+    }
+
+    std::string build_function(const sdf::primitive& code)
+    {
+        std::stringstream str;
+        str << "float " << code.name() << "(vec3 sdf_position, int sdf_id) {\n"
+            << code.code() << ";\n}\n";
+        return str.str();
+    }
+
+    std::string build_function(const sdf::modifier& code)
+    {
+        std::stringstream str;
+        str << "vec3 " << code.name() << "(vec3 sdf_position, int sdf_id) {\n"
+            << code.code() << ";\n}\n";
+        return str.str();
+    }
 }
 
-int main() 
+constexpr const char* get_offset = R"(
+int _sdf_index = 0;
+int sdf_index_reset(int val) { return (_sdf_index = val); }
+int sdf_index_offset(int size) { 
+    const int id = _sdf_index;
+    _sdf_index += size;
+    return id;
+}
+)";
+
+constexpr const char* sdf_prefix = R"(
+float sdf_distance(vec3 sdf_position)
 {
-    /*
-    float sdf_op_rhs;
-    float sdf_op_lhs;
+    sdf_index_reset(0);
+    float distance = 0;
+)";
 
-    buffer sdf_params;
-    int sdf_id;
-    vec3 sdf_position;
-
-     */
+int main()
+{
     sdf::op         op_union("union", "return min(sdf_op_lhs, sdf_op_rhs)");
-    sdf::primitive  prim_box("box",
-        R"(
+    sdf::primitive  prim_box("box", R"(
             vec3 size = vec3(sdf_params[sdf_id], sdf_params[sdf_id+1], sdf_params[sdf_id+2]);
             return length(max(abs(sdf_position)-size,0.0));
-        )"
-    );
-    sdf::modifier   mod_rep("repeat",
-        R"(
+        )");
+    sdf::modifier   mod_rep("repeat", R"(
             vec3 c = vec3(sdf_params[sdf_id], sdf_params[sdf_id+1], sdf_params[sdf_id+2]);
             return mod(p,c)-0.5*c;
-        )"
-    );
+        )");
 
-    auto code = op_union(op_union(prim_box(mod_rep(glm::vec3(9, 2, 3)), glm::vec3(1, 4, 4)), prim_box(glm::vec3(3, 2, 1))), prim_box(mod_rep(glm::vec3(9, 2, 3)), glm::vec3(2, 9, 0.2f))).str();
+    auto code = op_union(op_union(prim_box(mod_rep(glm::vec3(9, 2, 3)), glm::vec3(1, 4, 4)), prim_box(glm::vec3(3, 2, 1))), prim_box(mod_rep(glm::vec3(9, 2, 3)), glm::vec3(2, 9, 0.2f)));
 
+
+    std::stringstream shader;
+    shader << build_function(op_union);
+    shader << build_function(prim_box);
+    shader << build_function(mod_rep);
+    shader << get_offset;
+    shader << sdf_prefix;
+    shader << "distance=" << code.str() << ";\nreturn distance;\n}";
+    std::string shader_code = shader.str();
+
+    auto data = code.get_bundle().stream_data();
+    std::vector<float> datatata(data.begin(), data.end());
 
     gfx::window window("opengl", "Title", 1280, 720);
     window.set_icon(gfx::image_file("ui/logo.svg", 1.f));
-    
-    while(window.update())
+
+    while (window.update())
     {
         log_i << window.delta_time();
     }
