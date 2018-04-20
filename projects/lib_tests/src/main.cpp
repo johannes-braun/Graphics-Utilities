@@ -1,5 +1,6 @@
 #include <gfx/window.hpp>
 #include <gfx/log.hpp>
+#include <gfx/imgui.hpp>
 
 // float operator  (dist1(p), dist2(p), ...)      // SDF operator -> applied to two distances
 // float primitive (p, ...)                       // SDF function -> calculates the distance of p to the field.
@@ -222,6 +223,8 @@ float sdf_distance(vec3 sdf_position)
 
 int main()
 {
+    gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
+
     sdf::op         op_union("union", "return min(sdf_op_lhs, sdf_op_rhs)");
     sdf::primitive  prim_box("box", R"(
             vec3 size = vec3(sdf_params[sdf_id], sdf_params[sdf_id+1], sdf_params[sdf_id+2]);
@@ -247,12 +250,19 @@ int main()
     auto data = code.get_bundle().stream_data();
     std::vector<float> datatata(data.begin(), data.end());
 
-    gfx::window window("opengl", "Title", 1280, 720);
-    window.set_icon(gfx::image_file("ui/logo.svg", 1.f));
+    auto window = std::make_shared<gfx::window>("opengl", "Title", 1280, 720);
+    window->set_icon(gfx::image_file("ui/logo.svg", 1.f));
+    gfx::imgui imgui(window);
 
-    while (window.update())
+    std::vector<float> colors(512*512);
+    gl::texture tex(GL_TEXTURE_2D, 512, 512, GL_R32F, 1);
+    tex.assign(GL_RED, GL_FLOAT, colors.data());
+
+    while (window->update())
     {
-        log_i << window.delta_time();
+        imgui.new_frame();
+        ImGui::Image(uint32_t(gl_texture_t(tex)), { 512, 512 });
+        imgui.render();
     }
 
     return 0;

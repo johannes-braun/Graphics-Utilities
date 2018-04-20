@@ -8,6 +8,7 @@ layout(binding = 0) uniform Data
 {
     mat4 vp;
     sampler2D tex;
+    float offset;
 };
 
 
@@ -25,7 +26,7 @@ out gl_PerVertex
 
 layout(location=0) out vec2 pixel;
 
-const vec4 luma = vec4(0.299, 0.587, 0.114, 1);
+const vec3 luma = vec3(0.299, 0.587, 0.114);
 void main()
 {
     vec4 color_00 = texelFetch(tex, ivec2(in_pixel[0]), 0);
@@ -33,31 +34,33 @@ void main()
     vec4 color_10 = texelFetch(tex, ivec2(in_pixel[0]) + ivec2(1, 0), 0);
     vec4 color_11 = texelFetch(tex, ivec2(in_pixel[0]) + ivec2(1, 1), 0);
 
-    float val_00 = (dot(luma, color_00)-0.5f);
-    float val_01 = (dot(luma, color_01)-0.5f);
-    float val_10 = (dot(luma, color_10)-0.5f);
-    float val_11 = (dot(luma, color_11)-0.5f);
+    float val_00 = (dot(luma, color_00.rgb)-offset);
+    float val_01 = (dot(luma, color_01.rgb)-offset);
+    float val_10 = (dot(luma, color_10.rgb)-offset);
+    float val_11 = (dot(luma, color_11.rgb)-offset);
 
     pixel = in_pixel[0];
 
     int count = 0;
-   // if (val_00 * val_10 < 0)
+    if (val_00 * val_10 < 0)
     {
         vec3 p1 = gl_in[0].gl_Position.xyz + vec3(0, 0, 0);
         vec3 p2 = gl_in[0].gl_Position.xyz + vec3(1, 0, 0);
         gl_Position.a = 1;
-        gl_Position.xyz = mix(p1, p2, val_00/(val_10 - val_00));
+        float t = val_10/(val_10 - val_00);
+        gl_Position.xyz = mix(p1, p2, t);
         gl_Position = vp * gl_Position;
         EmitVertex();
         ++count;
     }
 
-    //if (val_00 * val_01 < 0)
+    if (val_00 * val_01 < 0)
     {
         vec3 p1 = gl_in[0].gl_Position.xyz + vec3(0, 0, 0);
         vec3 p2 = gl_in[0].gl_Position.xyz + vec3(0, 0, 1);
         gl_Position.a = 1;
-        gl_Position.xyz = mix(p1, p2, val_01/(val_01 - val_00));
+        float t = val_01/(val_01 - val_00);
+        gl_Position.xyz = mix(p1, p2, t);
         gl_Position = vp * gl_Position;
         EmitVertex();
         ++count;
@@ -68,12 +71,13 @@ void main()
         }
     }
 
-    //if (val_10 * val_11 < 0)
+    if (val_10 * val_11 < 0)
     {
         vec3 p1 = gl_in[0].gl_Position.xyz + vec3(1, 0, 0);
         vec3 p2 = gl_in[0].gl_Position.xyz + vec3(1, 0, 1);
         gl_Position.a = 1;
-        gl_Position.xyz = mix(p1, p2, val_11/(val_11 - val_10));
+        float t = val_11/(val_11 - val_10);
+        gl_Position.xyz = mix(p1, p2, t);
         gl_Position = vp * gl_Position;
         EmitVertex();
         ++count;
@@ -84,12 +88,13 @@ void main()
         }
     }
 
-    //if (val_01 * val_11 < 0)
+    if (val_01 * val_11 < 0)
     {
         vec3 p1 = gl_in[0].gl_Position.xyz + vec3(0, 0, 1);
         vec3 p2 = gl_in[0].gl_Position.xyz + vec3(1, 0, 1);
         gl_Position.a = 1;
-        gl_Position.xyz = mix(p1, p2, val_11/(val_11 - val_01));
+        float t = val_11/(val_11 - val_01);
+        gl_Position.xyz = mix(p1, p2, t);
         gl_Position = vp * gl_Position;
         EmitVertex();
         ++count;

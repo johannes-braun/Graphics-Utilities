@@ -88,6 +88,51 @@ namespace gfx
         height = uint32_t(h);
     }
 
+    image_file::image_file(image_file&& other) noexcept
+    {
+        width = other.width;
+        height = other.height;
+        channels = other.channels;
+        channel_bits = other.channel_bits;
+        data = std::move(other.data);
+
+        switch (channel_bits)
+        {
+        case bits::b8:
+            _raw = std::get<std::vector<uint8_t>>(this->data).data();
+        break;
+        case bits::b16:
+            _raw = std::get<std::vector<uint16_t>>(this->data).data();
+        break;
+        case bits::b32:
+            _raw = std::get<std::vector<float>>(this->data).data();
+        break;
+        }
+    }
+
+    image_file& image_file::operator=(image_file&& other) noexcept
+    {
+        width = other.width;
+        height = other.height;
+        channels = other.channels;
+        channel_bits = other.channel_bits;
+        data = std::move(other.data);
+
+        switch (channel_bits)
+        {
+        case bits::b8:
+            _raw = std::get<std::vector<uint8_t>>(this->data).data();
+            break;
+        case bits::b16:
+            _raw = std::get<std::vector<uint16_t>>(this->data).data();
+            break;
+        case bits::b32:
+            _raw = std::get<std::vector<float>>(this->data).data();
+            break;
+        }
+        return *this;
+    }
+
     image_file::image_file(const files::path& svg, float raster_scale)
         : file(svg)
     {

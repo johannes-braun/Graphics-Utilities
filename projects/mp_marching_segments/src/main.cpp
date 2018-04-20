@@ -5,9 +5,11 @@
 int main()
 {
     gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
-    auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[Mesh Processing] Marching Segments", 1280, 720);
+    gfx::window_hints hints;
+    hints[GLFW_SAMPLES] = 8;
+    auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[Mesh Processing] Marching Segments", 1280, 720, hints);
     gfx::imgui imgui(window);
-    gfx::image_file img("blocky.png", gfx::bits::b8, 4);
+    gfx::image_file img("Lena.png", gfx::bits::b8, 4);
     gl::texture texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
     texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
     gl::sampler sampler;
@@ -16,9 +18,11 @@ int main()
     {
         glm::mat4 vp;
         uint64_t tex;
+        float offset;
     };
     gl::buffer<data> buf(1, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
     buf.map(GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
+    buf[0].offset = 0.5f;
 
     gfx::camera camera;
     gfx::camera_controller ctrl(window);
@@ -28,11 +32,32 @@ int main()
     pp[GL_GEOMETRY_SHADER]  = std::make_shared<gl::shader>("seg.geom");
     pp[GL_FRAGMENT_SHADER]  = std::make_shared<gl::shader>("seg.frag");
 
+    window->key_callback.add([&](GLFWwindow*, int k, int s, int a, int m)
+    {
+        if (k == GLFW_KEY_R && a == GLFW_PRESS)
+            pp.reload();
+    });
+
     while (window->update())
     {
         imgui.new_frame();
+
+        static float scale = 1.f;
+        ImGui::Begin("Controls");
+        ImGui::SliderFloat("Offset", &buf[0].offset, 0.f, 1.f);
+        ImGui::DragFloat("Scale", &scale, 0.1f, 0.f, 1.f);
+        if(ImGui::Button("Load Image"))
+        {
+            if (auto file = gfx::file::open_dialog("Load Image", "./", { "*.png", "*.jpg", "*.bmp" }))
+            {
+                img = gfx::image_file(file.value(), gfx::bits::b8, 4);
+                texture = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
+                texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
+            }
+        }
+        ImGui::End();
         ctrl.update(camera);
-        buf[0].vp = camera.projection() * camera.view();
+        buf[0].vp = camera.projection() * camera.view() * glm::scale(glm::vec3(scale));
         buf[0].tex = sampler.sample(texture);
         pp.bind();
         pp.bind_uniform_buffer(0, buf);

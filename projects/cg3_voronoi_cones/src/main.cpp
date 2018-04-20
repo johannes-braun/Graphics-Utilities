@@ -53,9 +53,6 @@ int main()
     {
         imgui.new_frame();
         
-        ImGui::Begin("odfuisah");
-        ImGui::End();
-
         controller.update(cam);
         matrices[0] = cam.projection() * cam.view();
 

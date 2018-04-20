@@ -10,7 +10,6 @@ include(${GFX_CMAKE_FOLDER}/setup_util.cmake)
 compile_submodule(glm)
 compile_submodule(pugixml)
 compile_submodule(glshader)
-compile_submodule(spirv-cross)
 
 set(GFX_LIB_ARGS -DCMAKE_BUILD_TYPE=Release -DMYGL_SETTINGS_PATH="\"${GFX_GLOBAL_FOLDER}/src/mygl_settings.xml\"")
 compile_submodule(mygl)

@@ -69,6 +69,9 @@ namespace gfx
 
         image_file(const files::path& path, bits channel_bits, uint16_t channels);
         image_file(const files::path& svg, float raster_scale);
+        image_file(image_file&& other) noexcept;
+        image_file& operator=(image_file&& other) noexcept;
+
         void* bytes() const noexcept;
         int pixel_count() const noexcept;
 
