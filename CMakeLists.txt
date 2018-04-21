@@ -98,6 +98,16 @@ foreach(subdir ${children})
         file(MAKE_DIRECTORY ${GFX_PROJECTS_FOLDER}/${subdir}/res)
         file(MAKE_DIRECTORY ${GFX_PROJECTS_FOLDER}/${subdir}/shd)
         file(MAKE_DIRECTORY ${GFX_PROJECTS_FOLDER}/${subdir}/bin)
+        
+        if(NOT EXISTS ${GFX_PROJECTS_FOLDER}/${subdir}/src/main.cpp)
+            message("Creating ${GFX_PROJECTS_FOLDER}/${subdir}/src/main.cpp")
+            file(WRITE ${GFX_PROJECTS_FOLDER}/${subdir}/src/main.cpp "int main() {}")
+        endif()
+
+        if(NOT EXISTS ${GFX_PROJECTS_FOLDER}/${subdir}/export.xml)
+            file(COPY "${GFX_GLOBAL_FOLDER}/src/export_default.xml" DESTINATION ${GFX_PROJECTS_FOLDER}/${subdir})
+            file(RENAME "${GFX_PROJECTS_FOLDER}/${subdir}/export_default.xml" ${GFX_PROJECTS_FOLDER}/${subdir}/export.xml)
+        endif()
 
         add_executable(${subdir} ${EXE_SOURCES} ${WIN_RESOURCES})
         target_link_libraries(${subdir} ${GFX_LIBRARIES})

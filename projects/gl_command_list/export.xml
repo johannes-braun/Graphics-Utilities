@@ -1,0 +1,12 @@
+<export>
+    <globals>
+        <item path="shd/gui"/>
+        <item path="res/ui/logo.svg" />
+        <item path="res/bunny.dae"/>
+        <item path="res/brick.png"/>
+    </globals>
+
+    <dll>
+        <item name="assimp-vc140-mt.dll"/>
+    </dll>
+</export>

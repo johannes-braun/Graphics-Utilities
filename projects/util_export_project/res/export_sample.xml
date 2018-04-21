@@ -1,0 +1,12 @@
+<export>
+    <globals>
+        <item path="shd/ext"/>
+        <item path="shd/gui"/>
+        <item path="res/indoor"/>
+    </globals>
+
+    <dll>
+        <item name="assimp-vc140-mt.dll"/>
+        <item name="OpenAL32.dll"/>
+    </dll>
+</export>

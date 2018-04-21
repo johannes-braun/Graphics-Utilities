@@ -1,0 +1,6 @@
+<export>
+    <globals>
+        <item path="shd/gui"/>
+    </globals>
+    <dll/>
+</export>
