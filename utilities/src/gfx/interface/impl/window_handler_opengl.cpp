@@ -14,16 +14,11 @@ namespace gfx
         glfwSwapInterval(0);
 
         glDebugMessageCallback([](GLenum source, GLenum type, const uint32_t id, const GLenum severity, int /*length*/, const char* message, const void* user_param) {
-            switch (severity)
-            {
-            case GL_DEBUG_SEVERITY_HIGH:
-                tlog_e("OpenGL Debug") << message; break;
-            case GL_DEBUG_SEVERITY_MEDIUM:
-                tlog_e("OpenGL Debug") << message; break;
-            case GL_DEBUG_SEVERITY_LOW:
-                tlog_e("OpenGL Debug") << message; break;
-            case GL_DEBUG_SEVERITY_NOTIFICATION:
-                tlog_e("OpenGL Debug") << message; break;
+            switch (severity) {
+            case GL_DEBUG_SEVERITY_HIGH:         tlog_e("OpenGL Debug") << message; break;
+            case GL_DEBUG_SEVERITY_MEDIUM:       tlog_e("OpenGL Debug") << message; break;
+            case GL_DEBUG_SEVERITY_LOW:          tlog_e("OpenGL Debug") << message; break;
+            case GL_DEBUG_SEVERITY_NOTIFICATION: tlog_e("OpenGL Debug") << message; break;
             default: break;
             }
         }, nullptr);
