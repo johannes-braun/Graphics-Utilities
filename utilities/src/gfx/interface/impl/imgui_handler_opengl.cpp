@@ -2,11 +2,49 @@
 
 namespace gfx
 {
+    constexpr const char* vertex_shader_source = R"(
+layout(location=0) in vec2 position;
+layout(location=1) in vec2 uv;
+layout(location=2) in vec4 color;
+
+layout(location=0) out vec2 out_uv;
+layout(location=1) out vec4 out_color;
+
+layout(binding=0) uniform Data{
+    mat4 projection;
+    sampler2D img;
+};
+
+out gl_PerVertex { vec4 gl_Position; };
+
+void main() {
+    out_uv = uv;
+    out_color = color;
+    
+    gl_Position = projection * vec4(position.x, position.y, 1.f, 1);
+})";
+
+    constexpr const char* fragment_shader_source = R"(
+layout(location=0) in vec2 uv;
+layout(location=1) in vec4 color;
+
+layout(location=0) out vec4 out_color;
+
+layout(binding=0) uniform Data {
+    mat4 projection;
+    sampler2D img;
+};
+
+void main() {
+    out_color = color * textureLod(img, uv, 0);
+})";
+
+
     imgui_handler_opengl::imgui_handler_opengl(imgui& imgui)
         : imgui_handler(imgui), _vertex_buffer(GL_DYNAMIC_STORAGE_BIT), _index_buffer(GL_DYNAMIC_STORAGE_BIT), _render_data(GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT)
     {
-        _graphics_pipeline[GL_VERTEX_SHADER]    = std::make_shared<gl::shader>("gui/gui.vert");
-        _graphics_pipeline[GL_FRAGMENT_SHADER]  = std::make_shared<gl::shader>("gui/gui.frag");
+        _graphics_pipeline[GL_VERTEX_SHADER]    = std::make_shared<gl::shader>(vertex_shader_source,    "gfx::imgui_handle_opengl::vertex_shader",   GL_VERTEX_SHADER);
+        _graphics_pipeline[GL_FRAGMENT_SHADER]  = std::make_shared<gl::shader>(fragment_shader_source,  "gfx::imgui_handle_opengl::fragment_shader", GL_FRAGMENT_SHADER);
 
         unsigned char* pixels;
         int width, height;

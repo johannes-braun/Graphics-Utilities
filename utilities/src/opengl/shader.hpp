@@ -35,6 +35,7 @@ namespace gl
         static void set_include_directories(std::vector<files::path> include_directories);
 
         explicit shader(const files::path& path, const std::vector<definition>& definitions = {});
+        explicit shader(const std::string& source, const std::string& name, GLenum type, const std::vector<definition>& definitions ={});
         shader(const shader& other) noexcept;
         shader(shader&& other) noexcept;
         shader& operator=(const shader& other) noexcept;
@@ -58,6 +59,7 @@ namespace gl
         files::path _path;
         std::map<std::string, all_uniform_types> _uniforms;
         std::vector<definition> _definitions;
+        bool _enable_reload = false;
     };
 }
 

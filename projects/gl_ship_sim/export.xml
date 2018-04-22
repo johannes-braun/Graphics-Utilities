@@ -1,7 +1,5 @@
 <export>
-    <globals>
-        <item path="shd/gui"/>
-    </globals>
+    <globals/>
 
     <dll>
         <item name="assimp-vc140-mt.dll"/>

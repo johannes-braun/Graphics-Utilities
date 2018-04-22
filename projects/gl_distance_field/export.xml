@@ -2,7 +2,6 @@
     <globals>
         <item path="res/ui/logo.png"/>
         <item path="res/indoor"/>
-        <item path="shd/gui" />
         <item path="shd/postfx/screen.vert" />
     </globals>
 

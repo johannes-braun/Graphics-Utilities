@@ -1,6 +1,5 @@
 <export>
     <globals>
-        <item path="shd/gui" />
         <item path="res/bunny.dae" />
     </globals>
 
