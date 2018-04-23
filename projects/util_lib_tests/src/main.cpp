@@ -16,9 +16,6 @@ namespace sdf
     struct primitive;
     struct modifier;
 
-    enum class distance : uint32_t {};
-    enum class position : uint32_t {};
-
     template<typename T>
     struct bundle;
 
@@ -59,6 +56,12 @@ namespace sdf
         return LengthR * LengthC;
     }
 
+    int serialize(float f, bundle<float>& bundle)
+    {
+        bundle.write(&f, 1);
+        return 1;
+    }
+
     struct distance_instance
     {
         friend primitive;
@@ -92,15 +95,18 @@ namespace sdf
     {
     public:
         named_code(const std::string& name, const std::string& code, int float_count = 0)
-            : _hash(std::hash<std::string>()(name)), _name(name), _code(code), _float_count(float_count) {}
+            : _hash([&name]() {
+            const auto h = std::hash<std::string>()(name);
+            return uint32_t((h & 0xffffffff) ^ ((h >> 32) & 0xffffffff));
+        }()), _name(name), _code(code), _float_count(float_count) {}
 
         const std::string& name() const noexcept { return _name; }
         const std::string& code() const noexcept { return _code; }
-        size_t             hash() const noexcept { return _hash; }
+        uint32_t           hash() const noexcept { return _hash; }
         int         float_count() const noexcept { return _float_count; }
 
     protected:
-        size_t _hash;
+        uint32_t _hash;
         std::string _name;
         std::string _code;
         int _float_count;
@@ -108,7 +114,7 @@ namespace sdf
 
     struct op : named_code
     {
-        using return_type = distance;
+        using return_type = distance_instance;
 
         op(const std::string& name, const std::string& code, int float_count = 0) : named_code(name, code, float_count) {}
 
@@ -120,7 +126,7 @@ namespace sdf
     {
         friend op;
         friend distance_instance;
-        using return_type = distance;
+        using return_type = distance_instance;
 
         primitive(const std::string& name, const std::string& code, int float_count = 0) : named_code(name, code, float_count) {}
 
@@ -141,7 +147,7 @@ namespace sdf
 
     struct modifier : named_code
     {
-        using return_type = position;
+        using return_type = position_instance;
 
         modifier(const std::string& name, const std::string& code, int float_count = 0) : named_code(name, code, float_count) {}
 
@@ -216,36 +222,36 @@ namespace sdf
             _mod_stream << mod_header;
         }
 
-        void enable(const op& o, bool force = false) {
-            if (!force && _hashes.count(o.hash()) != 0)
+        void enable(const op& o) {
+            if (_hashes.count(o.hash()) != 0)
             {
-                log_w << "Operator with name " << o.name() << " already enabled. Set force parameter to true to override.";
+                log_w << "Operator with name " << o.hash() << " already enabled.";
                 return;
             }
-            _op_stream << "case " << _op_count << ": {" << o.code() << ";}\n";
+            _op_stream << "case " << o.hash() << " /* " << o.name() << " */ : {" << o.code() << ";}\n";
             ++_op_count;
             _hashes.emplace(o.hash());
         }
-        void enable(const primitive& p, bool force = false)
+        void enable(const primitive& p)
         {
-            if (!force && _hashes.count(p.hash()) != 0)
+            if (_hashes.count(p.hash()) != 0)
             {
-                log_w << "Primitive with name " << p.name() << " already enabled. Set force parameter to true to override.";
+                log_w << "Primitive with name " << p.name() << " already enabled.";
                 return;
             }
-            _prim_stream << "case " << _prim_count << ": {" << p.code() << ";}\n";
+            _prim_stream << "case " << p.hash() << " /* " << p.name() << " */ : {" << p.code() << ";}\n";
             ++_prim_count;
             _hashes.emplace(p.hash());
         }
 
-        void enable(const modifier& m, bool force = false)
+        void enable(const modifier& m)
         {
-            if (!force && _hashes.count(m.hash()) != 0)
+            if (_hashes.count(m.hash()) != 0)
             {
-                log_w << "Modifier with name " << m.name() << " already enabled. Set force parameter to true to override.";
+                log_w << "Modifier with name " << m.name() << " already enabled.";
                 return;
             }
-            _mod_stream << "case " << _mod_count << ": {" << m.code() << ";}\n";
+            _mod_stream << "case " << m.hash() << " /* " << m.name() << " */ : {" << m.code() << ";}\n";
             ++_mod_count;
             _hashes.emplace(m.hash());
         }
@@ -254,23 +260,173 @@ namespace sdf
             return _op_stream.str() + end + _prim_stream.str() + end + _mod_stream.str() + end;
         }
 
+        int operators() const noexcept { return _op_count; }
+        int primitives() const noexcept { return _prim_count; }
+        int modifiers() const noexcept { return _mod_count; }
+
     private:
-        constexpr static const char* op_header = "float sdf_operator(uint id, uint sdf_instance_id, float sdf_op_lhs, float sdf_op_rhs) {\nswitch(id) {\n";
+        constexpr static const char* op_header = "float sdf_operator(uint id, uint sdf_instance_id, float sdf_op_lhs, float sdf_op_rhs) {\nswitch(id) {\n default: return 0;\n";
         int _op_count = 0;
         std::stringstream _op_stream;
 
-        constexpr static const char* prim_header = "float sdf_primitive(uint id, uint sdf_instance_id, vec3 sdf_position) {\nswitch(id) {\n";
+        constexpr static const char* prim_header = "float sdf_primitive(uint id, uint sdf_instance_id, vec3 sdf_position) {\nswitch(id) {\n default: return 0;\n";
         int _prim_count = 0;
         std::stringstream _prim_stream;
 
-        constexpr static const char* mod_header = "vec3 sdf_modifier(uint id, uint sdf_instance_id, vec3 sdf_position) {\nswitch(id) {\n";
+        constexpr static const char* mod_header = "vec3 sdf_modifier(uint id, uint sdf_instance_id, vec3 sdf_position) {\nswitch(id) {\n default: return vec3(0);\n";
         int _mod_count = 0;
         std::stringstream _mod_stream;
 
-        std::set<uint64_t> _hashes;
+        std::set<uint32_t> _hashes;
 
         constexpr static const char* end = "}}\n\n";
     };
+
+    namespace detail {
+        template<typename T, typename... Params>
+        struct creator_base
+        {
+            creator_base(const std::string& name, const std::string& code)
+                : _obj(name, code, []() {
+                std::initializer_list<size_t> list ={ sizeof(Params)... };
+                return int(std::accumulate(list.begin(), list.end(), 0ull) / sizeof(float));
+            }()) {
+            }
+
+            const T& object() const noexcept
+            {
+                return _obj;
+            }
+
+            operator const T&() const noexcept
+            {
+                return object();
+            }
+
+        protected:
+            T _obj;
+        };
+    }
+
+    template<typename T, typename... Params>
+    struct creator;
+
+    template<typename... Params>
+    struct creator<op, Params...> : detail::creator_base<op, Params...>
+    {
+        creator(const std::string& name, const std::string& code) : detail::creator_base<op, Params...>(name, code) {}
+
+        typename op::return_type make(Params&&... params) const noexcept
+        {
+            return detail::creator_base<op, Params...>::object()(params...);
+        }
+
+        typename op::return_type make(const distance_instance& lhs, const distance_instance& rhs, Params&&... params) const noexcept
+        {
+            return detail::creator_base<op, Params...>::object()(lhs, rhs, params...);
+        }
+
+        typename op::return_type operator()(Params&&... params) const noexcept
+        {
+            return detail::creator_base<op, Params...>::object()(params...);
+        }
+
+        typename op::return_type operator()(const distance_instance& lhs, const distance_instance& rhs, Params&&... params) const noexcept
+        {
+            return detail::creator_base<op, Params...>::object()(lhs, rhs, params...);
+        }
+    };
+
+    template<typename... Params>
+    struct creator<primitive, Params...> : detail::creator_base<primitive, Params...>
+    {
+        creator(const std::string& name, const std::string& code) : detail::creator_base<primitive, Params...>(name, code) {}
+
+        typename primitive::return_type make(Params&&... params) const noexcept
+        {
+            return detail::creator_base<primitive, Params...>::object()(params...);
+        }
+
+        typename primitive::return_type make(const position_instance& pos, Params&&... params) const noexcept
+        {
+            return detail::creator_base<primitive, Params...>::object()(pos, params...);
+        }
+
+        typename primitive::return_type operator()(Params&&... params) const noexcept
+        {
+            return detail::creator_base<primitive, Params...>::object()(params...);
+        }
+
+        typename primitive::return_type operator()(const position_instance& pos, Params&&... params) const noexcept
+        {
+            return detail::creator_base<primitive, Params...>::object()(pos, params...);
+        }
+    };
+
+    template<typename... Params>
+    struct creator<modifier, Params...> : detail::creator_base<modifier, Params...>
+    {
+        creator(const std::string& name, const std::string& code) : detail::creator_base<modifier, Params...>(name, code) {}
+
+        typename modifier::return_type make(Params&&... params) const noexcept
+        {
+            return detail::creator_base<modifier, Params...>::object()(params...);
+        }
+
+        typename modifier::return_type make(const position_instance& pos, Params&&... params) const noexcept
+        {
+            return detail::creator_base<modifier, Params...>::object()(pos, params...);
+        }
+
+        typename modifier::return_type operator()(Params&&... params) const noexcept
+        {
+            return detail::creator_base<modifier, Params...>::object()(params...);
+        }
+
+        typename modifier::return_type operator()(const position_instance& pos, Params&&... params) const noexcept
+        {
+            return detail::creator_base<modifier, Params...>::object()(pos, params...);
+        }
+    };
+
+    /* SDF Box function.
+    @param glm::vec3 dimensions. */
+    const static creator<sdf::primitive, glm::vec3> pr_box{ "box", R"(
+            vec3 size = sdf_get_vec3(sdf_instance_id, 0);
+            return length(max(abs(sdf_position) - size, 0.0)); )" };
+
+    /* SDF sphere function.
+    @param float radius. */
+    const static creator<sdf::primitive, float> pr_sphere{ "sphere", "return length(sdf_position) - sdf_get_float(sdf_instance_id, 0)" };
+
+    /*SDF torus function.
+    @param glm::vec2 inner (x) and outer (y) radii. */
+    const static creator<sdf::primitive, glm::vec2> pr_torus{ "torus", R"(
+            vec2 t = sdf_get_vec2(sdf_instance_id, 0);
+            vec2 q = vec2(length(sdf_position.xz) - t.x, sdf_position.y);
+            return length(sdf_position) - t.y; )" };
+
+    /* SDF union operator. */
+    const static creator<sdf::op> op_union{ "union", "return min(sdf_op_lhs, sdf_op_rhs)" };
+
+    /* SDF subtract operator. */
+    const static creator<sdf::op> op_subtract{ "subtract", "return max(-sdf_op_lhs, sdf_op_rhs)" };
+
+    /* SDF intersect operator. */
+    const static creator<sdf::op> op_intersect{ "intersect", "return max(sdf_op_lhs, sdf_op_rhs)" };
+
+    /* SDF repeat modifier.
+    @param glm::vec3 distances between repeated instances. */
+    const static creator<sdf::modifier, glm::vec3> md_repeat{"repeat", R"(
+            vec3 c = sdf_get_vec3(sdf_instance_id, 0);
+            return mod(sdf_position, c) - 0.5 * c; )" };
+
+    /* SDF transform modifier.
+    @param glm::mat4 the *INVERSE* transformation matrix. */
+    const static creator<sdf::modifier, glm::mat4> md_transform{ "transform", R"(
+            mat4 invmat = sdf_get_mat4(sdf_instance_id, 0);
+            return (invmat * vec4(p, 1)).xyz;
+        )" };
 }
 
 constexpr const char* get_offset = R"(
@@ -290,69 +446,31 @@ float sdf_distance(vec3 sdf_position)
     float distance = 0;
 )";
 
-
-
 int main()
 {
     gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
-    sdf::op op_union("union", "return min(sdf_op_lhs, sdf_op_rhs)");
-    sdf::op op_sub("subtract", "return max(-sdf_op_lhs, sdf_op_rhs)");
-    sdf::op op_intersect("intersect", "return max(sdf_op_lhs, sdf_op_rhs)");
-
-
-    sdf::primitive prim_box("box", R"(
-            vec3 size = sdf_get_vec3(sdf_instance_id, 0);
-            return length(max(abs(sdf_position)-size,0.0));
-        )", 3);
-    sdf::primitive prim_sphere("sphere", "return length(sdf_position)-sdf_get_float(sdf_instance_id, 0)", 1);
-    sdf::primitive prim_torus("torus", R"(
-            vec2 t = sdf_get_vec2(sdf_instance_id, 0);
-            vec2 q = vec2(length(sdf_position.xz)-t.x, sdf_position.y);
-            return length(sdf_position)-t.y;
-        )", 1);
-
-
-    sdf::modifier mod_rep("repeat", R"(
-            vec3 c = sdf_get_vec3(sdf_instance_id, 0);
-            return mod(sdf_position,c)-0.5*c;
-        )", 3);
-    sdf::modifier mod_transform("transform", R"(
-            mat4 invmat = sdf_get_mat4(sdf_instance_id, 0); // Inverse Mat4!
-            return (invmat * vec4(p, 1)).xyz;
-        )", 3);
-
-
     sdf::host host;
-    host.enable(op_union);
-    host.enable(op_sub);
-    host.enable(op_intersect);
+    host.enable(sdf::op_union);
+    host.enable(sdf::op_subtract);
+    host.enable(sdf::op_intersect);
 
-    host.enable(prim_box);
-    host.enable(prim_sphere);
-    host.enable(prim_torus);
+    host.enable(sdf::pr_box);
+    host.enable(sdf::pr_sphere);
+    host.enable(sdf::pr_torus);
 
-    host.enable(mod_rep);
-    host.enable(mod_transform);
-    host.enable(mod_transform);
+    host.enable(sdf::md_repeat);
+    host.enable(sdf::md_transform);
 
     const auto opfun = host.assemble();
 
-
-
-    auto code = op_union(op_union(prim_box(mod_rep(glm::vec3(9, 2, 3)), glm::vec3(1, 4, 4)), prim_box(glm::vec3(3, 2, 1))), prim_box(mod_rep(glm::vec3(9, 2, 3)), glm::vec3(2, 9, 0.2f)));
-
-    std::stringstream shader;
-    shader << build_function(op_union);
-    shader << build_function(prim_box);
-    shader << build_function(mod_rep);
-    shader << get_offset;
-    shader << sdf_prefix;
-    shader << "distance=" << code.str() << ";\nreturn distance;\n}";
-    std::string shader_code = shader.str();
-
-    auto data = code.get_bundle().stream_data();
-    std::vector<float> datatata(data.begin(), data.end());
+    const auto rep_box      = sdf::pr_box(sdf::md_repeat(glm::vec3(9, 2, 3)), glm::vec3(1, 4, 4));
+    const auto rep_sphere   = sdf::pr_sphere(sdf::md_repeat(glm::vec3(9, 2, 3)), 0.3f);
+    const auto box          = sdf::pr_box(glm::vec3(3, 2, 1));
+    const auto object       = sdf::op_union(sdf::op_union(rep_box, box), rep_sphere);
+    auto code = object.str();
+    auto data = object.get_bundle().stream_data();
+    std::vector<float> dvec(data.begin(), data.end());
 
     auto window = std::make_shared<gfx::window>("opengl", "Title", 1280, 720);
     window->set_icon(gfx::image_file("ui/logo.svg", 1.f));
