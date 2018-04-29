@@ -706,6 +706,17 @@ namespace sdf2
     };
 }
 
+struct par
+{
+    par(const std::string& name, const size_t length) : _name(name), _length(length) {}
+    const std::string& name() const noexcept { return _name; }
+    size_t length() const noexcept { return _length; }
+
+private:
+    std::string _name;
+    size_t _length;
+};
+
 int main()
 {
     gl::shader::set_include_directories({ "../shd", SOURCE_DIRECTORY "/global/shd" });
