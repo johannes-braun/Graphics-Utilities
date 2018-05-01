@@ -1,13 +1,16 @@
 #include "../spline.hpp"
+#include <numeric>
+#include <algorithm>
 
 namespace gfx
 {
-    void bspline::add(const point& p)
+    [[maybe_unused]] bspline& bspline::add(const vertex2d& p)
     {
-        _points.emplace_back(p);
-        _selection_points.emplace_back(p);
+        _points.insert(_points.end(), p);
+        _selection_points.insert(_selection_points.end(), p);
+        return *this;
     }
-    void bspline::add(const point& p, size_t after)
+    void bspline::add(const vertex2d& p, size_t after)
     {
         _points.insert(_points.begin() + after, p);
         _selection_points.insert(_selection_points.begin() + after, p);
@@ -18,11 +21,11 @@ namespace gfx
         _selection_points.erase(_selection_points.begin() + at);
     }
 
-    std::vector<point> bspline::build(type type, int order, int samples, glm::vec2 offset) const
+    std::vector<vertex2d> bspline::build(type type, int order, int samples, glm::vec2 offset) const
     {
         if (order==0) return _points;
-        std::vector<point> sampled(samples);
-        std::vector<point> points;
+        std::vector<vertex2d> sampled(samples);
+        std::vector<vertex2d> points;
 
         float tmin = 0, tmax = 0;
         switch (type) {
@@ -54,7 +57,7 @@ namespace gfx
         for (int i=0; i < samples; ++i)
         {
             const float t = std::min(glm::mix(tmin, tmax, float(i) / (samples-1)), tmax);// *(_knots.size() - 2 * (order)+1);
-            sampled[i] = std::accumulate(points.begin(), points.end(), point{ offset, glm::u8vec4(0) }, [&, cp = 0] (point c, const point& next) mutable {
+            sampled[i] = std::accumulate(points.begin(), points.end(), vertex2d{ offset, {}, glm::u8vec4(0) }, [&, cp = 0] (vertex2d c, const vertex2d& next) mutable {
                 const float cdb = cox_de_boor(t, cp++, order);
                 c.position += next.position * cdb;
                 c.color += glm::vec4(next.color) * cdb;
@@ -65,12 +68,12 @@ namespace gfx
         return sampled;
     }
 
-    const std::vector<point>& bspline::points() const noexcept
+    const std::vector<vertex2d>& bspline::points() const noexcept
     {
         return _points;
     }
 
-    point& bspline::operator[](const size_t idx)
+    vertex2d& bspline::operator[](const size_t idx)
     {
         return _points[idx];
     }

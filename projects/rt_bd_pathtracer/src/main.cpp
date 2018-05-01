@@ -71,7 +71,7 @@ int main()
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
-    const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex), offsetof(gfx::vertex, position), sizeof(uint32_t), 0);
+    const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
 
     splash.set_progress(0.1f, L"Building Line Space");
     gfx::grid_updated = [&](float f) mutable { splash.set_progress(0.1f + 0.3f * f, L"Building Line Space: " + std::to_wstring(int(f*100)) + L"%"); };
@@ -110,7 +110,7 @@ int main()
     line_space_datas.synchronize();
     splash.set_progress(0.7f, L"Packing buffers");
 
-    gl::buffer<gfx::vertex> vbo(mesh.vertices.begin(), mesh.vertices.end());
+    gl::buffer<gfx::vertex3d> vbo(mesh.vertices.begin(), mesh.vertices.end());
     gl::buffer<gfx::index32> ibo(mesh.indices.begin(), mesh.indices.end());
     gl::buffer<gl::byte> bvh(packed.begin(), packed.end());
 
@@ -186,7 +186,7 @@ int main()
             {
                 gfx::scene_file file(item);
                 std::vector<uint32_t> indices;
-                std::vector<gfx::vertex> vertices;
+                std::vector<gfx::vertex3d> vertices;
                 size_t begin = 0;
                 int mid = 0;
                 for (const auto& mesh : file.meshes)
@@ -208,9 +208,9 @@ int main()
                 }
 
                 gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
-                const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex), offsetof(gfx::vertex, position), sizeof(uint32_t), 0);
+                const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
 
-                vbo = gl::buffer<gfx::vertex>(vertices.begin(), vertices.end());
+                vbo = gl::buffer<gfx::vertex3d>(vertices.begin(), vertices.end());
                 ibo = gl::buffer<gfx::index32>(indices.begin(), indices.end());
                 bvh = gl::buffer<gl::byte>(packed.begin(), packed.end());
                 data[0].vbo = vbo.handle();

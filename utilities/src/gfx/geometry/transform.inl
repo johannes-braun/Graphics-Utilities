@@ -97,9 +97,9 @@ namespace gfx
         return result;
     }
 
-    constexpr vertex transform::operator*(const vertex& other) const noexcept
+    constexpr vertex3d transform::operator*(const vertex3d& other) const noexcept
     {
-        vertex p(other);
+        vertex3d p(other);
         p.position.x *= scale.x;
         p.position.y *= scale.y;
         p.position.z *= scale.z;

@@ -172,7 +172,7 @@ int main()
     cube_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("cube.frag");
     
     namespace cube = gfx::cube_preset;
-    gl::buffer<gfx::vertex> vbo(cube::vertices.begin(), cube::vertices.end());
+    gl::buffer<gfx::vertex3d> vbo(cube::vertices.begin(), cube::vertices.end());
     gl::buffer<gfx::index32> ibo(cube::indices.begin(), cube::indices.end());
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -267,8 +267,8 @@ int main()
         glFrontFace(GL_CW);
 
         cube_pipeline.bind();
-        cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(gfx::vertex, position));
-        cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(gfx::vertex, uv));
+        cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(gfx::vertex3d, position));
+        cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(gfx::vertex3d, uv));
 
         cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.projection() * camera.view();
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = sampler.sample(grid);

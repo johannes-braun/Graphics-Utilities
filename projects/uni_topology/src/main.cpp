@@ -38,7 +38,7 @@ int main(int argc, const char** argv)
     main_window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "Topology", 1280, 720);
 
     gfx::scene_file geometry("bunny.dae");
-    std::vector<gfx::vertex>& mesh_vertices = geometry.meshes.begin()->vertices;
+    std::vector<gfx::vertex3d>& mesh_vertices = geometry.meshes.begin()->vertices;
     std::vector<gfx::index32>& mesh_indices = geometry.meshes.begin()->indices;
 
     faces.resize(mesh_indices.size() / 3);

@@ -30,7 +30,7 @@ int main()
     gfx::camera_controller controller(window);
 
     gfx::scene_file ship_file("ship.dae");
-    gl::buffer<gfx::vertex> ship_vbo(ship_file.meshes.begin()->vertices.begin(), ship_file.meshes.begin()->vertices.end());
+    gl::buffer<gfx::vertex3d> ship_vbo(ship_file.meshes.begin()->vertices.begin(), ship_file.meshes.begin()->vertices.end());
     gl::buffer<gfx::index32> ship_ibo(ship_file.meshes.begin()->indices.begin(), ship_file.meshes.begin()->indices.end());
 
     gl::pipeline ship_pipeline;
@@ -44,7 +44,7 @@ int main()
 
     constexpr int size = 10;
     constexpr int fsize = 5;
-    gl::buffer<gfx::vertex> sail_vertices(size * size + fsize * fsize, GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::vertex3d> sail_vertices(size * size + fsize * fsize, GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<gfx::index32> sail_indices((size - 1) * (size - 1) * 6 + (fsize-1) * (fsize-1) * 6, GL_DYNAMIC_STORAGE_BIT);
 
     gfx::image_file sail_image("sail.jpg", gfx::bits::b8, 4);
@@ -198,9 +198,9 @@ int main()
         model_buffer.synchronize();
 
         ship_pipeline.bind();
-        ship_pipeline.bind_attribute(0, ship_vbo, 3, GL_FLOAT, offsetof(gfx::vertex, position), sizeof(gfx::vertex));
-        ship_pipeline.bind_attribute(1, ship_vbo, 3, GL_FLOAT, offsetof(gfx::vertex, normal), sizeof(gfx::vertex));
-        ship_pipeline.bind_attribute(2, ship_vbo, 2, GL_FLOAT, offsetof(gfx::vertex, uv), sizeof(gfx::vertex));
+        ship_pipeline.bind_attribute(0, ship_vbo, 3, GL_FLOAT, offsetof(gfx::vertex3d, position), sizeof(gfx::vertex3d));
+        ship_pipeline.bind_attribute(1, ship_vbo, 3, GL_FLOAT, offsetof(gfx::vertex3d, normal), sizeof(gfx::vertex3d));
+        ship_pipeline.bind_attribute(2, ship_vbo, 2, GL_FLOAT, offsetof(gfx::vertex3d, uv), sizeof(gfx::vertex3d));
         ship_pipeline.bind_uniform_buffer(0, data_buffer);
         ship_pipeline.bind_uniform_buffer(1, model_buffer);
         ship_pipeline.draw(GL_TRIANGLES, ship_ibo, GL_UNSIGNED_INT);
@@ -213,9 +213,9 @@ int main()
         model_buffer.synchronize();
 
         ship_pipeline.bind();
-        ship_pipeline.bind_attribute(0, sail_vertices, 3, GL_FLOAT, offsetof(gfx::vertex, position), sizeof(gfx::vertex));
-        ship_pipeline.bind_attribute(1, sail_vertices, 3, GL_FLOAT, offsetof(gfx::vertex, normal), sizeof(gfx::vertex));
-        ship_pipeline.bind_attribute(2, sail_vertices, 2, GL_FLOAT, offsetof(gfx::vertex, uv), sizeof(gfx::vertex));
+        ship_pipeline.bind_attribute(0, sail_vertices, 3, GL_FLOAT, offsetof(gfx::vertex3d, position), sizeof(gfx::vertex3d));
+        ship_pipeline.bind_attribute(1, sail_vertices, 3, GL_FLOAT, offsetof(gfx::vertex3d, normal), sizeof(gfx::vertex3d));
+        ship_pipeline.bind_attribute(2, sail_vertices, 2, GL_FLOAT, offsetof(gfx::vertex3d, uv), sizeof(gfx::vertex3d));
         ship_pipeline.bind_uniform_buffer(0, data_buffer);
         ship_pipeline.bind_uniform_buffer(1, model_buffer);
         ship_pipeline.draw(GL_TRIANGLES, sail_indices, GL_UNSIGNED_INT);

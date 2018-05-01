@@ -111,7 +111,7 @@ namespace gfx
             std::string                 name;
             const material*             material;
             std::vector<gfx::index32>   indices;
-            std::vector<gfx::vertex>    vertices;
+            std::vector<gfx::vertex3d>    vertices;
             gfx::transform              transform;
         };
 

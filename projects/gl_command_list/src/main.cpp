@@ -44,7 +44,7 @@ int main()
     gfx::scene_file scene("bunny.dae");
     const auto& verts = scene.meshes.begin()->vertices;
     const auto& inds = scene.meshes.begin()->indices;
-    gl::buffer<gfx::vertex> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::vertex3d> vbo(verts.begin(), verts.end(), GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<uint32_t> ibo(inds.begin(), inds.end(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     ibo.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT);
 
@@ -54,7 +54,7 @@ int main()
     ibo.flush();
     ibo.unmap();
 
-    std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(gfx::vertex), offsetof(gfx::vertex, position), sizeof(uint32_t), 0);
+    std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
 
     gl::buffer<gl::byte> bvh_buffer(packed_bvh.begin(), packed_bvh.end());
 
@@ -109,16 +109,16 @@ int main()
         glEnableVertexAttribArray(a); 
         glVertexAttribFormatNV(a, c, t, n, int(s)); 
     };
-    add_attrib(0, 3, GL_FLOAT, false, sizeof(gfx::vertex));
-    add_attrib(1, 3, GL_FLOAT, false, sizeof(gfx::vertex));
-    add_attrib(2, 2, GL_FLOAT, false, sizeof(gfx::vertex));
+    add_attrib(0, 3, GL_FLOAT, false, sizeof(gfx::vertex3d));
+    add_attrib(1, 3, GL_FLOAT, false, sizeof(gfx::vertex3d));
+    add_attrib(2, 2, GL_FLOAT, false, sizeof(gfx::vertex3d));
     state.capture(GL_TRIANGLES);
 
     gl::command_buffer command_buffer;
     command_buffer.start();
-    command_buffer.push(gl::cmd_attribute_address{ 0, vbo.handle() + offsetof(gfx::vertex, position) });
-    command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(gfx::vertex, normal) });
-    command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(gfx::vertex, uv) });
+    command_buffer.push(gl::cmd_attribute_address{ 0, vbo.handle() + offsetof(gfx::vertex3d, position) });
+    command_buffer.push(gl::cmd_attribute_address{ 1, vbo.handle() + offsetof(gfx::vertex3d, normal) });
+    command_buffer.push(gl::cmd_attribute_address{ 2, vbo.handle() + offsetof(gfx::vertex3d, uv) });
     command_buffer.push(gl::cmd_element_address{ ibo.handle(), sizeof(uint32_t) });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_VERTEX_SHADER, uniform_buffer1.handle() });
     command_buffer.push(gl::cmd_uniform_address{ 0, GL_FRAGMENT_SHADER, uniform_buffer2.handle() });

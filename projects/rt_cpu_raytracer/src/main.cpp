@@ -18,7 +18,7 @@ int main()
     gfx::camera_controller controller(main_window);
 
     gfx::scene_file geom("bunny.dae");
-    std::vector<gfx::vertex> vertices(geom.meshes.begin()->vertices.begin(), geom.meshes.begin()->vertices.end());
+    std::vector<gfx::vertex3d> vertices(geom.meshes.begin()->vertices.begin(), geom.meshes.begin()->vertices.end());
     std::vector<gfx::index32> indices(geom.meshes.begin()->indices.begin(), geom.meshes.begin()->indices.end());
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);

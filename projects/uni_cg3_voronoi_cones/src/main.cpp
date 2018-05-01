@@ -12,7 +12,7 @@ int main()
     const auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[CG3] Voronoi Cones", 1280, 720, hints);
     gfx::imgui imgui(window);
 
-    gl::buffer<gfx::vertex> cone_vertices(GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::vertex3d> cone_vertices(GL_DYNAMIC_STORAGE_BIT);
     cone_vertices.emplace_back(glm::vec3(0, 0, 0));
     constexpr int res = 24;
     for (int i=0; i<res+1; ++i)

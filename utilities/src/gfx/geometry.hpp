@@ -5,16 +5,19 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/io.hpp>
+#include <glm/ext.hpp>
 
 namespace gfx
 {
     using index32 = uint32_t;
-    struct vertex
+    using index16 = uint16_t;
+
+    struct vertex3d
     {
-        constexpr vertex() = default;
-        constexpr vertex(glm::vec3 position) noexcept;
-        constexpr vertex(glm::vec3 position, glm::vec3 norm) noexcept;
-        constexpr vertex(glm::vec3 position, glm::vec2 uv, glm::vec3 norm) noexcept;
+        constexpr vertex3d() = default;
+        constexpr vertex3d(glm::vec3 position) noexcept;
+        constexpr vertex3d(glm::vec3 position, glm::vec3 norm) noexcept;
+        constexpr vertex3d(glm::vec3 position, glm::vec2 uv, glm::vec3 norm) noexcept;
 
         glm::vec3   position{ 0, 0, 0 };
         uint32_t    metadata_position   = 0;
@@ -22,6 +25,18 @@ namespace gfx
         uint32_t    metadata_normal     = 0;
         glm::vec2   uv{ 0, 0 };
         uint64_t    metadata_uv         = 0;
+    };
+
+    struct vertex2d
+    {
+        constexpr vertex2d() = default;
+        constexpr vertex2d(glm::vec2 position) noexcept;
+        constexpr vertex2d(glm::vec2 position, glm::vec2 uv) noexcept;
+        constexpr vertex2d(glm::vec2 position, glm::vec2 uv, glm::u8vec4 color) noexcept;
+
+        alignas(16) glm::vec2 position{ 0, 0 };
+        alignas(8) glm::vec2 uv{ 0, 0 };
+        alignas(8) glm::u8vec4 color{ glm::u8vec1(0), glm::u8vec1(0), glm::u8vec1(0), glm::u8vec1(255) };
     };
 
     struct transform
@@ -38,7 +53,7 @@ namespace gfx
 
         constexpr transform operator*(const transform& other) const noexcept;
         constexpr transform& operator*=(const transform& other) noexcept;
-        constexpr vertex operator*(const vertex& other) const noexcept;
+        constexpr vertex3d operator*(const vertex3d& other) const noexcept;
 
         constexpr transform(const glm::mat4& mat) noexcept;
         constexpr operator glm::mat4() const noexcept;
@@ -101,19 +116,19 @@ namespace gfx
 
 namespace gfx::cube_preset
 {
-    constexpr std::array<vertex, 24> vertices{
+    constexpr std::array<vertex3d, 24> vertices{
         //Back
-        vertex({ -1, 1, -1 },{ 0, 1 },{ 0, 0, -1 }), vertex({ 1, 1, -1 },{ 1, 1 },{ 0, 0, -1 }), vertex({ 1, -1, -1 },{ 1, 0 },{ 0, 0, -1 }), vertex({ -1, -1, -1 },{ 0, 0 },{ 0, 0, -1 }),
+        vertex3d({ -1, 1, -1 },{ 0, 1 },{ 0, 0, -1 }), vertex3d({ 1, 1, -1 },{ 1, 1 },{ 0, 0, -1 }), vertex3d({ 1, -1, -1 },{ 1, 0 },{ 0, 0, -1 }), vertex3d({ -1, -1, -1 },{ 0, 0 },{ 0, 0, -1 }),
         //Front
-        vertex({ -1, 1, 1 },{ 0, 1 },{ 0, 0, 1 }), vertex({ 1, 1, 1 },{ 1, 1 },{ 0, 0, 1 }), vertex({ 1, -1, 1 },{ 1, 0 },{ 0, 0, 1 }), vertex({ -1, -1, 1 },{ 0, 0 },{ 0, 0, 1 }),
+        vertex3d({ -1, 1, 1 },{ 0, 1 },{ 0, 0, 1 }), vertex3d({ 1, 1, 1 },{ 1, 1 },{ 0, 0, 1 }), vertex3d({ 1, -1, 1 },{ 1, 0 },{ 0, 0, 1 }), vertex3d({ -1, -1, 1 },{ 0, 0 },{ 0, 0, 1 }),
         //Bottom
-        vertex({ -1, -1, -1 },{ 0, 0 },{ 0, -1, 0 }), vertex({ 1, -1, -1 },{ 0, 1 },{ 0, -1, 0 }), vertex({ 1, -1, 1 },{ 1, 1 },{ 0, -1, 0 }), vertex({ -1, -1, 1 },{ 0, 1 },{ 0, -1, 0 }),
+        vertex3d({ -1, -1, -1 },{ 0, 0 },{ 0, -1, 0 }), vertex3d({ 1, -1, -1 },{ 0, 1 },{ 0, -1, 0 }), vertex3d({ 1, -1, 1 },{ 1, 1 },{ 0, -1, 0 }), vertex3d({ -1, -1, 1 },{ 0, 1 },{ 0, -1, 0 }),
         //Top
-        vertex({ -1, 1, -1 },{ 0, 0 },{ 0, 1, 0 }), vertex({ 1, 1, -1 },{ 1, 0 },{ 0, 1, 0 }), vertex({ 1, 1, 1 },{ 1, 1 },{ 0, 1, 0 }), vertex({ -1, 1, 1 },{ 0, 1 },{ 0, 1, 0 }),
+        vertex3d({ -1, 1, -1 },{ 0, 0 },{ 0, 1, 0 }), vertex3d({ 1, 1, -1 },{ 1, 0 },{ 0, 1, 0 }), vertex3d({ 1, 1, 1 },{ 1, 1 },{ 0, 1, 0 }), vertex3d({ -1, 1, 1 },{ 0, 1 },{ 0, 1, 0 }),
         //Right
-        vertex({ 1, -1, -1 },{ 0, 0 },{ 1, 0, 0 }), vertex({ 1, 1, -1 },{ 1, 0 },{ 1, 0, 0 }), vertex({ 1, 1, 1 },{ 1, 1 },{ 1, 0, 0 }), vertex({ 1, -1, 1 },{ 0, 1 },{ 1, 0, 0 }),
+        vertex3d({ 1, -1, -1 },{ 0, 0 },{ 1, 0, 0 }), vertex3d({ 1, 1, -1 },{ 1, 0 },{ 1, 0, 0 }), vertex3d({ 1, 1, 1 },{ 1, 1 },{ 1, 0, 0 }), vertex3d({ 1, -1, 1 },{ 0, 1 },{ 1, 0, 0 }),
         //Left
-        vertex({ -1, -1, -1 },{ 0, 0 },{ -1, 0, 0 }), vertex({ -1, 1, -1 },{ 1, 0 },{ -1, 0, 0 }), vertex({ -1, 1, 1 },{ 1, 1 },{ -1, 0, 0 }), vertex({ -1, -1, 1 },{ 0, 1 },{ -1, 0, 0 }),
+        vertex3d({ -1, -1, -1 },{ 0, 0 },{ -1, 0, 0 }), vertex3d({ -1, 1, -1 },{ 1, 0 },{ -1, 0, 0 }), vertex3d({ -1, 1, 1 },{ 1, 1 },{ -1, 0, 0 }), vertex3d({ -1, -1, 1 },{ 0, 1 },{ -1, 0, 0 }),
     };
 
     constexpr std::array<index32, 36> indices{

@@ -69,7 +69,7 @@ namespace gfx
 #pragma omp parallel for schedule(static)
             for (auto i = 0; i < static_cast<int>(ai_mesh->mNumVertices); ++i)
             {
-                current_mesh.vertices[i] = gfx::vertex(
+                current_mesh.vertices[i] = gfx::vertex3d(
                     to_vec3(ai_mesh->mVertices[i]),
                     ai_mesh->HasTextureCoords(0) ? glm::vec2(to_vec3(ai_mesh->mTextureCoords[0][i])) : glm::vec2(0),
                     to_vec3(ai_mesh->mNormals[i])
