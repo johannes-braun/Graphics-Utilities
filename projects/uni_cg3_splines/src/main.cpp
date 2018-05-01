@@ -5,23 +5,11 @@
 #include <numeric>
 #include <random>
 
-struct oka
-{
-    glm::mat4 pv;
-    glm::vec3 pos;
-    float fov;
-    glm::vec3 dir;
-    float tid;
-    glm::vec3 col;
-    uint32_t shadow;
-    uint64_t sm;
-};
-
 int main()
 {
     gfx::window_hints hints;
     hints[GLFW_SAMPLES] = 8;
-    auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[gfx] Splines", 1280, 720, hints);
+    auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[CG3] Splines", 1280, 720, hints);
     gfx::imgui gui(window);
 
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });

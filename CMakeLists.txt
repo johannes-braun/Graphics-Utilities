@@ -109,6 +109,10 @@ foreach(subdir ${children})
             file(RENAME "${GFX_PROJECTS_FOLDER}/${subdir}/export_default.xml" ${GFX_PROJECTS_FOLDER}/${subdir}/export.xml)
         endif()
 
+        if(NOT EXISTS ${GFX_PROJECTS_FOLDER}/${subdir}/readme.md)
+            file(WRITE ${GFX_PROJECTS_FOLDER}/${subdir}/readme.md "No description available.")
+        endif()
+
         add_executable(${subdir} ${EXE_SOURCES} ${WIN_RESOURCES})
         target_link_libraries(${subdir} ${GFX_LIBRARIES})
         file(COPY ${GFX_DLLS} DESTINATION "${GFX_PROJECTS_FOLDER}/${subdir}/bin")
