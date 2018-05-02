@@ -15,15 +15,15 @@ int main()
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
     gfx::bspline spline;
-    spline.add(gfx::point{ glm::vec2(50, 50), glm::u8vec4(255, 128, 40, 255) });
-    spline.add(gfx::point{ glm::vec2(200, 200), glm::u8vec4(0, 66, 72, 255) });
-    spline.add(gfx::point{ glm::vec2(50, 400), glm::u8vec4(128, 128, 40, 255) });
-    spline.add(gfx::point{ glm::vec2(600, 500), glm::u8vec4(255, 0, 3, 255) });
-    spline.add(gfx::point{ glm::vec2(800, 200), glm::u8vec4(67, 22, 221, 255) });
-    spline.add(gfx::point{ glm::vec2(300, 300), glm::u8vec4(142, 34, 115, 255) });
+    spline.add(gfx::vertex2d{ glm::vec2(50, 50), glm::u8vec4(255, 128, 40, 255) });
+    spline.add(gfx::vertex2d{ glm::vec2(200, 200), glm::u8vec4(0, 66, 72, 255) });
+    spline.add(gfx::vertex2d{ glm::vec2(50, 400), glm::u8vec4(128, 128, 40, 255) });
+    spline.add(gfx::vertex2d{ glm::vec2(600, 500), glm::u8vec4(255, 0, 3, 255) });
+    spline.add(gfx::vertex2d{ glm::vec2(800, 200), glm::u8vec4(67, 22, 221, 255) });
+    spline.add(gfx::vertex2d{ glm::vec2(300, 300), glm::u8vec4(142, 34, 115, 255) });
 
-    gl::buffer<gfx::point> point_buffer(GL_DYNAMIC_STORAGE_BIT);
-    gl::buffer<gfx::point> cpoint_buffer(GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::vertex2d> point_buffer(GL_DYNAMIC_STORAGE_BIT);
+    gl::buffer<gfx::vertex2d> cpoint_buffer(GL_DYNAMIC_STORAGE_BIT);
 
     gl::buffer<glm::mat4> globals_buffer(1, GL_DYNAMIC_STORAGE_BIT);
     globals_buffer[0] = glm::mat4(1.f);
@@ -103,7 +103,7 @@ int main()
                         cnn.dist = d;
                     }
                 }
-                spline.add(gfx::point{ glm::vec2(mx, my), glm::u8vec4(255*dst(eng), 255*dst(eng), 255*dst(eng), 255) }, cnn.idx);
+                spline.add(gfx::vertex2d{ glm::vec2(mx, my), glm::u8vec4(255*dst(eng), 255*dst(eng), 255*dst(eng), 255) }, cnn.idx);
             }
             mmpress = true;
         }
@@ -140,7 +140,7 @@ int main()
         }, nullptr, 2);
         ImGui::End();
 
-        std::vector<gfx::point> sp = spline.build(gfx::bspline::type(type), order, res);
+        std::vector<gfx::vertex2d> sp = spline.build(gfx::bspline::type(type), order, res);
         point_buffer.clear();
         point_buffer.insert(point_buffer.end(), sp.begin(), sp.end());
         point_buffer.insert(point_buffer.end(), spline.points().begin(), spline.points().end());
@@ -148,15 +148,15 @@ int main()
         if (order > 1)
         {
             glLineWidth(10.f);
-            spline_pipeline.bind_attribute(0, 0, point_buffer, 2, GL_FLOAT, offsetof(gfx::point, position));
-            spline_pipeline.bind_attribute(1, 0, point_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(gfx::point, color));
+            spline_pipeline.bind_attribute(0, 0, point_buffer, 2, GL_FLOAT, offsetof(gfx::vertex2d, position));
+            spline_pipeline.bind_attribute(1, 0, point_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(gfx::vertex2d, color));
             spline_pipeline.draw(GL_LINE_STRIP, sp.size());
             glPointSize(10.f);
             spline_pipeline.draw(GL_POINTS, sp.size());
         }
 
-        spline_pipeline.bind_attribute(0, 0, point_buffer, 2, GL_FLOAT, offsetof(gfx::point, position));
-        spline_pipeline.bind_attribute(1, 0, point_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(gfx::point, color));
+        spline_pipeline.bind_attribute(0, 0, point_buffer, 2, GL_FLOAT, offsetof(gfx::vertex2d, position));
+        spline_pipeline.bind_attribute(1, 0, point_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(gfx::vertex2d, color));
         glLineWidth(2.f);
         spline_pipeline.draw(gfx::bspline::type(type) == gfx::bspline::type::open ? GL_LINE_STRIP : GL_LINE_LOOP, spline.points().size(), sp.size());
         glPointSize(20.f);

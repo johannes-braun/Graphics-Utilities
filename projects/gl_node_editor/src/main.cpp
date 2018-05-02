@@ -8,6 +8,9 @@
 #include <ui/draw_list.hpp>
 #include "draw.hpp"
 
+glm::vec2 mouse_pos;
+std::shared_ptr<gfx::window> window;
+
 class node
 {
 public:
@@ -58,11 +61,90 @@ private:
     std::vector<gfx::bspline> _in_connection_points;
 };
 
+class connector
+{
+public:
+    connector(const gfx::vertex2d& center, bool out)
+        : center(center), out(out) {}
+
+    std::vector<gfx::draw::info> draw() const
+    {
+        if (glm::distance(mouse_pos, center.position) < 6.f)
+        {
+            radius = glm::mix(radius, 5.f, 20.f*window->delta_time());
+            mouse_inside = true;
+        }
+        else
+        {
+            radius = glm::mix(radius, 3.f, 20.f*window->delta_time());
+            mouse_inside = false;
+        }
+
+        std::vector<gfx::draw::info> is(2);
+        is[0] = gfx::draw::as_quickfill(gfx::draw::make_circle({ center.position,{},center.color}, radius, 16));
+        is[1] = gfx::draw::as_stroke(gfx::draw::make_circle({ center.position,{},{ 25, 25, 25, 255 } }, radius, 16), 1.5f, gfx::draw::side::outside);
+        return is;
+    }
+
+    bool compatible(const connector& other) const noexcept
+    {
+        return other.center.color == center.color;
+    }
+
+    bool is_out() const noexcept
+    {
+        return out;
+    }
+
+    bool is_mouse_inside() const noexcept
+    {
+        return mouse_inside;
+    }
+
+    gfx::vertex2d center;
+
+private:
+    bool out = false;
+    mutable bool mouse_inside = false;
+    mutable float radius = 3.f;
+};
+
+class connection
+{
+public:
+    connection(const std::shared_ptr<connector>& start, const std::shared_ptr<connector>& end)
+        : start_connector(start), end_connector(end) {}
+    connection(const std::shared_ptr<connector>& start, const gfx::vertex2d& end)
+        : start_connector(start), end_connector(nullptr), end_override(end) {}
+
+    std::vector<gfx::draw::info> draw() const
+    {
+        gfx::vertex2d end = end_connector ? end_connector->center : end_override;
+        float len = glm::distance(start_connector->center.position, end.position);
+        std::vector<gfx::vertex2d> control_points{
+            gfx::vertex2d(start_connector->center.position,{},start_connector->center.color),
+            gfx::vertex2d(start_connector->center.position + glm::vec2(len/1.5, 0),{},start_connector->center.color),
+            gfx::vertex2d(end.position - glm::vec2(len/1.5, 0),{},end.color),
+            gfx::vertex2d(end.position,{}, end.color),
+        };
+
+        std::vector<gfx::draw::info> is(3);
+        is[0] = gfx::draw::as_stroke(gfx::draw::make_open_spline(control_points, 40, 4), 2.f);
+        is[1] = gfx::draw::as_quickfill(gfx::draw::make_circle({ end.position,{}, end.color }, 2.f, 16));
+        is[2] = gfx::draw::as_quickfill(gfx::draw::make_circle({ end.position,{},{ 25, 25, 25, 255 } }, 1.f, 16));
+        return is;
+    }
+
+    std::shared_ptr<connector> start_connector;
+    std::shared_ptr<connector> end_connector;
+    gfx::vertex2d end_override;
+};
+
 int main()
 {
     gfx::window_hints hints;
     hints[GLFW_SAMPLES] = 8;
-    auto window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[gfx] Splines", 1280, 720, hints);
+    window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "[gfx] Splines", 1280, 720, hints);
     gfx::imgui gui(window);
 
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
@@ -193,6 +275,18 @@ int main()
     gl::buffer<gfx::index16> index_buffer(GL_DYNAMIC_STORAGE_BIT);
     gl::buffer<gfx::vertex2d> vertex_buffer(GL_DYNAMIC_STORAGE_BIT);
 
+    std::vector<std::shared_ptr<connector>> connectors;
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 200, 200 }, {}, { 0, 128, 255, 255 }), true));
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 200, 220 }, {}, { 128, 255, 0, 255 }), true));
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 200, 240 }, {}, { 255, 0, 255, 255 }), true));
+
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 400, 320 }, {}, { 128, 255, 0, 255 }), false));
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 400, 400 }, {}, { 0, 128, 255, 255 }), false));
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 400, 420 }, {}, { 255, 128, 0, 255 }), false));
+    connectors.emplace_back(std::make_shared<connector>(gfx::vertex2d({ 400, 440 }, {}, { 0, 128, 255, 255 }), false));
+
+    std::vector<connection> connections;
+
     while (window->update())
     {
         gui.new_frame();
@@ -204,7 +298,8 @@ int main()
         double mx, my;
         glfwGetCursorPos(*window, &mx, &my);
         const glm::vec2 mpos(mx, my);
-        glm::u8vec4 col(255, 0, 0, 255);
+        mouse_pos ={ mx, my };
+       /* glm::u8vec4 col(255, 0, 0, 255);
 
         bool hover = false;
         static glm::u8vec4 hcol(255, 0, 0, 255);
@@ -329,24 +424,82 @@ int main()
                 spline_pipeline.draw(GL_TRIANGLE_FAN, 17, cbrb);
                 cbrb += 17;
             }
+        }*/
+
+        static bool conn_lock = false;
+        static std::shared_ptr<connector> tstart = nullptr;
+        static std::shared_ptr<connector> tend= nullptr;
+        for (const auto& conn : connectors)
+        {
+            if (!conn_lock && conn->is_mouse_inside() && glfwGetMouseButton(*window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            {
+                if (conn->is_out())
+                {
+                    connections.emplace_back(connection(conn, conn->center));
+                    conn_lock = true;
+                    tstart = conn;
+                    tend = nullptr;
+                }
+                else
+                {
+                    for (auto it = connections.begin(); it != connections.end(); ++it)
+                    {
+                        if (it->end_connector == conn)
+                        {
+                            std::iter_swap(it, connections.end()-1);
+                            conn_lock = true;
+                            tstart = conn;
+                            tend = nullptr;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (conn_lock && glfwGetMouseButton(*window, GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE)
+        {
+            connections.back().end_override = mouse_pos;
+            connections.back().end_connector = nullptr;
+            tend = nullptr;
+            for (const auto& in : connectors)
+            {
+                if (!in->is_out() && in->is_mouse_inside() && tstart->compatible(*in) && (glfwGetKey(*window, GLFW_KEY_LEFT_SHIFT) != GLFW_PRESS))
+                {
+                    connections.back().end_connector = in;
+                    tend = in;
+                }
+            }
         }
 
-        glm::vec2 beg ={ 200, 200 };
-        glm::vec2 end ={ mx, my };
-        float len = glm::distance(beg, end);
+        if (conn_lock && glfwGetMouseButton(*window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+        {
+            conn_lock = false;
+            
+            if (tend == nullptr)
+            {
+                connections.erase(connections.end()-1);
+            }
+            else
+            {
+                for (auto it = connections.begin(); it != connections.end()-1; ++it)
+                {
+                    if ((*it).end_connector == tend)
+                    {
+                        it = connections.erase(it);
+                        break;
+                    }
+                }
+            }
+        }
 
-        std::vector<gfx::vertex2d> control_points{
-            gfx::vertex2d(beg,{},{ 255, 128, 0, 255 }),
-            gfx::vertex2d(beg + glm::vec2(len/1.5, 0),{},{ 255, 128, 0, 255 }),
-            gfx::vertex2d(end - glm::vec2(len/1.5, 0),{},{ 255, 128, 0, 255 }),
-            gfx::vertex2d(end,{},{ 255, 128, 0, 255 }),
-        };
+        for(const auto& connection : connections)
+            for (const auto& i : connection.draw())
+                submit_info(i);
 
-        submit_info(gfx::draw::as_stroke(gfx::draw::make_open_spline(control_points, 40, 4), 2.f));
-        submit_info(gfx::draw::as_quickfill(gfx::draw::make_circle({ {200, 200}, {},{255, 128, 0, 255 } }, 3.f, 16)));
-        submit_info(gfx::draw::as_stroke(gfx::draw::make_circle({ {200, 200}, {},{ 25, 25, 25, 255 } }, 3.f, 16), 1.5f, gfx::draw::side::outside));
-
-        submit_info(gfx::draw::as_quickfill(gfx::draw::make_circle({ { mx, my },{},{ 25, 25, 25, 255 } }, 3.f, 16)));
+        for(const auto& connector : connectors)
+            for (const auto& c : connector->draw())
+                submit_info(c);
 
         vertex_buffer.clear();
         vertex_buffer.insert(vertex_buffer.begin(), draw_info.vertices.begin(), draw_info.vertices.end());
