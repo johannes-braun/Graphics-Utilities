@@ -92,6 +92,8 @@ namespace gl
         int width() const noexcept;
         int height() const noexcept;
         int depth() const noexcept;
+        int levels() const noexcept;
+        GLenum internal_format() const noexcept;
         uint64_t handle() const noexcept;
 
         operator gl_texture_t() const noexcept;

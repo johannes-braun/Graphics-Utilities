@@ -374,9 +374,19 @@ namespace gl
         return _depth;
     }
 
+    int texture::levels() const noexcept
+    {
+        return _levels;
+    }
+
     uint64_t texture::handle() const noexcept
     {
         return _handle;
+    }
+
+    GLenum texture::internal_format() const noexcept
+    {
+        return _internal_format;
     }
 
     texture::operator gl_texture_t() const noexcept

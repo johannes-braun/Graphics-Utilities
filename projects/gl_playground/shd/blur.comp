@@ -1,0 +1,45 @@
+#define THREADS 256
+#define KERNEL_SIZE 15
+#define KERNEL_HALF (KERNEL_SIZE >> 1)
+#define CHUNK_SIZE (THREADS - (KERNEL_HALF << 1))
+
+#ifndef DIRECTION
+#define DIRECTION 1
+#endif
+
+layout(local_size_x = DIRECTION==0?THREADS:1, local_size_y = DIRECTION==1?THREADS:1) in;
+
+layout(binding = 0) uniform sampler2D in_texture;
+layout(binding = 1, rgba8) uniform image2D out_image;
+
+const float kernel[KERNEL_SIZE] = {
+    0.023089,0.034587,0.048689,0.064408,0.080066,0.093531,0.102673,0.105915,0.102673,0.093531,0.080066,0.064408,0.048689,0.034587,0.023089
+};
+
+shared vec4 shared_colors[THREADS];
+
+void main()
+{
+    const ivec2 tex_size = imageSize(out_image);
+
+    ivec2 pos = ivec2(gl_WorkGroupID.xy);
+    pos[DIRECTION] = int((pos[DIRECTION] * CHUNK_SIZE) + gl_LocalInvocationIndex);
+    ivec2 offset = ivec2(0, 0);
+    offset[DIRECTION] = KERNEL_HALF;
+    
+    ivec2 tex = clamp(pos - offset, ivec2(0), tex_size - 1);
+    shared_colors[gl_LocalInvocationIndex] = textureLod(in_texture, tex / vec2(tex_size), 0);
+
+    barrier();
+
+    if(gl_LocalInvocationIndex < CHUNK_SIZE && pos[DIRECTION] < tex_size[DIRECTION])
+    {
+        vec4 result = vec4(0);
+
+        for(int i=0; i<KERNEL_SIZE; ++i)
+        {
+            result += shared_colors[gl_LocalInvocationIndex + i] * kernel[i];
+        }
+        imageStore(out_image, pos, result);
+    }
+}

@@ -127,7 +127,7 @@ int main(int argc, const char** args)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     window = glfwCreateWindow(1280, 720, "A Triangle", nullptr, nullptr);
     glfwMakeContextCurrent(window);
-
+    
     // Load OpenGL functions from system processes
     mygl::load();
 
