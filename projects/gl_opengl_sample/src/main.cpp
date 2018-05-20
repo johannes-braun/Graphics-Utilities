@@ -23,6 +23,18 @@ const std::array<vertex, 4> quad_vertices{vertex{{-0.5f, -0.5f, 0.f, 1.f}, {0.f,
                                           vertex{{-0.5f, 0.5f, 0.f, 1.f}, {0.f, 1.f}}};
 const std::array<index, 6>  quad_indices{0, 1, 2, 0, 2, 3};
 
+template<auto fun>
+struct A
+{
+    void f() { fun(); }
+};
+
+void x()
+{
+    
+}
+void y() { A<&x>().f(); }
+
 struct matrices
 {
     alignas(16 /*bytes*/) uint64_t object_texture_handle;
@@ -124,7 +136,7 @@ int main(int argc, const char** args)
     // Create your buffers
     constexpr int vertex_buffer_index = 0;
     constexpr int index_buffer_index  = 1;
-    mygl::buffer   buffers[2];
+    mygl::buffer  buffers[2];
     glCreateBuffers(2, buffers);
 
     // Allocate Buffer Memory and assign data
@@ -163,7 +175,7 @@ int main(int argc, const char** args)
 
     // Create shaders
     constexpr const char* vertex_shader_sources[2] = {shader_header, vertex_shader_code};
-    mygl::shader_program   vertex_shader =
+    mygl::shader_program  vertex_shader =
             glCreateShaderProgramv(GL_VERTEX_SHADER, 2, vertex_shader_sources);
     constexpr const char* fragment_shader_sources[2] = {shader_header, fragment_shader_code};
     mygl::shader_program  fragment_shader =

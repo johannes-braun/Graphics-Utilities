@@ -16,7 +16,7 @@
       "buildRoot": "${env.buildPath}",
       "installRoot": "${env.installPath}",
       "cmakeCommandArgs": "",
-      "buildCommandArgs": "-v",
+      "buildCommandArgs": "",
       "ctestCommandArgs": ""
     },
     {
@@ -28,7 +28,7 @@
       "buildRoot": "${env.buildPath}",
       "installRoot": "${env.installPath}",
       "cmakeCommandArgs": "",
-      "buildCommandArgs": "-v",
+      "buildCommandArgs": "",
       "ctestCommandArgs": ""
     },
     {
@@ -40,7 +40,7 @@
       "buildRoot": "${env.buildPath}",
       "installRoot": "${env.installPath}",
       "cmakeCommandArgs": "",
-      "buildCommandArgs": "-v",
+      "buildCommandArgs": "",
       "ctestCommandArgs": ""
     }
   ]

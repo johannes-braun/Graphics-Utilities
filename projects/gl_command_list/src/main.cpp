@@ -35,7 +35,7 @@ int main()
     });
     renderer = std::make_unique<gfx::renderer>(start_width, start_height, start_samples);
     renderer->set_clear_color(glm::vec4(background, 1.f));
-    
+
     gfx::imgui gui(window);
 
     gfx::camera camera;
@@ -53,7 +53,7 @@ int main()
    
     ibo.flush();
     ibo.unmap();
-
+    
     std::vector<uint8_t> packed_bvh = bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
 
     gl::buffer<gl::byte> bvh_buffer(packed_bvh.begin(), packed_bvh.end());

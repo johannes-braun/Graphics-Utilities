@@ -19,7 +19,7 @@ namespace gl
     template<typename T = byte>
     class buffer
     {
-        template<typename It>
+        template<typename It> 
         struct iterator_has_difference {
         private:
             template<typename I, typename = decltype(std::declval<I>() - std::declval<I>())> constexpr static bool has_diff() { return true; }

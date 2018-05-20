@@ -4,7 +4,6 @@
 #include <glm/glm.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/io.hpp>
 #include <glm/ext.hpp>
 
 namespace gfx
