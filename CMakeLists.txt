@@ -7,18 +7,6 @@ set(GFX_UTILITIES_FOLDER    ${PROJECT_SOURCE_DIR}/utilities)
 set(GFX_CMAKE_FOLDER        ${PROJECT_SOURCE_DIR}/cmake)
 
 include(${GFX_CMAKE_FOLDER}/setup_util.cmake)
-compile_submodule(glm)
-compile_submodule(pugixml)
-compile_submodule(glshader)
-
-set(GFX_LIB_ARGS -DCMAKE_BUILD_TYPE=Release -DMYGL_SETTINGS_PATH="\"${GFX_GLOBAL_FOLDER}/src/mygl_settings.xml\"")
-compile_submodule(mygl)
-set(GFX_LIB_ARGS -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DGLFW_BUILD_EXAMPLES=OFF)
-compile_submodule(glfw3)
-set(GFX_LIB_ARGS -DALSOFT_UTILS=OFF -DALSOFT_EXAMPLES=OFF -DALSOFT_TESTS=OFF)
-compile_submodule(openal-soft)
-set(GFX_LIB_ARGS -DCMAKE_CXX_FLAGS=${ASSIMP_CXX_FLAGS} -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release)
-compile_submodule(assimp)
 
 add_definitions(
     -DGLFW_INCLUDE_NONE -DSTBI_MSC_SECURE_CRT -DGLM_FORCE_RADIANS

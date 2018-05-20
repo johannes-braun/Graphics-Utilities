@@ -107,17 +107,17 @@ void main()
     vec3 direction = normalize((camera_matrix * vec4(uv, 0, 1)).xyz);
     vec3 origin = camera_position.xyz;
 
-    ls_result ls_r = resolve_line_space(origin, direction, grid_line_space, vbo, ibo, 1.f / 0.f);
+  //  ls_result ls_r = resolve_line_space(origin, direction, grid_line_space, vbo, ibo, 1.f / 0.f);
 
-    vertex* vertices2 = (vertex*) vbo;
-    triangle* tri = (((triangle*)ibo) + ls_r.triangle);
+   // vertex* vertices2 = (vertex*) vbo;
+  //  triangle* tri = (((triangle*)ibo) + ls_r.triangle);
 
-    vec2 lsbary = ls_r.bary;
-    float lsdist = ls_r.distance;
-    const vec3 lsnorm = vertices2[tri->b].normal.xyz * lsbary.x + vertices2[tri->c].position.xyz * lsbary.y + vertices2[tri->a].position.xyz * (1 - lsbary.x - lsbary.y);
+  //  vec2 lsbary = ls_r.bary;
+  //  float lsdist = ls_r.distance;
+  //  const vec3 lsnorm = vertices2[tri->b].normal.xyz * lsbary.x + vertices2[tri->c].position.xyz * lsbary.y + vertices2[tri->a].position.xyz * (1 - lsbary.x - lsbary.y);
 
-    imageStore(img, pixel, ls_r.triangle == -1 ? vec4(0) : vec4(lsnorm, 1));
-    return;
+  //  imageStore(img, pixel, ls_r.triangle == -1 ? vec4(0) : vec4(lsnorm, 1));
+  //  return;
     
     bvh_state_set_mode(bvh_mode_nearest);
     bvh_result current_result = bvh_hit(origin.xyz, direction.xyz, bvh, ibo, vbo, 10000000000.f);

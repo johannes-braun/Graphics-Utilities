@@ -6,3 +6,5 @@
 !/eigen/
 !/opencv/
 !.gitignore
+!/mygl/
+!/glm/
