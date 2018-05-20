@@ -16,9 +16,9 @@ namespace gl
 
         void capture(GLenum primitive) const noexcept;
 
-        operator gl_state_nv_t() const noexcept { return _id; }
+        operator mygl::state() const noexcept { return _id; }
 
     private:
-        gl_state_nv_t _id;
+        mygl::state _id;
     };
 }

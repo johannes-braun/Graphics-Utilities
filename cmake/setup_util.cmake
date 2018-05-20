@@ -9,12 +9,8 @@ macro(compile_submodule lib_name)
 endmacro(compile_submodule)
 
 macro(compile_all)
-    compile_submodule(glm)
     compile_submodule(pugixml)
     compile_submodule(glshader)
-
-    set(GFX_LIB_ARGS -DCMAKE_BUILD_TYPE=Release -DMYGL_SETTINGS_PATH="\"${GFX_GLOBAL_FOLDER}/src/mygl_settings.xml\"")
-    compile_submodule(mygl)
     set(GFX_LIB_ARGS -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DGLFW_BUILD_EXAMPLES=OFF)
     compile_submodule(glfw3)
     set(GFX_LIB_ARGS -DALSOFT_UTILS=OFF -DALSOFT_EXAMPLES=OFF -DALSOFT_TESTS=OFF)

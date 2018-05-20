@@ -1,5 +1,5 @@
 #include "../context.hpp"
-#include <mygl/gl.hpp>
+#include <mygl/mygl.hpp>
 
 #if defined(WIN32)
 #include <Windows.h>

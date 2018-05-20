@@ -112,7 +112,7 @@ namespace game
         };
         struct indirect
         {
-            gl_texture_t texture;
+            mygl::texture texture;
             uint32_t count;
             uint32_t base_index;
             uint32_t base_vertex;
@@ -177,8 +177,8 @@ namespace game
                     }
                     else
                     {
-                        _pbuf[0].has_texture = ind.texture != gl_texture_t::zero;
-                        _pbuf[0].tex = ind.texture != gl_texture_t::zero ? _sampler.sample(ind.texture) : 0;
+                        _pbuf[0].has_texture = ind.texture != mygl::texture::zero;
+                        _pbuf[0].tex = ind.texture != mygl::texture::zero ? _sampler.sample(ind.texture) : 0;
                         _pbuf.synchronize();
                         _pip.draw(GL_TRIANGLES, _ibuf, GL_UNSIGNED_SHORT, ind.count, ind.base_index, ind.base_vertex);
                     }
@@ -201,7 +201,7 @@ namespace game
             ind.base_vertex = verts.size();
             ind.base_index = idxes.size();
             ind.count = prim_triangle.size();
-            ind.texture = gl_texture_t::zero;
+            ind.texture = mygl::texture::zero;
             verts.emplace_back(vtx{ a,{ 0, 0 }, color });
             verts.emplace_back(vtx{ b,{ 0, 0 }, color });
             verts.emplace_back(vtx{ c,{ 0, 0 }, color });
@@ -210,10 +210,10 @@ namespace game
         }
 
         void draw_quad(glm::vec2 min, glm::vec2 max, glm::u8vec4 color) {
-            draw_quad(min, max, { 0, 0 }, { 1, 1 }, gl_texture_t::zero, color);
+            draw_quad(min, max, { 0, 0 }, { 1, 1 }, mygl::texture::zero, color);
         }
 
-        void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax, gl_texture_t texture, glm::u8vec4 color ={ 255, 255, 255, 255 }) {
+        void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax, mygl::texture texture, glm::u8vec4 color ={ 255, 255, 255, 255 }) {
             indirect ind;
             ind.base_vertex = verts.size();
             ind.base_index = idxes.size();
@@ -238,7 +238,7 @@ namespace game
             ind.base_vertex = verts.size();
             ind.base_index = idxes.size();
             ind.count = 5*6;
-            ind.texture = gl_texture_t(0);
+            ind.texture = mygl::texture(0);
 
             verts.emplace_back(vtx{ { min.x+offset.x, max.y+offset.y },{ 0,0 }, color });
             verts.emplace_back(vtx{ { min.x+offset.x, min.y+offset.y },{ 0,0 }, color });
@@ -300,7 +300,7 @@ namespace game
             ind.base_vertex = 0;
             ind.base_index = 0;
             ind.count = 0;
-            ind.texture = gl_texture_t(0);
+            ind.texture = mygl::texture(0);
             ind.cmd = [min, max]() { glScissor(std::ceil(min.x), std::ceil(min.y), std::ceil(max.x - min.x), std::ceil(max.y - min.y)); };
             _indirects[{_current_prio, _current_window}].push_back(ind);
         }

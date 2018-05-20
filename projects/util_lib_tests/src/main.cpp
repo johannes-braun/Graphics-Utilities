@@ -798,7 +798,7 @@ int main()
     while (window->update())
     {
         imgui.new_frame();
-        ImGui::Image(uint32_t(gl_texture_t(tex)), { 512, 512 });
+        ImGui::Image(uint32_t(mygl::texture(tex)), { 512, 512 });
         imgui.render();
     }
 

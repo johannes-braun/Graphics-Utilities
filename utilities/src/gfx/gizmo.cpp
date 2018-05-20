@@ -399,7 +399,7 @@ namespace gfx
         _translate_pipeline.draw(GL_LINE_LOOP, _index_buffer, GL_UNSIGNED_SHORT, circle_resolution, 18, 21 + circle_resolution);
         _translate_pipeline.draw(GL_LINE_LOOP, _index_buffer, GL_UNSIGNED_SHORT, circle_resolution, 18, 21 + 2 * circle_resolution);
 
-        glUseProgram(gl_shader_program_t(last_program));
+        glUseProgram(mygl::shader_program(last_program));
         glBlendEquationSeparate(GLenum(last_blend_equation_rgb), GLenum(last_blend_equation_alpha));
         glBlendFuncSeparate(GLenum(last_blend_src_rgb), GLenum(last_blend_dst_rgb), GLenum(last_blend_src_alpha), GLenum(last_blend_dst_alpha));
         last_enable_blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);

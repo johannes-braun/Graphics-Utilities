@@ -2,9 +2,7 @@
 #include <gfx/imgui.hpp>
 #include <opengl/framebuffer.hpp>
 #include <opengl/query.hpp>
-#include <mygl/gl_enums.hpp>
-#include <mygl/gl_types.hpp>
-#include <mygl/gl_functions.hpp>
+#include <mygl/mygl.hpp>
 #include <gfx/log.hpp>
 
 class gauss_blur
@@ -34,7 +32,7 @@ public:
 
     void operator()(const std::shared_ptr<gl::texture>& in, const std::shared_ptr<gl::texture>& out, int level = 0)
     {
-        gl_texture_t texture_views[2];
+        mygl::texture texture_views[2];
         glGenTextures(2, texture_views);
 
         assert(out->width() == in->width()
@@ -54,7 +52,14 @@ public:
         glViewport(0, 0, in->width()>>level, in->height()>>level);
         _blur_ppx.bind();
         glBindSampler(0, _sampler);
-        glTextureView(texture_views[0], GL_TEXTURE_2D, uint32_t(static_cast<gl_texture_t>(*in)), in->internal_format(), level, 1, 0, 1);
+        glTextureView(texture_views[0],
+                      GL_TEXTURE_2D,
+                      uint32_t(static_cast<mygl::texture>(*in)),
+                      in->internal_format(),
+                      level,
+                      1,
+                      0,
+                      1);
         glBindTextureUnit(0, texture_views[0]);
         _fbos[0].bind();
         _fbos[0].set_drawbuffer(GL_COLOR_ATTACHMENT0);
@@ -62,7 +67,14 @@ public:
 
         _blur_ppy.bind();
         glBindSampler(0, _sampler);
-        glTextureView(texture_views[1], GL_TEXTURE_2D, uint32_t(static_cast<gl_texture_t>(*_texture)), _texture->internal_format(), level, 1, 0, 1);
+        glTextureView(texture_views[1],
+                      GL_TEXTURE_2D,
+                      uint32_t(static_cast<mygl::texture>(*_texture)),
+                      _texture->internal_format(),
+                      level,
+                      1,
+                      0,
+                      1);
         glBindTextureUnit(0, texture_views[1]);
         _fbos[1].bind();
         _fbos[1].set_drawbuffer(GL_COLOR_ATTACHMENT0);

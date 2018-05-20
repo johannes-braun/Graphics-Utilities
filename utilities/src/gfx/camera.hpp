@@ -5,7 +5,7 @@
 #include "window.hpp"
 
 #include <glm/glm.hpp>
-#include <mygl/gl.hpp>
+#include <mygl/mygl.hpp>
 #include <GLFW/glfw3.h>
 
 namespace gfx

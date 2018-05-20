@@ -162,8 +162,8 @@ int main()
         uniform_buffer2[0].vertices = vbo.handle();
 
         renderer->bind();
-        gl_framebuffer_t fbos = renderer->main_framebuffer();
-        gl_state_nv_t states = state;
+        mygl::framebuffer fbos = renderer->main_framebuffer();
+        mygl::state states = state;
         glDrawCommandsStatesAddressNV(&command_buffer.indirect, &command_buffer.size, &states, &fbos, 1);
         renderer->draw(window->delta_time());
 

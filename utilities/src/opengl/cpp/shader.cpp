@@ -112,7 +112,7 @@ namespace gl
 
     shader& shader::operator=(shader&& other) noexcept
     {
-        if (_id != gl_shader_program_t::zero)
+        if (_id != mygl::shader_program::zero)
             glDeleteProgram(_id);
 
         _id = other._id;
@@ -121,14 +121,14 @@ namespace gl
         _type = other._type;
         _uniforms = std::move(other._uniforms);
 
-        other._id = gl_shader_program_t::zero;
+        other._id = mygl::shader_program::zero;
         other._type = GL_ZERO;
         return *this;
     }
 
     shader::~shader() noexcept
     {
-        if (_id != gl_shader_program_t::zero)
+        if (_id != mygl::shader_program::zero)
             glDeleteProgram(_id);
     }
 
@@ -139,7 +139,7 @@ namespace gl
             glsp::shader_binary bin = compiler().compile(_path, glsp::format::gl_binary, false, _include_directories, _definitions);
             if(!bin.data.empty())
             {
-                if (_id != gl_shader_program_t::zero)
+                if (_id != mygl::shader_program::zero)
                     glDeleteProgram(_id);
                 _id = glCreateProgram();
                 glProgramParameteri(_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
@@ -147,13 +147,13 @@ namespace gl
             }
             else
             {
-                if (_id == gl_shader_program_t::zero)
+                if (_id == mygl::shader_program::zero)
                 {
                     tlog_h("GL Shader") << "Press [ENTER] to try again...";
                     std::cin.get();
                 }
             }
-        } while (_id == gl_shader_program_t::zero);
+        } while (_id == mygl::shader_program::zero);
 
         _uniforms.clear();
     }
@@ -164,7 +164,7 @@ namespace gl
         reload();
     }
 
-    shader::operator gl_shader_program_t() const noexcept
+    shader::operator mygl::shader_program() const noexcept
     {
         return _id;
     }

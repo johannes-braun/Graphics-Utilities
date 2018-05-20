@@ -39,7 +39,7 @@ namespace gl
 
     stage& stage::operator=(nullptr_t)
     {
-        glUseProgramStages(*_pipeline, stage_bitfield(_type), gl_shader_program_t::zero);
+        glUseProgramStages(*_pipeline, stage_bitfield(_type), mygl::shader_program::zero);
         glValidateProgramPipeline(*_pipeline);
         return *this;
     }
@@ -84,11 +84,11 @@ namespace gl
 
     pipeline& pipeline::operator=(const pipeline& other) noexcept
     {
-        if (_id != gl_program_pipeline_t::zero)
+        if (_id != mygl::pipeline::zero)
             glDeleteProgramPipelines(1, &_id);
-        if (other._id == gl_program_pipeline_t::zero)
+        if (other._id == mygl::pipeline::zero)
         {
-            _id = gl_program_pipeline_t::zero;
+            _id = mygl::pipeline::zero;
             return *this;
         }
         else glCreateProgramPipelines(1, &_id);
@@ -103,17 +103,17 @@ namespace gl
 
     pipeline& pipeline::operator=(pipeline&& other) noexcept
     {
-        if (_id != gl_program_pipeline_t::zero)
+        if (_id != mygl::pipeline::zero)
             glDeleteProgramPipelines(1, &_id);
         _id = other._id;
         _stages = std::move(other._stages);
-        other._id = gl_program_pipeline_t::zero;
+        other._id = mygl::pipeline::zero;
         return *this;
     }
 
     pipeline::~pipeline() noexcept
     {
-        if (_id != gl_program_pipeline_t::zero)
+        if (_id != mygl::pipeline::zero)
             glDeleteProgramPipelines(1, &_id);
     }
 
@@ -141,11 +141,11 @@ namespace gl
 
     void pipeline::bind() const noexcept
     {
-        glBindVertexArray(gl_vertex_array_t::zero);
+        glBindVertexArray(mygl::vertex_array::zero);
         glBindProgramPipeline(_id);
     }
 
-    pipeline::operator gl_program_pipeline_t() const noexcept
+    pipeline::operator mygl::pipeline() const noexcept
     {
         return _id;
     }
@@ -192,11 +192,11 @@ namespace gl
 
     compute_pipeline& compute_pipeline::operator=(const compute_pipeline& other) noexcept
     {
-        if (_id != gl_program_pipeline_t::zero)
+        if (_id != mygl::pipeline::zero)
             glDeleteProgramPipelines(1, &_id);
-        if (other._id == gl_program_pipeline_t::zero)
+        if (other._id == mygl::pipeline::zero)
         {
-            _id = gl_program_pipeline_t::zero;
+            _id = mygl::pipeline::zero;
             return *this;
         }
         else glCreateProgramPipelines(1, &_id);
@@ -207,18 +207,18 @@ namespace gl
 
     compute_pipeline& compute_pipeline::operator=(compute_pipeline&& other) noexcept
     {
-        if (_id != gl_program_pipeline_t::zero)
+        if (_id != mygl::pipeline::zero)
             glDeleteProgramPipelines(1, &_id);
         _id = other._id;
         _group_sizes = std::move(other._group_sizes);
         _shader = std::move(other._shader);
-        other._id = gl_program_pipeline_t::zero;
+        other._id = mygl::pipeline::zero;
         return *this;
     }
 
     compute_pipeline::~compute_pipeline() noexcept
     {
-        if (_id != gl_program_pipeline_t::zero)
+        if (_id != mygl::pipeline::zero)
             glDeleteProgramPipelines(1, &_id);
     }
 
@@ -235,7 +235,7 @@ namespace gl
             invocation_count(count_z, _group_sizes[2]));
     }
 
-    compute_pipeline::operator gl_program_pipeline_t() const noexcept
+    compute_pipeline::operator mygl::pipeline() const noexcept
     {
         return _id;
     }

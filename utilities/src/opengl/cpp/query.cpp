@@ -16,19 +16,19 @@ namespace gl
     query::query(query&& other) noexcept
         : _id(other._id), _type(other._type)
     {
-        other._id = gl_query_t::zero;
+        other._id = mygl::query::zero;
         other._type = GL_ZERO;
     }
 
     query& query::operator=(const query& other) noexcept
     {
-        if (_id != gl_query_t::zero)
+        if (_id != mygl::query::zero)
             glDeleteQueries(1, &_id);
         _type = other._type;
-        if (other._id != gl_query_t::zero)
+        if (other._id != mygl::query::zero)
             glCreateQueries(_type, 1, &_id);
         else
-            _id = gl_query_t::zero;
+            _id = mygl::query::zero;
         return *this;
     }
 
@@ -36,14 +36,14 @@ namespace gl
     {
         _id = other._id;
         _type = other._type;
-        other._id = gl_query_t::zero;
+        other._id = mygl::query::zero;
         other._type = GL_ZERO;
         return *this;
     }
 
     query::~query() noexcept
     {
-        if (_id != gl_query_t::zero)
+        if (_id != mygl::query::zero)
             glDeleteQueries(1, &_id);
     }
 

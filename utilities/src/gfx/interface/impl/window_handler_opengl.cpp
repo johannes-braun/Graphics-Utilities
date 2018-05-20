@@ -1,5 +1,5 @@
 #include "../window_handler.hpp"
-#include <mygl/gl.hpp>
+#include <mygl/mygl.hpp>
 #include "../../window.hpp"
 #include "../../log.hpp"
 
@@ -36,7 +36,7 @@ namespace gfx
     void window_handler_opengl::do_update()
     {
         glfwSwapBuffers(get_window());
-        glBindFramebuffer(GL_FRAMEBUFFER, gl_framebuffer_t::zero);
+        glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     }
 }

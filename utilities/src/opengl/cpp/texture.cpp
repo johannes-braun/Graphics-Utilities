@@ -130,7 +130,7 @@ namespace gl
 
     texture& texture::operator=(const texture& other) noexcept
     {
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         _type = other._type;
         _internal_format = other._internal_format;
@@ -139,13 +139,13 @@ namespace gl
         _handle = other._handle;
 
 
-        if (other._id == gl_texture_t::zero)
+        if (other._id == mygl::texture::zero)
         {
             _width = other._width;
             _height = other._height;
             _depth = other._depth;
             _samples = other._samples;
-            _id = gl_texture_t::zero;
+            _id = mygl::texture::zero;
             return *this;
         }
         else glCreateTextures(_type, 1, &_id);
@@ -183,7 +183,7 @@ namespace gl
 
     texture& texture::operator=(texture&& other) noexcept
     {
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         _id = other._id;
         _type = other._type;
@@ -196,13 +196,13 @@ namespace gl
         _samples = other._samples;
         _handle = other._handle;
 
-        other._id = gl_texture_t::zero;
+        other._id = mygl::texture::zero;
         return *this;
     }
 
     texture::~texture()
     {
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
     }
 
@@ -211,7 +211,7 @@ namespace gl
         if (width == _width)
             return;
         _width = width;
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         glCreateTextures(_type, 1, &_id);
         glTextureStorage1D(_id, _levels, _internal_format, _width);
@@ -224,7 +224,7 @@ namespace gl
             return;
         _width = width;
         _height = height;
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         glCreateTextures(_type, 1, &_id);
         glTextureStorage2D(_id, _levels, _internal_format, _width, _height);
@@ -238,7 +238,7 @@ namespace gl
         _width = width;
         _height = height;
         _depth = depth;
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         glCreateTextures(_type, 1, &_id);
         glTextureStorage3D(_id, _levels, _internal_format, _width, _height, _depth);
@@ -252,7 +252,7 @@ namespace gl
         _width = width;
         _height = height;
         _samples = samples;
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         glCreateTextures(_type, 1, &_id);
         glTextureStorage2DMultisample(_id, 1 << uint32_t(samples), _internal_format, _width, _height, _fixed_sample_locations);
@@ -267,7 +267,7 @@ namespace gl
         _height = height;
         _depth = depth;
         _samples = samples;
-        if (_id != gl_texture_t::zero)
+        if (_id != mygl::texture::zero)
             glDeleteTextures(1, &_id);
         glCreateTextures(_type, 1, &_id);
         glTextureStorage3DMultisample(_id, 1 << uint32_t(samples), _internal_format, _width, _height, _depth, _fixed_sample_locations);
@@ -344,12 +344,12 @@ namespace gl
         glGetTextureImage(_id, level, format, type, static_cast<int>(size), target);
     }
 
-    void texture::set_buffer(gl_buffer_t buffer, GLenum internal_format) const noexcept
+    void texture::set_buffer(mygl::buffer buffer, GLenum internal_format) const noexcept
     {
         glTextureBuffer(_id, internal_format, buffer);
     }
 
-    void texture::set_buffer(gl_buffer_t buffer, GLenum internal_format, size_t size, size_t offset) const noexcept
+    void texture::set_buffer(mygl::buffer buffer, GLenum internal_format, size_t size, size_t offset) const noexcept
     {
         glTextureBufferRange(_id, internal_format, buffer, offset, size);
     }
@@ -389,7 +389,7 @@ namespace gl
         return _internal_format;
     }
 
-    texture::operator gl_texture_t() const noexcept
+    texture::operator mygl::texture() const noexcept
     {
         return _id;
     }
@@ -448,11 +448,11 @@ namespace gl
 
     sampler& sampler::operator=(const sampler& other) noexcept
     {
-        if (_id != gl_sampler_t::zero)
+        if (_id != mygl::sampler::zero)
             glDeleteSamplers(1, &_id);
-        if (other._id == gl_sampler_t::zero)
+        if (other._id == mygl::sampler::zero)
         {
-            _id = gl_sampler_t::zero;
+            _id = mygl::sampler::zero;
             return *this;
         }
         else glCreateSamplers(1, &_id);
@@ -479,16 +479,16 @@ namespace gl
 
     sampler& sampler::operator=(sampler&& other) noexcept
     {
-        if (_id != gl_sampler_t::zero)
+        if (_id != mygl::sampler::zero)
             glDeleteSamplers(1, &_id);
         _id = other._id;
-        other._id = gl_sampler_t::zero;
+        other._id = mygl::sampler::zero;
         return *this;
     }
 
     sampler::~sampler() noexcept
     {
-        if (_id != gl_sampler_t::zero)
+        if (_id != mygl::sampler::zero)
             glDeleteSamplers(1, &_id);
     }
 
@@ -502,7 +502,7 @@ namespace gl
         glSamplerParameterf(_id, name, value);
     }
 
-    uint64_t sampler::sample(gl_texture_t t) const noexcept
+    uint64_t sampler::sample(mygl::texture t) const noexcept
     {
         if (!glGetTextureSamplerHandleARB)
             return 0;
@@ -512,7 +512,7 @@ namespace gl
         return handle;
     }
 
-    sampler::operator gl_sampler_t() const noexcept
+    sampler::operator mygl::sampler() const noexcept
     {
         return _id;
     }
@@ -525,14 +525,14 @@ namespace gl
 
     image::image(const texture& t, const int level, const GLenum format, const GLenum access) noexcept
     {
-        _handle = (t == gl_texture_t::zero ? 0 : glGetImageHandleARB(t, level, false, 0, format));
+        _handle = (t == mygl::texture::zero ? 0 : glGetImageHandleARB(t, level, false, 0, format));
         if (_handle) glMakeImageHandleResidentARB(_handle, access);
     }
 
     image::image(const texture& t, const int level, const int layer, const GLenum format, const GLenum access) noexcept
         : _handle(glGetImageHandleARB(t, level, true, layer, format))
     {
-        _handle = (t == gl_texture_t::zero ? 0 : glGetImageHandleARB(t, level, true, layer, format));
+        _handle = (t == mygl::texture::zero ? 0 : glGetImageHandleARB(t, level, true, layer, format));
         if (_handle) glMakeImageHandleResidentARB(_handle, access);
     }
 

@@ -1,3 +1,3 @@
 #pragma once
 
-#include <mygl/gl.hpp>
+#include <mygl/mygl.hpp>

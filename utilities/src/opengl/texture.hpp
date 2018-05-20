@@ -85,8 +85,8 @@ namespace gl
 
         void get_data(GLenum format, GLenum type, size_t size, void* target) const noexcept;
         void get_data(int level, GLenum format, GLenum type, size_t size, void* target) const noexcept;
-        void set_buffer(gl_buffer_t buffer, GLenum internal_format) const noexcept;
-        void set_buffer(gl_buffer_t buffer, GLenum internal_format, size_t size, size_t offset) const noexcept;
+        void set_buffer(mygl::buffer buffer, GLenum internal_format) const noexcept;
+        void set_buffer(mygl::buffer buffer, GLenum internal_format, size_t size, size_t offset) const noexcept;
         void generate_mipmaps() const noexcept;
 
         int width() const noexcept;
@@ -96,12 +96,12 @@ namespace gl
         GLenum internal_format() const noexcept;
         uint64_t handle() const noexcept;
 
-        operator gl_texture_t() const noexcept;
+        operator mygl::texture() const noexcept;
 
     private:
         void init_handle() noexcept;
 
-        gl_texture_t _id = gl_texture_t::zero;
+        mygl::texture _id = mygl::texture::zero;
         GLenum _type;
         GLenum _internal_format;
         int _levels{ 1 };
@@ -122,12 +122,12 @@ namespace gl
         sampler(sampler&& other) noexcept;
         sampler& operator=(const sampler& other) noexcept;
         sampler& operator=(sampler&& other) noexcept;
-        operator gl_sampler_t() const noexcept;
+        operator mygl::sampler() const noexcept;
 
         void set(GLenum name, int value) const noexcept;
         void set(GLenum name, float value) const noexcept;
 
-        uint64_t sample(gl_texture_t t) const noexcept;
+        uint64_t sample(mygl::texture t) const noexcept;
 
     private:
         constexpr const static std::array<GLenum, 3> _float_parameters{
@@ -151,7 +151,7 @@ namespace gl
             GL_TEXTURE_BORDER_COLOR
         };
 
-        gl_sampler_t _id;
+        mygl::sampler _id;
     };
 
     class image

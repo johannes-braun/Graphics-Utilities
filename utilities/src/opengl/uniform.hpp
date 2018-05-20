@@ -27,10 +27,10 @@ namespace gl
         uniform& operator=(const T& value) noexcept;
 
     protected:
-        uniform(uint32_t location, gl_shader_program_t s) noexcept;
+        uniform(uint32_t location, mygl::shader_program s) noexcept;
         void update() const noexcept;
 
-        gl_shader_program_t _shader;
+        mygl::shader_program _shader;
         std::shared_ptr<T> _value;
         uint32_t _location;
     };

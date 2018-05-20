@@ -66,7 +66,7 @@ namespace gfx::ui
         _list.push_text(_title, title_font, 0, { _rect.min.x + 8 + 24 + 8, _rect.max.y - _title_bar_size },
             { _rect.max.x - 8 - 24-8-24-8-24-8, _rect.max.y - 0.5f*(_title_bar_size-title_font.size()) }, gfx::ui::ALIGN_LEFT, {255, 255, 255, 255*_title_alpha}, 1);
 
-        const auto make_action_button = [&, this](gl_texture_t img, rect r) {
+        const auto make_action_button = [&, this](mygl::texture img, rect r) {
             const auto cur_pos = _window_manager->get_cursor_position();
             bool active = _window_manager->front_window_at(cur_pos.x, cur_pos.y) == this;
             bool inside = r.contains(_window_manager->get_cursor_position());

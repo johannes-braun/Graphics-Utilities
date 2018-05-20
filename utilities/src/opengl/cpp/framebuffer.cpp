@@ -29,7 +29,7 @@ namespace gl
 
     renderbuffer& renderbuffer::operator=(const renderbuffer& other) noexcept
     {
-        if (_id != gl_renderbuffer_t::zero)
+        if (_id != mygl::renderbuffer::zero)
             glDeleteRenderbuffers(1, &_id);
         glCreateRenderbuffers(1, &_id);
 
@@ -55,17 +55,17 @@ namespace gl
         _internal_format = other._internal_format;
         _samples = other._samples;
         _multisampled = other._multisampled;
-        other._id = gl_renderbuffer_t::zero;
+        other._id = mygl::renderbuffer::zero;
         return *this;
     }
 
     renderbuffer::~renderbuffer() noexcept
     {
-        if (_id != gl_renderbuffer_t::zero)
+        if (_id != mygl::renderbuffer::zero)
             glDeleteRenderbuffers(1, &_id);
     }
 
-    renderbuffer::operator gl_renderbuffer_t() const noexcept
+    renderbuffer::operator mygl::renderbuffer() const noexcept
     {
         return _id;
     }
@@ -87,7 +87,7 @@ namespace gl
         _layered = false;
         _storage = nullptr;
         _attachment_type = attachment_type::empty;
-        glNamedFramebufferTexture(_framebuffer, _type, gl_texture_t::zero, 0);
+        glNamedFramebufferTexture(_framebuffer, _type, mygl::texture::zero, 0);
         return nullptr;
     }
 
@@ -186,7 +186,7 @@ namespace gl
     }
 
     framebuffer::framebuffer(std::nullptr_t)
-        : _id(gl_framebuffer_t::zero)
+        : _id(mygl::framebuffer::zero)
     {
 
     }
@@ -208,10 +208,10 @@ namespace gl
 
     framebuffer& framebuffer::operator=(const framebuffer& other) noexcept
     {
-        if (_id != gl_framebuffer_t::zero)
+        if (_id != mygl::framebuffer::zero)
             glDeleteFramebuffers(1, &_id);
-        if (other._id == gl_framebuffer_t::zero)
-            _id = gl_framebuffer_t::zero;
+        if (other._id == mygl::framebuffer::zero)
+            _id = mygl::framebuffer::zero;
         else
             glCreateFramebuffers(1, &_id);
 
@@ -244,13 +244,13 @@ namespace gl
         _attachments = std::move(other._attachments);
         _readbuffer = other._readbuffer;
         _drawbuffers = std::move(other._drawbuffers);
-        other._id = gl_framebuffer_t::zero;
+        other._id = mygl::framebuffer::zero;
         return *this;
     }
 
     framebuffer::~framebuffer() noexcept
     {
-        if (_id != gl_framebuffer_t::zero)
+        if (_id != mygl::framebuffer::zero)
             glDeleteFramebuffers(1, &_id);
     }
 
@@ -296,7 +296,7 @@ namespace gl
         return at(type);
     }
 
-    framebuffer::operator gl_framebuffer_t() const noexcept
+    framebuffer::operator mygl::framebuffer() const noexcept
     {
         return _id;
     }
@@ -341,7 +341,7 @@ namespace gl
 
     void framebuffer::bind() const noexcept
     {
-        if (_id != gl_framebuffer_t::zero) status_assert();
+        if (_id != mygl::framebuffer::zero) status_assert();
         glBindFramebuffer(GL_FRAMEBUFFER, _id);
     }
 

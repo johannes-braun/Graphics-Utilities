@@ -61,18 +61,18 @@ namespace gfx::ui
     {
     public:
         draw_list(const std::shared_ptr<gfx::window>& window);
-        void push_triangle(const draw_vtx& a, const draw_vtx& b, const draw_vtx& c, gl_texture_t texture = gl_texture_t::zero);
-        void push_quad(const glm::vec2& min, const glm::vec2& max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, gradient gradient, gl_texture_t texture = gl_texture_t::zero);
+        void push_triangle(const draw_vtx& a, const draw_vtx& b, const draw_vtx& c, mygl::texture texture = mygl::texture::zero);
+        void push_quad(const glm::vec2& min, const glm::vec2& max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, gradient gradient, mygl::texture texture = mygl::texture::zero);
         void push_scissor(int x, int y, int width, int height);
         glm::vec2 push_text(const std::wstring& text, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color ={ 255, 255, 255, 255 }, int max_lines = std::numeric_limits<int>::max());
         void push_rounding(const glm::vec2& center, float radius, float begin, float end, int subdivision = 3, glm::u8vec4 color_center ={ 255, 255, 255, 255 }, glm::u8vec4 color_outer ={ 255, 255, 255, 255 });
-        void push_rounded_quad(glm::vec2 min, glm::vec2 max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, float radius, corner corners, gl_texture_t texture = gl_texture_t::zero);
+        void push_rounded_quad(glm::vec2 min, glm::vec2 max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, float radius, corner corners, mygl::texture texture = mygl::texture::zero);
 
         void draw(const gl::pipeline& pipeline);
 
         void push_vertices(std::initializer_list<draw_vtx> vertices);
         void push_indices(std::initializer_list<draw_idx> indices);
-        void push_draw_command(int count, int base_index, int base_vertex, gl_texture_t texture = gl_texture_t::zero);
+        void push_draw_command(int count, int base_index, int base_vertex, mygl::texture texture = mygl::texture::zero);
         void push_command(draw_cmd command);
 
         size_t index_count() const noexcept;

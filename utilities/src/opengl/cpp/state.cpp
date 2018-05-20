@@ -15,13 +15,13 @@ namespace gl
     state& state::operator=(state&& other) noexcept
     {
         _id = other._id;
-        other._id = gl_state_nv_t::zero;
+        other._id = mygl::state::zero;
         return *this;
     }
 
     state::~state() noexcept
     {
-        if(_id != gl_state_nv_t::zero)
+        if(_id != mygl::state::zero)
             glDeleteStatesNV(1, &_id);
     }
 

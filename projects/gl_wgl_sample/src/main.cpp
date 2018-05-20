@@ -4,7 +4,7 @@
 #include <window/window.hpp>
 #include <window/monitor.hpp>
 #include <opengl/context.hpp>
-#include <mygl/gl.hpp>
+#include <mygl/mygl.hpp>
 
 #include <opengl/shader.hpp>
 
@@ -51,7 +51,7 @@ int main()
             context.make_current();
             //gui->begin();
             float col[]{ 0.3f, 0.55f, 1.f, 1.f };
-            glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, col);
+            glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, 0, col);
 
        /*     ImGui::Begin("Bla");
             static float f;
@@ -67,7 +67,7 @@ int main()
             other_ctx.make_current();
             //other_gui->begin();
             float col[]{ 0.8f, 0.45f, 0.2f, 1.f };
-            glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, col);
+            glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, 0, col);
 
          /*   ImGui::Begin("You!");
             static float f;

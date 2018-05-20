@@ -49,7 +49,7 @@ namespace game
             glm::vec4 start(0, 0, 0, 1);
             glm::vec4 end(0.1f, 0.4f, 0.01f, 1.f);
             glm::vec4 mid = mix(start, end, _progress);
-            glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, &mid[0]);
+            glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, 0, &mid[0]);
 
             int w, h; glfwGetFramebufferSize(*_window, &w, &h);
             default_ui().draw_quad({ 0, 0 }, { w,h }, { 0, 0 }, { w / 8, h / 8 }, _background);

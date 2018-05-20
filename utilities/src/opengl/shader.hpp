@@ -46,7 +46,7 @@ namespace gl
         void reload();
 
         GLenum type() const noexcept;
-        operator gl_shader_program_t() const noexcept;
+        operator mygl::shader_program() const noexcept;
 
         template<typename T>
         uniform<T> uniform(const std::string& name);
@@ -54,7 +54,7 @@ namespace gl
     private:
         static std::vector<files::path> _include_directories;
 
-        gl_shader_program_t _id = gl_shader_program_t::zero;
+        mygl::shader_program _id = mygl::shader_program::zero;
         GLenum _type;
         files::path _path;
         std::map<std::string, all_uniform_types> _uniforms;

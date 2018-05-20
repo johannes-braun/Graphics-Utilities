@@ -55,7 +55,7 @@ namespace gl
 
         void reload() const noexcept;
         void bind() const noexcept;
-        operator gl_program_pipeline_t() const noexcept;
+        operator mygl::pipeline() const noexcept;
 
         template<typename T>
         void bind_attribute(uint32_t index, const buffer<T>& buffer, int components, GLenum type, size_t offset = 0, size_t stride = sizeof(T)) const noexcept;
@@ -80,7 +80,7 @@ namespace gl
 
     private:
         std::map<GLenum, stage> _stages;
-        gl_program_pipeline_t _id;
+        mygl::pipeline _id;
     };
 
     class compute_pipeline
@@ -94,7 +94,7 @@ namespace gl
         ~compute_pipeline() noexcept;
 
         void dispatch(uint32_t count_x, uint32_t count_y = 1, uint32_t count_z = 1) noexcept;
-        operator gl_program_pipeline_t() const noexcept;
+        operator mygl::pipeline() const noexcept;
         const glm::ivec3& group_sizes() const noexcept;
         void reload() const noexcept;
 
@@ -106,7 +106,7 @@ namespace gl
 
     private:
         glm::ivec3 _group_sizes;
-        gl_program_pipeline_t _id;
+        mygl::pipeline _id;
         std::shared_ptr<shader> _shader;
     };
 }

@@ -40,7 +40,6 @@ namespace gl
         struct bounded_buffer_data;
         template<typename Ptr, int Inc>
         struct bounded_buffer_iterator_base;
-        friend bounded_buffer_iterator_base;
 
         using value_type = std::decay_t<std::remove_pointer_t<T>>;
         using pointer = value_type*;
@@ -109,7 +108,7 @@ namespace gl
         const T& at(size_t index) const;
         T* data() noexcept;
         const T* data() const noexcept;
-        operator gl_buffer_t() const noexcept;
+        operator mygl::buffer() const noexcept;
         
         bounded_buffer_data iterate() noexcept;
         iterator begin() noexcept;
@@ -129,7 +128,7 @@ namespace gl
         double compute_size_increase() const noexcept;
         void init_handle() noexcept;
 
-        gl_buffer_t _id = gl_buffer_t::zero;
+        mygl::buffer _id = mygl::buffer::zero;
         T* _data = nullptr;
         mutable std::array<std::pair<ptrdiff_t, std::unique_ptr<T>>, 2> _cached{ std::make_pair(-1, nullptr), std::make_pair(-1, nullptr) };
         int _cached_index = 0;

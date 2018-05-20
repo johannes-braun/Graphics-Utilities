@@ -4,7 +4,7 @@
 #define LOG_OUTPUT(x) tlog_i("GLShader") << (x)
 #define ERR_OUTPUT(x) tlog_e("GLShader") << (x)
 
-#include <mygl/gl.hpp>
+#include <mygl/mygl.hpp>
 #include <glsp/definition.hpp>
 #include <glsp/glsp.hpp>
 

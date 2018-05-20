@@ -25,7 +25,7 @@ namespace game
         };
         struct indirect
         {
-            gl_texture_t texture;
+            mygl::texture texture;
             uint32_t count;
             uint32_t base_index;
             uint32_t base_vertex;
@@ -60,8 +60,9 @@ namespace game
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             for (const auto& ind : _indirects)
             {
-                _pbuf[0].has_texture = ind.texture != gl_texture_t::zero;
-                _pbuf[0].tex = ind.texture != gl_texture_t::zero ? _sampler.sample(ind.texture) : 0;
+                _pbuf[0].has_texture = ind.texture != mygl::texture::zero;
+                _pbuf[0].tex =
+                        ind.texture != mygl::texture::zero ? _sampler.sample(ind.texture) : 0;
                 _pbuf.synchronize();
                 _pip.draw(GL_TRIANGLES, _ibuf, GL_UNSIGNED_SHORT, ind.count, ind.base_index, ind.base_vertex);
             }
@@ -77,7 +78,7 @@ namespace game
             ind.base_vertex = _vbuf.size();
             ind.base_index = _ibuf.size();
             ind.count = prim_triangle.size();
-            ind.texture = gl_texture_t::zero;
+            ind.texture     = mygl::texture::zero;
             _vbuf.emplace_back(vtx{ a,{ 0, 0 }, color });
             _vbuf.emplace_back(vtx{ b,{ 0, 0 }, color });
             _vbuf.emplace_back(vtx{ c,{ 0, 0 }, color });
@@ -86,10 +87,12 @@ namespace game
         }
 
         void draw_quad(glm::vec2 min, glm::vec2 max, glm::u8vec4 color) {
-            draw_quad(min, max, { 0, 0 }, { 1, 1 }, gl_texture_t::zero, color);
+            draw_quad(min, max, {0, 0}, {1, 1}, mygl::texture::zero, color);
         }
 
-        void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax, gl_texture_t texture, glm::u8vec4 color = { 255, 255, 255, 255 }) {
+        void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax,
+                       mygl::texture texture, glm::u8vec4 color = {255, 255, 255, 255})
+        {
             indirect ind;
             ind.base_vertex = _vbuf.size();
             ind.base_index = _ibuf.size();
@@ -162,7 +165,7 @@ namespace game
         glm::vec4 start(0, 0, 0, 1);
         glm::vec4 end(0.1f, 0.4f, 0.01f, 1.f);
         glm::vec4 mid = mix(start, end, mx);
-        glClearNamedFramebufferfv(gl_framebuffer_t::zero, GL_COLOR, 0, &mid[0]);
+        glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, 0, &mid[0]);
 
         int w, h; glfwGetFramebufferSize(*host::window, &w, &h);
         get_ui().draw_quad({ 0, 0 }, { w,h }, { 0, 0 }, { w / 8, h / 8 }, ingo().bg_img);

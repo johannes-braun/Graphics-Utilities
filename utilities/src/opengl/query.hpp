@@ -27,6 +27,6 @@ namespace gl
 
     private:
         GLenum _type;
-        gl_query_t _id;
+        mygl::query _id;
     };
 }

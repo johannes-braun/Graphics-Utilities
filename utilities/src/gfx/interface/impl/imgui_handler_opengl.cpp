@@ -56,7 +56,7 @@ void main() {
         _sampler.set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAX_LEVEL, 1);
-        ImGui::GetIO().Fonts->TexID = static_cast<uint64_t>(gl_texture_t(*_fonts_atlas));
+        ImGui::GetIO().Fonts->TexID = static_cast<uint64_t>(mygl::texture(*_fonts_atlas));
 
         _render_data.map(GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
         _render_data.emplace_back();
@@ -122,7 +122,7 @@ void main() {
 
     void imgui_handler_opengl::draw(const ImDrawCmd& cmd, const uint32_t index_offset, const uint32_t vertex_offset)
     {
-        _render_data[0].image = _sampler.sample(gl_texture_t(cmd.TextureId));
+        _render_data[0].image = _sampler.sample(mygl::texture(cmd.TextureId));
         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
 
         glScissor(int(cmd.ClipRect.x), int(int(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
@@ -135,7 +135,7 @@ void main() {
     void imgui_handler_opengl::finalize()
     {
         glClipControl(GLenum(_last_clip_origin), GLenum(_last_clip_depth_mode));
-        glUseProgram(gl_shader_program_t(_last_program));
+        glUseProgram(mygl::shader_program(_last_program));
         glBlendEquationSeparate(GLenum(_last_blend_equation_rgb), GLenum(_last_blend_equation_alpha));
         glBlendFuncSeparate(GLenum(_last_blend_src_rgb), GLenum(_last_blend_dst_rgb), GLenum(_last_blend_src_alpha), GLenum(_last_blend_dst_alpha));
         _last_enable_blend ? glEnable(GL_BLEND) : glDisable(GL_BLEND);

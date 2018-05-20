@@ -27,10 +27,10 @@ namespace gl
         _data_access    = other._data_access;
         _usage          = other._usage;
 
-        if (other._id == gl_buffer_t::zero)
+        if (other._id == mygl::buffer::zero)
         {
             glDeleteBuffers(1, &_id);
-            _id = gl_buffer_t::zero;
+            _id = mygl::buffer::zero;
             return *this;
         }
 
@@ -44,7 +44,7 @@ namespace gl
 
         const bool was_mapped = is_mapped();
 
-        if (_id != gl_buffer_t::zero)
+        if (_id != mygl::buffer::zero)
         {
             if (was_mapped)
                 unmap();
@@ -88,7 +88,7 @@ namespace gl
         _data_access    = other._data_access;
         _handle         = other._handle;
 
-        other._id               = gl_buffer_t::zero;
+        other._id               = mygl::buffer::zero;
         other._data             = nullptr;
         for (auto&& c : _cached) {
             c.first             = -1; 
@@ -117,7 +117,7 @@ namespace gl
     template<typename T>
     buffer<T>::~buffer() noexcept
     {
-        if(_id != gl_buffer_t::zero)
+        if(_id != mygl::buffer::zero)
             glDeleteBuffers(1, &_id);
     }
 
@@ -714,7 +714,7 @@ namespace gl
     }
 
     template<typename T>
-    buffer<T>::operator gl_buffer_t() const noexcept
+    buffer<T>::operator mygl::buffer() const noexcept
     {
         return _id;
     }

@@ -21,18 +21,18 @@ namespace gfx::ui
         });
     }
 
-    void draw_list::push_triangle(const draw_vtx& a, const draw_vtx& b, const draw_vtx& c, gl_texture_t texture)
+    void draw_list::push_triangle(const draw_vtx& a, const draw_vtx& b, const draw_vtx& c, mygl::texture texture)
     {
         push_vertices({ a, b, c });
         _commands.emplace_back([=, first = _vertices.size() - 3](const gl::pipeline& pipeline) {
-            _prop_buffer[0].has_texture = texture != gl_texture_t::zero;
-            _prop_buffer[0].texture = texture != gl_texture_t::zero ? _sampler.sample(texture) : 0;
+            _prop_buffer[0].has_texture = texture != mygl::texture::zero;
+            _prop_buffer[0].texture = texture != mygl::texture::zero ? _sampler.sample(texture) : 0;
             _prop_buffer.synchronize();
             pipeline.draw(GL_TRIANGLES, 3, first);
         });
     }
 
-    void draw_list::push_quad(const glm::vec2& min, const glm::vec2& max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, gradient gradient, gl_texture_t texture)
+    void draw_list::push_quad(const glm::vec2& min, const glm::vec2& max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, gradient gradient, mygl::texture texture)
     {
         switch (gradient)
         {
@@ -70,14 +70,14 @@ namespace gfx::ui
 
         push_indices({0, 1, 2, 0, 2, 3});
         _commands.emplace_back([=, first = _vertices.size() - 4, base_idx = _indices.size() - 6](const gl::pipeline& pipeline) {
-            _prop_buffer[0].has_texture = texture != gl_texture_t::zero;
-            _prop_buffer[0].texture = texture != gl_texture_t::zero ? _sampler.sample(texture) : 0;
+            _prop_buffer[0].has_texture = texture != mygl::texture::zero;
+            _prop_buffer[0].texture = texture != mygl::texture::zero ? _sampler.sample(texture) : 0;
             _prop_buffer.synchronize();
             pipeline.draw(GL_TRIANGLES, _index_buffer, GL_UNSIGNED_SHORT, 6, base_idx, first);
         });
     }
 
-    void draw_list::push_rounded_quad(glm::vec2 min, glm::vec2 max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, float radius, corner corners, gl_texture_t texture)
+    void draw_list::push_rounded_quad(glm::vec2 min, glm::vec2 max, const glm::vec2& min_uv, const glm::vec2& max_uv, const glm::u8vec4& color1, const glm::u8vec4& color2, float radius, corner corners, mygl::texture texture)
     {
         const float rounding = radius;
         bool top_left = (radius > 0) && corners & CORNER_TOP_LEFT;
@@ -112,7 +112,7 @@ namespace gfx::ui
         std::wstring text = max_lines == 1 ? font.ellipsize_end(t, bmax.x - bmin.x) : t;
         const int first_vertex  = _vertices.size();
         const int first_index   = _indices.size();
-        const gl_texture_t atlas = font.get_atlas();
+        const mygl::texture atlas = font.get_atlas();
 
         float offset_factor{ 0 };
         bool justify_base = false;
@@ -238,11 +238,11 @@ namespace gfx::ui
         _commands.clear();
     }
 
-    void draw_list::push_draw_command(int count, int base_index, int base_vertex, gl_texture_t texture)
+    void draw_list::push_draw_command(int count, int base_index, int base_vertex, mygl::texture texture)
     {
         _commands.emplace_back([=](const gl::pipeline& pipeline) {
-            _prop_buffer[0].has_texture = texture != gl_texture_t::zero;
-            _prop_buffer[0].texture = texture != gl_texture_t::zero ? _sampler.sample(texture) : 0;
+            _prop_buffer[0].has_texture = texture != mygl::texture::zero;
+            _prop_buffer[0].texture = texture != mygl::texture::zero ? _sampler.sample(texture) : 0;
             _prop_buffer.synchronize();
             pipeline.draw(GL_TRIANGLES, _index_buffer, GL_UNSIGNED_SHORT, count, base_index, base_vertex);
         });
