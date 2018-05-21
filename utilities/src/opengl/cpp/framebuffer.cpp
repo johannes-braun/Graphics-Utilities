@@ -276,6 +276,8 @@ namespace gl
 
     attachment& framebuffer::at(GLenum type)
     {
+        if (_attachments.count(type) == 0)
+            _attachments.emplace(type, attachment(*this, type));
         return _attachments.at(type);
     }
 

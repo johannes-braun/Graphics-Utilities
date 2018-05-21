@@ -1,7 +1,7 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <opengl/gl.hpp>
+#include <mygl/mygl.hpp>
 #include <opengl/buffer.hpp>
 #include <opengl/pipeline.hpp>
 #include <opengl/texture.hpp>

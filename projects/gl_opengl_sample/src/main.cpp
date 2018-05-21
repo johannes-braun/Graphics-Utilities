@@ -23,18 +23,6 @@ const std::array<vertex, 4> quad_vertices{vertex{{-0.5f, -0.5f, 0.f, 1.f}, {0.f,
                                           vertex{{-0.5f, 0.5f, 0.f, 1.f}, {0.f, 1.f}}};
 const std::array<index, 6>  quad_indices{0, 1, 2, 0, 2, 3};
 
-template<auto fun>
-struct A
-{
-    void f() { fun(); }
-};
-
-void x()
-{
-    
-}
-void y() { A<&x>().f(); }
-
 struct matrices
 {
     alignas(16 /*bytes*/) uint64_t object_texture_handle;

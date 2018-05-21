@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gl.hpp"
+#include <mygl/mygl.hpp>
 #include "shader.hpp"
 #include "pipeline.hpp"
 #include "buffer.hpp"

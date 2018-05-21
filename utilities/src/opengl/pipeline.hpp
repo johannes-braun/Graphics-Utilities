@@ -53,6 +53,7 @@ namespace gl
         stage& operator[](GLenum stage);
         const std::shared_ptr<shader>& operator[](GLenum stage) const;
 
+        static void reload_all();
         void reload() const noexcept;
         void bind() const noexcept;
         operator mygl::pipeline() const noexcept;
@@ -79,6 +80,9 @@ namespace gl
         void draw(GLenum primitive, const buffer<T>& index_buffer, GLenum type, size_t count = ~0ui64, size_t first_index = 0, size_t first_vertex = 0) const noexcept;
 
     private:
+        static std::unordered_set<pipeline*> _all_pipelines;
+        static std::mutex _all_pipelines_mutex;
+
         std::map<GLenum, stage> _stages;
         mygl::pipeline _id;
     };

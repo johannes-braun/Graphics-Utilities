@@ -45,7 +45,14 @@ namespace gfx
             aiString name;
             [[maybe_unused]] aiReturn r = ai_material->Get(AI_MATKEY_NAME, name);
             material current_material;
-            
+
+            current_material.name = std::string(name.data, name.length);
+            ai_material->Get(AI_MATKEY_COLOR_DIFFUSE, reinterpret_cast<aiColor4D&>(current_material.color_diffuse));
+            ai_material->Get(AI_MATKEY_COLOR_EMISSIVE, reinterpret_cast<aiColor4D&>(current_material.color_emissive));
+            ai_material->Get(AI_MATKEY_COLOR_REFLECTIVE, reinterpret_cast<aiColor4D&>(current_material.color_reflective));
+            ai_material->Get(AI_MATKEY_COLOR_SPECULAR, reinterpret_cast<aiColor4D&>(current_material.color_specular));
+            ai_material->Get(AI_MATKEY_COLOR_TRANSPARENT, reinterpret_cast<aiColor4D&>(current_material.color_transparent));
+
             materials.emplace_back(current_material);
         }
 

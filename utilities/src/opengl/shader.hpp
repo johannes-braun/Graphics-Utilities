@@ -1,13 +1,13 @@
 #pragma once
 
 #include "uniform.hpp"
-#include "gl.hpp"
+#include <mygl/mygl.hpp>
 
 #include <vector>
-#include <filesystem>
 #include <string_view>
-#include <any>
 #include <map>
+#include <unordered_set>
+#include <mutex>
 #include <glsp/glsp.hpp>
 
 namespace gl
