@@ -118,9 +118,9 @@ namespace gfx::draw
         for (size_t i=0; i<stroke_info.vertices.size() - 2; ++i)
         {
             const auto m = 1-(i&1);
-            stroke_info.indices[i * 3 + 0] = i + 1 - m;
-            stroke_info.indices[i * 3 + 1] = i + m;
-            stroke_info.indices[i * 3 + 2] = i + 2;
+            stroke_info.indices[i * 3 + 0] = static_cast<uint16_t>(i + 1 - m);
+            stroke_info.indices[i * 3 + 1] = static_cast<uint16_t>(i + m);
+            stroke_info.indices[i * 3 + 2] = static_cast<uint16_t>(i + 2);
         }
 
         return stroke_info;

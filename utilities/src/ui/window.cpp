@@ -54,7 +54,7 @@ namespace gfx::ui
         const glm::vec2 size = _rect.max - _rect.min;
 
         _list.push_rounded_quad(_rect.min-shadow_size+shadow_offset, _rect.max+shadow_size+shadow_offset, { 0, 1 }, { 1, 0 }, { 0, 0, 0, 60*_shadow_alpha }, { 0, 0, 0, 0 }, 12, gfx::ui::CORNER_ALL);
-        _list.push_scissor(pos.x, pos.y, size.x, size.y);
+        _list.push_scissor(static_cast<int>(pos.x), static_cast<int>(pos.y), static_cast<int>(size.x), static_cast<int>(size.y));
         if(size.y > _title_bar_size)
             _list.push_rounded_quad(_rect.min, _rect.max, { 0, 1 }, { 1, 0 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, 4.f, gfx::ui::CORNER_ALL);
 
@@ -97,9 +97,9 @@ namespace gfx::ui
                 animate<glm::vec2>().to_size(estate.max - estate.min).to_position(estate.min);
                 if (_state == WIN_NORMAL) _default_rect = _rect;
                 else {
-                    _1f_animations.push_back(anim<float>(_title_alpha, 1.f, 0.080, [this](float a, float x) { _title_alpha = x; }));
-                    _1f_animations.push_back(anim<float>(_title_bar_rounding, 4.f, 0.080, [this](float a, float x) { _title_bar_rounding = x; }));
-                    _1f_animations.push_back(anim<float>(_shadow_alpha, 1.f, 0.080, [this](float a, float x) { _shadow_alpha = x; }));
+                    _1f_animations.push_back(anim<float>(_title_alpha, 1.f, 0.080f, [this](float a, float x) { _title_alpha = x; }));
+                    _1f_animations.push_back(anim<float>(_title_bar_rounding, 4.f, 0.080f, [this](float a, float x) { _title_bar_rounding = x; }));
+                    _1f_animations.push_back(anim<float>(_shadow_alpha, 1.f, 0.080f, [this](float a, float x) { _shadow_alpha = x; }));
                 }
                 _state = WIN_MAXIMIZED;
                 _window_manager->notify_unminimize(this);

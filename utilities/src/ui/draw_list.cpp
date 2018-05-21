@@ -110,8 +110,8 @@ namespace gfx::ui
     glm::vec2 draw_list::push_text(const std::wstring& t, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color, int max_lines)
     {
         std::wstring text = max_lines == 1 ? font.ellipsize_end(t, bmax.x - bmin.x) : t;
-        const int first_vertex  = _vertices.size();
-        const int first_index   = _indices.size();
+        const int first_vertex  = static_cast<int>(_vertices.size());
+        const int first_index   = static_cast<int>(_indices.size());
         const mygl::texture atlas = font.get_atlas();
 
         float offset_factor{ 0 };
@@ -190,8 +190,8 @@ namespace gfx::ui
 
     void draw_list::push_rounding(const glm::vec2& center, float radius, float begin, float end, int subdivision, glm::u8vec4 color_center, glm::u8vec4 color_outer)
     {
-        int base_index  = index_count();
-        int base_vertex = vertex_count();
+        int base_index  = static_cast<int>(index_count());
+        int base_vertex = static_cast<int>(vertex_count());
         push_vertices({ gfx::ui::draw_vtx{ center,{ 0, 0 },color_center } });
         for (int i=0; i<subdivision+1; ++i)
         {
@@ -203,7 +203,7 @@ namespace gfx::ui
                 push_indices({ uint16_t(0), uint16_t(i-1), uint16_t(i) });
             }
         }
-        push_draw_command(index_count() - base_index, base_index, base_vertex);
+        push_draw_command(static_cast<int>(index_count()) - base_index, base_index, base_vertex);
     }
 
     void draw_list::draw(const gl::pipeline& pipeline)

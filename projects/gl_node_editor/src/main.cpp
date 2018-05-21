@@ -265,8 +265,8 @@ int main()
     const auto submit_info = [&](const gfx::draw::info& inf)
     {
         draw_cmd cmd;
-        cmd.idx_count = inf.indices.size();
-        cmd.vtx_count = inf.vertices.size();
+        cmd.idx_count = static_cast<uint32_t>(inf.indices.size());
+        cmd.vtx_count = static_cast<uint32_t>(inf.vertices.size());
         commands.emplace_back(cmd);
         draw_info.indices.insert(draw_info.indices.end(), inf.indices.begin(), inf.indices.end());
         draw_info.vertices.insert(draw_info.vertices.end(), inf.vertices.begin(), inf.vertices.end());

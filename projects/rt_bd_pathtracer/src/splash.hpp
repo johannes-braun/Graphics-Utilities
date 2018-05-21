@@ -36,7 +36,7 @@ namespace game
             while (_progress != f && _window->update())
             {
                 update();
-                _progress = std::min<float>(_progress + 10.f * step * _window->delta_time(), f);
+                _progress = std::min<float>(_progress + 10.f * step * static_cast<float>(_window->delta_time()), f);
             }
             _window->update();
             _window->set_swap_delay(sd);
@@ -45,7 +45,7 @@ namespace game
         void update()
         {
             static game::font font(gfx::file("ui/fonts/Poppins-SemiBold.ttf"), 16);
-            int size = 256 * _progress;
+            int size = static_cast<int>(256 * _progress);
             glm::vec4 start(0, 0, 0, 1);
             glm::vec4 end(0.1f, 0.4f, 0.01f, 1.f);
             glm::vec4 mid = mix(start, end, _progress);

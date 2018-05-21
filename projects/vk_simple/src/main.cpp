@@ -128,7 +128,7 @@ int main()
     const auto compute_queue_iter  = std::find_if(properties.begin(), properties.end(), [](const VkQueueFamilyProperties& p) { return (p.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0; });
     const auto transfer_queue_iter = std::find_if(properties.begin(), properties.end(), [](const VkQueueFamilyProperties& p) { return (p.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0; });
     const auto present_queue_iter  = std::find_if(properties.begin(), properties.end(), [&](const VkQueueFamilyProperties& p) { 
-        size_t family = &p - &properties[0];
+       const uint32_t family = static_cast<uint32_t>(&p - &properties[0]);
         VkBool32 supported = true;
         vkGetPhysicalDeviceSurfaceSupportKHR(*main_gpu, family, *surface, &supported);
         return glfwGetPhysicalDevicePresentationSupport(*main_instance, *main_gpu, family) && supported;
@@ -138,14 +138,14 @@ int main()
     std::unordered_map<uint32_t, std::vector<float>> unique_families;
     std::vector<queue_data> queue_datas;
     
-    unique_families[graphics_queue_iter - properties.begin()].push_back(queue_priorities[queue_index_graphics]);
-    queue_datas.push_back({ uint32_t(graphics_queue_iter - properties.begin()), uint32_t(unique_families[graphics_queue_iter - properties.begin()].size() - 1) });
-    unique_families[compute_queue_iter - properties.begin()].push_back(queue_priorities[queue_index_compute]);
-    queue_datas.push_back({ uint32_t(compute_queue_iter - properties.begin()), uint32_t(unique_families[compute_queue_iter - properties.begin()].size() - 1) });
-    unique_families[transfer_queue_iter - properties.begin()].push_back(queue_priorities[queue_index_transfer]);
-    queue_datas.push_back({ uint32_t(transfer_queue_iter - properties.begin()), uint32_t(unique_families[transfer_queue_iter - properties.begin()].size() - 1) });
-    unique_families[present_queue_iter - properties.begin()].push_back(queue_priorities[queue_index_present]);
-    queue_datas.push_back({ uint32_t(present_queue_iter - properties.begin()), uint32_t(unique_families[present_queue_iter - properties.begin()].size() - 1) });
+    unique_families[static_cast<uint32_t>(graphics_queue_iter - properties.begin())].push_back(queue_priorities[queue_index_graphics]);
+    queue_datas.push_back({ uint32_t(graphics_queue_iter - properties.begin()), uint32_t(unique_families[static_cast<uint32_t>(graphics_queue_iter - properties.begin())].size() - 1) });
+    unique_families[static_cast<uint32_t>(compute_queue_iter - properties.begin())].push_back(queue_priorities[queue_index_compute]);
+    queue_datas.push_back({ uint32_t(compute_queue_iter - properties.begin()), uint32_t(unique_families[static_cast<uint32_t>(compute_queue_iter - properties.begin())].size() - 1) });
+    unique_families[static_cast<uint32_t>(transfer_queue_iter - properties.begin())].push_back(queue_priorities[queue_index_transfer]);
+    queue_datas.push_back({ uint32_t(transfer_queue_iter - properties.begin()), uint32_t(unique_families[static_cast<uint32_t>(transfer_queue_iter - properties.begin())].size() - 1) });
+    unique_families[static_cast<uint32_t>(present_queue_iter - properties.begin())].push_back(queue_priorities[queue_index_present]);
+    queue_datas.push_back({ uint32_t(present_queue_iter - properties.begin()), uint32_t(unique_families[static_cast<uint32_t>(present_queue_iter - properties.begin())].size() - 1) });
 
     std::vector<gfx::vk::queue_info> queue_infos;
     for (const auto& fam : unique_families) queue_infos.emplace_back(fam.first, fam.second);
@@ -153,7 +153,7 @@ int main()
 
     std::vector<gfx::vk::queue> queues;
     for (auto&& data : queue_datas) queues.emplace_back(device, data.family, data.index);
-
+     
     auto capabilities           = surface->capabilities();
     auto formats                = surface->formats();
     auto present_modes          = surface->present_modes();
@@ -291,8 +291,6 @@ int main()
     viewport_state.viewportCount = 0;
     info.pViewportState = &viewport_state;
 
-    VkPipelineShaderStageCreateInfo fs;
-    
 
 
     while (!close_window)

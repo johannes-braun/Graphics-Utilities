@@ -198,9 +198,9 @@ namespace game
 
         void draw_triangle(glm::vec2 a, glm::vec2 b, glm::vec2 c, glm::u8vec4 color) {
             indirect ind;
-            ind.base_vertex = verts.size();
-            ind.base_index = idxes.size();
-            ind.count = prim_triangle.size();
+            ind.base_vertex = static_cast<uint32_t>(verts.size());
+            ind.base_index = static_cast<uint32_t>(idxes.size());
+            ind.count = static_cast<uint32_t>(prim_triangle.size());
             ind.texture = mygl::texture::zero;
             verts.emplace_back(vtx{ a,{ 0, 0 }, color });
             verts.emplace_back(vtx{ b,{ 0, 0 }, color });
@@ -215,9 +215,9 @@ namespace game
 
         void draw_quad(glm::vec2 min, glm::vec2 max, glm::vec2 uvmin, glm::vec2 uvmax, mygl::texture texture, glm::u8vec4 color ={ 255, 255, 255, 255 }) {
             indirect ind;
-            ind.base_vertex = verts.size();
-            ind.base_index = idxes.size();
-            ind.count = prim_quad.size();
+            ind.base_vertex = static_cast<uint32_t>(verts.size());
+            ind.base_index = static_cast<uint32_t>(idxes.size());
+            ind.count = static_cast<uint32_t>(prim_quad.size());
             ind.texture = texture;
             verts.emplace_back(vtx{ { min.x, max.y },{ uvmin.x, uvmax.y }, color });
             verts.emplace_back(vtx{ { min.x, min.y },{ uvmin.x, uvmin.y }, color });
@@ -235,8 +235,8 @@ namespace game
             transparent.a = 0;
 
             indirect ind;
-            ind.base_vertex = verts.size();
-            ind.base_index = idxes.size();
+            ind.base_vertex = static_cast<uint32_t>(verts.size());
+            ind.base_index = static_cast<uint32_t>(idxes.size());
             ind.count = 5*6;
             ind.texture = mygl::texture(0);
 
@@ -246,14 +246,14 @@ namespace game
             verts.emplace_back(vtx{ { max.x+offset.x, max.y+offset.y },{ 0,0 }, color });
             idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
 
-            int id = 4;
+            idx id = 4;
             // bottom
             verts.emplace_back(vtx{ { min.x+offset.x, min.y+offset.y },{ 0,0 }, color });
             verts.emplace_back(vtx{ { min.x - size+offset.x, min.y - size+offset.y },{ 0,0 }, transparent });
             verts.emplace_back(vtx{ { max.x + size+offset.x, min.y - size+offset.y },{ 0,0 }, transparent });
             verts.emplace_back(vtx{ { max.x+offset.x, min.y+offset.y },{ 0,0 }, color });
             {
-                std::array<idx, 6> prim_quad{ id+0, id+1, id+2, id+0, id+2, id+3 };
+                std::array<idx, 6> prim_quad{ idx(id+0), idx(id+1), idx(id+2), idx(id+0), idx(id+2), idx(id+3) };
                 idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
             }
             id += 4;
@@ -264,7 +264,7 @@ namespace game
             verts.emplace_back(vtx{ { max.x+offset.x, max.y+offset.y },{ 0,0 }, color });
             verts.emplace_back(vtx{ { max.x + size+offset.x, max.y + size+offset.y },{ 0,0 }, transparent });
             {
-                std::array<idx, 6> prim_quad{ id+0, id+1, id+2, id+0, id+2, id+3 };
+                std::array<idx, 6> prim_quad{ idx(id+0), idx(id+1), idx(id+2), idx(id+0), idx(id+2), idx(id+3) };
                 idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
             }
             id += 4;
@@ -275,7 +275,7 @@ namespace game
             verts.emplace_back(vtx{ { min.x+offset.x, min.y+offset.y },{ 0,0 }, color });
             verts.emplace_back(vtx{ { min.x+offset.x, max.y+offset.y },{ 0,0 }, color });
             {
-                std::array<idx, 6> prim_quad{ id+0, id+1, id+2, id+0, id+2, id+3 };
+                std::array<idx, 6> prim_quad{ idx(id+0), idx(id+1), idx(id+2), idx(id+0), idx(id+2), idx(id+3) };
                 idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
             }
             id += 4;
@@ -286,7 +286,7 @@ namespace game
             verts.emplace_back(vtx{ { max.x + size+offset.x, min.y - size+offset.y },{ 0,0 }, transparent });
             verts.emplace_back(vtx{ { max.x + size+offset.x, max.y + size+offset.y },{ 0,0 }, transparent });
             {
-                std::array<idx, 6> prim_quad{ id+0, id+1, id+2, id+0, id+2, id+3 };
+                std::array<idx, 6> prim_quad{ idx(id+0), idx(id+1), idx(id+2), idx(id+0), idx(id+2), idx(id+3) };
                 idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
             }
             id += 4;
@@ -301,7 +301,7 @@ namespace game
             ind.base_index = 0;
             ind.count = 0;
             ind.texture = mygl::texture(0);
-            ind.cmd = [min, max]() { glScissor(std::ceil(min.x), std::ceil(min.y), std::ceil(max.x - min.x), std::ceil(max.y - min.y)); };
+            ind.cmd = [min, max]() { glScissor(static_cast<int>(std::ceil(min.x)), static_cast<int>(std::ceil(min.y)), static_cast<int>(std::ceil(max.x - min.x)), static_cast<int>(std::ceil(max.y - min.y))); };
             _indirects[{_current_prio, _current_window}].push_back(ind);
         }
 
@@ -430,8 +430,8 @@ namespace game
         glm::vec2 draw_text(const std::wstring& text, const font& font, float y_offset, glm::vec2 bmin, glm::vec2 bmax, text_align align, glm::u8vec4 color ={ 255, 255, 255, 255 }, int max_lines = std::numeric_limits<int>::max())
         {
             indirect ind;
-            ind.base_vertex = verts.size();
-            ind.base_index = idxes.size();
+            ind.base_vertex = static_cast<uint32_t>(verts.size());
+            ind.base_index = static_cast<uint32_t>(idxes.size());
             ind.texture = font.atlas;
 
             float offset_factor{ 0 };
@@ -490,14 +490,14 @@ namespace game
                     verts.emplace_back(vtx{ { min.x + offset_x, min.y },{ uvmin.x, uvmin.y }, color });
                     verts.emplace_back(vtx{ { max.x + offset_x, min.y },{ uvmax.x, uvmin.y }, color });
                     verts.emplace_back(vtx{ { max.x + offset_x, max.y },{ uvmax.x, uvmax.y }, color });
-                    std::array<idx, 6> prim_quad{ id+0, id+1, id+2, id+0, id+2, id+3 };
+                    std::array<idx, 6> prim_quad{idx(id+0), idx(id+1), idx(id+2), idx(id+0), idx(id+2), idx(id+3)};
                     idxes.insert(idxes.end(), prim_quad.begin(), prim_quad.end());
                     id += 4;
                 }
                 adv += g.offx * scale_x;
                 width = std::max(width, adv);
             }
-            ind.count = (id/4) * prim_quad.size();
+            ind.count = static_cast<uint32_t>((id/4) * prim_quad.size());
             _indirects[{_current_prio, _current_window}].push_back(ind);
             return { width, -height };
         }

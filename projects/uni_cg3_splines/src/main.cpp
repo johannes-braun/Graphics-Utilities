@@ -127,7 +127,7 @@ int main()
         static int res = 32;
         static int type = 0;
         ImGui::Begin("Settings");
-        ImGui::DragInt("Order (k)", &order, 0.1f, 1, spline.points().size());
+        ImGui::DragInt("Order (k)", &order, 0.1f, 1, static_cast<int>(spline.points().size()));
         ImGui::DragInt("Resolution", &res, 0.1f, 16, 128);
         ImGui::Combo("Type", &type, [](void*, int i, const char** text)
         {

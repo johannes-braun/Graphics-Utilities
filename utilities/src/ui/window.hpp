@@ -95,7 +95,7 @@ namespace gfx::ui
     public:
         friend anim_creator;
         anim(T begin, T end, double duration, std::function<void(float, const T&)> on_update) : begin(begin), end(end), duration(duration), alpha(0), on_update(on_update) {}
-        void update(double dt) { on_update(alpha=std::clamp(alpha + dt/duration, 0.0, 1.0), (1-alpha) * begin + alpha * end); }
+        void update(double dt) { on_update(alpha=std::clamp(alpha + static_cast<float>(dt/duration), 0.0f, 1.0f), (1-alpha) * begin + alpha * end); }
         bool finished() { return alpha == 1.0; }
 
     private:

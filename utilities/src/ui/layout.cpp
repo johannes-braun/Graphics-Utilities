@@ -7,10 +7,10 @@ namespace gfx::ui
     void layout::fill(std::function<void(layout& layout, window& parent)> fill_func)
     {
         const rect parent_rect = _parent->get_content_rect();
-        _parent->list().push_scissor(parent_rect.min.x, parent_rect.min.y, parent_rect.max.x - parent_rect.min.x, parent_rect.max.y - parent_rect.min.y);
+        _parent->list().push_scissor(static_cast<int>(parent_rect.min.x), static_cast<int>(parent_rect.min.y), static_cast<int>(parent_rect.max.x - parent_rect.min.x), static_cast<int>(parent_rect.max.y - parent_rect.min.y));
        // _parent->list().push_scissor(_rect.min.x, _rect.min.y, _rect.max.x - _rect.min.x, _rect.max.y - _rect.min.y);
         fill_func(*this, *_parent);
-        _parent->list().push_scissor(parent_rect.min.x, parent_rect.min.y, parent_rect.max.x - parent_rect.min.x, parent_rect.max.y - parent_rect.min.y);
+        _parent->list().push_scissor(static_cast<int>(parent_rect.min.x), static_cast<int>(parent_rect.min.y), static_cast<int>(parent_rect.max.x - parent_rect.min.x), static_cast<int>(parent_rect.max.y - parent_rect.min.y));
         update();
     }
 
@@ -42,7 +42,7 @@ namespace gfx::ui
         const auto cur_pos = _parent->_window_manager->get_cursor_position();
         bool active = _parent->_window_manager->front_window_at(cur_pos.x, cur_pos.y) == _parent;
         bool inside = _rect.contains(_parent->_window_manager->get_cursor_position());
-        if(active&&inside) _scroll -= 40*y;
+        if(active&&inside) _scroll -= static_cast<float>(40*y);
     }))
     {}
 

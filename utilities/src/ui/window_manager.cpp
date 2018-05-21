@@ -21,7 +21,7 @@ namespace gfx::ui
         for (auto&& pair : _windows)
         {
             if (pair.first == name)
-                pair.second.layer = _windows.size() - 1;
+                pair.second.layer = static_cast<int>(_windows.size() - 1);
             else
                 pair.second.layer = std::max(pair.second.layer - 1, 0);
         }
@@ -70,7 +70,7 @@ namespace gfx::ui
 
         window_info info;
         info.window = _window_storage.emplace_back(std::make_unique<window>(_base_window, this, name, initial_rect)).get();
-        info.layer = _windows.size();
+        info.layer = static_cast<int>(_windows.size());
         _windows.emplace(name, info);
         return info.window;
     }

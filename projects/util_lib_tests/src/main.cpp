@@ -271,7 +271,7 @@ namespace sdf
         void assemble(const distance_instance& instance)
         {
             _code = instance.str();
-            _float_count = instance.get_bundle().stream_data().length();
+            _float_count = static_cast<int>(instance.get_bundle().stream_data().length());
         }
 
         const std::vector<parameter>& parameters() const noexcept { return _parameters; }

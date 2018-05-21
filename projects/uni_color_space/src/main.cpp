@@ -1,4 +1,4 @@
-#include "eigen3/Eigen/Eigenvalues"
+#include <Eigen/Eigenvalues>
 #include <opengl/framebuffer.hpp>
 #include <numeric>
 

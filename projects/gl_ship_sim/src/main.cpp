@@ -170,8 +170,8 @@ int main()
     sail_sim_data_buffer[0].springs = springs.handle();
     sail_sim_data_buffer[0].vertices = sail_vertices.handle();
     sail_sim_data_buffer[0].vertex_springs = vertex_springs.handle();
-    sail_sim_data_buffer[0].spring_count = springs.size();
-    sail_sim_data_buffer[0].vertex_count = sail_vertices.size();
+    sail_sim_data_buffer[0].spring_count = static_cast<int>(springs.size());
+    sail_sim_data_buffer[0].vertex_count = static_cast<int>(sail_vertices.size());
     sail_sim_data_buffer.synchronize();
 
     glEnable(GL_DEPTH_TEST);
@@ -227,25 +227,25 @@ int main()
             float fac = 1.f;
             if ((frame = std::min(frame+1, 3)) == 2)
                 fac = 2.f;
-            sail_timings_buffer[0].delta = window->delta_time();
-            sail_timings_buffer[0].deltav = window->delta_time() / fac;
-            sail_timings_buffer[0].time = glfwGetTime();
+            sail_timings_buffer[0].delta = static_cast<float>(window->delta_time());
+            sail_timings_buffer[0].deltav = static_cast<float>(window->delta_time() / fac);
+            sail_timings_buffer[0].time = static_cast<float>(glfwGetTime());
             sail_timings_buffer.synchronize();
 
             sail_normal_data_buffer[0].vertices = sail_vertices.handle();
             sail_normal_data_buffer[0].indices = sail_indices.handle();
-            sail_normal_data_buffer[0].triangle_count = sail_indices.size() / 3;
+            sail_normal_data_buffer[0].triangle_count = static_cast<int>(sail_indices.size() / 3);
             sail_normal_data_buffer.synchronize();
 
             sail_sim_data_buffer[0].inv_model = inverse(glm::mat4(ship_transform));
             sail_sim_data_buffer.synchronize();
 
             sail_spring_pipeline.bind_uniform_buffer(0, sail_sim_data_buffer);
-            sail_spring_pipeline.dispatch(springs.size());
+            sail_spring_pipeline.dispatch(static_cast<uint32_t>(springs.size()));
             glFinish();
             sail_integrate_pipeline.bind_uniform_buffer(0, sail_sim_data_buffer);
             sail_integrate_pipeline.bind_uniform_buffer(1, sail_timings_buffer);
-            sail_integrate_pipeline.dispatch(sail_vertices.size());
+            sail_integrate_pipeline.dispatch(static_cast<uint32_t>(sail_vertices.size()));
             glFinish();
             sail_normals_pipeline.bind_uniform_buffer(0, sail_normal_data_buffer);
             sail_normals_pipeline.dispatch(sail_normal_data_buffer[0].triangle_count);
