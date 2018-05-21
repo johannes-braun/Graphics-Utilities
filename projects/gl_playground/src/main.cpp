@@ -54,7 +54,7 @@ public:
         glBindSampler(0, _sampler);
         glTextureView(texture_views[0],
                       GL_TEXTURE_2D,
-                      uint32_t(static_cast<mygl::texture>(*in)),
+                      *in,
                       in->internal_format(),
                       level,
                       1,
@@ -69,7 +69,7 @@ public:
         glBindSampler(0, _sampler);
         glTextureView(texture_views[1],
                       GL_TEXTURE_2D,
-                      uint32_t(static_cast<mygl::texture>(*_texture)),
+                      *_texture,
                       _texture->internal_format(),
                       level,
                       1,

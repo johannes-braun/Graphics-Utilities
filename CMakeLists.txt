@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.9)
-project(GFX)
 
 set(GFX_GLOBAL_FOLDER       ${PROJECT_SOURCE_DIR}/global)
 set(GFX_PROJECTS_FOLDER     ${PROJECT_SOURCE_DIR}/projects)
 set(GFX_UTILITIES_FOLDER    ${PROJECT_SOURCE_DIR}/utilities)
 set(GFX_CMAKE_FOLDER        ${PROJECT_SOURCE_DIR}/cmake)
 
-set(GFX_EXE_PREFIX "exe_")
-set(GFX_LIB_PREFIX "lib_")
+set(GFX_EXE_PREFIX "")
+set(GFX_LIB_PREFIX "")
 
 add_definitions(
     -DGLFW_INCLUDE_NONE -DSTBI_MSC_SECURE_CRT -DGLM_FORCE_RADIANS
@@ -41,13 +40,14 @@ file(GLOB HEADER_ONLY_INCLUDES ${GFX_UTILITIES_FOLDER}/ext/headers/*/include)
 list(APPEND GFX_INCLUDE_DIRECTORIES ${PREBUILT_INCLUDES} ${INSTALLED_INCLUDES} ${HEADER_ONLY_INCLUDES})
 list(APPEND GFX_DLLS ${PREBUILT_DLLS} ${INSTALLED_DLLS})
 list(APPEND GFX_LIBRARIES ${INSTALLED_LIBS} ${PREBUILT_LIBS})
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-source_group(libraries)
-
+add_custom_target(all_targets)
 list(APPEND GFX_INCLUDE_DIRECTORIES "${GFX_UTILITIES_FOLDER}/src")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY  "${GFX_UTILITIES_FOLDER}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY  "${GFX_UTILITIES_FOLDER}/lib")
 file(GLOB children RELATIVE ${GFX_UTILITIES_FOLDER}/src ${GFX_UTILITIES_FOLDER}/src/*)
+add_custom_target(all_libraries)
 foreach(subdir ${children})
     if(IS_DIRECTORY ${GFX_UTILITIES_FOLDER}/src/${subdir})
         file(GLOB_RECURSE GFX_SOURCE_FILE "${GFX_UTILITIES_FOLDER}/src/${subdir}/*.c" "${GFX_UTILITIES_FOLDER}/src/${subdir}/*.cpp")
@@ -61,7 +61,9 @@ foreach(subdir ${children})
             add_library(${GFX_LIB_PREFIX}${subdir} ${GFX_SOURCE_FILE} ${GFX_HEADER_FILE})
             list(APPEND GFX_LIBRARIES ${GFX_LIB_PREFIX}${subdir})
             target_include_directories(${GFX_LIB_PREFIX}${subdir} PUBLIC ${GFX_INCLUDE_DIRECTORIES})
-            set_target_properties(${GFX_LIB_PREFIX}${subdir} PROPERTIES CXX_STANDARD 17 LINK_FLAGS ${GFX_LINKER_FLAGS})
+            set_target_properties(${GFX_LIB_PREFIX}${subdir} PROPERTIES CXX_STANDARD 17 LINK_FLAGS ${GFX_LINKER_FLAGS} FOLDER libraries)
+            add_dependencies(all_libraries ${GFX_LIB_PREFIX}${subdir})
+            add_dependencies(all_targets ${GFX_LIB_PREFIX}${subdir})
         endif()
     endif()
 endforeach()
@@ -69,6 +71,8 @@ include_directories(${GFX_INCLUDE_DIRECTORIES})
 
 ######## Add internal executables
 file(GLOB children RELATIVE ${GFX_PROJECTS_FOLDER} ${GFX_PROJECTS_FOLDER}/*)
+
+add_custom_target(all_executables)
 foreach(subdir ${children})
     if(IS_DIRECTORY ${GFX_PROJECTS_FOLDER}/${subdir})
         file(GLOB_RECURSE EXE_SOURCES "${GFX_PROJECTS_FOLDER}/${subdir}/src/*.c" "${GFX_PROJECTS_FOLDER}/${subdir}/src/*.cpp")
@@ -102,13 +106,16 @@ foreach(subdir ${children})
 
         file(GLOB_RECURSE EXE_SHADERS ${GFX_PROJECTS_FOLDER}/${subdir}/shd/*)
         source_group(TREE ${GFX_PROJECTS_FOLDER} FILES ${EXE_SHADERS})
-
+        
         add_executable(${GFX_EXE_PREFIX}${subdir} ${EXE_SOURCES} ${EXE_HEADERS} ${WIN_RESOURCES} ${EXE_SHADERS})
         target_link_libraries(${GFX_EXE_PREFIX}${subdir} ${GFX_LIBRARIES})
         file(COPY ${GFX_DLLS} DESTINATION "${GFX_PROJECTS_FOLDER}/${subdir}/bin")
         set_target_properties(${GFX_EXE_PREFIX}${subdir} PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${GFX_PROJECTS_FOLDER}/${subdir}/bin")
         target_include_directories(${GFX_EXE_PREFIX}${subdir} PUBLIC ${GFX_INCLUDE_DIRECTORIES})
         set_target_properties(${GFX_EXE_PREFIX}${subdir} PROPERTIES LINKER_LANGUAGE CXX)
-            set_target_properties(${GFX_EXE_PREFIX}${subdir} PROPERTIES CXX_STANDARD 17 LINK_FLAGS ${GFX_LINKER_FLAGS})
+            set_target_properties(${GFX_EXE_PREFIX}${subdir} PROPERTIES CXX_STANDARD 17 LINK_FLAGS ${GFX_LINKER_FLAGS} FOLDER executables)
+        
+        add_dependencies(all_executables ${GFX_EXE_PREFIX}${subdir})
+        add_dependencies(all_targets ${GFX_EXE_PREFIX}${subdir})
     endif()
 endforeach()

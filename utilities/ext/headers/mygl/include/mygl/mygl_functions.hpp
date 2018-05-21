@@ -726,7 +726,7 @@ extern void (*glTextureStorage3DMultisample)(mygl::texture texture, int samples,
 extern void (*glTextureSubImage1D)(mygl::texture texture, int level, int xoffset, int width, GLenum format, GLenum type, const void * pixels) MYGL_NOEXCEPT;
 extern void (*glTextureSubImage2D)(mygl::texture texture, int level, int xoffset, int yoffset, int width, int height, GLenum format, GLenum type, const void * pixels) MYGL_NOEXCEPT;
 extern void (*glTextureSubImage3D)(mygl::texture texture, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, GLenum format, GLenum type, const void * pixels) MYGL_NOEXCEPT;
-extern void (*glTextureView)(mygl::texture texture, GLenum target, unsigned int origtexture, GLenum internalformat, unsigned int minlevel, unsigned int numlevels, unsigned int minlayer, unsigned int numlayers) MYGL_NOEXCEPT;
+extern void (*glTextureView)(mygl::texture texture, GLenum target, mygl::texture origtexture, GLenum internalformat, unsigned int minlevel, unsigned int numlevels, unsigned int minlayer, unsigned int numlayers) MYGL_NOEXCEPT;
 extern void (*glTransformFeedbackBufferBase)(mygl::transform_feedback xfb, unsigned int index, mygl::buffer buffer) MYGL_NOEXCEPT;
 extern void (*glTransformFeedbackBufferRange)(mygl::transform_feedback xfb, unsigned int index, mygl::buffer buffer, ptrdiff_t offset, ptrdiff_t size) MYGL_NOEXCEPT;
 extern void (*glTransformFeedbackVaryings)(mygl::shader_program program, int count, const char *const* varyings, GLenum bufferMode) MYGL_NOEXCEPT;

@@ -175,8 +175,8 @@ int main(int argc, const char** args)
 
     // Create shaders
     constexpr const char* vertex_shader_sources[2] = {shader_header, vertex_shader_code};
-    mygl::shader_program  vertex_shader =
-            glCreateShaderProgramv(GL_VERTEX_SHADER, 2, vertex_shader_sources);
+    mygl::shader_program  vertex_shader
+        = glCreateShaderProgramv(GL_VERTEX_SHADER, 2, vertex_shader_sources);
     constexpr const char* fragment_shader_sources[2] = {shader_header, fragment_shader_code};
     mygl::shader_program  fragment_shader =
             glCreateShaderProgramv(GL_FRAGMENT_SHADER, 2, fragment_shader_sources);

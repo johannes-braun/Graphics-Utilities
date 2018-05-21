@@ -5,6 +5,7 @@ INFO: the GLenum type is defined externally in mygl_enums.hpp.
 
 #include "mygl_enums.hpp"
 #include <cinttypes>
+#include <type_traits>
 typedef void *GLeglClientBufferEXT;
 typedef void *GLeglImageOES;
 typedef struct __GLsync *GLsync;
