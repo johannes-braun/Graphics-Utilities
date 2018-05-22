@@ -141,7 +141,7 @@ const std::shared_ptr<shader>& pipeline::operator[](GLenum stage) const { return
 
 void pipeline::bind() const noexcept
 {
-    glBindVertexArray(mygl::vertex_array::zero);
+    //glBindVertexArray(mygl::vertex_array::zero);
     glBindProgramPipeline(_id);
 }
 

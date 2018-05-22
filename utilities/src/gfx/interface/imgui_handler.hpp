@@ -6,6 +6,7 @@
 #include <opengl/buffer.hpp>
 #include <opengl/texture.hpp>
 #include <opengl/pipeline.hpp>
+#include <opengl/vertex_array.hpp>
 
 namespace gfx
 {
@@ -47,6 +48,7 @@ namespace gfx
         gl::buffer<ImDrawIdx> _index_buffer;
         gl::buffer<render_data> _render_data;
         std::unique_ptr<gl::texture> _fonts_atlas;
+        gl::vertex_array _vertex_array;
         gl::sampler _sampler;
         int _last_program{ 0 };
         int _last_blend_src_rgb{ 0 };

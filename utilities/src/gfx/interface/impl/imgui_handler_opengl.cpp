@@ -55,11 +55,15 @@ void main() {
         _sampler = gl::sampler();
         _sampler.set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         _sampler.set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        _sampler.set(GL_TEXTURE_MAX_LEVEL, 1);
+        _sampler.set(GL_TEXTURE_MAX_LOD, 1);
         ImGui::GetIO().Fonts->TexID = static_cast<uint64_t>(mygl::texture(*_fonts_atlas));
 
         _render_data.map(GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
         _render_data.emplace_back();
+
+        _vertex_array.attrib(0).enable(true).format(2, GL_FLOAT, false, offsetof(ImDrawVert, pos)).bind(0);
+        _vertex_array.attrib(1).enable(true).format(2, GL_FLOAT, false, offsetof(ImDrawVert, uv)).bind(0);
+        _vertex_array.attrib(2).enable(true).format(4, GL_UNSIGNED_BYTE, true, offsetof(ImDrawVert, col)).bind(0);
     }
 
     void imgui_handler_opengl::upload(ImDrawData* data)
@@ -72,6 +76,9 @@ void main() {
             const auto cmd_list = data->CmdLists[list];
             _vertex_buffer.insert(_vertex_buffer.end(), cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Data + cmd_list->VtxBuffer.Size);
             _index_buffer.insert(_index_buffer.end(), cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Data + cmd_list->IdxBuffer.Size);
+
+            _vertex_array.vertex_buffer(0, _vertex_buffer);
+            _vertex_array.element_buffer(_index_buffer);
         }
 
         auto&& io = ImGui::GetIO();
@@ -114,21 +121,19 @@ void main() {
         _render_data[0].image = 0;
 
         _graphics_pipeline.bind();
-        _graphics_pipeline.bind_attribute(0, 0, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, pos));
-        _graphics_pipeline.bind_attribute(1, 0, _vertex_buffer, 2, GL_FLOAT, offsetof(ImDrawVert, uv));
-        _graphics_pipeline.bind_attribute(2, 0, _vertex_buffer, 4, GL_UNSIGNED_BYTE, true, offsetof(ImDrawVert, col));
-        _graphics_pipeline.bind_uniform_buffer(0, _render_data);
+        _render_data.bind(GL_UNIFORM_BUFFER, 0);
     }
 
     void imgui_handler_opengl::draw(const ImDrawCmd& cmd, const uint32_t index_offset, const uint32_t vertex_offset)
     {
+        _vertex_array.bind();
         _render_data[0].image = _sampler.sample(mygl::texture(cmd.TextureId));
         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
 
         glScissor(int(cmd.ClipRect.x), int(int(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
             int(cmd.ClipRect.z - cmd.ClipRect.x), int(cmd.ClipRect.w - cmd.ClipRect.y));
 
-        _graphics_pipeline.draw(GL_TRIANGLES, _index_buffer, GLenum(GL_UNSIGNED_BYTE + sizeof(ImDrawIdx)), cmd.ElemCount, index_offset, vertex_offset);
+        glDrawElementsBaseVertex(GL_TRIANGLES, cmd.ElemCount, GL_UNSIGNED_SHORT, reinterpret_cast<void*>(index_offset * sizeof(ImDrawIdx)), vertex_offset);
         glFinish();
     }
 

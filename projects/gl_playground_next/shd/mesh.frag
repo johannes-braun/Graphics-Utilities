@@ -16,7 +16,74 @@ layout(binding = 1) uniform ModelData
     mat4 model;
 };
 layout(binding=0) uniform samplerCube cubemap;
+
+struct light
+{
+    mat4 matrix;
+    sampler2D map;
+};
+
+layout(std430, binding=0) restrict readonly buffer Lights
+{
+    light lights[];
+};
+
 layout(location=0) out vec4 color;
+
+vec2 random_hammersley_2d(float current, float inverse_sample_count)
+{
+    vec2 result;
+    result.x = current * inverse_sample_count;
+
+    // Radical inverse
+	uint bits = uint(current);
+    bits = (bits << 16u) | (bits >> 16u);
+	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+	result.y = float(bits) * 2.3283064365386963e-10f;
+    return result;
+}
+
+const vec2 kernel[13] =
+{
+   vec2(-0.9328896, -0.03145855), // left check offset
+   vec2(0.8162807, -0.05964844), // right check offset
+   vec2(-0.184551, 0.9722522), // top check offset
+   vec2(0.04031969, -0.8589798), // bottom check offset
+   vec2(-0.54316, 0.21186), vec2(-0.039245, -0.34345),	vec2(0.076953, 0.40667),
+   vec2(-0.66378, -0.54068),	vec2(-0.54130, 0.66730),	vec2(0.69301, 0.46990),
+   vec2(0.37228, 0.038106),	vec2(0.28597, 0.80228), vec2(0.44801, -0.43844)
+};
+
+float shadow(in sampler2D map, in mat4 mat, vec3 pos, float slope){
+    vec4 map_pos = mat * vec4(pos, 1);
+    map_pos /= map_pos.w;
+    map_pos.xy = 0.5f * map_pos.xy + 0.5f;
+
+    vec2 tex_size = vec2(512,512);
+    //map_pos.z -= (slope) * 2/length(tex_size);
+
+    vec2 alpha = fract( tex_size * map_pos.xy );
+
+    float depth;
+    float occ = 0.f;
+    const int r = 1;
+    int x = 0;
+
+    float dp = 0;
+    for(int i = 0; i < 13; i++){
+        vec2 rnd = kernel[i];
+        float d1 = texture(map, map_pos.xy + 2*rnd/tex_size).r;
+        const float delta = 0.0001f;
+        dp += d1 - map_pos.z;
+        occ += d1 - delta < map_pos.z ? 1.f : 0.f;
+        ++x;
+    }
+
+    return occ / x;//depth-0.0001f < map_pos.z ? 1.f : 0.f;//depth < map_pos.z + slope ? 1.f : 0.f;
+}
 
 void main()
 {
@@ -95,4 +162,9 @@ void main()
     }
 
     color /= 3;
+
+    float slope = tan(clamp(acos(dot(vec3(0, -1, 0), -normal)), -0.99999f, 0.9999999f));
+    float shd = shadow(lights[0].map, lights[0].matrix, position, slope);
+
+    color *= shd * dot(vec3(0, -1, 0), -normal);
 }

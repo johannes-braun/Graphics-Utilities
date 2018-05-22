@@ -193,6 +193,11 @@ namespace gfx
         const glm::vec3 z = vec3_mul(backward(), glm::vec3(scale.z));
         return glm::mat4(glm::vec4(x, 0), glm::vec4(y, 0), glm::vec4(z, 0), glm::vec4(position, 1));
     }
+    
+    constexpr glm::mat4 transform::matrix() const noexcept
+    {
+        return static_cast<glm::mat4>(*this);
+    }
 
     constexpr glm::vec3 transform::up() const noexcept { return quat_mul(rotation, glm::vec3(0, 1, 0)); }
     constexpr glm::vec3 transform::down() const noexcept { return quat_mul(rotation, glm::vec3(0, -1, 0)); }
