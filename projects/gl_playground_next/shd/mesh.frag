@@ -20,6 +20,9 @@ layout(binding=0) uniform samplerCube cubemap;
 struct light
 {
     mat4 matrix;
+    vec4 position;
+    vec4 direction;
+    vec4 color;
     sampler2D map;
 };
 
@@ -46,6 +49,19 @@ vec2 random_hammersley_2d(float current, float inverse_sample_count)
     return result;
 }
 
+const vec2 kernel2[9] = 
+{
+    vec2(0, 0),
+    vec2(1, 0),
+    vec2(0, 1),
+    vec2(-1, 0),
+    vec2(0, -1),
+    vec2(1, 1),
+    vec2(1, -1),
+    vec2(-1, 1),
+    vec2(-1, -1)
+};
+
 const vec2 kernel[13] =
 {
    vec2(-0.9328896, -0.03145855), // left check offset
@@ -57,32 +73,21 @@ const vec2 kernel[13] =
    vec2(0.37228, 0.038106),	vec2(0.28597, 0.80228), vec2(0.44801, -0.43844)
 };
 
-float shadow(in sampler2D map, in mat4 mat, vec3 pos, float slope){
+float random(vec3 seed, int i){
+	vec4 seed4 = vec4(seed,i);
+	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
+
+float shadow(in sampler2D map, in mat4 mat, vec3 pos, float ldotn){
     vec4 map_pos = mat * vec4(pos, 1);
     map_pos /= map_pos.w;
     map_pos.xy = 0.5f * map_pos.xy + 0.5f;
 
     vec2 tex_size = vec2(512,512);
-    //map_pos.z -= (slope) * 2/length(tex_size);
-
-    vec2 alpha = fract( tex_size * map_pos.xy );
-
-    float depth;
-    float occ = 0.f;
-    const int r = 1;
-    int x = 0;
-
-    float dp = 0;
-    for(int i = 0; i < 13; i++){
-        vec2 rnd = kernel[i];
-        float d1 = texture(map, map_pos.xy + 2*rnd/tex_size).r;
-        const float delta = 0.0001f;
-        dp += d1 - map_pos.z;
-        occ += d1 - delta < map_pos.z ? 1.f : 0.f;
-        ++x;
-    }
-
-    return occ / x;//depth-0.0001f < map_pos.z ? 1.f : 0.f;//depth < map_pos.z + slope ? 1.f : 0.f;
+    float d1 = texture(map, clamp(map_pos.xy, vec2(0), vec2(1.f))).r;
+    const float delta = 0.000005f + 0.00001f* ldotn;
+    return smoothstep(d1-8*delta, d1-delta, map_pos.z);
 }
 
 void main()
@@ -102,26 +107,29 @@ void main()
     vec3 env = vec3(0.5f, 0.55f, 0.6f);
     float pi = 3.14159265359f;
 
-    float mval = smoothstep(-0.01f, 0.01f, position.x);
+    float mval = smoothstep(-0.04f, 0.01f, position.x);
     vec3 col = mix(vec3(1.f), vec3(0, 0.2f, 1.f), mval);
-    mval = smoothstep(-1.89f, -1.91f, position.x);
+    mval = smoothstep(-1.82f, -1.91f, position.x);
     col = mix(col, vec3(1.f, 0.2f, 0.f), mval);
     
-    mval = smoothstep(-0.01f, 0.01f, position.x);
+    mval = smoothstep(-0.04f, 0.01f, position.x);
     float rgh = mix(1.f, 0.35f, mval);
-    mval = smoothstep(-1.89f, -1.91f, position.x);
+    mval = smoothstep(-1.82f, -1.91f, position.x);
     rgh = mix(rgh, 0.04f, mval);
 
     float mat_ior = 1.5f;
     vec3 mat_color = col;
 
-    for(int i=0; i<3; ++i)
+    for(int i=0; i<2; ++i)
     {
-        vec3 light_pos = light_poses[i];
-        vec3 light_color = 15.f*light_colors[i];
-        vec3 view_dir = normalize(camera_position - position);
+        vec3 light_pos = lights[i].position.xyz;
         vec3 to_light = light_pos - position;
         vec3 light_dir = normalize(to_light);
+
+        float shd = shadow(lights[i].map, lights[i].matrix, position, dot(light_dir, normal)) * smoothstep(0.8f, 0.83f, dot(light_dir, -lights[i].direction.xyz));
+
+        vec3 light_color = lights[i].color.w * lights[i].color.xyz;
+        vec3 view_dir = normalize(camera_position - position);
         float len2 = dot(to_light, to_light);
         float att = 2*pi / (len2);
     
@@ -158,13 +166,8 @@ void main()
 
         vec3 spec = max(dot(normal, light_dir) + 0.6f, 0) * brdf * light_color;
         vec3 diff = max(dot(normal, light_dir), 0) * mat_color * att * light_color;
-        color += vec4(spec + diff + env * mat_color, 1);
+        color += vec4(shd * (spec + diff) + env * mat_color, 1);
     }
 
-    color /= 3;
-
-    float slope = tan(clamp(acos(dot(vec3(0, -1, 0), -normal)), -0.99999f, 0.9999999f));
-    float shd = shadow(lights[0].map, lights[0].matrix, position, slope);
-
-    color *= shd * dot(vec3(0, -1, 0), -normal);
+    color /= 2;
 }
