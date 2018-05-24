@@ -23,7 +23,7 @@ struct light
     vec4 position;
     vec4 direction;
     vec4 color;
-    sampler2D map;
+    uvec2 map;
 };
 
 layout(std430, binding=0) restrict readonly buffer Lights
@@ -79,15 +79,37 @@ float random(vec3 seed, int i){
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-float shadow(in sampler2D map, in mat4 mat, vec3 pos, float ldotn){
+vec3 get_pos(mat4 mat, vec3 pos)
+{
     vec4 map_pos = mat * vec4(pos, 1);
     map_pos /= map_pos.w;
     map_pos.xy = 0.5f * map_pos.xy + 0.5f;
+    return map_pos.xyz;
+}
 
-    vec2 tex_size = vec2(512,512);
-    float d1 = texture(map, clamp(map_pos.xy, vec2(0), vec2(1.f))).r;
-    const float delta = 0.000005f + 0.00001f* ldotn;
-    return smoothstep(d1-8*delta, d1-delta, map_pos.z);
+float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 light_dir){
+
+    vec2 tex_size = textureSize(map, 0);
+
+    vec3 map_pos = get_pos(mat, pos);
+
+    float shadow = 0.f;
+    vec2 inv_size = 1/tex_size;
+    const int size = 7;
+    const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
+    float slope = 0.4f+tan(acos(dot(light_dir,normal)));
+    for(int i=0; i<size*size; ++i)
+    {
+        const int x = (i % size - (size >> 1)-1);
+        const int y = (i / size - (size >> 1)-1);
+        const vec2 offset = vec2(x, y) * inv_size;
+
+        const float eps = 0.0003 * slope;
+        const float depth = 1-texture(map, vec3(map_pos.xy + offset, map_pos.z + eps)).r;
+
+        shadow += depth;
+    }
+    return shadow / (size*size);
 }
 
 void main()
@@ -113,22 +135,31 @@ void main()
     col = mix(col, vec3(1.f, 0.2f, 0.f), mval);
     
     mval = smoothstep(-0.04f, 0.01f, position.x);
-    float rgh = mix(1.f, 0.35f, mval);
+    float rgh = mix(1.f, 0.15f, mval);
     mval = smoothstep(-1.82f, -1.91f, position.x);
-    rgh = mix(rgh, 0.04f, mval);
+    rgh = mix(rgh, 0.01f, mval);
 
     float mat_ior = 1.5f;
     vec3 mat_color = col;
 
-    for(int i=0; i<2; ++i)
+    for(int i=0; i<lights.length(); ++i)
     {
-        vec3 light_pos = lights[i].position.xyz;
+        light current_light = lights[i];
+
+        if(dot(current_light.color, current_light.color) == 0)
+            continue;
+
+        vec3 light_pos = current_light.position.xyz;
         vec3 to_light = light_pos - position;
         vec3 light_dir = normalize(to_light);
 
-        float shd = shadow(lights[i].map, lights[i].matrix, position, dot(light_dir, normal)) * smoothstep(0.8f, 0.83f, dot(light_dir, -lights[i].direction.xyz));
+        float ang = dot(light_dir, normal);
+        float slope = sqrt(1 - ang*ang) / ang;
+        float shd = 1;
+        if(current_light.map.x + current_light.map.y != 0) 
+            shd = shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir) * smoothstep(0.8f, 0.83f, dot(light_dir, -current_light.direction.xyz));
 
-        vec3 light_color = lights[i].color.w * lights[i].color.xyz;
+        vec3 light_color = current_light.color.w * current_light.color.xyz;
         vec3 view_dir = normalize(camera_position - position);
         float len2 = dot(to_light, to_light);
         float att = 2*pi / (len2);

@@ -131,13 +131,14 @@ namespace gfx
 
     constexpr transform::transform(const glm::mat4& mat) noexcept
     {
+        const float mat3w = mat[3].w == 0 ? 1.f : mat[3].w;
         glm::vec3 ax(mat[0]);
         glm::vec3 ay(mat[1]);
         glm::vec3 az(mat[2]);
         position = mat[3];
-        position.x /= mat[3].w;
-        position.y /= mat[3].w;
-        position.z /= mat[3].w;
+        position.x /= mat3w;
+        position.y /= mat3w;
+        position.z /= mat3w;
 
         ax = vec3_div(ax, glm::vec3(scale.x = vec3_len(ax)));
         ay = vec3_div(ay, glm::vec3(scale.y = vec3_len(ay)));

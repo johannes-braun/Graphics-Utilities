@@ -4,6 +4,15 @@
 
 namespace gfx
 {
+camera::data camera::info() const noexcept
+{
+    data d;
+    d.projection = projection;
+    d.view       = inverse(transform.matrix());
+    d.position   = transform.position;
+    return d;
+}
+
 camera_controller::camera_controller(const std::shared_ptr<gfx::window>& window)
         : _window(window)
 {
