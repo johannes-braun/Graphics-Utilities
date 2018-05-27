@@ -134,7 +134,6 @@ void main() {
             int(cmd.ClipRect.z - cmd.ClipRect.x), int(cmd.ClipRect.w - cmd.ClipRect.y));
 
         glDrawElementsBaseVertex(GL_TRIANGLES, cmd.ElemCount, GL_UNSIGNED_SHORT, reinterpret_cast<void*>(index_offset * sizeof(ImDrawIdx)), vertex_offset);
-        glFinish();
     }
 
     void imgui_handler_opengl::finalize()

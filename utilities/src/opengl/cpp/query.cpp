@@ -56,6 +56,11 @@ namespace gl
     {
         glEndQueryIndexed(_type, index);
     }
+    
+    query::operator mygl::query() const noexcept
+    {
+        return _id;
+    }
 
     template<>
     int32_t query::get<int32_t>(GLenum param) const noexcept
@@ -87,5 +92,11 @@ namespace gl
         uint64_t i;
         glGetQueryObjectui64v(_id, param, &i);
         return i;
+    }
+
+    template<>
+    bool query::get<bool>(GLenum param) const noexcept
+    {
+        return get<uint32_t>() != 0;
     }
 }

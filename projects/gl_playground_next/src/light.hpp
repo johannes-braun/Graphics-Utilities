@@ -13,6 +13,7 @@ struct light
     std::shared_ptr<gl::texture> depth_attachment;
     int                          map_resolution = 1024;
     glm::vec4                    color          = glm::vec4(1, 1, 1, 15.f);
+    bool                         enabled = true;
     bool                         use_shadowmap;
 
     struct info

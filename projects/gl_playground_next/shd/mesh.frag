@@ -14,6 +14,8 @@ layout(binding = 0) uniform Camera
 layout(binding = 1) uniform ModelData
 {
     mat4 model;
+    vec3 material_color;
+    float material_roughness;
 };
 layout(binding=0) uniform samplerCube cubemap;
 
@@ -91,21 +93,23 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
     vec2 tex_size = textureSize(map, 0);
 
-    vec3 map_pos = get_pos(mat, pos);
+    vec3 map_pos = get_pos(mat, pos + 0.1f * normal);
 
     float shadow = 0.f;
-    vec2 inv_size = 1/tex_size;
+    vec2 inv_size = 1/max(tex_size, vec2(1, 1));
     const int size = 7;
     const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
-    float slope = 0.4f+tan(acos(dot(light_dir,normal)));
+    float slope = 0.4f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
+
     for(int i=0; i<size*size; ++i)
     {
         const int x = (i % size - (size >> 1)-1);
         const int y = (i / size - (size >> 1)-1);
         const vec2 offset = vec2(x, y) * inv_size;
 
-        const float eps = 0.0003 * slope;
-        const float depth = 1-texture(map, vec3(map_pos.xy + offset, map_pos.z + eps)).r;
+        const float eps = 0.0001 * slope;
+        const vec2 uv = map_pos.xy + offset;
+        const float depth = 1-texture(map, vec3(uv, map_pos.z + eps)).r;
 
         shadow += depth;
     }
@@ -126,7 +130,7 @@ void main()
     };
     color = vec4(0);
 
-    vec3 env = vec3(0.5f, 0.55f, 0.6f);
+    vec3 env = 0.01f*vec3(0.3f, 0.3f, 0.4f);
     float pi = 3.14159265359f;
 
     float mval = smoothstep(-0.04f, 0.01f, position.x);
@@ -139,8 +143,9 @@ void main()
     mval = smoothstep(-1.82f, -1.91f, position.x);
     rgh = mix(rgh, 0.01f, mval);
 
+    rgh = material_roughness;
     float mat_ior = 1.5f;
-    vec3 mat_color = col;
+    vec3 mat_color = material_color;
 
     for(int i=0; i<lights.length(); ++i)
     {
@@ -157,7 +162,8 @@ void main()
         float slope = sqrt(1 - ang*ang) / ang;
         float shd = 1;
         if(current_light.map.x + current_light.map.y != 0) 
-            shd = shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir) * smoothstep(0.8f, 0.83f, dot(light_dir, -current_light.direction.xyz));
+            shd = shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir) 
+                * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
 
         vec3 light_color = current_light.color.w * current_light.color.xyz;
         vec3 view_dir = normalize(camera_position - position);

@@ -23,7 +23,10 @@ namespace gl
             std::is_same<T, int32_t>,
             std::is_same<T, uint32_t>,
             std::is_same<T, int64_t>,
-            std::is_same<T, uint64_t>>, T> get(GLenum param = GL_QUERY_RESULT) const noexcept;
+            std::is_same<T, uint64_t>,
+            std::is_same<T, bool>>, T> get(GLenum param = GL_QUERY_RESULT) const noexcept;
+
+        operator mygl::query() const noexcept;
 
     private:
         GLenum _type;

@@ -39,6 +39,23 @@ namespace gfx
             return { std::max(one.x, other.x), std::max(one.y, other.y), std::max(one.z, other.z), std::max(one.w, other.w) };
         }
 
+        template<typename T, glm::qualifier Q> constexpr glm::vec<1, T, Q> vec_div_scalar(const glm::vec<1, T, Q>& one, const float& other)
+        {
+            return one.x / other;
+        }
+        template<typename T, glm::qualifier Q> constexpr glm::vec<2, T, Q> vec_div_scalar(const glm::vec<2, T, Q>& one, const float& other)
+        {
+            return { one.x / other, one.y / other };
+        }
+        template<typename T, glm::qualifier Q> constexpr glm::vec<3, T, Q> vec_div_scalar(const glm::vec<3, T, Q>& one, const float& other)
+        {
+            return { one.x / other, one.y / other, one.z / other };
+        }
+        template<typename T, glm::qualifier Q> constexpr glm::vec<4, T, Q> vec_div_scalar(const glm::vec<4, T, Q>& one, const float& other)
+        {
+            return { one.x / other, one.y / other, one.z / other, one.w / other };
+        }
+
         template<typename T, glm::qualifier Q> constexpr glm::vec<1, T, Q> vec_sub(const glm::vec<1, T, Q>& one, const glm::vec<1, T, Q>& other)
         {
             return one.x - other.x;
@@ -160,9 +177,23 @@ namespace gfx
     }
 
     template<typename T, size_t Dim, size_t Align>
+    constexpr bounds<T, Dim, Align> bounds<T, Dim, Align>::operator+(const bounds& other) const noexcept
+    {
+        auto b = *this;
+        return b.enclose(other);
+    }
+
+    template<typename T, size_t Dim, size_t Align>
     constexpr bounds<T, Dim, Align>& bounds<T, Dim, Align>::operator+=(const value_type& other) noexcept
     {
         return enclose(other);
+    }
+
+    template<typename T, size_t Dim, size_t Align>
+    constexpr bounds<T, Dim, Align> bounds<T, Dim, Align>::operator+(const value_type& other) const noexcept
+    {
+        auto b = *this;
+        return b.enclose(other);
     }
 
     template<typename T, size_t Dim, size_t Align>
@@ -185,6 +216,12 @@ namespace gfx
     constexpr typename bounds<T, Dim, Align>::value_type bounds<T, Dim, Align>::size() const noexcept
     {
         return vec_sub(max, min);
+    }
+
+    template<typename T, size_t Dim, size_t Align>
+    constexpr typename bounds<T, Dim, Align>::value_type bounds<T, Dim, Align>::center() const noexcept
+    {
+        return vec_div_scalar(vec_add(max, min), 2.f);
     }
 
     template<typename T, size_t Dim, size_t Align>

@@ -131,13 +131,34 @@ template <typename T, size_t Dim, size_t Align> struct bounds
     constexpr value_type&       operator[](size_t i) noexcept;
 
     constexpr bounds& operator+=(const bounds& other) noexcept;
+    constexpr bounds operator+(const bounds& other) const noexcept;
     constexpr bounds& operator+=(const value_type& other) noexcept;
+    constexpr bounds operator+(const value_type& other) const noexcept;
     constexpr bounds& enclose(const bounds& other) noexcept;
     constexpr bounds& enclose(const value_type& other) noexcept;
     constexpr bounds& clip(const bounds& other) noexcept;
     constexpr bounds& inset(const value_type& at_min, const value_type& at_max) noexcept;
 
+    template<typename = std::enable_if_t<Dim == 3>>
+    bounds& transform(const glm::mat4& transform) noexcept
+    {
+        bounds temp = *this;
+        min         = value_type(std::numeric_limits<float>::max());
+        max         = value_type(std::numeric_limits<float>::lowest());
+        for(unsigned corner = 0; corner < 8; ++corner)
+        {
+            const unsigned factor_x = (corner & 0b001);
+            const unsigned factor_y = (corner & 0b010) >> 1;
+            const unsigned factor_z = (corner & 0b100) >> 2;
+
+            enclose(value_type(transform * glm::vec4(temp[factor_x].x, temp[factor_y].y, temp[factor_z].z, 1)));
+        }
+
+        return *this;
+    }
+
     constexpr value_type     size() const noexcept;
+    constexpr value_type     center() const noexcept;
     constexpr bool           contains(const bounds& other) const noexcept;
     constexpr bool           contains(const value_type& p) const noexcept;
     constexpr bool           operator==(const bounds& other) const noexcept;
