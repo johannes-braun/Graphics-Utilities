@@ -126,14 +126,13 @@ void main() {
 
     void imgui_handler_opengl::draw(const ImDrawCmd& cmd, const uint32_t index_offset, const uint32_t vertex_offset)
     {
-        _vertex_array.bind();
         _render_data[0].image = _sampler.sample(mygl::texture(cmd.TextureId));
         glMemoryBarrier(GL_UNIFORM_BARRIER_BIT);
 
         glScissor(int(cmd.ClipRect.x), int(int(ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y) - cmd.ClipRect.w),
             int(cmd.ClipRect.z - cmd.ClipRect.x), int(cmd.ClipRect.w - cmd.ClipRect.y));
 
-        glDrawElementsBaseVertex(GL_TRIANGLES, cmd.ElemCount, GL_UNSIGNED_SHORT, reinterpret_cast<void*>(index_offset * sizeof(ImDrawIdx)), vertex_offset);
+        _vertex_array.draw(GL_TRIANGLES, cmd.ElemCount, GL_UNSIGNED_SHORT, index_offset * sizeof(ImDrawIdx), vertex_offset);
     }
 
     void imgui_handler_opengl::finalize()

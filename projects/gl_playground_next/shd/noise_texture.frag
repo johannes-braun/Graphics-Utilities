@@ -58,10 +58,12 @@ void main()
         discard;
     }
 
+    tmin = max(tmin, 0);
+    const int steps = 128;
     const float diff = tmax - tmin;
-    const float dstep = diff / 64.f;
+    const float dstep = diff / steps;
     float density = 0.f;
-    float t = max(tmin, 0);
+    float t = tmin;
 
     vec3 offx = vec3(1, 0, 0) / 512;
     vec3 offy = vec3(1, 0, 0) / 512;
@@ -69,7 +71,7 @@ void main()
 
     float lighting = -1.f;
     vec3 tint = vec3(1.f);
-    for(int i=0; i<64; ++i)
+    for(int i=0; i<steps; ++i)
     {
         const vec3 pos = (ro + t * rd);
         float dens000 = texture(noise_texture, pos).r;

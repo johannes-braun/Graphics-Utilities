@@ -9,9 +9,22 @@ layout(binding = 0) uniform Camera
     vec3 camera_position;
 };
 
-layout(binding = 1) uniform ModelData
+struct instance_info
 {
-    mat4 model;
+    uint count;
+    uint instance_count;
+    uint base_index;
+    uint base_vertex;
+    uint base_instance;
+
+    mat4 model_matrix;
+    vec3 color;
+    float roughness;
+};
+
+layout(binding = 10, std430) readonly buffer ModelData
+{
+    instance_info instances[];
 };
 
 out gl_PerVertex 
@@ -21,5 +34,5 @@ out gl_PerVertex
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(position, 1);
+    gl_Position = projection * view * instances[gl_DrawID].model_matrix * vec4(position, 1);
 }

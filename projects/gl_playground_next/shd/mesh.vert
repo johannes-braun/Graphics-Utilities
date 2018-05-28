@@ -9,9 +9,22 @@ layout(binding = 0) uniform Camera
     vec3 camera_position;
 };
 
-layout(binding = 1) uniform ModelData
+struct instance_info
 {
-    mat4 model;
+    uint count;
+    uint instance_count;
+    uint base_index;
+    uint base_vertex;
+    uint base_instance;
+
+    mat4 model_matrix;
+    vec3 color;
+    float roughness;
+};
+
+layout(binding = 10, std430) readonly buffer ModelData
+{
+    instance_info instances[];
 };
 
 out gl_PerVertex 
@@ -22,12 +35,14 @@ out gl_PerVertex
 layout(location=0) out vec3 out_position;
 layout(location=1) out vec2 out_uv;
 layout(location=2) out vec3 out_normal;
+layout(location=3) flat out uint draw_id;
 
 void main()
 {
-    out_position = (model*vec4(position, 1)).xyz;
+    draw_id = gl_DrawID;
+    out_position = (instances[gl_DrawID].model_matrix*vec4(position, 1)).xyz;
     out_uv = uv;
-    out_normal = normalize((inverse(transpose(model)) * vec4(normal, 1)).xyz);
+    out_normal = normalize((inverse(transpose(instances[gl_DrawID].model_matrix)) * vec4(normal, 1)).xyz);
 
-    gl_Position = projection * view * model * vec4(position, 1);
+    gl_Position = projection * view * instances[gl_DrawID].model_matrix * vec4(position, 1);
 }

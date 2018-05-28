@@ -97,6 +97,14 @@ namespace gl
         uint64_t handle() const noexcept;
 
         operator mygl::texture() const noexcept;
+        mygl::texture id() const noexcept;
+
+        void bind(uint32_t binding) const noexcept;
+        void bind_image(uint32_t binding) const noexcept;
+        void bind_image(uint32_t binding, GLenum access) const noexcept;
+        void bind_image(uint32_t binding, GLenum format, GLenum access) const noexcept;
+        void bind_image(uint32_t binding, int level, GLenum format, GLenum access) const noexcept;
+        void bind_image(uint32_t binding, int level, int layer, GLenum format, GLenum access) const noexcept;
 
     private:
         void init_handle() noexcept;
@@ -123,11 +131,13 @@ namespace gl
         sampler& operator=(const sampler& other) noexcept;
         sampler& operator=(sampler&& other) noexcept;
         operator mygl::sampler() const noexcept;
+        mygl::sampler id() const noexcept;
 
         void set(GLenum name, int value) const noexcept;
         void set(GLenum name, float value) const noexcept;
 
         uint64_t sample(mygl::texture t) const noexcept;
+        void bind(uint32_t binding) const noexcept;
 
     private:
         constexpr const static std::array<GLenum, 3> _float_parameters{
@@ -163,8 +173,15 @@ namespace gl
         ~image() noexcept;
 
         uint64_t handle() const noexcept;
+        void bind(uint32_t binding) const noexcept;
 
     private:
         uint64_t _handle;
+        mygl::texture _texture;
+        int _level;
+        bool _layered;
+        int _layer;
+        GLenum _format;
+        GLenum _access;
     };
 }

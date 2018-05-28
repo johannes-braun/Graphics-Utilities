@@ -73,7 +73,7 @@ float snoise(vec3 v){
                                 dot(p2,x2), dot(p3,x3) ) );
 }
 
-layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 4) in;
 
 layout(binding=0, r16f) uniform image3D noise_texture;
 layout(binding=1, r16f) uniform image2D noise_texture2;
@@ -90,7 +90,7 @@ void main()
 
     vec3 uv = texel / size;
 
-    float time = 0.2f * current_time;
+    float time = 0.05f * current_time;
     float base_noise = snoise(uv + vec3(time, 0, 0)) + snoise(uv + vec3(sin(time), cos(time)-time, time));
     float border4 = smoothstep(0.13f, 0.22f, base_noise) * smoothstep(0.8f, 0.45f, base_noise);
     float border8 = smoothstep(0.1f, 0.2f, base_noise) * smoothstep(0.6f, 0.3f, base_noise);

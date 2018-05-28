@@ -2,7 +2,8 @@
 
 layout(location=0) in vec3 position;
 layout(location=1) in vec2 uv;
-layout(location=2) in vec3 normal;
+layout(location=2) in vec3 normal_world;
+layout(location=3) flat in uint draw_id;
 
 layout(binding = 0) uniform Camera
 {
@@ -11,13 +12,28 @@ layout(binding = 0) uniform Camera
     vec3 camera_position;
 };
 
-layout(binding = 1) uniform ModelData
+struct instance_info
 {
-    mat4 model;
-    vec3 material_color;
-    float material_roughness;
+    uint count;
+    uint instance_count;
+    uint base_index;
+    uint base_vertex;
+    uint base_instance;
+
+    mat4 model_matrix;
+    vec3 color;
+    float roughness;
 };
+
+layout(binding = 10, std430) readonly buffer ModelData
+{
+    instance_info instances[];
+};
+
 layout(binding=0) uniform samplerCube cubemap;
+
+layout(binding=5) uniform Time { float time; };
+layout(binding=15) uniform sampler3D noise_texture;
 
 struct light
 {
@@ -97,7 +113,7 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
     float shadow = 0.f;
     vec2 inv_size = 1/max(tex_size, vec2(1, 1));
-    const int size = 7;
+    const int size = 5;
     const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
     float slope = 0.4f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
 
@@ -107,8 +123,8 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
         const int y = (i / size - (size >> 1)-1);
         const vec2 offset = vec2(x, y) * inv_size;
 
-        const float eps = 0.0001 * slope;
-        const vec2 uv = map_pos.xy + offset;
+        const float eps = 0.0002 * slope;
+        const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
         const float depth = 1-texture(map, vec3(uv, map_pos.z + eps)).r;
 
         shadow += depth;
@@ -118,16 +134,7 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
 void main()
 {
-    vec3 light_poses[3] = {
-        vec3(8, 8, 6),
-        vec3(-4, -3, -7),
-        vec3(1, 8, -2)
-    };
-    vec3 light_colors[3] = {
-        vec3(1.f, 0.6f, 0.4f),
-        vec3(0.3f, 0.7f, 1.f),
-        vec3(0.6f, 1.f, 0.65f)
-    };
+    vec3 normal = normalize(normal_world);
     color = vec4(0);
 
     vec3 env = 0.01f*vec3(0.3f, 0.3f, 0.4f);
@@ -143,16 +150,13 @@ void main()
     mval = smoothstep(-1.82f, -1.91f, position.x);
     rgh = mix(rgh, 0.01f, mval);
 
-    rgh = material_roughness;
+    rgh = instances[draw_id].roughness;
     float mat_ior = 1.5f;
-    vec3 mat_color = material_color;
+    vec3 mat_color = instances[draw_id].color;
 
     for(int i=0; i<lights.length(); ++i)
     {
         light current_light = lights[i];
-
-        if(dot(current_light.color, current_light.color) == 0)
-            continue;
 
         vec3 light_pos = current_light.position.xyz;
         vec3 to_light = light_pos - position;
@@ -162,8 +166,9 @@ void main()
         float slope = sqrt(1 - ang*ang) / ang;
         float shd = 1;
         if(current_light.map.x + current_light.map.y != 0) 
-            shd = shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir) 
-                * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
+            shd = shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir);
+        
+        shd *= smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
 
         vec3 light_color = current_light.color.w * current_light.color.xyz;
         vec3 view_dir = normalize(camera_position - position);
@@ -177,13 +182,14 @@ void main()
 
         // GGX Distribution
         float mdotn = max(dot(normal, half_vector), 0);
-        float dggx = alpha2 / (pi *pow(mdotn * mdotn * (alpha2 - 1) + 1, 2));
+        float base = mdotn * mdotn * (alpha2 - 1) + 1;
+        float dggx = alpha2 / (pi * base * base);
 
         // GGX Geometry term
         float ndotv = max(dot(normal, view_dir), 0);
-        float ggx_geom_v = 1 / (ndotv + sqrt(alpha2 + (1-alpha2)*ndotv*ndotv));
+        float ggx_geom_v = 1 / (ndotv + sqrt(mix(ndotv*ndotv, 1, alpha2)));
         float ndotl = max(dot(normal, light_dir), 0);
-        float ggx_geom_l = 1 / (ndotl + sqrt(alpha2 + (1-alpha2)*ndotl*ndotl));
+        float ggx_geom_l = 1 / (ndotl + sqrt(mix(ndotl*ndotl, 1, alpha2)));
         float ggx_geom = ggx_geom_v * ggx_geom_l;
 
         // Fresnel (Cook-Torrance)
@@ -196,15 +202,35 @@ void main()
         float gmcbgpc = (g-c) / (g+c);
         gmcbgpc *= gmcbgpc;
         gmcbgpc *= 0.5f;
-        float fct = gmcbgpc * (1 + pow(((g+c)*c - 1) / ((g-c)*c + 1), 2));
+        const float den = ((g+c)*c - 1) / max((g-c)*c + 1, 0.001f);
+        float fct = gmcbgpc * (1 + den * den);
     
         // BRDF
         float brdf = (dggx * fct * ggx_geom);
-
         vec3 spec = max(dot(normal, light_dir) + 0.6f, 0) * brdf * light_color;
-        vec3 diff = max(dot(normal, light_dir), 0) * mat_color * att * light_color;
+        vec3 diff = max(dot(normal, light_dir), 0) * mat_color * att * light_color * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
         color += vec4(shd * (spec + diff) + env * mat_color, 1);
+
+        const int P = 0;
+        const int N = 2;
+        if(current_light.map.x + current_light.map.y != 0) 
+        {
+            float sigh = 0.f;
+            for(int p = 0; p < P; ++p)
+            {
+                float dist = distance(position, camera_position) / N * (1-0.2f*random(gl_FragCoord.xyz, int(i + p*238 + 1214*time) % 48));
+                for(int i=0; i<N; ++i)
+                {
+                    const vec3 wpos = camera_position - dist * i * view_dir + 0.1f * normal;
+                    const vec3 pos = get_pos(current_light.matrix, wpos);
+                    float fac = texture(noise_texture, wpos / 10.f).r;
+
+                    sigh += abs(fac * 0.6f*(1-texture(sampler2DShadow(current_light.map), pos).r) * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz)));
+                }
+            }
+            color = mix(color, current_light.color, sigh / (P*N));
+        }
     }
 
-    color /= 2;
+    //color /= lights.length();
 }

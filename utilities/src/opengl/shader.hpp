@@ -16,7 +16,7 @@ namespace gl
     using glsp::definition;
 
     constexpr const char* opengl_prefix = R"glsl(
-        #version 450 core
+        #version 460 core
         #extension GL_ARB_separate_shader_objects : require
         #extension GL_ARB_bindless_texture : require
         #extension GL_ARB_shading_language_420pack : require

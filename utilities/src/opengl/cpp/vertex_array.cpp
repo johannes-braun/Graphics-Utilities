@@ -22,15 +22,13 @@ vertex_array::attribute& vertex_array::attribute::bind(int binding) noexcept
     return *this;
 }
 
-vertex_array::attribute& vertex_array::attribute::format(int length, GLenum type, bool normalized,
-                                                         ptrdiff_t offset) noexcept
+vertex_array::attribute& vertex_array::attribute::format(int length, GLenum type, bool normalized, ptrdiff_t offset) noexcept
 {
     _length     = length;
     _type       = type;
     _normalized = normalized;
     _offset     = offset;
-    glVertexArrayAttribFormat(
-            _vao, _index, _length, type, normalized, static_cast<unsigned>(offset));
+    glVertexArrayAttribFormat(_vao, _index, _length, type, normalized, static_cast<unsigned>(offset));
     _formatted = true;
     return *this;
 }
@@ -51,10 +49,7 @@ vertex_array::vertex_array(const vertex_array& other)
         auto&& att = attrib(attr.second._index);
         att.enable(attr.second._enabled);
         if(attr.second._formatted)
-            att.format(attr.second._length,
-                       attr.second._type,
-                       attr.second._normalized,
-                       attr.second._offset);
+            att.format(attr.second._length, attr.second._type, attr.second._normalized, attr.second._offset);
         if(attr.second._bound)
             att.bind(attr.second._binding);
     }
@@ -86,10 +81,7 @@ vertex_array& vertex_array::operator=(const vertex_array& other)
         auto&& att = attrib(attr.second._index);
         att.enable(attr.second._enabled);
         if(attr.second._formatted)
-            att.format(attr.second._length,
-                       attr.second._type,
-                       attr.second._normalized,
-                       attr.second._offset);
+            att.format(attr.second._length, attr.second._type, attr.second._normalized, attr.second._offset);
         if(attr.second._bound)
             att.bind(attr.second._binding);
     }
@@ -123,8 +115,7 @@ vertex_array::attribute& vertex_array::attrib(int index)
     return _attributes.at(index);
 }
 
-void vertex_array::vertex_buffer(int binding, const mygl::buffer& buffer, ptrdiff_t offset,
-                                 size_t stride)
+void vertex_array::vertex_buffer(int binding, const mygl::buffer& buffer, ptrdiff_t offset, size_t stride)
 {
     _vertex_buffers[binding] = vbo{buffer, offset, stride};
     glVertexArrayVertexBuffer(_id, binding, buffer, offset, static_cast<int>(stride));
@@ -139,4 +130,60 @@ void vertex_array::element_buffer(const mygl::buffer& buffer)
 void vertex_array::bind() const noexcept { glBindVertexArray(_id); }
 
 vertex_array::operator mygl::vertex_array() const noexcept { return _id; }
+
+void vertex_array::draw(GLenum mode, int vertices, int first_vertex) const noexcept
+{
+    bind();
+    glDrawArrays(mode, first_vertex, vertices);
+}
+
+void vertex_array::draw_instanced(GLenum mode, int vertices, int instances, int first_vertex, int first_instance) const noexcept
+{
+    bind();
+    glDrawArraysInstancedBaseInstance(mode, first_vertex, vertices, instances, first_instance);
+}
+
+void vertex_array::draw(GLenum mode, int elements, GLenum element_type, ptrdiff_t first_element, int first_vertex) const noexcept
+{
+    bind();
+    glDrawElementsBaseVertex(mode, elements, element_type, reinterpret_cast<const void*>(first_element), first_vertex);
+}
+
+void vertex_array::draw_instanced(GLenum mode, int elements, GLenum element_type, int instances, ptrdiff_t first_element, int first_vertex,
+                                  int first_instance) const noexcept
+{
+    bind();
+    glDrawElementsInstancedBaseVertexBaseInstance(
+            mode, elements, element_type, reinterpret_cast<const void*>(first_element), instances, first_vertex, first_instance);
+}
+
+void vertex_array::multi_draw(GLenum mode, const std::vector<multi_array_command>& commands) const
+{
+    bind();
+
+    std::vector<int> buffer(2 * commands.size());
+#pragma omp parallel for
+    for(int i = 0; i < commands.size(); ++i)
+    {
+        buffer[i]                   = commands[i].count;
+        buffer[i + commands.size()] = commands[i].first;
+    }
+    glMultiDrawArrays(mode, buffer.data() + commands.size(), buffer.data(), static_cast<int>(commands.size()));
+}
+
+void vertex_array::multi_draw(GLenum mode, GLenum element_type, const std::vector<multi_element_command>& commands) const
+{
+    bind();
+    std::vector<int>         buffer(2 * commands.size());
+    std::vector<const void*> offsets(commands.size());
+#pragma omp parallel for
+    for(int i = 0; i < commands.size(); ++i)
+    {
+        buffer[i]                   = commands[i].count;
+        buffer[i + commands.size()] = commands[i].first_vertex;
+        offsets[i]                  = reinterpret_cast<const void*>(commands[i].first_element);
+    }
+    glMultiDrawElementsBaseVertex(
+            mode, buffer.data(), element_type, offsets.data(), static_cast<int>(commands.size()), buffer.data() + commands.size());
+}
 }
