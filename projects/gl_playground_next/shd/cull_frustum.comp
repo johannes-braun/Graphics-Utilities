@@ -16,6 +16,8 @@ struct instance_info
     uint base_instance;
     uint id;
 
+    uint plane_outside;
+
     vec4 bounds[2];
 
     mat4  model_matrix;
@@ -25,7 +27,7 @@ struct instance_info
 
 layout(binding = 10, std430) buffer ModelData { instance_info instances[]; };
 
-const float margins[3] = {0.1f, 0.1f, 0.0001f};
+const float margins[3] = {0, 0, 0};
 
 void main() 
 {
@@ -45,7 +47,6 @@ void main()
                                      instances[index].bounds[factor_y].y,
                                      instances[index].bounds[factor_z].z,
                                           1);
-        corners[corner] /= corners[corner].w;
         corners[corner].z = corners[corner].z * 2.f - 1.f;
     }
 
@@ -55,10 +56,14 @@ void main()
         for(uint corner = 0; corner < 8; ++corner)
         {
             const float sign = float(plane / 3) * 2.f - 1.f;
-            outside_plane    = outside_plane && (sign * corners[corner][plane % 3] > 1 + margins[plane%3]);
+            if(sign < 0)
+                outside_plane    = outside_plane && (corners[corner][plane % 3] > corners[corner].w);
+            else
+                outside_plane    = outside_plane && (corners[corner][plane % 3] < -corners[corner].w);
         }
         if(outside_plane)
         {
+            instances[index].plane_outside = uint(plane);
             instances[index].instance_count = 0;
             return;
         }

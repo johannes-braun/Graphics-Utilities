@@ -16,6 +16,7 @@ struct instance_info
     uint base_index;
     uint base_vertex;
     uint base_instance;
+    uint vertex_count;
     uint id;
 
     vec3 bounds_min;

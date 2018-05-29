@@ -19,7 +19,7 @@ void build_framebuffer(int width, int height)
 }
 void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
 {
-   // log_i << message;
+    // log_i << message;
 }
 
 int main()
@@ -42,39 +42,35 @@ int main()
     gfx::camera            camera;
     gfx::camera_controller controller(window);
 
-    gfx::scene_file exterior("Bistro_Research_Exterior.fbx");
-    gfx::scene_file interior("Bistro_Research_Interior.fbx");
+    gfx::mesh_holder<gfx::indirect_elements> large_meshes;
+    gfx::mesh_holder<gfx::indirect_elements> small_meshes;
 
-    gfx::mesh_holder<gfx::indirect_elements> meshes;
+    std::mt19937                          gen;
+    std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    std::mt19937                                          gen;
-    std::uniform_real_distribution<float>                 dist(0.f, 1.f);
-    //std::vector<std::shared_ptr<gfx::tri_mesh>>           meshes;
-    //std::vector<std::unique_ptr<gfx::tri_mesh::instance>> instances;
-    for(const auto& mesh : exterior.meshes)
+    size_t vertices = 0;
+    size_t indices  = 0;
+    for(const auto& mesh : gfx::scene_file("san-miguel.obj").meshes)
     {
-        gfx::mesh_instance instance = meshes.create_mesh(mesh.vertices, mesh.indices);
-        gfx::transform     transform    = mesh.transform;
-        transform.scale = glm::vec3(0.01f);
-        instance.model_matrix = transform;
-        instance.color                     = glm::vec3(dist(gen)) * glm::vec3(1.f);
-        instance.roughness                 = dist(gen);
-        meshes.update_mesh(instance);
-    }
-    for (const auto& mesh : interior.meshes)
-    {
+        gfx::mesh_holder<gfx::indirect_elements>& meshes = [&]() -> gfx::mesh_holder<gfx::indirect_elements>&
+        {
+            return mesh.indices.size() > 128 ? large_meshes : small_meshes;
+        }();
+
         gfx::mesh_instance instance  = meshes.create_mesh(mesh.vertices, mesh.indices);
         gfx::transform     transform = mesh.transform;
-        transform.scale              = glm::vec3(0.01f);
+        transform.scale              = glm::vec3(1.f);
         instance.model_matrix        = transform;
-        instance.color                     = glm::vec3(dist(gen)) * glm::vec3(1.f);
-        instance.roughness                 = dist(gen);
+        instance.color               = glm::vec3(dist(gen)) * glm::vec3(1.f);
+        instance.roughness           = dist(gen);
         meshes.update_mesh(instance);
+        vertices += instance.indirect.elements.vertex_count;
+        indices += instance.indirect.elements.count;
     }
 
-    gl::buffer<gfx::camera::data> matrix_buffer(camera.info(), GL_DYNAMIC_STORAGE_BIT);
+    log_i << "Loaded " << vertices << " vertices with " << indices << " indices.";
 
-    gl::compute_pipeline          cull_frustum(std::make_shared<gl::shader>("cull_frustum.comp"));
+    gl::buffer<gfx::camera::data> matrix_buffer(camera.info(), GL_DYNAMIC_STORAGE_BIT);
 
     gl::pipeline mesh_pipeline;
     mesh_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("mesh.vert");
@@ -93,75 +89,35 @@ int main()
     lights[2].color                = glm::vec4(0.4f, 0.8f, 0.1f, 13.f);
     lights[3].color                = glm::vec4(0.9f, 0.8f, 0.7f, 10.f);
 
-    gl::buffer<gfx::light::info> light_buffer(GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT |
+    gl::buffer<gfx::light::info> light_buffer(lights.size(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT |
                                               GL_MAP_PERSISTENT_BIT);
-    for(const auto& l : lights)
-        light_buffer.push_back(l.make_info());
     light_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
-
-    const auto[w, h, c] = gfx::image_file::info("indoor/posx.hdr");
-    gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
-    cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posx.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negx.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posy.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negy.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posz.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negz.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.generate_mipmaps();
-    const gl::sampler sampler;
 
     build_framebuffer(1280, 720);
 
-    gl::texture           noise_texture(GL_TEXTURE_3D, 128, 128, 128, GL_R16F, 1);
-    gl::compute_pipeline  simplex_pipeline(std::make_shared<gl::shader>("simplex.comp"));
-    int                   sx = 1.f, sy = 1.f, sz = 1.f;
-    gl::buffer<glm::vec3> box_vertices(
-            {{0, 0, 0},    {0, 0, sz},  {0, sy, sz}, {sx, sy, 0},  {0, 0, 0},   {0, sy, 0},  {sx, 0, sz},  {0, 0, 0},    {sx, 0, 0},
-             {sx, sy, 0},  {sx, 0, 0},  {0, 0, 0},   {0, 0, 0},    {0, sy, sz}, {0, sy, 0},  {sx, 0, sz},  {0, 0, sz},   {0, 0, 0},
-             {0, sy, sz},  {0, 0, sz},  {sx, 0, sz}, {sx, sy, sz}, {sx, 0, 0},  {sx, sy, 0}, {sx, 0, 0},   {sx, sy, sz}, {sx, 0, sz},
-             {sx, sy, sz}, {sx, sy, 0}, {0, sy, 0},  {sx, sy, sz}, {0, sy, 0},  {0, sy, sz}, {sx, sy, sz}, {0, sy, sz},  {sx, 0, sz}});
-    gl::vertex_array box_vao;
-
-    box_vao.attrib(0).enable(true).format(3, GL_FLOAT, false, 0).bind(0);
-    box_vao.vertex_buffer(0, box_vertices);
-    gl::pipeline box_pipeline;
-    box_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("inbox.vert");
-    box_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("noise_texture.frag");
-    gl::sampler       noise_sampler;
-    gl::buffer<float> time(static_cast<float>(glfwGetTime()),
-                           GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
-    time.map(GL_MAP_WRITE_BIT);
+    gl::texture          noise_texture(GL_TEXTURE_3D, 128, 128, 128, GL_R16F, 1);
+    gl::compute_pipeline simplex_pipeline(std::make_shared<gl::shader>("simplex.comp"));
+    gl::sampler          noise_sampler;
+    gl::buffer<float>    time(static_cast<float>(glfwGetTime()),
+                              GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
+    time.map(GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);
 
-    struct timer_query : gl::query
-    {
-        timer_query()
-                : gl::query(GL_TIME_ELAPSED)
-        {
-        }
-    };
     struct qmap : std::map<std::string, qmap>
     {
+        struct timer_query : gl::query
+        {
+            timer_query()
+                    : gl::query(GL_TIME_ELAPSED)
+            {
+            }
+        };
         std::map<std::string, timer_query> queries;
-    };
-    qmap queries;
+    } queries;
 
-    struct indirect
-    {
-        uint32_t count = 0;
-        uint32_t instances = 1;
-        uint32_t bla = 0;
-        uint32_t blub = 0;
-        uint32_t asp = 0;
-    };
-
-    gl::buffer<indirect> ind(indirect{static_cast<uint32_t>(box_vertices.size())}, GL_DYNAMIC_STORAGE_BIT);
-    
-                //for(const auto& i : instances)
-                //    i->render(camera);
     while(window->update())
     {
         gui.new_frame();
@@ -174,10 +130,10 @@ int main()
         {
             if(l.begin_shadowmap())
             {
-                meshes.info_buffer.bind(GL_SHADER_STORAGE_BUFFER, 10);
-                cull_frustum.dispatch(meshes.info_buffer.size());
+                large_meshes.cull();
                 mesh_shadow_pipeline.bind();
-                meshes.render();
+                small_meshes.render();
+                large_meshes.render();
             }
         }
         queries["scene"]["lights"].queries["shadowmap"].finish();
@@ -186,18 +142,12 @@ int main()
         light_buffer.reserve(lights.size());
         int enabled_lights = 0;
         for(int i = 0; i < lights.size(); ++i)
-        {
             if(lights[i].enabled)
-            {
                 light_buffer[enabled_lights++] = lights[i].make_info();
-            }
-        }
-
         lights[1].map_camera.transform = inverse(
                 glm::lookAt(glm::vec3(7 * glm::sin(static_cast<float>(glfwGetTime())), 20, 7 * glm::cos(static_cast<float>(glfwGetTime()))),
                             glm::vec3(0, 0, 0),
                             glm::vec3(0, 1, 0)));
-
         lights[3].map_camera.transform.position = glm::lerp(
                 lights[3].map_camera.transform.position, camera.transform.position, static_cast<float>(10.f * window->delta_time()));
         lights[3].map_camera.transform.rotation = glm::slerp(
@@ -213,48 +163,32 @@ int main()
         matrix_buffer.synchronize();
         queries["scene"]["camera"].queries["update"].finish();
 
-        gl::framebuffer::zero().bind();
-
         queries["scene"].queries["culling"].start();
-        cubemap.bind(0);
-        sampler.bind(0);
+        gl::framebuffer::zero().bind();
         matrix_buffer.bind(GL_UNIFORM_BUFFER, 0);
-        light_buffer.bind(GL_SHADER_STORAGE_BUFFER, 0, 0, enabled_lights);
-
-        meshes.info_buffer.bind(GL_SHADER_STORAGE_BUFFER, 10);
-        cull_frustum.dispatch(meshes.info_buffer.size());
+        if(enabled_lights != 0)
+            light_buffer.bind(GL_SHADER_STORAGE_BUFFER, 0, 0, enabled_lights);
+        else
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mygl::buffer::zero);
+        large_meshes.cull();
         queries["scene"].queries["culling"].finish();
+
         queries["scene"].queries["render"].start();
         mesh_pipeline.bind();
-        meshes.render();
-
+        small_meshes.render();
+        large_meshes.render();
         queries["scene"].queries["render"].finish();
 
+        queries["simplex"].queries["update"].start();
         time[0] = static_cast<float>(glfwGetTime());
         time.bind(GL_UNIFORM_BUFFER, 5);
         noise_sampler.bind(15);
         noise_texture.bind(15);
-        queries["simplex"].queries["update"].start();
         noise_texture.bind_image(0, GL_WRITE_ONLY);
         simplex_pipeline.dispatch(128, 128, 128);
         queries["simplex"].queries["update"].finish();
-#if USE_CLOUDS
-        queries["simplex"].queries["render"].start();
-        glEnable(GL_BLEND);
-        glCullFace(GL_FRONT);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        matrix_buffer.bind(GL_UNIFORM_BUFFER, 0);
-        noise_sampler.bind(0);
-        noise_texture.bind(0);
-        box_pipeline.bind();
-        box_vao.draw(GL_TRIANGLES, box_vertices.size());
-        glCullFace(GL_BACK);
-        glDisable(GL_BLEND);
-        queries["simplex"].queries["render"].finish();
-#endif
 
         ImGui::Begin("Test", nullptr, ImGuiWindowFlags_MenuBar);
-
         enum class tab
         {
             timings,

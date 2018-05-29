@@ -19,6 +19,7 @@ struct instance_info
     uint base_index;
     uint base_vertex;
     uint base_instance;
+    uint vertex_count;
     uint id;
 
     vec3 bounds_min;
@@ -33,8 +34,6 @@ layout(binding = 10, std430) readonly buffer ModelData
 {
     instance_info instances[];
 };
-
-layout(binding=0) uniform samplerCube cubemap;
 
 layout(binding=5) uniform Time { float time; };
 layout(binding=15) uniform sampler3D noise_texture;
@@ -54,46 +53,6 @@ layout(std430, binding=0) restrict readonly buffer Lights
 };
 
 layout(location=0) out vec4 color;
-
-vec2 random_hammersley_2d(float current, float inverse_sample_count)
-{
-    vec2 result;
-    result.x = current * inverse_sample_count;
-
-    // Radical inverse
-	uint bits = uint(current);
-    bits = (bits << 16u) | (bits >> 16u);
-	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-	result.y = float(bits) * 2.3283064365386963e-10f;
-    return result;
-}
-
-const vec2 kernel2[9] = 
-{
-    vec2(0, 0),
-    vec2(1, 0),
-    vec2(0, 1),
-    vec2(-1, 0),
-    vec2(0, -1),
-    vec2(1, 1),
-    vec2(1, -1),
-    vec2(-1, 1),
-    vec2(-1, -1)
-};
-
-const vec2 kernel[13] =
-{
-   vec2(-0.9328896, -0.03145855), // left check offset
-   vec2(0.8162807, -0.05964844), // right check offset
-   vec2(-0.184551, 0.9722522), // top check offset
-   vec2(0.04031969, -0.8589798), // bottom check offset
-   vec2(-0.54316, 0.21186), vec2(-0.039245, -0.34345),	vec2(0.076953, 0.40667),
-   vec2(-0.66378, -0.54068),	vec2(-0.54130, 0.66730),	vec2(0.69301, 0.46990),
-   vec2(0.37228, 0.038106),	vec2(0.28597, 0.80228), vec2(0.44801, -0.43844)
-};
 
 float random(vec3 seed, int i){
 	vec4 seed4 = vec4(seed,i);
@@ -169,10 +128,12 @@ void main()
         float ang = dot(light_dir, normal);
         float slope = sqrt(1 - ang*ang) / ang;
         float shd = 1;
-        if(current_light.map.x + current_light.map.y != 0) 
-            shd = shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir);
-        
         shd *= smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
+        if(shd == 0)
+            continue;
+        if(current_light.map.x + current_light.map.y != 0) 
+            shd *= shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir);
+        
 
         vec3 light_color = current_light.color.w * current_light.color.xyz;
         vec3 view_dir = normalize(camera_position - position);
