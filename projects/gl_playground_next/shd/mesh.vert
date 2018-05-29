@@ -16,6 +16,10 @@ struct instance_info
     uint base_index;
     uint base_vertex;
     uint base_instance;
+    uint id;
+
+    vec3 bounds_min;
+    vec3 bounds_max;
 
     mat4 model_matrix;
     vec3 color;

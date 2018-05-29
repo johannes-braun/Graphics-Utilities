@@ -19,7 +19,7 @@ void build_framebuffer(int width, int height)
 }
 void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
 {
-    log_i << message;
+   // log_i << message;
 }
 
 int main()
@@ -42,22 +42,39 @@ int main()
     gfx::camera            camera;
     gfx::camera_controller controller(window);
 
-    gfx::scene_file scene("Bistro_Research_Exterior.fbx");
+    gfx::scene_file exterior("Bistro_Research_Exterior.fbx");
+    gfx::scene_file interior("Bistro_Research_Interior.fbx");
+
+    gfx::mesh_holder<gfx::indirect_elements> meshes;
 
     std::mt19937                                          gen;
     std::uniform_real_distribution<float>                 dist(0.f, 1.f);
-    std::vector<std::shared_ptr<gfx::tri_mesh>>           meshes;
-    std::vector<std::unique_ptr<gfx::tri_mesh::instance>> instances;
-    for(const auto& mesh : scene.meshes)
+    //std::vector<std::shared_ptr<gfx::tri_mesh>>           meshes;
+    //std::vector<std::unique_ptr<gfx::tri_mesh::instance>> instances;
+    for(const auto& mesh : exterior.meshes)
     {
-        auto&& m                                     = meshes.emplace_back(std::make_shared<gfx::tri_mesh>(mesh.vertices, mesh.indices));
-        auto&& instance                              = instances.emplace_back(m->instantiate());
-        (instance->transform = mesh.transform).scale = glm::vec3(0.01f);
-        instance->material.color                     = glm::vec3(dist(gen)) * glm::vec3(1.f);
-        instance->material.roughness                 = dist(gen);
+        gfx::mesh_instance instance = meshes.create_mesh(mesh.vertices, mesh.indices);
+        gfx::transform     transform    = mesh.transform;
+        transform.scale = glm::vec3(0.01f);
+        instance.model_matrix = transform;
+        instance.color                     = glm::vec3(dist(gen)) * glm::vec3(1.f);
+        instance.roughness                 = dist(gen);
+        meshes.update_mesh(instance);
+    }
+    for (const auto& mesh : interior.meshes)
+    {
+        gfx::mesh_instance instance  = meshes.create_mesh(mesh.vertices, mesh.indices);
+        gfx::transform     transform = mesh.transform;
+        transform.scale              = glm::vec3(0.01f);
+        instance.model_matrix        = transform;
+        instance.color                     = glm::vec3(dist(gen)) * glm::vec3(1.f);
+        instance.roughness                 = dist(gen);
+        meshes.update_mesh(instance);
     }
 
     gl::buffer<gfx::camera::data> matrix_buffer(camera.info(), GL_DYNAMIC_STORAGE_BIT);
+
+    gl::compute_pipeline          cull_frustum(std::make_shared<gl::shader>("cull_frustum.comp"));
 
     gl::pipeline mesh_pipeline;
     mesh_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("mesh.vert");
@@ -143,24 +160,24 @@ int main()
 
     gl::buffer<indirect> ind(indirect{static_cast<uint32_t>(box_vertices.size())}, GL_DYNAMIC_STORAGE_BIT);
     
-                for(const auto& i : instances)
-                    i->render(camera);
+                //for(const auto& i : instances)
+                //    i->render(camera);
     while(window->update())
     {
         gui.new_frame();
 
-        gl::framebuffer::zero().clear(0, {0.3f, 0.3f, 0.4f, 1.f});
+        gl::framebuffer::zero().clear(0, {0.003f, 0.003f, 0.004f, 1.f});
         gl::framebuffer::zero().clear(0.f, 0);
 
         queries["scene"]["lights"].queries["shadowmap"].start();
-        mesh_shadow_pipeline.bind();
         for(auto& l : lights)
         {
             if(l.begin_shadowmap())
             {
-                gfx::mesh_provider::render_all();
-                for(const auto& i : instances)
-                    i->render(l.map_camera);
+                meshes.info_buffer.bind(GL_SHADER_STORAGE_BUFFER, 10);
+                cull_frustum.dispatch(meshes.info_buffer.size());
+                mesh_shadow_pipeline.bind();
+                meshes.render();
             }
         }
         queries["scene"]["lights"].queries["shadowmap"].finish();
@@ -198,15 +215,19 @@ int main()
 
         gl::framebuffer::zero().bind();
 
-        queries["scene"].queries["render"].start();
+        queries["scene"].queries["culling"].start();
         cubemap.bind(0);
         sampler.bind(0);
         matrix_buffer.bind(GL_UNIFORM_BUFFER, 0);
         light_buffer.bind(GL_SHADER_STORAGE_BUFFER, 0, 0, enabled_lights);
+
+        meshes.info_buffer.bind(GL_SHADER_STORAGE_BUFFER, 10);
+        cull_frustum.dispatch(meshes.info_buffer.size());
+        queries["scene"].queries["culling"].finish();
+        queries["scene"].queries["render"].start();
         mesh_pipeline.bind();
-        gfx::mesh_provider::render_all();
-        for(const auto& i : instances)
-            i->render(camera);
+        meshes.render();
+
         queries["scene"].queries["render"].finish();
 
         time[0] = static_cast<float>(glfwGetTime());

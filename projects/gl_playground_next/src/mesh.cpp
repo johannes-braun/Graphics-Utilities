@@ -30,8 +30,6 @@ void mesh_provider::render_all()
     get_mesh_provider().info_buffer.bind(GL_SHADER_STORAGE_BUFFER, 10);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, get_mesh_provider().info_buffer);
     glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, get_mesh_provider().info_buffer.size(), sizeof(instance_info));
-    // glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer::zero);
-    glFinish();
 }
 
 tri_mesh::instance::instance(const std::shared_ptr<const tri_mesh>& geo)
@@ -74,30 +72,30 @@ void tri_mesh::instance::render(const camera& camera) const
         get_mesh_provider().info_buffer.synchronize();
     }
 
-    //const glm::mat4 mvp = camera.projection.matrix() * inverse(camera.transform.matrix()) * transform.matrix();
+    const glm::mat4 mvp = camera.projection.matrix() * inverse(camera.transform.matrix()) * transform.matrix();
 
-    //std::array<glm::vec4, 8> corners;
-    //for(uint8_t corner = 0; corner < 8; ++corner)
-    //{
-    //    const uint8_t factor_x = (corner & 0b001);
-    //    const uint8_t factor_y = (corner & 0b010) >> 1;
-    //    const uint8_t factor_z = (corner & 0b100) >> 2;
-    //    corners[corner]        = mvp * glm::vec4(mesh->_bounds[factor_x].x, mesh->_bounds[factor_y].y, mesh->_bounds[factor_z].z, 1);
-    //    corners[corner] /= corners[corner].w;
-    //    corners[corner].z = corners[corner].z * 2.f - 1.f;
-    //}
+    std::array<glm::vec4, 8> corners;
+    for(uint8_t corner = 0; corner < 8; ++corner)
+    {
+        const uint8_t factor_x = (corner & 0b001);
+        const uint8_t factor_y = (corner & 0b010) >> 1;
+        const uint8_t factor_z = (corner & 0b100) >> 2;
+        corners[corner]        = mvp * glm::vec4(mesh->_bounds[factor_x].x, mesh->_bounds[factor_y].y, mesh->_bounds[factor_z].z, 1);
+        corners[corner] /= corners[corner].w;
+        corners[corner].z = corners[corner].z * 2.f - 1.f;
+    }
 
-    //for(int plane = 0; plane < 6; ++plane)
-    //{
-    //    bool outside_plane = true;
-    //    for(uint8_t corner = 0; corner < 8; ++corner)
-    //    {
-    //        const float sign = static_cast<float>(plane / 3) * 2.f - 1.f;
-    //        outside_plane &= sign * corners[corner][plane % 3] > 1;
-    //    }
-    //    if(outside_plane)
-    //        return;
-    //}
+    for(int plane = 0; plane < 6; ++plane)
+    {
+        bool outside_plane = true;
+        for(uint8_t corner = 0; corner < 8; ++corner)
+        {
+            const float sign = static_cast<float>(plane / 3) * 2.f - 1.f;
+            outside_plane &= sign * corners[corner][plane % 3] > 1;
+        }
+        if(outside_plane)
+            return;
+    }
 
     //// _model_buffer.bind(GL_UNIFORM_BUFFER, 1);
     //mesh->render();

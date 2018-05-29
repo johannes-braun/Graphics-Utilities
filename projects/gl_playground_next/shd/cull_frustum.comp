@@ -1,0 +1,67 @@
+layout(local_size_x = 32) in;
+
+layout(binding = 0) uniform Camera
+{
+    mat4 view;
+    mat4 projection;
+    vec3 camera_position;
+};
+
+struct instance_info
+{
+    uint count;
+    uint instance_count;
+    uint base_index;
+    uint base_vertex;
+    uint base_instance;
+    uint id;
+
+    vec4 bounds[2];
+
+    mat4  model_matrix;
+    vec3  color;
+    float roughness;
+};
+
+layout(binding = 10, std430) buffer ModelData { instance_info instances[]; };
+
+const float margins[3] = {0.1f, 0.1f, 0.0001f};
+
+void main() 
+{
+    uint index = uint(gl_GlobalInvocationID.x);
+    if(index >= instances.length())
+        return;
+
+    mat4 mvp = projection * view * instances[index].model_matrix;
+
+    vec4 corners[8];
+    for(uint corner = 0; corner < 8; ++corner)
+    {
+        const uint factor_x = (corner & (1<<0));
+        const uint factor_y = (corner & (1<<1)) >> 1;
+        const uint factor_z = (corner & (1<<2)) >> 2;
+        corners[corner]     = mvp * vec4(instances[index].bounds[factor_x].x,
+                                     instances[index].bounds[factor_y].y,
+                                     instances[index].bounds[factor_z].z,
+                                          1);
+        corners[corner] /= corners[corner].w;
+        corners[corner].z = corners[corner].z * 2.f - 1.f;
+    }
+
+    for(int plane = 0; plane < 6; ++plane)
+    {
+        bool outside_plane = true;
+        for(uint corner = 0; corner < 8; ++corner)
+        {
+            const float sign = float(plane / 3) * 2.f - 1.f;
+            outside_plane    = outside_plane && (sign * corners[corner][plane % 3] > 1 + margins[plane%3]);
+        }
+        if(outside_plane)
+        {
+            instances[index].instance_count = 0;
+            return;
+        }
+    }
+    instances[index].instance_count = 1;
+}

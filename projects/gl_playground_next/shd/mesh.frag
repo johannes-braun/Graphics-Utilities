@@ -19,6 +19,10 @@ struct instance_info
     uint base_index;
     uint base_vertex;
     uint base_instance;
+    uint id;
+
+    vec3 bounds_min;
+    vec3 bounds_max;
 
     mat4 model_matrix;
     vec3 color;
@@ -113,9 +117,9 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
     float shadow = 0.f;
     vec2 inv_size = 1/max(tex_size, vec2(1, 1));
-    const int size = 5;
+    const int size = 7;
     const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
-    float slope = 0.4f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
+    float slope = 0.3f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
 
     for(int i=0; i<size*size; ++i)
     {

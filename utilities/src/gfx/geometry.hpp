@@ -166,12 +166,8 @@ template <typename T, size_t Dim, size_t Align> struct bounds
     constexpr component_type surface() const noexcept;
     constexpr bool           empty(component_type epsilon = std::numeric_limits<component_type>::epsilon()) const noexcept;
 
-    alignas(alignment) value_type min = {std::numeric_limits<component_type>::max(),
-                                         std::numeric_limits<component_type>::max(),
-                                         std::numeric_limits<component_type>::max()};
-    alignas(alignment) value_type max = {std::numeric_limits<component_type>::lowest(),
-                                         std::numeric_limits<component_type>::lowest(),
-                                         std::numeric_limits<component_type>::lowest()};
+    alignas(alignment) value_type min = value_type(std::numeric_limits<component_type>::max());
+    alignas(alignment) value_type max = value_type(std::numeric_limits<component_type>::lowest());
 };
 
 using line1f   = bounds<float, 1, 4>;
