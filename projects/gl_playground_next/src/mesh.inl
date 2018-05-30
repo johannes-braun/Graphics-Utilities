@@ -18,12 +18,14 @@ mesh_instance mesh_holder<Indirect, IndirectCheck>::create_mesh(const std::vecto
                                                                 const std::vector<gfx::index32>&  indices)
 {
     int   vertex_range_index = -1;
-    range best_vertex_range  = {vertex_buffer.size(), std::numeric_limits<uint32_t>::max()};
+    range best_vertex_range  = {static_cast<uint32_t>(vertex_buffer.size()), std::numeric_limits<uint32_t>::max()};
     for(int i = 0; i < _free_vertex_ranges.size(); ++i)
     {
         range& r     = _free_vertex_ranges[i];
         int    count = int(r.end) - r.begin;
-        if(count < (best_vertex_range.end - best_vertex_range.begin) && count > vertices.size())
+        if(count < static_cast<int>(best_vertex_range.end) -
+                           static_cast<int>(best_vertex_range.begin) &&
+           count > static_cast<int>(vertices.size()))
         {
             vertex_range_index = i;
             best_vertex_range  = r;
@@ -34,7 +36,7 @@ mesh_instance mesh_holder<Indirect, IndirectCheck>::create_mesh(const std::vecto
     range best_index_range  = {index_buffer.size(), std::numeric_limits<uint32_t>::max()};
     if constexpr(std::is_same_v<Indirect, indirect_elements>)
     {
-        for(int i = 0; i < _free_index_ranges.size(); ++i)
+        for(int i = 0; i < static_cast<int>(_free_index_ranges.size()); ++i)
         {
             range& r     = _free_index_ranges[i];
             int    count = int(r.end) - r.begin;
@@ -73,7 +75,7 @@ mesh_instance mesh_holder<Indirect, IndirectCheck>::create_mesh(const std::vecto
         else
         {
             index_buffer.assign(index_buffer.begin() + best_index_range.begin, indices.begin(), indices.end());
-            _free_index_ranges[index_range_index].begin += indices.size();
+            _free_index_ranges[index_range_index].begin += static_cast<uint32_t>(indices.size());
             if(_free_index_ranges[index_range_index].begin >= _free_index_ranges[index_range_index].end)
                 _free_index_ranges.erase(_free_index_ranges.begin() + index_range_index);
         }
@@ -84,7 +86,7 @@ mesh_instance mesh_holder<Indirect, IndirectCheck>::create_mesh(const std::vecto
     else
     {
         vertex_buffer.assign(vertex_buffer.begin() + best_vertex_range.begin, vertices.begin(), vertices.end());
-        _free_vertex_ranges[vertex_range_index].begin += vertices.size();
+        _free_vertex_ranges[vertex_range_index].begin += static_cast<uint32_t>(vertices.size());
         if(_free_vertex_ranges[vertex_range_index].begin >= _free_vertex_ranges[vertex_range_index].end)
             _free_vertex_ranges.erase(_free_vertex_ranges.begin() + vertex_range_index);
     }
@@ -155,7 +157,7 @@ template <typename Indirect, typename IndirectCheck> void mesh_holder<Indirect, 
 {
     static gl::compute_pipeline cull_frustum(std::make_shared<gl::shader>("cull_frustum.comp"));
     info_buffer.bind(GL_SHADER_STORAGE_BUFFER, 10);
-    cull_frustum.dispatch(info_buffer.size());
+    cull_frustum.dispatch(static_cast<uint32_t>(info_buffer.size()));
 }
 
 template <typename Indirect, typename IndirectCheck> void mesh_holder<Indirect, IndirectCheck>::render() const
