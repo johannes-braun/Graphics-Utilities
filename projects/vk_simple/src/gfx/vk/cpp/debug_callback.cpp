@@ -1,6 +1,6 @@
 #include "../debug_callback.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     debug_callback::debug_callback(const std::shared_ptr<instance>& instance, VkDebugReportFlagsEXT flags, callback_function function)
         : _instance(instance), _fun(function)

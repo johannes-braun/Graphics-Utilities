@@ -3,7 +3,7 @@
 #include "../physical_device.hpp"
 #include <algorithm>
 
-namespace gfx::vk
+namespace vk
 {
     memory_block::memory_block(chunk& parent, const size_t size, const size_t offset, VkDeviceMemory memory, void* mapped_data)
         : _parent_chunk(parent), _size(size), _offset(offset), _device_memory(memory), _mapped_data(mapped_data)

@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace gfx::vk
+namespace vk
 {
     template<VkStructureType SType>
     struct structure {

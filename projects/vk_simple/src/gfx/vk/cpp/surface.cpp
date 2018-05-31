@@ -5,7 +5,7 @@
 #include "../swapchain.hpp"
 #include "../device.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     surface::surface(const std::shared_ptr<physical_device>& physical_device, GLFWwindow* window)
         : _physical_device(physical_device) {

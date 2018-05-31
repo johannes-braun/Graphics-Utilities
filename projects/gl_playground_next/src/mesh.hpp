@@ -20,35 +20,23 @@ struct indirect_elements
     uint32_t base_instance  = 0;
     uint32_t vertex_count   = 0;
 };
-struct indirect_arrays
-{
-    uint32_t count          = 0;
-    uint32_t instance_count = 0;
-    uint32_t base_vertex    = 0;
-    uint32_t base_instance  = 0;
-};
 
 struct mesh_instance
 {
-    alignas(16) union {
-        indirect_elements elements;
-        indirect_arrays   arrays;
-    } indirect{};
+    alignas(16) indirect_elements indirect;
     alignas(4) uint32_t instance_index = 0;
 
     alignas(16) bounds3f bounds;
 
-    alignas(16) glm::mat4 model_matrix = glm::mat4(1.f);
-    alignas(16) glm::vec3 color        = {1.f, 1.f, 1.f};
-    alignas(4) float roughness         = 0.2f;
+    alignas(16) glm::mat4 model_matrix     = glm::mat4(1.f);
+    alignas(16) glm::vec3 color            = {1.f, 1.f, 1.f};
+    alignas(4) uint32_t packed_rough_metal = 0u;
 };
 
-template <typename Indirect, typename IndirectCheck = std::enable_if_t<std::is_same_v<Indirect, indirect_elements> ||
-                                                                       std::is_same_v<Indirect, indirect_arrays>>>
 struct mesh_holder
 {
     mesh_holder();
-    mesh_instance create_mesh(const std::vector<gfx::vertex3d>& vertices, const std::vector<gfx::index32>& indices = {});
+    mesh_instance create_mesh(std::vector<gfx::vertex3d> vertices, std::optional<std::vector<gfx::index32>> indices = {});
     void          update_mesh(const mesh_instance& mesh);
     void          free_mesh(const mesh_instance& mesh);
     mesh_instance copy_instance(const mesh_instance& instance);
@@ -73,5 +61,3 @@ private:
     std::vector<range> _free_vertex_ranges;
 };
 }
-
-#include "mesh.inl"

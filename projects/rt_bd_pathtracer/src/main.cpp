@@ -12,8 +12,6 @@
 #include <gfx/data/grid_line_space.hpp>
 #include <gfx/data/gpu_data.hpp>
 
-#include "splash.hpp"
-
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h"
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -46,69 +44,18 @@ struct tracer_data
 
 int main()
 {
-    glm::vec3 position(0, 1, 0);
-    glm::quat rotation = glm::angleAxis(glm::radians(28.f), normalize(glm::vec3(1, 1, 0)));
-    glm::vec3 scale(2, 0.5f, 2);
-    glm::mat4 a = translate(glm::mat4(1.f), position) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.f), scale);
-
-    gfx::transform tf(position, scale, rotation);
-    glm::mat4 tfm = tf;
-
-    gfx::transform ttf(tfm);
-
     gl::shader::set_include_directories(std::vector<gfx::files::path>{ "../shd", SOURCE_DIRECTORY "/global/shd" });
 
     window = std::make_shared<gfx::window>(gfx::apis::opengl::name, "Simple PT", 800, 600);
     tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("trace.comp"));
     gfx::imgui imgui(window);
 
-    game::splash splash(window);
-    splash.set_progress(0.05f, L"Loading Meshes");
-
     gfx::scene_file file("sphaear.dae");
     gfx::scene_file::mesh& mesh = *(file.meshes.begin());
-    splash.set_progress(0.08f, L"Building BVH");
 
     gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
     gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) { return mesh.vertices[index].position; });
     const std::vector<gl::byte>& packed = gen_bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
-
-    splash.set_progress(0.1f, L"Building Line Space");
-    gfx::grid_updated = [&](float f) mutable { splash.set_progress(0.1f + 0.3f * f, L"Building Line Space: " + std::to_wstring(int(f*100)) + L"%"); };
-    gfx::grid_line_space grid(1, 1, 1, 2, 2, 2);
-    grid.generate(gen_bvh);
-
-    std::vector<std::array<std::array<std::unique_ptr<gl::buffer<gfx::line_space::line>>, 6>, 6>> line_space_storages(grid.size());
-    gl::buffer<gfx::gpu::line_space_data> line_space_datas(grid.size(), GL_DYNAMIC_STORAGE_BIT);
-    gl::buffer<gfx::gpu::grid_line_space_data> grid_line_space_datas(1, GL_DYNAMIC_STORAGE_BIT);
-
-    for (int index = 0; index < grid.size(); ++index)
-    {
-        gfx::line_space& line_space = grid[index];
-        gfx::gpu::line_space_data& line_space_data = line_space_datas[index];
-
-        line_space_data.bounds = line_space.bounds();
-        line_space_data.empty = line_space.empty();
-        line_space_data.x = line_space.size_x();
-        line_space_data.y = line_space.size_y();
-        line_space_data.z = line_space.size_z();
-
-        for (int start = 0; start < 6; ++start) for (int end = 0; end < 6; ++end)
-        {
-            line_space_storages[index][start][end] = line_space.empty() ? nullptr : std::make_unique<gl::buffer<gfx::line_space::line>>(line_space.storage()[start][end].begin(), line_space.storage()[start][end].end());
-            line_space_data.storages[start][end] = (line_space.empty() || end == start) ? 0ui64 : line_space_storages[index][start][end]->handle();
-        }
-        splash.set_progress(0.4f + 0.3f * (float(index+1) / grid.size()), L"Uploading Line Space data: " + std::to_wstring(int(index/float(grid.size()) * 100)) + L"%");
-    }
-    grid_line_space_datas[0].bounds = grid.bounds();
-    grid_line_space_datas[0].x = grid.size_x();
-    grid_line_space_datas[0].y = grid.size_y();
-    grid_line_space_datas[0].z = grid.size_z();
-    grid_line_space_datas[0].line_spaces = line_space_datas.handle();
-
-    grid_line_space_datas.synchronize();
-    line_space_datas.synchronize();
-    splash.set_progress(0.7f, L"Packing buffers");
 
     gl::buffer<gfx::vertex3d> vbo(mesh.vertices.begin(), mesh.vertices.end());
     gl::buffer<gfx::index32> ibo(mesh.indices.begin(), mesh.indices.end());
@@ -126,35 +73,33 @@ int main()
     gfx::camera_controller controller(window);
     std::mt19937 gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
-    splash.set_progress(0.8f, L"Loading Cube Map");
 
     const auto [w, h, c] =  gfx::image_file::info("indoor/posx.hdr");
     gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
     cubemap.assign(0, 0, 0, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posx.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posy.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 1, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negx.hdr", gfx::bits::b32, 3).bytes());
+    cubemap.assign(0, 0, 2, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posy.hdr", gfx::bits::b32, 3).bytes());
     cubemap.assign(0, 0, 3, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negy.hdr", gfx::bits::b32, 3).bytes());
     cubemap.assign(0, 0, 4, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/posz.hdr", gfx::bits::b32, 3).bytes());
     cubemap.assign(0, 0, 5, w, h, 1, GL_RGB, GL_FLOAT, gfx::image_file("indoor/negz.hdr", gfx::bits::b32, 3).bytes());
     cubemap.generate_mipmaps();
     const gl::sampler sampler;
-    splash.set_progress(0.9f, L"Finishing up");
 
     gl::buffer<tracer_data> data(1, GL_DYNAMIC_STORAGE_BIT);
     data[0].img = img.handle();
     data[0].vbo = vbo.handle();
     data[0].ibo = ibo.handle();
     data[0].bvh = bvh.handle();
-    data[0].linespace = grid_line_space_datas.handle();
+    data[0].linespace = 0;//grid_line_space_datas.handle();
     data[0].cubemap = sampler.sample(cubemap);
     data[0].frames = 10;
     data.synchronize();
-    splash.set_progress(1.f, L"Finished loading");
 
     while (window->update())
     {
         imgui.new_frame();
         controller.update(camera);
-        const glm::mat4 camera_matrix = inverse(camera.projection() * glm::mat4(glm::mat3(camera.view())));
+        const glm::mat4 camera_matrix = inverse(camera.projection.matrix() * glm::mat4(glm::mat3(inverse(camera.transform.matrix()))));
 
         timer.start();
         data[0].camera_matrix = camera_matrix;
@@ -162,10 +107,8 @@ int main()
         data[0].seed = dist(gen);
         data.synchronize();
 
-        tracer->bind_uniform_buffer(0, data);
+        data.bind(GL_UNIFORM_BUFFER, 0);
         tracer->dispatch(800, 600);
-
-        render_texture->at(10, 10, 0) = glm::vec4(1, 0, 0, 1);
 
         framebuffer.blit(nullptr, GL_COLOR_BUFFER_BIT);
         timer.finish();

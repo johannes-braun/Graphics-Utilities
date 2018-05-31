@@ -8,7 +8,7 @@
 #include <variant>
 #include <glm/glm.hpp>
 
-namespace gfx::vk
+namespace vk
 {
     class device;
     class command_buffer;

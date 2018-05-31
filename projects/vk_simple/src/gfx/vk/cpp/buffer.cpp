@@ -1,7 +1,7 @@
 #include "../buffer.hpp"
 #include "../device.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     proxy_buffer::proxy_buffer(const std::shared_ptr<device>& device, const size_t size, const VkBufferCreateFlags flags, 
         const VkSharingMode sharing_mode, const VkBufferUsageFlags usage, array_view<uint32_t> queue_families) noexcept

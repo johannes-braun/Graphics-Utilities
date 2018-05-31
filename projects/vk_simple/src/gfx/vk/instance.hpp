@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-namespace gfx::vk
+namespace vk
 {
     struct app_info : structure<VK_STRUCTURE_TYPE_APPLICATION_INFO> {
         constexpr app_info(const char* app_name, version app_version, const char* engine_name, version engine_version, version api_version ={ 1, 0 })

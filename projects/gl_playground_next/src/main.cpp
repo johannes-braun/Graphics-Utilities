@@ -42,31 +42,65 @@ int main()
     gfx::camera            camera;
     gfx::camera_controller controller(window);
 
-    gfx::mesh_holder<gfx::indirect_elements> large_meshes;
-    gfx::mesh_holder<gfx::indirect_elements> small_meshes;
+    gfx::mesh_holder large_meshes;
+    gfx::mesh_holder small_meshes;
 
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    size_t vertices = 0;
-    size_t indices  = 0;
-    for(const auto& mesh : gfx::scene_file("san-miguel.obj").meshes)
-    {
-        gfx::mesh_holder<gfx::indirect_elements>& meshes = [&]() -> gfx::mesh_holder<gfx::indirect_elements>&
+    size_t     vertices  = 0;
+    size_t     indices   = 0;
+    const auto load_mesh = [&](const auto& filename) {
+        const gfx::scene_file file(filename);
+        size_t                small_vertex_count = 0;
+        size_t                large_vertex_count = 0;
+        size_t                small_index_count  = 0;
+        size_t                large_index_count  = 0;
+        size_t                small_mesh_count   = 0;
+        size_t                large_mesh_count   = 0;
+        for(const auto& mesh : file.meshes)
         {
-            return mesh.indices.size() > 128 ? large_meshes : small_meshes;
-        }();
+            if(mesh.indices.size() > 128)
+            {
+                large_vertex_count += mesh.vertices.size();
+                large_index_count += mesh.indices.size();
+                ++large_mesh_count;
+            }
+            else
+            {
+                small_vertex_count += mesh.vertices.size();
+                small_index_count += mesh.indices.size();
+                ++small_mesh_count;
+            }
 
-        gfx::mesh_instance instance  = meshes.create_mesh(mesh.vertices, mesh.indices);
-        gfx::transform     transform = mesh.transform;
-        transform.scale              = glm::vec3(1.f);
-        instance.model_matrix        = transform;
-        instance.color               = glm::vec3(dist(gen)) * glm::vec3(1.f);
-        instance.roughness           = dist(gen);
-        meshes.update_mesh(instance);
-        vertices += instance.indirect.elements.vertex_count;
-        indices += instance.indirect.elements.count;
-    }
+            vertices += mesh.vertices.size();
+            indices += mesh.indices.size();
+        }
+        large_meshes.info_buffer.reserve(large_meshes.info_buffer.size() + large_mesh_count);
+        small_meshes.info_buffer.reserve(small_meshes.info_buffer.size() + small_mesh_count);
+        large_meshes.vertex_buffer.reserve(large_meshes.vertex_buffer.size() + large_vertex_count);
+        small_meshes.vertex_buffer.reserve(small_meshes.vertex_buffer.size() + small_vertex_count);
+        large_meshes.index_buffer.reserve(large_meshes.index_buffer.size() + large_index_count);
+        small_meshes.index_buffer.reserve(small_meshes.index_buffer.size() + small_index_count);
+
+        for(const auto& mesh : file.meshes)
+        {
+            gfx::mesh_holder& meshes = [&]() -> gfx::mesh_holder& { return mesh.indices.size() > 128 ? large_meshes : small_meshes; }();
+
+            gfx::mesh_instance instance  = meshes.create_mesh(mesh.vertices, mesh.indices);
+            gfx::transform     transform = mesh.transform;
+            transform.scale              = glm::vec3(0.01f);
+            instance.model_matrix        = transform;
+            instance.color               = glm::vec3(dist(gen), dist(gen), dist(gen)) * glm::vec3(1.f);
+
+            float roughness             = dist(gen);
+            float metal                 = dist(gen);
+            instance.packed_rough_metal = glm::packUnorm2x16(glm::vec2(roughness, metal));
+
+            meshes.update_mesh(instance);
+        }
+    };
+    /*load_mesh("Bistro_Research_Exterior.fbx");*/
 
     log_i << "Loaded " << vertices << " vertices with " << indices << " indices.";
 
@@ -89,8 +123,8 @@ int main()
     lights[2].color                = glm::vec4(0.4f, 0.8f, 0.1f, 13.f);
     lights[3].color                = glm::vec4(0.9f, 0.8f, 0.7f, 10.f);
 
-    gl::buffer<gfx::light::info> light_buffer(lights.size(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT |
-                                              GL_MAP_PERSISTENT_BIT);
+    gl::buffer<gfx::light::info> light_buffer(
+            lights.size(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
     light_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
 
     build_framebuffer(1280, 720);
@@ -125,6 +159,14 @@ int main()
         gl::framebuffer::zero().clear(0, {0.003f, 0.003f, 0.004f, 1.f});
         gl::framebuffer::zero().clear(0.f, 0);
 
+        light_buffer.reserve(lights.size());
+        int enabled_lights = 0;
+        for(int i = 0; i < lights.size(); ++i)
+            if(lights[i].enabled)
+                light_buffer[enabled_lights++] = lights[i].make_info();
+        light_buffer.synchronize();
+        glFinish();
+
         queries["scene"]["lights"].queries["shadowmap"].start();
         for(auto& l : lights)
         {
@@ -139,11 +181,6 @@ int main()
         queries["scene"]["lights"].queries["shadowmap"].finish();
 
         queries["scene"]["lights"].queries["update"].start();
-        light_buffer.reserve(lights.size());
-        int enabled_lights = 0;
-        for(int i = 0; i < lights.size(); ++i)
-            if(lights[i].enabled)
-                light_buffer[enabled_lights++] = lights[i].make_info();
         lights[1].map_camera.transform = inverse(
                 glm::lookAt(glm::vec3(7 * glm::sin(static_cast<float>(glfwGetTime())), 20, 7 * glm::cos(static_cast<float>(glfwGetTime()))),
                             glm::vec3(0, 0, 0),
@@ -192,7 +229,8 @@ int main()
         enum class tab
         {
             timings,
-            lights
+            lights,
+            io
         };
         static tab current_tab = tab::timings;
         if(ImGui::BeginMenuBar())
@@ -206,6 +244,12 @@ int main()
             if(ImGui::BeginMenu("Lights", current_tab != tab::lights))
             {
                 current_tab = tab::lights;
+                ImGui::CloseCurrentPopup();
+                ImGui::EndMenu();
+            }
+            if(ImGui::BeginMenu("IO", current_tab != tab::io))
+            {
+                current_tab = tab::io;
                 ImGui::CloseCurrentPopup();
                 ImGui::EndMenu();
             }
@@ -271,6 +315,18 @@ int main()
 
                 if(i != 0)
                     ImGui::Spacing();
+            }
+        }
+        else if(current_tab == tab::io)
+        {
+            if(ImGui::Button("Load into..."))
+            {
+                auto files = gfx::file::open_dialog_multi("Open Scene", "./");
+                if(!files.empty())
+                {
+                    for(const auto& file : files)
+                        load_mesh(file.path);
+                }
             }
         }
         ImGui::End();

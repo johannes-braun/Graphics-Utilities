@@ -7,7 +7,7 @@
 #include <vector>
 #include <memory>
 
-namespace gfx::vk
+namespace vk
 {
     class physical_device;
     class device;

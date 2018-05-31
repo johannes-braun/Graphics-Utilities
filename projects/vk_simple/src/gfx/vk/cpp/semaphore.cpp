@@ -1,6 +1,6 @@
 #include "../semaphore.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     semaphore::semaphore(const std::shared_ptr<device>& device)
         : _device(device)

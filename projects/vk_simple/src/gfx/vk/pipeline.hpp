@@ -4,24 +4,24 @@
 
 namespace gfx
 {
-    class vertex_input_state
-    {
-    public:
-        vertex_input_state() {
-            
-        }
+    //class vertex_input_state
+    //{
+    //public:
+    //    vertex_input_state() {
+    //        
+    //    }
 
-    private:
+    //private:
 
-    };
+    //};
 
-    class graphics_pipeline_creator
-    {
-    public:
-        graphics_pipeline(VkPipelineCreateFlags flag)
+    //class graphics_pipeline_creator
+    //{
+    //public:
+    //    graphics_pipeline(VkPipelineCreateFlags flag)
 
-    private:
-    };
+    //private:
+    //};
 }
 //VkPipelineInputAssemblyStateCreateInfo;
 //VkPipelineVertexInputStateCreateInfo;

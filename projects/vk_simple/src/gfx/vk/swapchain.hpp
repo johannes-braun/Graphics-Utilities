@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-namespace gfx::vk
+namespace vk
 {
     class surface;
     class device;

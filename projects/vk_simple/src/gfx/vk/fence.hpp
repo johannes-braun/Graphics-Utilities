@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <memory>
 
-namespace gfx::vk
+namespace vk
 {
     class device;
     class fence

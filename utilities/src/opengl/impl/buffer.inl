@@ -524,12 +524,10 @@ template <typename T> void buffer<T>::reserve(size_t size)
     std::vector<T> data;
     data.reserve(_size);
     glGetNamedBufferSubData(_id, 0, _size * sizeof(T), data.data());
-    glFinish();
     glDeleteBuffers(1, &_id);
     glCreateBuffers(1, &_id);
     glNamedBufferStorage(_id, size * sizeof(T), nullptr, _usage);
     glNamedBufferSubData(_id, 0, std::min(_size, size) * sizeof(T), data.data());
-    glFinish();
     if(was_mapped)
     {
         const ptrdiff_t max_size = static_cast<ptrdiff_t>(size) - map_offset;

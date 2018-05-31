@@ -4,7 +4,7 @@
 #include "array_view.hpp"
 #include "memory.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     class device;
     class proxy_buffer

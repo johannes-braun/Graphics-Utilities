@@ -7,7 +7,7 @@
 #include <functional>
 #include <memory>
 
-namespace gfx::vk
+namespace vk
 {
     class debug_callback
     {

@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace gfx::vk
+namespace vk
 {
     class device;
 

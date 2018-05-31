@@ -3,7 +3,7 @@
 #include "../device.hpp"
 #include <algorithm>
 
-namespace gfx::vk
+namespace vk
 {
     image::image(const std::shared_ptr<device>& device, VkImageType type, VkFormat format, VkImageUsageFlags usage, uint32_t width, uint32_t height, uint32_t depth, VkSampleCountFlagBits samples, uint32_t levels, uint32_t layers, VkSharingMode sharing_mode, VkImageTiling tiling, VkImageLayout layout) noexcept
         : _device(device)

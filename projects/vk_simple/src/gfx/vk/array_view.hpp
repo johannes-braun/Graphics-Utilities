@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <iterator>
 
-namespace gfx::vk
+namespace vk
 {
     template<typename T>
     struct array_view

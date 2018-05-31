@@ -2,7 +2,7 @@
 #include "../device.hpp"
 #include <cassert>
 
-namespace gfx::vk
+namespace vk
 {
     fence::fence(const std::shared_ptr<device>& device, VkFenceCreateFlags flags)
         : _device(device)

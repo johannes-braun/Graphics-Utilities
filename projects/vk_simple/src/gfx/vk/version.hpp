@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace gfx::vk
+namespace vk
 {
     struct version {
         constexpr version(uint32_t major, uint32_t minor, uint32_t patch = 0) noexcept : major(major), minor(minor), patch(patch) {}

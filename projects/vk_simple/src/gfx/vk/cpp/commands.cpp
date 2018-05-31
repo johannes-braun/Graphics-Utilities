@@ -3,7 +3,7 @@
 #include "../framebuffer.hpp"
 #include "../renderpass.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     command_pool::command_pool(const std::shared_ptr<device>& device, uint32_t queue_family, VkCommandPoolCreateFlags flags)
         : _device(device)

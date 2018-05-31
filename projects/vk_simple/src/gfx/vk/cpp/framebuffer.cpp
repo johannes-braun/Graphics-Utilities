@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace gfx::vk
+namespace vk
 {
     framebuffer::framebuffer(const std::shared_ptr<renderpass>& renderpass, uint32_t width, uint32_t height, uint32_t layers, array_view<std::shared_ptr<image_view>> attachments)
         : _renderpass(renderpass)

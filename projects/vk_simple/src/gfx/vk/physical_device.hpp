@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>
 
-namespace gfx::vk
+namespace vk
 {
     class instance;
     class device;

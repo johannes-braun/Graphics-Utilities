@@ -1,6 +1,7 @@
 #include "../instance.hpp"
+#include <gfx/log.hpp>
 
-namespace gfx::vk
+namespace vk
 {
     instance::instance(app_info info, array_view<const char*> layers, array_view<const char*> extensions) {
         VkInstanceCreateInfo create_info;

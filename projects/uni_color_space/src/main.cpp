@@ -1,5 +1,5 @@
 #include <Eigen/Eigenvalues>
-#include <opengl/framebuffer.hpp>
+#include <opengl/opengl.hpp>
 #include <numeric>
 
 #include <gfx/camera.hpp>
@@ -174,6 +174,13 @@ int main()
     namespace cube = gfx::cube_preset;
     gl::buffer<gfx::vertex3d> vbo(cube::vertices.begin(), cube::vertices.end());
     gl::buffer<gfx::index32> ibo(cube::indices.begin(), cube::indices.end());
+    gl::vertex_array vao;
+    vao.attrib(0).enable(true).bind(0).format(3, GL_FLOAT, false, offsetof(gfx::vertex3d, position));
+    vao.attrib(1).enable(true).bind(0).format(2, GL_FLOAT, false, offsetof(gfx::vertex3d, uv));
+    vao.vertex_buffer(0, vbo);
+    vao.element_buffer(ibo);
+
+    gl::vertex_array empty_vao;
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_DEPTH_TEST);
@@ -246,38 +253,37 @@ int main()
 
         controller.update(camera);
 
+        glm::mat4 vp = camera.projection.matrix() * inverse(camera.transform.matrix());
+
         points_pipeline.bind();
         points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         points_pipeline[GL_VERTEX_SHADER]->uniform<uint64_t>("picture") = id;
-        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.proj() * camera.view();
-        points_pipeline.draw(GL_POINTS, texture.width() * texture.height());
+        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
+        empty_vao.draw(GL_POINTS, texture.width() * texture.height());
 
         glDisable(GL_DEPTH_TEST);
         center_pipeline.bind();
         center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.proj() * camera.view();
+        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
         center_pipeline[GL_VERTEX_SHADER]->uniform<glm::vec3>("center") = average;
-        center_pipeline.draw(GL_POINTS, 1);
+        empty_vao.draw(GL_POINTS, 1);
         glEnable(GL_DEPTH_TEST);
 
         gizmo_pipeline.bind();
-        gizmo_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.proj() * camera.view();
-        gizmo_pipeline.draw(GL_LINES, 6);
+        gizmo_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
+        empty_vao.draw(GL_LINES, 6);
 
         glFrontFace(GL_CW);
 
         cube_pipeline.bind();
-        cube_pipeline.bind_attribute(0, vbo, 3, GL_FLOAT, offsetof(gfx::vertex3d, position));
-        cube_pipeline.bind_attribute(1, vbo, 2, GL_FLOAT, offsetof(gfx::vertex3d, uv));
-
-        cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = camera.proj() * camera.view();
+        cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = sampler.sample(grid);
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
-        cube_pipeline.draw(GL_TRIANGLES, ibo, GL_UNSIGNED_INT);
+        vao.draw(GL_TRIANGLES, ibo.size(), GL_UNSIGNED_INT);
 
         glFrontFace(GL_CCW); glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
-        cube_pipeline.draw(GL_TRIANGLES, ibo, GL_UNSIGNED_INT);
+        vao.draw(GL_TRIANGLES, ibo.size(), GL_UNSIGNED_INT);
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
@@ -285,7 +291,7 @@ int main()
         img_pipeline.bind();
         img_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
         img_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex") = id;
-        img_pipeline.draw(GL_TRIANGLES, 3);
+        empty_vao.draw(GL_TRIANGLES, 3);
 
         int w, h;
         glfwGetFramebufferSize(*main_window, &w, &h);

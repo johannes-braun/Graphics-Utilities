@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-namespace gfx::vk
+namespace vk
 {
     subpass_info::subpass_info(VkPipelineBindPoint bind_point, VkSubpassDescriptionFlags flags,
         array_view<attachment_reference> color_references,

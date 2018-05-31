@@ -1,5 +1,7 @@
 #include <ext/ggx.h>
 
+#pragma optionNV(unroll all)
+
 layout(location=0) in vec3 position;
 layout(location=1) in vec2 uv;
 layout(location=2) in vec3 normal_world;
@@ -27,7 +29,7 @@ struct instance_info
 
     mat4 model_matrix;
     vec3 color;
-    float roughness;
+    uint rough_metal;
 };
 
 layout(binding = 10, std430) readonly buffer ModelData
@@ -76,7 +78,7 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
     float shadow = 0.f;
     vec2 inv_size = 1/max(tex_size, vec2(1, 1));
-    const int size = 7;
+    const int size = 5;
     const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
     float slope = 0.3f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
 
@@ -92,7 +94,7 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
         shadow += depth;
     }
-    return shadow / (size*size);
+    return max(dot(normal, light_dir),0) * shadow / (size*size);
 }
 
 void main()
@@ -113,7 +115,10 @@ void main()
     mval = smoothstep(-1.82f, -1.91f, position.x);
     rgh = mix(rgh, 0.01f, mval);
 
-    rgh = instances[draw_id].roughness;
+    vec2 rough_metal = unpackUnorm2x16(instances[draw_id].rough_metal);
+    rgh = 1.f;//rough_metal.x;
+    float metal = 0;//rough_metal.y;
+
     float mat_ior = 1.5f;
     vec3 mat_color = instances[draw_id].color;
 
@@ -131,6 +136,7 @@ void main()
         shd *= smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
         if(shd == 0)
             continue;
+
         if(current_light.map.x + current_light.map.y != 0) 
             shd *= shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir);
         
@@ -168,33 +174,14 @@ void main()
         gmcbgpc *= gmcbgpc;
         gmcbgpc *= 0.5f;
         const float den = ((g+c)*c - 1) / max((g-c)*c + 1, 0.001f);
-        float fct = gmcbgpc * (1 + den * den);
+        float fct = mix(gmcbgpc * (1 + den * den), 1, metal);
     
         // BRDF
         float brdf = (dggx * fct * ggx_geom);
-        vec3 spec = max(dot(normal, light_dir) + 0.6f, 0) * brdf * light_color;
-        vec3 diff = max(dot(normal, light_dir), 0) * mat_color * att * light_color * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
-        color += vec4(shd * (spec + diff) + env * mat_color, 1);
+        vec3 spec = max(dot(normal, light_dir) + 0.6f, 0) * brdf * light_color * mix(vec3(1), mat_color, metal);
+        vec3 diff = mix(max(dot(normal, light_dir), 0) * mat_color * att * light_color * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz)), vec3(0), metal);
+        color += vec4(shd * (spec + diff) + mix(env * mat_color, vec3(0), metal), 1);
 
-        const int P = 0;
-        const int N = 2;
-        if(current_light.map.x + current_light.map.y != 0) 
-        {
-            float sigh = 0.f;
-            for(int p = 0; p < P; ++p)
-            {
-                float dist = distance(position, camera_position) / N * (1-0.2f*random(gl_FragCoord.xyz, int(i + p*238 + 1214*time) % 48));
-                for(int i=0; i<N; ++i)
-                {
-                    const vec3 wpos = camera_position - dist * i * view_dir + 0.1f * normal;
-                    const vec3 pos = get_pos(current_light.matrix, wpos);
-                    float fac = texture(noise_texture, wpos / 10.f).r;
-
-                    sigh += abs(fac * 0.6f*(1-texture(sampler2DShadow(current_light.map), pos).r) * smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz)));
-                }
-            }
-            color = mix(color, current_light.color, sigh / (P*N));
-        }
     }
 
     //color /= lights.length();

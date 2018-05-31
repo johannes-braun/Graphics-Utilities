@@ -6,7 +6,7 @@
 #include "../fence.hpp"
 #include "../image.hpp"
 
-namespace gfx::vk
+namespace vk
 {
     swapchain::swapchain(const std::shared_ptr<device>& device, const swapchain_create_info& create_info)
         : _device(device)

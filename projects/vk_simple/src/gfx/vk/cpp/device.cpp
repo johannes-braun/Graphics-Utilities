@@ -6,7 +6,7 @@
 
 #include <cassert>
 
-namespace gfx::vk
+namespace vk
 {
     queue_info::queue_info(uint32_t family_index) : family_index(family_index) {}
     queue_info::queue_info(uint32_t family_index, array_view<float> priorities)
