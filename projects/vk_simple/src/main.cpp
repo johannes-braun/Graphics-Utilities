@@ -192,7 +192,7 @@ int main()
     auto       primary_buffers  = command_pool->allocate_buffers(uint32_t(images.size()), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     const auto swap_semaphore   = vk::create<vk::semaphore>(device);
     const auto render_semaphore = vk::create<vk::semaphore>(device);
-
+        
     std::vector<std::shared_ptr<vk::fence>> fences(uint32_t(images.size()));
     for(int i = 0; i < images.size(); ++i)
         fences[i] = vk::create<vk::fence>(device, VK_FENCE_CREATE_SIGNALED_BIT);
@@ -231,6 +231,10 @@ int main()
     command_buffer->barrier(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, barrier);
     command_buffer->end();
     queues[queue_index_transfer].submit(command_buffer);
+
+
+
+
 
     VkGraphicsPipelineCreateInfo info;
     info.sType              = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
