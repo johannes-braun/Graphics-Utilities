@@ -7,6 +7,8 @@ layout(location = 3) in flat uint draw_id;
 
 layout(location = 0) out vec4 color;
 
+layout(set = 2, binding = 0) uniform sampler2DShadow shadow_maps[1];
+
 layout(set = 0, binding = 0) uniform Scene
 {
     mat4 view;
@@ -40,6 +42,40 @@ layout(set = 1, binding=0, std430) readonly buffer Models
 
 const float pi = 3.14159235659;
 
+vec3 get_pos(mat4 mat, vec3 pos)
+{
+    vec4 map_pos = mat * vec4(pos, 1);
+    map_pos /= map_pos.w;
+    map_pos.xy = 0.5f * map_pos.xy + 0.5f;
+    return map_pos.xyz;
+}
+
+float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 light_dir){
+    vec2 tex_size = textureSize(map, 0);
+
+    vec3 map_pos = get_pos(mat, pos + 0.1f * normal);
+
+    float shadow = 0.f;
+    vec2 inv_size = 1/max(tex_size, vec2(1, 1));
+    const int size = 5;
+    const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
+    float slope = 0.3f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
+
+    for(int i=0; i<size*size; ++i)
+    {
+        const int x = (i % size - (size >> 1)-1);
+        const int y = (i / size - (size >> 1)-1);
+        const vec2 offset = vec2(x, y) * inv_size;
+
+        const float eps = 0.0002 * slope;
+        const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
+        const float depth = 1-texture(map, vec3(uv, map_pos.z + eps)).r;
+
+        shadow += depth;
+    }
+    return max(dot(normal, light_dir),0) * shadow / (size*size);
+}
+
 void main()
 {
     color = vec4(0, 0, 0, 0);
@@ -63,6 +99,9 @@ void main()
     float att = 2*pi / (len2);
     
     float shd = smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
+
+    mat4 shd_mat = mat4(1.009853, 1.006377, 0.000012, -0.058621, 0.000000, -0.118397, 0.000199, -0.996558, -1.009853, 1.006377, 0.000012, -0.058621, -0.000001, 0.000001, 0.016590, 17.058722);
+    shd *= 1-shadow(shadow_maps[0], shd_mat, position, normal, light_dir);
 
     vec3 half_vector = normalize(light_dir + view_dir);
 

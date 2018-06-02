@@ -106,21 +106,21 @@ device_infos create_device(const vk::UniqueInstance& instance, const vk::Physica
     for(uint32_t family = 0; family < queue_family_properties.size(); ++family)
     {
         if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
-            queues.families[graphics] = family;
+            queues.families[fam::graphics] = family;
         if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
-            queues.families[compute] = family;
+            queues.families[fam::compute] = family;
         if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
-            queues.families[transfer] = family;
+            queues.families[fam::transfer] = family;
 
         const bool supports = gpu.getSurfaceSupportKHR(family, *surface);
         if(glfwGetPhysicalDevicePresentationSupport(static_cast<VkInstance>(*instance), static_cast<VkPhysicalDevice>(gpu), family) &&
            supports)
-            queues.families[present] = family;
+            queues.families[fam::present] = family;
     }
-    queues.priorities[graphics] = 1.f;
-    queues.priorities[compute]  = 1.f;
-    queues.priorities[transfer] = 0.5f;
-    queues.priorities[present]  = 0.8f;
+    queues.priorities[fam::graphics] = 1.f;
+    queues.priorities[fam::compute]  = 1.f;
+    queues.priorities[fam::transfer] = 0.5f;
+    queues.priorities[fam::present]  = 0.8f;
 
     std::unordered_map<uint32_t, std::vector<float>> queue_filter;
     for(int i = 0; i < 4; ++i)
@@ -215,4 +215,22 @@ uint32_t memory_index(const vk::PhysicalDevice& gpu, const vk::MemoryRequirement
         }
     }
     return 0;
+}
+
+vk::UniqueShaderModule create_shader(const vk::UniqueDevice& device, const std::filesystem::path& file)
+{
+    std::ifstream shader_file;
+    shader_file.open(file, std::ios::in | std::ios::binary);
+    shader_file.ignore(std::numeric_limits<std::streamsize>::max());
+    shader_file.clear();
+    std::streamsize size = shader_file.gcount();
+    shader_file.seekg(0, std::ios::beg);
+    std::vector<uint32_t> cull_shader_data(size / sizeof(uint32_t));
+    shader_file.read(reinterpret_cast<char*>(cull_shader_data.data()), size);
+    shader_file.close();
+
+    vk::ShaderModuleCreateInfo csinfo;
+    csinfo.codeSize = sizeof(uint32_t) * cull_shader_data.size();
+    csinfo.pCode    = cull_shader_data.data();
+    return device->createShaderModuleUnique(csinfo);
 }
