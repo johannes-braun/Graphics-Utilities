@@ -3,6 +3,12 @@
 #include <gfx/log.hpp>
 #include <vulkan/vulkan_win32.h>
 
+//PFN_vkCmdDrawIndexedIndirectCountKHR vkCmdDrawIndexedIndirectCountKHR_impl;
+//VKAPI_ATTR void VKAPI_CALL vkCmdDrawIndexedIndirectCountKHR(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride)
+//{
+//    vkCmdDrawIndexedIndirectCountKHR_impl(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
+//}
+
 vk::UniqueInstance create_instance()
 {
     vk::ApplicationInfo app_info;
@@ -78,6 +84,9 @@ vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance&
         return true;
     };
 
+    //vkCmdDrawIndexedIndirectCountKHR_impl =
+    //        reinterpret_cast<decltype(vkCmdDrawIndexedIndirectCountKHR_impl)>(instance->getProcAddr("vkCmdDrawIndexedIndirectCountKHR"));
+
     vkCreateDebugReportCallbackEXT_impl =
             reinterpret_cast<decltype(vkCreateDebugReportCallbackEXT_impl)>(instance->getProcAddr("vkCreateDebugReportCallbackEXT"));
     vkDestroyDebugReportCallbackEXT_impl =
@@ -138,7 +147,7 @@ device_infos create_device(const vk::UniqueInstance& instance, const vk::Physica
     device_info.pQueueCreateInfos       = queue_infos.data();
 
     vk::PhysicalDeviceFeatures features = gpu.getFeatures();
-    features.multiDrawIndirect = true;
+    features.multiDrawIndirect          = true;
     device_info.pEnabledFeatures        = &features;
 
     device_infos result;

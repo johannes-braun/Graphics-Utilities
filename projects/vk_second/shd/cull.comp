@@ -10,6 +10,7 @@ layout(set = 0, binding = 0) uniform Scene
     uint object_count;
 };
 
+
 struct mesh_info
 {
     uint indexCount;

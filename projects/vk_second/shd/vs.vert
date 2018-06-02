@@ -26,8 +26,7 @@ struct mesh_info
     int vertexOffset;
     uint firstInstance;
     mat4 model_matrix;
-    vec4 bmin;
-    vec4 bmax;
+    vec4 bounds[2];
 };
 layout(set = 1, binding=0, std430) readonly buffer Models
 {
@@ -37,11 +36,15 @@ layout(set = 1, binding=0, std430) readonly buffer Models
 layout(location = 0) out vec3 out_position;
 layout(location = 1) out vec2 out_uv;
 layout(location = 2) out vec3 out_normal;
+layout(location = 3) out flat uint draw_id;
 
 void main()
 {
-    out_position = (infos[gl_DrawIDARB].model_matrix * vec4(position, 1)).xyz;
-    gl_Position = projection * view * infos[gl_DrawIDARB].model_matrix * vec4(position, 1);
+    draw_id = gl_DrawIDARB;
+    mat4 model = infos[gl_DrawIDARB].model_matrix;
+
+    out_position = (model * vec4(position, 1)).xyz;
+    gl_Position = projection * view * model * vec4(position, 1);
     out_uv = uv;
-    out_normal = normalize((inverse(transpose(infos[gl_DrawIDARB].model_matrix)) * vec4(normal, 0)).xyz);
+    out_normal = normalize((inverse(transpose(model)) * vec4(normal, 0)).xyz);
 }

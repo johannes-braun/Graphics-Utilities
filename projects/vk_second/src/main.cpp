@@ -67,7 +67,7 @@ int main()
     msaa_attachment.format         = vk::Format::eB8G8R8A8Unorm;
     msaa_attachment.samples        = vk::SampleCountFlagBits::e8;
     msaa_attachment.loadOp         = vk::AttachmentLoadOp::eClear;
-    msaa_attachment.storeOp        = vk::AttachmentStoreOp::eDontCare;
+    msaa_attachment.storeOp        = vk::AttachmentStoreOp::eStore;
     msaa_attachment.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
     msaa_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 
@@ -77,7 +77,7 @@ int main()
     depth_attachment.format         = vk::Format::eD32Sfloat;
     depth_attachment.samples        = vk::SampleCountFlagBits::e8;
     depth_attachment.loadOp         = vk::AttachmentLoadOp::eClear;
-    depth_attachment.storeOp        = vk::AttachmentStoreOp::eDontCare;
+    depth_attachment.storeOp        = vk::AttachmentStoreOp::eStore;
     depth_attachment.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
     depth_attachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 
@@ -203,14 +203,16 @@ int main()
     timer_pool_info.queryCount           = static_cast<uint32_t>(2 * swapchain_images.size());
     vk::UniqueQueryPool timer_query_pool = device->createQueryPoolUnique(timer_pool_info);
 
-    gfx::scene_file scene("sponza.obj");
+    gfx::scene_file scene("Bistro_Research_Exterior.fbx");
 
     struct mesh_info
     {
         alignas(16) vk::DrawIndexedIndirectCommand indirect;
         alignas(16) glm::mat4 model_matrix;
-        gfx::bounds3f bounds;
+        alignas(16) gfx::bounds3f bounds;
     };
+
+    constexpr int a = sizeof(mesh_info[2]);
 
     std::vector<gfx::vertex3d> vertices;
     std::vector<gfx::index32>  indices;
@@ -225,20 +227,21 @@ int main()
         struct reduction
         {
             gfx::bounds3f operator()(const gfx::bounds3f& b, const gfx::vertex3d& x) const { return b + x.position; }
-
             gfx::bounds3f operator()(const gfx::vertex3d& x, const gfx::bounds3f& b) const { return b + x.position; }
-
             gfx::bounds3f operator()(const gfx::vertex3d& b, const gfx::vertex3d& x) const
             {
                 gfx::bounds3f bounds;
                 bounds += b.position;
                 return bounds + x.position;
             }
-
             gfx::bounds3f operator()(const gfx::bounds3f& b, const gfx::bounds3f& x) const { return b + x; }
         };
 
-        mesh_infos[i].bounds = std::reduce(std::execution::par_unseq, vertices.begin(), vertices.end(), mesh_infos[i].bounds, reduction());
+        mesh_infos[i].bounds = std::reduce(std::execution::par_unseq,
+                                           scene.meshes[i].vertices.begin(),
+                                           scene.meshes[i].vertices.end(),
+                                           mesh_infos[i].bounds,
+                                           reduction());
 
         gfx::transform tf          = scene.meshes[i].transform;
         tf.scale                   = glm::vec3(0.01f);
@@ -353,28 +356,28 @@ int main()
     std::vector<uint32_t> cull_shader_data(size / sizeof(uint32_t));
     shader_file.read(reinterpret_cast<char*>(cull_shader_data.data()), size);
     shader_file.close();
-    
+
     vk::ShaderModuleCreateInfo csinfo;
-    csinfo.codeSize                        = sizeof(uint32_t) * cull_shader_data.size();
-    csinfo.pCode                           = cull_shader_data.data();
+    csinfo.codeSize                    = sizeof(uint32_t) * cull_shader_data.size();
+    csinfo.pCode                       = cull_shader_data.data();
     vk::UniqueShaderModule cull_module = device->createShaderModuleUnique(csinfo);
 
     vk::PipelineShaderStageCreateInfo cull_stage;
-    cull_pp_info.stage.module         = cull_module.get();
-    cull_pp_info.stage.pName          = "main";
-    cull_pp_info.stage.stage          = vk::ShaderStageFlagBits::eCompute;
+    cull_pp_info.stage.module = cull_module.get();
+    cull_pp_info.stage.pName  = "main";
+    cull_pp_info.stage.stage  = vk::ShaderStageFlagBits::eCompute;
 
     vk::UniquePipeline cull_pipeline = device->createComputePipelineUnique(nullptr, cull_pp_info);
 
     vk::CommandPoolCreateInfo compute_command_pool_info;
-    compute_command_pool_info.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+    compute_command_pool_info.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
     compute_command_pool_info.queueFamilyIndex = families[compute];
-    vk::UniqueCommandPool compute_pool = device->createCommandPoolUnique(compute_command_pool_info);
+    vk::UniqueCommandPool compute_pool         = device->createCommandPoolUnique(compute_command_pool_info);
 
     vk::CommandBufferAllocateInfo cull_cmd_alloc;
-    cull_cmd_alloc.commandBufferCount = 1;
-    cull_cmd_alloc.commandPool = compute_pool.get();
-    cull_cmd_alloc.level = vk::CommandBufferLevel::ePrimary;
+    cull_cmd_alloc.commandBufferCount           = 1;
+    cull_cmd_alloc.commandPool                  = compute_pool.get();
+    cull_cmd_alloc.level                        = vk::CommandBufferLevel::ePrimary;
     vk::UniqueCommandBuffer cull_command_buffer = std::move(device->allocateCommandBuffersUnique(cull_cmd_alloc)[0]);
 
     vk::CommandBufferAllocateInfo sec_cmd_alloc;
@@ -417,7 +420,7 @@ int main()
     scene_desc_alloc.pSetLayouts                  = &descriptor_layouts.models.get();
     sets                                          = device->allocateDescriptorSetsUnique(scene_desc_alloc);
     vk::UniqueDescriptorSet models_descriptor_set = std::move(sets[0]);
-    
+
     struct scene_data
     {
         glm::mat4 view;
@@ -462,7 +465,7 @@ int main()
 
     vk::DescriptorBufferInfo models_buffer_info;
     models_buffer_info.buffer = indirect_buffer.get();
-    models_buffer_info.range  = sizeof(mesh_info);
+    models_buffer_info.range  = mesh_infos.size() * sizeof(mesh_info);
     vk::WriteDescriptorSet models_write;
     models_write.descriptorCount = 1;
     models_write.descriptorType  = vk::DescriptorType::eStorageBuffer;
@@ -477,21 +480,27 @@ int main()
     cull_command_buffer->begin(cull_begin);
 
     vk::BufferMemoryBarrier info_barrier;
-    info_barrier.buffer = indirect_buffer.get();
-    info_barrier.size = mesh_infos.size() * sizeof(mesh_info);
-    info_barrier.srcAccessMask = vk::AccessFlagBits::eIndirectCommandRead | vk::AccessFlagBits::eShaderRead;
-    info_barrier.dstAccessMask = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead;
+    info_barrier.buffer              = indirect_buffer.get();
+    info_barrier.size                = mesh_infos.size() * sizeof(mesh_info);
+    info_barrier.srcAccessMask       = vk::AccessFlagBits::eIndirectCommandRead | vk::AccessFlagBits::eShaderRead;
+    info_barrier.dstAccessMask       = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead;
     info_barrier.srcQueueFamilyIndex = families[graphics];
     info_barrier.dstQueueFamilyIndex = families[compute];
-    cull_command_buffer->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eComputeShader, {}, {}, info_barrier, {});
+    cull_command_buffer->pipelineBarrier(
+            vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eComputeShader, {}, {}, info_barrier, {});
     cull_command_buffer->bindPipeline(vk::PipelineBindPoint::eCompute, cull_pipeline.get());
-    cull_command_buffer->bindDescriptorSets(vk::PipelineBindPoint::eCompute, forward_pipeline_layout.get(), 0, {scene_descriptor_set.get(),models_descriptor_set.get() }, nullptr);
+    cull_command_buffer->bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                            forward_pipeline_layout.get(),
+                                            0,
+                                            {scene_descriptor_set.get(), models_descriptor_set.get()},
+                                            nullptr);
     cull_command_buffer->dispatch((mesh_infos.size() + 16) / 32, 1, 1);
-    info_barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead;
-    info_barrier.dstAccessMask = vk::AccessFlagBits::eIndirectCommandRead | vk::AccessFlagBits::eShaderRead;
+    info_barrier.srcAccessMask       = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead;
+    info_barrier.dstAccessMask       = vk::AccessFlagBits::eIndirectCommandRead | vk::AccessFlagBits::eShaderRead;
     info_barrier.dstQueueFamilyIndex = families[graphics];
     info_barrier.srcQueueFamilyIndex = families[compute];
-    cull_command_buffer->pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eAllCommands, {}, {}, info_barrier, {});
+    cull_command_buffer->pipelineBarrier(
+            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eAllCommands, {}, {}, info_barrier, {});
     cull_command_buffer->end();
 
     for(int i = 0; i < sec_commands.size(); ++i)
@@ -517,13 +526,12 @@ int main()
         // ... render ...
         sec_commands[i]->bindVertexBuffers(0, vbo.get(), 0ull);
         sec_commands[i]->bindIndexBuffer(ibo.get(), 0ull, vk::IndexType::eUint32);
-        /*for(int j = 0; j < mesh_infos.size(); ++j)
-            sec_commands[i]->drawIndexedIndirect(indirect_buffer.get(), j * sizeof(mesh_info), 1, sizeof(mesh_info));
-        */
-        sec_commands[i]->drawIndexedIndirect(indirect_buffer.get(), 0, mesh_infos.size(), sizeof(mesh_info));
+        sec_commands[i]->drawIndexedIndirect(indirect_buffer.get(), offsetof(mesh_info, indirect), mesh_infos.size(), sizeof(mesh_info));
 
         sec_commands[i]->end();
     }
+
+    vk::UniqueSemaphore cull_semaphore = device->createSemaphoreUnique({});
 
     gfx::camera_controller ctrl(window);
     while(window->update())
@@ -533,16 +541,18 @@ int main()
         current_scene_data->view            = inverse(camera.transform.matrix());
         current_scene_data->projection      = camera.projection;
         current_scene_data->camera_position = camera.transform.position;
-        
+
         uint32_t image = device->acquireNextImageKHR(*swapchain, std::numeric_limits<uint64_t>::max(), *swap_semaphore, nullptr).value;
         device->waitForFences(*render_fences[image], true, std::numeric_limits<uint64_t>::max());
         device->resetFences(*render_fences[image]);
 
         // TODO:
-        //vk::SubmitInfo cull_submit;
-        //cull_submit.commandBufferCount = 1;
-        //cull_submit.pCommandBuffers = &cull_command_buffer.get();
-        //queues[compute].submit(cull_submit, nullptr);
+        vk::SubmitInfo cull_submit;
+        cull_submit.commandBufferCount   = 1;
+        cull_submit.pCommandBuffers      = &cull_command_buffer.get();
+        cull_submit.signalSemaphoreCount = 1;
+        cull_submit.pSignalSemaphores    = &cull_semaphore.get();
+        queues[compute].submit(cull_submit, nullptr);
 
         primary_commands[image]->reset({});
         primary_commands[image]->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
@@ -564,15 +574,18 @@ int main()
         primary_commands[image]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), 2 * image + 1);
         primary_commands[image]->end();
 
-        vk::SubmitInfo submit;
-        submit.commandBufferCount              = 1;
-        submit.pCommandBuffers                 = &primary_commands[image].get();
-        submit.pWaitSemaphores                 = &swap_semaphore.get();
-        submit.waitSemaphoreCount              = 1;
-        submit.pSignalSemaphores               = &render_semaphore.get();
-        submit.signalSemaphoreCount            = 1;
-        const vk::PipelineStageFlags wait_mask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-        submit.pWaitDstStageMask               = &wait_mask;
+        // When rendering, wait until culling completed.
+        std::array<vk::Semaphore, 2>          wait_semaphores{swap_semaphore.get(), cull_semaphore.get()};
+        std::array<vk::PipelineStageFlags, 2> wait_masks{vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                         vk::PipelineStageFlagBits::eComputeShader};
+        vk::SubmitInfo                        submit;
+        submit.commandBufferCount   = 1;
+        submit.pCommandBuffers      = &primary_commands[image].get();
+        submit.pWaitSemaphores      = std::data(wait_semaphores);
+        submit.waitSemaphoreCount   = std::size(wait_semaphores);
+        submit.pSignalSemaphores    = &render_semaphore.get();
+        submit.signalSemaphoreCount = 1;
+        submit.pWaitDstStageMask    = std::data(wait_masks);
         queues[graphics].submit(submit, render_fences[image].get());
 
         vk::PresentInfoKHR present_info;
@@ -586,9 +599,8 @@ int main()
         uint64_t times[2];
         device->getQueryPoolResults(
                 timer_query_pool.get(), 2 * image, 2, 2 * sizeof(uint64_t), times, sizeof(uint64_t), vk::QueryResultFlagBits::eWait);
-        log_i << (times[1] - times[0]);
-
-        glfwPollEvents();
+        const auto diff = ((times[1] - times[0]) / 1'000'000.0);
+        log_i << diff << "ms => " << (1000 / diff) << "fps";
     }
     device->waitIdle();
 }
@@ -599,7 +611,8 @@ vk::UniquePipeline create_fwd_pipeline()
     scene_matrix_binding.binding         = 0;
     scene_matrix_binding.descriptorCount = 1;
     scene_matrix_binding.descriptorType  = vk::DescriptorType::eUniformBuffer;
-    scene_matrix_binding.stageFlags      = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute;
+    scene_matrix_binding.stageFlags =
+            vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute;
     vk::DescriptorSetLayoutCreateInfo scene_matrix_layout_info;
     scene_matrix_layout_info.bindingCount = 1;
     scene_matrix_layout_info.pBindings    = &scene_matrix_binding;
@@ -609,7 +622,7 @@ vk::UniquePipeline create_fwd_pipeline()
     models_binding.binding         = 0;
     models_binding.descriptorCount = 1;
     models_binding.descriptorType  = vk::DescriptorType::eStorageBuffer;
-    models_binding.stageFlags      = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute;
+    models_binding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute;
     vk::DescriptorSetLayoutCreateInfo models_layout_info;
     models_layout_info.bindingCount = 1;
     models_layout_info.pBindings    = &models_binding;
@@ -759,6 +772,13 @@ vk::UniquePipeline create_fwd_pipeline()
     dynamic.dynamicStateCount = std::size(states);
     dynamic.pDynamicStates    = std::data(states);
     pp_info.pDynamicState     = &dynamic;
+
+    // For shadow maps:
+    // - change depth parameters
+    // - disable msaa
+    // - change shaders
+    // - maybe even fixed viewport/scissor
+    // - different blend attachments
 
     return device->createGraphicsPipelineUnique(nullptr, pp_info);
 }

@@ -3,6 +3,7 @@
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec3 normal;
+layout(location = 3) in flat uint draw_id;
 
 layout(location = 0) out vec4 color;
 
@@ -21,6 +22,7 @@ struct light
     vec4 direction;
 };
 
+
 struct mesh_info
 {
     uint indexCount;
@@ -29,8 +31,7 @@ struct mesh_info
     int vertexOffset;
     uint firstInstance;
     mat4 model_matrix;
-    vec4 bmin;
-    vec4 bmax;
+    vec4 bounds[2];
 };
 layout(set = 1, binding=0, std430) readonly buffer Models
 {
@@ -41,14 +42,16 @@ const float pi = 3.14159235659;
 
 void main()
 {
+    color = vec4(0, 0, 0, 0);
+
     light current_light;
-    current_light.position = vec4(4, 7, 4, 1);
-    current_light.color = vec4(1, 1, 1, 1);
+    current_light.position = vec4(3, 17, 3, 1);
+    current_light.color = vec4(1, 1, 1, 15);
     current_light.direction = vec4(normalize(-current_light.position).xyz, 0);
     float rgh = 0.1f;
     float mat_ior = 1.5f;
     vec3 mat_color = vec3(1, 1, 1);
-    vec3 env = vec3(0.1f, 0.3f, 0.4f);
+    vec3 env = 0.01*vec3(0.1f, 0.3f, 0.4f);
     float metal = 0.f;
 
     vec3 light_pos = current_light.position.xyz;
@@ -95,7 +98,5 @@ void main()
     float brdf = (dggx * fct * ggx_geom);
     vec3 spec = max(dot(normal, light_dir) + 0.6f, 0) * brdf * light_color * mix(vec3(1), mat_color, metal);
     vec3 diff = mix(max(dot(normal, light_dir), 0) * mat_color * att * light_color, vec3(0), metal);
-    color = vec4(shd * (spec + diff) + mix(env * mat_color, vec3(0), metal), 1);
-
-    color = vec4(normal, 1);
+    color += vec4(shd * (spec + diff) + mix(env * mat_color, vec3(0), metal), 1);
 }
