@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "imgui_impl_glfw_vulkan.h"
+#include <window/imgui.hpp>
 
 vk::UniqueInstance           instance;
 vk::UniqueDevice             device;
@@ -63,6 +64,7 @@ struct
     vk::UniqueBuffer indirect;
     vk::UniqueBuffer vertices;
     vk::UniqueBuffer indices;
+    vk::UniqueBuffer materials;
 } model_buffers;
 
 struct tstamp
@@ -78,6 +80,35 @@ struct tstamp
 
         count
     };
+};
+
+struct mesh_info
+{
+    alignas(16) vk::DrawIndexedIndirectCommand indirect;
+    alignas(4) uint32_t material_index;
+    alignas(16) glm::mat4 model_matrix;
+    alignas(16) gfx::bounds3f bounds;
+};
+struct scene_info
+{
+    glm::mat4 view;
+    glm::mat4 projection;
+    glm::vec3 camera_position;
+    glm::uint object_count;
+};
+struct light_info
+{
+    glm::mat4 view;
+    glm::mat4 projection;
+    glm::vec3 camera_position;
+    glm::uint object_count;
+    glm::vec3 color{1, 1, 1};
+    int       shadow_map = -1;
+};
+struct material_info
+{
+    glm::vec3   f0;
+    uint32_t    packed_color_roughness;
 };
 
 void create_pipelines();
@@ -232,16 +263,11 @@ int main()
     command_pools[fam::transfer] = device->createCommandPoolUnique(pool_info);
 
     /********************************************** Model loading *****************************************************/
-    gfx::scene_file scene("sponza.obj");
-    struct mesh_info
-    {
-        alignas(16) vk::DrawIndexedIndirectCommand indirect;
-        alignas(16) glm::mat4 model_matrix;
-        alignas(16) gfx::bounds3f bounds;
-    };
+    gfx::scene_file            scene("Bistro_Research_Exterior.fbx");
     std::vector<gfx::vertex3d> vertices;
     std::vector<gfx::index32>  indices;
     std::vector<mesh_info>     mesh_infos(scene.meshes.size());
+    std::vector<material_info> materials(scene.meshes.size());
     for(size_t i = 0; i < scene.meshes.size(); ++i)
     {
         mesh_infos[i].indirect.vertexOffset  = vertices.size();
@@ -271,9 +297,23 @@ int main()
         gfx::transform tf          = scene.meshes[i].transform;
         tf.scale                   = glm::vec3(0.01f);
         mesh_infos[i].model_matrix = tf;
+        mesh_infos[i].material_index = i;
 
         indices.insert(indices.end(), scene.meshes[i].indices.begin(), scene.meshes[i].indices.end());
         vertices.insert(vertices.end(), scene.meshes[i].vertices.begin(), scene.meshes[i].vertices.end());
+
+        const auto getf0 = [](float n, float k = 0)
+        {
+            const auto sqr = [](float x) { return x*x; };
+            const auto k2 = sqr(k);
+            return (sqr(1 - n) + k2) / (sqr(1 + n) + k2);
+        };
+
+        materials[i].packed_color_roughness = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0.3f));
+        // gold
+        materials[i].f0 = glm::vec3(getf0(0.20986, 3.1263), getf0(0.42108, 2.3459), getf0(1.3734, 1.7704));
+        // default
+        //materials[i].f0 = glm::vec3(getf0(1.5));
     }
 
     /********************************************** Model buffer creation *****************************************************/
@@ -295,27 +335,32 @@ int main()
     buffer_info.queueFamilyIndexCount = static_cast<uint32_t>(family_indices_v.size());
     buffer_info.sharingMode           = vk::SharingMode::eConcurrent;
 
-    buffer_info.size       = vertices.size() * sizeof(gfx::vertex3d);
-    buffer_info.usage      = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
-    model_buffers.vertices = device->createBufferUnique(buffer_info);
-    buffer_info.size       = indices.size() * sizeof(gfx::index32);
-    buffer_info.usage      = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
-    model_buffers.indices  = device->createBufferUnique(buffer_info);
+    buffer_info.size        = vertices.size() * sizeof(gfx::vertex3d);
+    buffer_info.usage       = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    model_buffers.vertices  = device->createBufferUnique(buffer_info);
+    buffer_info.size        = indices.size() * sizeof(gfx::index32);
+    buffer_info.usage       = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    model_buffers.indices   = device->createBufferUnique(buffer_info);
+    buffer_info.size        = materials.size() * sizeof(material_info);
+    buffer_info.usage       = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst;
+    model_buffers.materials = device->createBufferUnique(buffer_info);
 
     const vk::MemoryRequirements vbo_req = device->getBufferMemoryRequirements(model_buffers.vertices.get());
     const vk::MemoryRequirements ibo_req = device->getBufferMemoryRequirements(model_buffers.indices.get());
     const vk::MemoryRequirements ind_req = device->getBufferMemoryRequirements(model_buffers.indirect.get());
+    const vk::MemoryRequirements mat_req = device->getBufferMemoryRequirements(model_buffers.materials.get());
 
     vk::MemoryRequirements combined;
-    combined.size           = vbo_req.size + ibo_req.size + ind_req.size;
-    combined.alignment      = glm::max(vbo_req.alignment, ibo_req.alignment, ind_req.size);
-    combined.memoryTypeBits = vbo_req.memoryTypeBits | ibo_req.memoryTypeBits | ind_req.memoryTypeBits;
+    combined.size           = vbo_req.size + ibo_req.size + ind_req.size + mat_req.size;
+    combined.alignment      = glm::max(vbo_req.alignment, ibo_req.alignment, ind_req.alignment, mat_req.alignment);
+    combined.memoryTypeBits = vbo_req.memoryTypeBits | ibo_req.memoryTypeBits | ind_req.memoryTypeBits | mat_req.memoryTypeBits;
 
     vk::UniqueDeviceMemory shared_ibo_vbo_ind_mem =
             device->allocateMemoryUnique({combined.size, memory_index(gpu, combined, vk::MemoryPropertyFlagBits::eDeviceLocal)});
     device->bindBufferMemory(model_buffers.vertices.get(), shared_ibo_vbo_ind_mem.get(), 0);
     device->bindBufferMemory(model_buffers.indices.get(), shared_ibo_vbo_ind_mem.get(), vbo_req.size);
     device->bindBufferMemory(model_buffers.indirect.get(), shared_ibo_vbo_ind_mem.get(), vbo_req.size + ibo_req.size);
+    device->bindBufferMemory(model_buffers.materials.get(), shared_ibo_vbo_ind_mem.get(), vbo_req.size + ibo_req.size + ind_req.size);
 
     /********************************************** Model data transfer *****************************************************/
     // transfer everything at once
@@ -341,6 +386,8 @@ int main()
         memcpy(mapped + vbo_req.size, indices.data(), indices.size() * sizeof(gfx::index32));
         // Indirect commands
         memcpy(mapped + vbo_req.size + ibo_req.size, mesh_infos.data(), mesh_infos.size() * sizeof(mesh_info));
+        // Materials
+        memcpy(mapped + vbo_req.size + ibo_req.size + ind_req.size, materials.data(), materials.size() * sizeof(material_info));
         device->flushMappedMemoryRanges(vk::MappedMemoryRange(tf_src_mem.get(), 0, transfer_src.size));
         device->unmapMemory(tf_src_mem.get());
 
@@ -361,6 +408,9 @@ int main()
             copy.srcOffset = vbo_req.size + ibo_req.size;
             copy.size      = ind_req.size;
             transfer_command->copyBuffer(transfer_src_buffer.get(), model_buffers.indirect.get(), copy);
+            copy.srcOffset = vbo_req.size + ibo_req.size + ind_req.size;
+            copy.size      = mat_req.size;
+            transfer_command->copyBuffer(transfer_src_buffer.get(), model_buffers.materials.get(), copy);
         }
         transfer_command->end();
         vk::SubmitInfo transfer_submit;
@@ -395,22 +445,15 @@ int main()
     scene_desc_alloc.pSetLayouts        = &descriptor_layouts.models.get();
     descriptor_sets.models_info         = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
     scene_desc_alloc.pSetLayouts        = &descriptor_layouts.lights.get();
-    descriptor_sets.lights     = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
+    descriptor_sets.lights              = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
 
-    struct scene_data
-    {
-        glm::mat4 view;
-        glm::mat4 projection;
-        glm::vec3 camera_position;
-        glm::uint object_count;
-    };
     /********************************************** Camera buffer for main cam *****************************************************/
     vk::BufferCreateInfo scene_buffer_create_info;
     scene_buffer_create_info.pQueueFamilyIndices   = &families[fam::graphics];
     scene_buffer_create_info.queueFamilyIndexCount = 1;
     scene_buffer_create_info.sharingMode           = vk::SharingMode::eExclusive;
     scene_buffer_create_info.usage                 = vk::BufferUsageFlagBits::eUniformBuffer;
-    scene_buffer_create_info.size                  = sizeof(scene_data);
+    scene_buffer_create_info.size                  = sizeof(scene_info);
     vk::UniqueBuffer             scene_buffer      = device->createBufferUnique(scene_buffer_create_info);
     const vk::MemoryRequirements scene_buf_req     = device->getBufferMemoryRequirements(scene_buffer.get());
     vk::UniqueDeviceMemory       scene_memory      = device->allocateMemoryUnique(
@@ -421,26 +464,20 @@ int main()
     gfx::camera camera;
     camera.projection.perspective().negative_y = true;
     camera.transform.position                  = glm::vec3(0, 0, 4);
-    scene_data* current_scene_data             = static_cast<scene_data*>(device->mapMemory(scene_memory.get(), 0, sizeof(scene_data), {}));
+    scene_info* current_scene_data             = static_cast<scene_info*>(device->mapMemory(scene_memory.get(), 0, sizeof(scene_info), {}));
     current_scene_data->view                   = inverse(camera.transform.matrix());
     current_scene_data->projection             = camera.projection;
     current_scene_data->camera_position        = camera.transform.position;
     current_scene_data->object_count           = mesh_infos.size();
-    device->flushMappedMemoryRanges(vk::MappedMemoryRange(scene_memory.get(), 0, sizeof(scene_data)));
+    device->flushMappedMemoryRanges(vk::MappedMemoryRange(scene_memory.get(), 0, sizeof(scene_info)));
 
     /********************************************** Camera buffer for light *****************************************************/
-    struct light_data
-    {
-        scene_data scene;
-        glm::vec3  color{1, 1, 1};
-        int shadow_map = -1;
-    };
     vk::BufferCreateInfo light_buffer_create_info;
     light_buffer_create_info.pQueueFamilyIndices   = &families[fam::graphics];
     light_buffer_create_info.queueFamilyIndexCount = 1;
     light_buffer_create_info.sharingMode           = vk::SharingMode::eExclusive;
     light_buffer_create_info.usage                 = vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer;
-    light_buffer_create_info.size                  = 1 * sizeof(light_data);
+    light_buffer_create_info.size                  = 1 * sizeof(light_info);
     vk::UniqueBuffer             light_buffer      = device->createBufferUnique(light_buffer_create_info);
     const vk::MemoryRequirements light_buf_req     = device->getBufferMemoryRequirements(light_buffer.get());
     vk::UniqueDeviceMemory       light_memory      = device->allocateMemoryUnique(
@@ -449,21 +486,21 @@ int main()
     device->bindBufferMemory(light_buffer.get(), light_memory.get(), 0);
 
     gfx::camera light_camera;
-    light_camera.projection                   = gfx::projection(glm::radians(70.f), 512, 512, 0.01f, 100.f, true, true);
-    light_camera.transform                    = inverse(glm::lookAt(glm::vec3(1, 17, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
-    light_data* current_light_data            = static_cast<light_data*>(device->mapMemory(light_memory.get(), 0, sizeof(light_data), {}));
-    current_light_data->scene.view            = inverse(light_camera.transform.matrix());
-    current_light_data->scene.projection      = light_camera.projection;
-    current_light_data->scene.camera_position = light_camera.transform.position;
-    current_light_data->scene.object_count    = mesh_infos.size();
-    current_light_data->color = glm::vec3(8, 7, 6);
-    current_light_data->shadow_map = 0;
-    device->flushMappedMemoryRanges(vk::MappedMemoryRange(light_memory.get(), 0, sizeof(light_data)));
+    light_camera.projection             = gfx::projection(glm::radians(50.f), 512, 512, 0.01f, 100.f, true, true);
+    light_camera.transform              = glm::inverse(glm::lookAt(glm::vec3(5, 23, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
+    light_info* current_light_data      = static_cast<light_info*>(device->mapMemory(light_memory.get(), 0, sizeof(light_info), {}));
+    current_light_data->view            = inverse(light_camera.transform.matrix());
+    current_light_data->projection      = light_camera.projection;
+    current_light_data->camera_position = light_camera.transform.position;
+    current_light_data->object_count    = mesh_infos.size();
+    current_light_data->color           = glm::vec3(8, 7, 6);
+    current_light_data->shadow_map      = 0;
+    device->flushMappedMemoryRanges(vk::MappedMemoryRange(light_memory.get(), 0, sizeof(light_info)));
 
     /********************************************** Descriptor set updates *****************************************************/
     vk::DescriptorBufferInfo scene_buffer_info;
     scene_buffer_info.buffer = scene_buffer.get();
-    scene_buffer_info.range  = sizeof(scene_data);
+    scene_buffer_info.range  = sizeof(scene_info);
     vk::WriteDescriptorSet scene_write;
     scene_write.descriptorCount = 1;
     scene_write.descriptorType  = vk::DescriptorType::eUniformBuffer;
@@ -475,7 +512,7 @@ int main()
 
     vk::DescriptorBufferInfo ld_buffer_info;
     ld_buffer_info.buffer = light_buffer.get();
-    ld_buffer_info.range  = sizeof(scene_data);
+    ld_buffer_info.range  = sizeof(scene_info);
     vk::WriteDescriptorSet ld_write;
     ld_write.descriptorCount = 1;
     ld_write.descriptorType  = vk::DescriptorType::eUniformBuffer;
@@ -496,6 +533,10 @@ int main()
     models_write.dstSet          = descriptor_sets.models_info.get();
     models_write.pBufferInfo     = &models_buffer_info;
     device->updateDescriptorSets(models_write, nullptr);
+    models_write.dstBinding = 1;
+    models_buffer_info.buffer = model_buffers.materials.get();
+    models_buffer_info.range = materials.size() * sizeof(material_info);
+    device->updateDescriptorSets(models_write, nullptr);
 
     vk::DescriptorImageInfo shadow_samplers_info;
     shadow_samplers_info.imageView   = shadow_map_view.get();
@@ -511,7 +552,7 @@ int main()
 
     vk::DescriptorBufferInfo lights_buffer_info;
     lights_buffer_info.buffer = light_buffer.get();
-    lights_buffer_info.range  = 1 * sizeof(light_data);
+    lights_buffer_info.range  = 1 * sizeof(light_info);
     vk::WriteDescriptorSet lights_write;
     lights_write.descriptorCount = 1;
     lights_write.descriptorType  = vk::DescriptorType::eStorageBuffer;
@@ -700,7 +741,7 @@ int main()
             while(!stop)
             {
                 using namespace std::chrono_literals;
-                waitfor(500ms);
+                waitfor(200ms);
 
                 std::unique_lock<std::mutex> lock(mtx);
                 submits = 0;
@@ -780,31 +821,75 @@ int main()
     {
         ImGui_ImplGlfwVulkan_NewFrame();
 
-        auto stamps = printer.get();
-        ImGui::Begin("Window");
-
-        ImGui::Text("Time stamps");
-        for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
+        enum class tab
         {
-            ImGui::Text("%s: %.4fms, delta: %.4fms", printer.stamp_names[i], stamps[i], (stamps[i] - stamps[i - 1]));
+            timing,
+            settings
+        };
+
+        static tab current_tab = tab::timing;
+        const auto tab_item    = [&](const auto& label, tab t) {
+            if(ImGui::BeginMenu(label, current_tab != t))
+            {
+                current_tab = t;
+                ImGui::CloseCurrentPopup();
+                ImGui::EndMenu();
+            }
+        };
+
+        auto stamps = printer.get();
+        ImGui::Begin("Window", nullptr, ImGuiWindowFlags_MenuBar);
+        ImGui::BeginMenuBar();
+        tab_item("timing", tab::timing);
+        tab_item("settings", tab::settings);
+        ImGui::EndMenuBar();
+
+        switch(current_tab)
+        {
+        case tab::timing:
+        {
+            ImGui::Columns(3, "Time Stamps");
+            ImGui::SetColumnWidth(0, 100);
+            ImGui::SetColumnWidth(1, 100);
+            ImGui::SetColumnWidth(2, 100);
+            for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
+            {
+                ImGui::Text("%s", printer.stamp_names[i]);
+                ImGui::NextColumn();
+                ImGui::Text("%.4fms", stamps[i]);
+                ImGui::NextColumn();
+                ImGui::Text("%.4fms", (stamps[i] - stamps[i - 1]));
+                ImGui::NextColumn();
+            }
+            ImGui::Columns(1);
+        }
+        break;
+        case tab::settings:
+        {
+            if(ImGui::DragInt("Max Framerate", &max_framerate, 0.1f, 25, 80000))
+                window->set_max_framerate(max_framerate);
+        }
+        break;
         }
 
-        if(ImGui::DragInt("Max Framerate", &max_framerate, 0.1f, 25, 80000))
-            window->set_max_framerate(max_framerate);
-
         ImGui::End();
+
+        uint32_t image = device->acquireNextImageKHR(*swapchain, std::numeric_limits<uint64_t>::max(), *swap_semaphore, nullptr).value;
+        // Wait until last frame using this image has finished rendering
+        device->waitForFences(*render_fences[image], true, std::numeric_limits<uint64_t>::max());
+        device->resetFences(*render_fences[image]);
 
         // TODO: Not "stable"! double buffer or something.
         ctrl.update(camera);
         current_scene_data->view            = inverse(camera.transform.matrix());
         current_scene_data->projection      = camera.projection;
         current_scene_data->camera_position = camera.transform.position;
-        device->flushMappedMemoryRanges(vk::MappedMemoryRange(scene_memory.get(), 0, sizeof(scene_data)));
-
-        uint32_t image = device->acquireNextImageKHR(*swapchain, std::numeric_limits<uint64_t>::max(), *swap_semaphore, nullptr).value;
-        // Wait until last frame using this image has finished rendering
-        device->waitForFences(*render_fences[image], true, std::numeric_limits<uint64_t>::max());
-        device->resetFences(*render_fences[image]);
+        device->flushMappedMemoryRanges(vk::MappedMemoryRange(scene_memory.get(), 0, sizeof(scene_info)));
+        light_camera.transform = glm::inverse(
+                glm::lookAt(glm::vec3(glm::sin(glfwGetTime()) * 5, 24, glm::cos(glfwGetTime()) * 5), glm::vec3(0), glm::vec3(0, 1, 0)));
+        current_light_data->view            = inverse(light_camera.transform.matrix());
+        current_light_data->camera_position = light_camera.transform.position;
+        device->flushMappedMemoryRanges(vk::MappedMemoryRange(light_memory.get(), 0, sizeof(light_info)));
 
         // Render imgui
         imgui_commands[image]->reset({});
@@ -851,7 +936,7 @@ int main()
                                     std::size(time_stamps) * sizeof(uint64_t),
                                     time_stamps.data(),
                                     sizeof(uint64_t),
-                                    vk::QueryResultFlagBits::eWait);
+                                    vk::QueryResultFlagBits::eWait | vk::QueryResultFlagBits::eWithAvailability);
 
         for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
         {
@@ -887,9 +972,17 @@ void create_pipelines()
     models_binding.descriptorCount = 1;
     models_binding.descriptorType  = vk::DescriptorType::eStorageBuffer;
     models_binding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute;
+
+    vk::DescriptorSetLayoutBinding materials_binding;
+    materials_binding.binding = 1;
+    materials_binding.descriptorCount = 1;
+    materials_binding.descriptorType = vk::DescriptorType::eStorageBuffer;
+    materials_binding.stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eCompute;
+
+    const std::array<vk::DescriptorSetLayoutBinding, 2> models_bindings = {models_binding, materials_binding};
     vk::DescriptorSetLayoutCreateInfo models_layout_info;
-    models_layout_info.bindingCount = 1;
-    models_layout_info.pBindings    = &models_binding;
+    models_layout_info.bindingCount = std::size(models_bindings);
+    models_layout_info.pBindings    = std::data(models_bindings);
     descriptor_layouts.models       = device->createDescriptorSetLayoutUnique(models_layout_info);
 
     vk::SamplerCreateInfo shd_smp_info;
@@ -914,26 +1007,26 @@ void create_pipelines()
     shadow_textures_binding.descriptorType     = vk::DescriptorType::eCombinedImageSampler;
     shadow_textures_binding.pImmutableSamplers = &shadow_sampler.get();
     shadow_textures_binding.stageFlags         = vk::ShaderStageFlagBits::eFragment;
-    
+
     vk::DescriptorSetLayoutBinding lights_binding;
-    lights_binding.binding            = 1;
-    lights_binding.descriptorCount    = 1;
-    lights_binding.descriptorType     = vk::DescriptorType::eStorageBuffer;
-    lights_binding.stageFlags         = vk::ShaderStageFlagBits::eFragment;
+    lights_binding.binding         = 1;
+    lights_binding.descriptorCount = 1;
+    lights_binding.descriptorType  = vk::DescriptorType::eStorageBuffer;
+    lights_binding.stageFlags      = vk::ShaderStageFlagBits::eFragment;
 
     const std::array<vk::DescriptorSetLayoutBinding, 2> lights_bindings = {shadow_textures_binding, lights_binding};
-    vk::DescriptorSetLayoutCreateInfo shadow_desc_set_layout_info;
+    vk::DescriptorSetLayoutCreateInfo                   shadow_desc_set_layout_info;
     shadow_desc_set_layout_info.bindingCount = std::size(lights_bindings);
     shadow_desc_set_layout_info.pBindings    = std::data(lights_bindings);
-    descriptor_layouts.lights       = device->createDescriptorSetLayoutUnique(shadow_desc_set_layout_info);
+    descriptor_layouts.lights                = device->createDescriptorSetLayoutUnique(shadow_desc_set_layout_info);
 
     vk::PipelineLayoutCreateInfo layout_info;
-    const auto reduced_layouts = {descriptor_layouts.scene.get(), descriptor_layouts.models.get()};
-    layout_info.setLayoutCount = std::size(reduced_layouts);
-    layout_info.pSetLayouts    = std::data(reduced_layouts);
-    pipelines.layouts.reduced  = device->createPipelineLayoutUnique(layout_info);
+    const auto                   reduced_layouts = {descriptor_layouts.scene.get(), descriptor_layouts.models.get()};
+    layout_info.setLayoutCount                   = std::size(reduced_layouts);
+    layout_info.pSetLayouts                      = std::data(reduced_layouts);
+    pipelines.layouts.reduced                    = device->createPipelineLayoutUnique(layout_info);
 
-    const auto layouts = {descriptor_layouts.scene.get(), descriptor_layouts.models.get(), descriptor_layouts.lights.get()};
+    const auto layouts             = {descriptor_layouts.scene.get(), descriptor_layouts.models.get(), descriptor_layouts.lights.get()};
     layout_info.setLayoutCount     = std::size(layouts);
     layout_info.pSetLayouts        = std::data(layouts);
     pipelines.layouts.default_mesh = device->createPipelineLayoutUnique(layout_info);
@@ -1072,8 +1165,8 @@ void create_pipelines()
     viewport.pViewports            = &vp;
     pp_info.pDynamicState          = nullptr;
     raster.depthBiasEnable         = true;
-    raster.depthBiasConstantFactor = 1.5f;
-    raster.depthBiasSlopeFactor    = -3.14159265359f;
+    raster.depthBiasConstantFactor = 0.9f;
+    raster.depthBiasSlopeFactor    = -2.14159265359f;
     pp_info.layout                 = pipelines.layouts.reduced.get();
     pipelines.shadow_pass          = device->createGraphicsPipelineUnique(nullptr, pp_info);
 
@@ -1182,6 +1275,7 @@ void create_renderpasses()
     renderpasses.shadow                    = device->createRenderPassUnique(shadow_renderpass_info);
 
     // Overlay renderpass (GUI etc.)
+
     vk::SubpassDependency overlay_dep = shadow_dep;
     overlay_dep.dstAccessMask         = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
     vk::SubpassDescription overlay_subpass;

@@ -2,7 +2,7 @@
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
-layout(location = 2) in vec3 normal;
+layout(location = 2) in vec3 in_normal;
 layout(location = 3) in flat uint draw_id;
 
 layout(location = 0) out vec4 color;
@@ -30,12 +30,23 @@ struct mesh_info
     uint firstIndex;
     int vertexOffset;
     uint firstInstance;
+    uint material_index;
     mat4 model_matrix;
     vec4 bounds[2];
 };
 layout(set = 1, binding=0, std430) readonly buffer Models
 {
-    mesh_info infos[];
+    mesh_info meshes[];
+};
+struct material_info
+{
+    vec3 f0;
+    // packUnorm4x8
+    uint color_roughness;
+};
+layout(set = 1, binding = 1, std430) readonly buffer Materials
+{
+    material_info materials[];
 };
 
 layout(set = 2, binding = 0) uniform sampler2DShadow shadow_maps[1];
@@ -67,13 +78,11 @@ vec3 get_pos(mat4 mat, vec3 pos)
 float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 light_dir){
     vec2 tex_size = textureSize(map, 0);
 
-    vec3 map_pos = get_pos(mat, pos + 0.01f * normal);
+    vec3 map_pos = get_pos(mat, pos + 0.06f * normal);
 
     float shadow = 0.f;
     vec2 inv_size = 1/max(tex_size, vec2(1, 1));
     const int size = 5;
-    const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
-    float slope = clamp(tan(acos(dot(light_dir,normal))), -1, 1);
 
     for(int i=0; i<size*size; ++i)
     {
@@ -82,7 +91,7 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
         const vec2 offset = vec2(x, y) * inv_size;
 
         const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
-        const float depth = 1-texture(map, vec3(uv, map_pos.z)).r;
+        const float depth = 1-texture(map, vec3(uv, map_pos.z + 0.00001f)).r;
 
         shadow += depth;
     }
@@ -91,7 +100,20 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
 void main()
 {
-    color = vec4(0, 0, 0, 0);
+    color = vec4(0, 0, 0, 1);
+    vec3 view_dir = normalize(camera_position - position);
+    vec3 normal = normalize(in_normal);
+
+    material_info material = materials[meshes[draw_id].material_index];
+    vec4 color_roughness = unpackUnorm4x8(material.color_roughness);
+
+    float rgh = color_roughness.w;
+    float mat_ior = 0;
+    vec3 mat_color = color_roughness.rgb;
+    float metal = 0;
+    vec3 env = 0.01*vec3(0.1f, 0.3f, 0.4f);
+
+    vec3 fresnel = material.f0 + (1-material.f0)*pow(1-max(dot(view_dir, normal), 0), 5);
 
     for(int i = 0; i < 1; ++i)
     {
@@ -101,34 +123,34 @@ void main()
         current_light.position = vec4(cligh.position, 1);
         current_light.color = vec4(cligh.color, 1);
         current_light.direction = vec4(normalize(-current_light.position).xyz, 0);
-        float rgh = 0.1f;
-        float mat_ior = 1.5f;
-        vec3 mat_color = vec3(1, 1, 1);
-        vec3 env = 0.01*vec3(0.1f, 0.3f, 0.4f);
-        float metal = 0.f;
 
         vec3 light_pos = current_light.position.xyz;
         vec3 to_light = light_pos - position;
         vec3 light_dir = normalize(to_light);
         vec3 light_color = current_light.color.w * current_light.color.xyz;
-        vec3 view_dir = normalize(camera_position - position);
         float len2 = dot(to_light, to_light);
-        float att = 2*pi / (len2);
+        float att = 1 / (0.01f*len2);
     
-        float shd = smoothstep(0.8f, 0.88f, dot(light_dir, -current_light.direction.xyz));
+        float light_half_fov = cos(atan(1.0/cligh.projection[1][1]));
+        float shd = smoothstep(light_half_fov, 1.f, dot(light_dir, -current_light.direction.xyz));
 
-        if(shd > 0 && cligh.shadow_map != -1)
+        if(cligh.shadow_map != -1)
         {
             mat4 shadow_matrix = cligh.projection * cligh.view;
             shd *= 1 - shadow(shadow_maps[cligh.shadow_map], shadow_matrix, position, normal, light_dir);
         }
-        //mat4 shd_mat = mat4(1.009853, 1.006377, 0.000012, -0.058621, 0.000000, -0.118397, 0.000199, -0.996558, -1.009853, 1.006377, 0.000012, -0.058621, -0.000001, 0.000001, 0.016590, 17.058722);
-        //shd *= 1-shadow(shadow_maps[0], shd_mat, position, normal, light_dir);
+
+        shd = max((shd - 0.1) / 0.9, 0);
+
+        //if(shd <= 0.f)
+        //    continue;
 
         vec3 half_vector = normalize(light_dir + view_dir);
 
         float alpha = rgh;
         float alpha2 = alpha * alpha;
+        vec3 fresnel_v = material.f0 + (1-material.f0)*pow(1-max(dot(view_dir, normal), 0), 5);
+        vec3 fresnel_l = material.f0 + (1-material.f0)*pow(1-max(dot(light_dir, normal), 0), 5);
 
         // GGX Distribution
         float mdotn = max(dot(normal, half_vector), 0);
@@ -141,24 +163,13 @@ void main()
         float ndotl = max(dot(normal, light_dir), 0);
         float ggx_geom_l = 1 / (ndotl + sqrt(mix(ndotl*ndotl, 1, alpha2)));
         float ggx_geom = ggx_geom_v * ggx_geom_l;
-
-        // Fresnel (Cook-Torrance)
-        float fnorm = abs((1-mat_ior) / (1+mat_ior));
-        fnorm = fnorm * fnorm;
-        float sqfnorm = sqrt(fnorm);
-        float nr = (1+sqfnorm) / (1-sqfnorm);
-        float c = max(dot(view_dir, half_vector), 0);
-        float g = sqrt(nr * nr + c * c - 1);
-        float gmcbgpc = (g-c) / (g+c);
-        gmcbgpc *= gmcbgpc;
-        gmcbgpc *= 0.5f;
-        const float den = ((g+c)*c - 1) / max((g-c)*c + 1, 0.001f);
-        float fct = mix(gmcbgpc * (1 + den * den), 1, metal);
     
         // BRDF
-        float brdf = (dggx * fct * ggx_geom);
-        vec3 spec = max(dot(normal, light_dir) + 0.6f, 0) * brdf * light_color * mix(vec3(1), mat_color, metal);
-        vec3 diff = mix(max(dot(normal, light_dir), 0) * mat_color * att * light_color, vec3(0), metal);
-        color += vec4(shd * (spec + diff) + mix(env * mat_color, vec3(0), metal), 1);
+        vec3 brdf = (dggx * fresnel_v * ggx_geom);
+        vec3 spec = max(dot(normal, light_dir), 0) * brdf * light_color;
+        vec3 diff = max(dot(normal, light_dir), 0) * mat_color * att * light_color;
+        color += shd * vec4(mix(diff, spec, fresnel_l), 1);
     }
+
+    //color += vec4(mix(env * mat_color, vec3(0), metal), 0);
 }
