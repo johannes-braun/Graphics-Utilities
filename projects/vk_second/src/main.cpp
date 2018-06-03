@@ -8,6 +8,8 @@
 #include <numeric>
 #include <vulkan/vulkan.hpp>
 
+#include "imgui_impl_glfw_vulkan.h"
+
 vk::UniqueInstance           instance;
 vk::UniqueDevice             device;
 std::shared_ptr<gfx::window> window;
@@ -20,7 +22,7 @@ struct
 {
     vk::UniqueDescriptorSetLayout scene;
     vk::UniqueDescriptorSetLayout models;
-    vk::UniqueDescriptorSetLayout shadow_textures;
+    vk::UniqueDescriptorSetLayout lights;
 } descriptor_layouts;
 
 struct
@@ -28,6 +30,7 @@ struct
     struct
     {
         vk::UniquePipelineLayout default_mesh;
+        vk::UniquePipelineLayout reduced;
     } layouts;
 
     vk::UniquePipeline forward_shade;
@@ -39,6 +42,7 @@ struct
 {
     vk::UniqueRenderPass forward;
     vk::UniqueRenderPass shadow;
+    vk::UniqueRenderPass overlay;
 } renderpasses;
 
 std::array<vk::UniqueCommandPool, 3> command_pools;
@@ -51,7 +55,7 @@ struct
     vk::UniqueDescriptorSet scene_info;
     vk::UniqueDescriptorSet light_info;
     vk::UniqueDescriptorSet models_info;
-    vk::UniqueDescriptorSet shadow_samplers;
+    vk::UniqueDescriptorSet lights;
 } descriptor_sets;
 
 struct
@@ -60,6 +64,21 @@ struct
     vk::UniqueBuffer vertices;
     vk::UniqueBuffer indices;
 } model_buffers;
+
+struct tstamp
+{
+    enum
+    {
+        frame_begin,
+        light_cull,
+        light_sm,
+        render_cull,
+        render,
+        frame_end,
+
+        count
+    };
+};
 
 void create_pipelines();
 void create_renderpasses();
@@ -81,9 +100,9 @@ int main()
     glfwCreateWindowSurface(static_cast<VkInstance>(*instance), *window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surf));
     surface = vk::UniqueSurfaceKHR(surf, vk::UniqueHandleTraits<vk::SurfaceKHR>::deleter(*instance));
 
-    auto infos       = create_device(instance, gpu, surface);
-    device           = std::move(infos.device);
-    families         = std::move(infos.queue_families);
+    auto infos            = create_device(instance, gpu, surface);
+    device                = std::move(infos.device);
+    families              = std::move(infos.queue_families);
     queues[fam::graphics] = device->getQueue(families[fam::graphics], infos.queue_indices[fam::graphics]);
     queues[fam::compute]  = device->getQueue(families[fam::compute], infos.queue_indices[fam::compute]);
     queues[fam::transfer] = device->getQueue(families[fam::transfer], infos.queue_indices[fam::transfer]);
@@ -93,9 +112,10 @@ int main()
 
     /********************************************** Swapchain & Main FBO setup *****************************************************/
     const vk::SurfaceCapabilitiesKHR capabilities = gpu.getSurfaceCapabilitiesKHR(surface.get());
-    swapchain                                     = create_swapchain(gpu, device, surface, families[fam::present], capabilities.currentExtent);
+    swapchain = create_swapchain(gpu, device, surface, families[fam::present], capabilities.currentExtent);
     std::vector<vk::Image>              swapchain_images = device->getSwapchainImagesKHR(swapchain.get());
     std::vector<vk::UniqueFramebuffer>  main_framebuffers(swapchain_images.size());
+    std::vector<vk::UniqueFramebuffer>  gui_framebuffers(swapchain_images.size());
     std::vector<vk::UniqueImageView>    swapchain_image_views(swapchain_images.size());
     std::vector<vk::UniqueImage>        depth_attachments(swapchain_images.size());
     std::vector<vk::UniqueImage>        msaa_attachments(swapchain_images.size());
@@ -158,12 +178,17 @@ int main()
         fbc.pAttachments     = std::data(fbo_attachments);
         fbc.renderPass       = renderpasses.forward.get();
         main_framebuffers[i] = device->createFramebufferUnique(fbc);
+
+        fbc.pAttachments    = &swapchain_image_views[i].get();
+        fbc.attachmentCount = 1;
+        fbc.renderPass      = renderpasses.overlay.get();
+        gui_framebuffers[i] = device->createFramebufferUnique(fbc);
     }
 
     /********************************************** Shadow map fbo setup *****************************************************/
     vk::ImageCreateInfo shadow_depth_image_create_info;
     shadow_depth_image_create_info.arrayLayers           = 1;
-    shadow_depth_image_create_info.extent                = vk::Extent3D{256, 256, 1};
+    shadow_depth_image_create_info.extent                = vk::Extent3D{512, 512, 1};
     shadow_depth_image_create_info.format                = vk::Format::eD32Sfloat;
     shadow_depth_image_create_info.imageType             = vk::ImageType::e2D;
     shadow_depth_image_create_info.initialLayout         = vk::ImageLayout::eUndefined;
@@ -190,24 +215,24 @@ int main()
     vk::FramebufferCreateInfo shadow_map_fbo_info;
     shadow_map_fbo_info.attachmentCount  = 1;
     shadow_map_fbo_info.pAttachments     = &shadow_map_view.get();
-    shadow_map_fbo_info.height           = 256;
-    shadow_map_fbo_info.width            = 256;
+    shadow_map_fbo_info.height           = 512;
+    shadow_map_fbo_info.width            = 512;
     shadow_map_fbo_info.layers           = 1;
     shadow_map_fbo_info.renderPass       = renderpasses.shadow.get();
     vk::UniqueFramebuffer shadow_map_fbo = device->createFramebufferUnique(shadow_map_fbo_info);
 
     /********************************************** Command pool creation *****************************************************/
     vk::CommandPoolCreateInfo pool_info;
-    pool_info.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-    pool_info.queueFamilyIndex = families[fam::graphics];
-    command_pools[fam::graphics]    = device->createCommandPoolUnique(pool_info);
-    pool_info.queueFamilyIndex = families[fam::compute];
-    command_pools[fam::compute]     = device->createCommandPoolUnique(pool_info);
-    pool_info.queueFamilyIndex = families[fam::transfer];
-    command_pools[fam::transfer]    = device->createCommandPoolUnique(pool_info);
+    pool_info.flags              = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+    pool_info.queueFamilyIndex   = families[fam::graphics];
+    command_pools[fam::graphics] = device->createCommandPoolUnique(pool_info);
+    pool_info.queueFamilyIndex   = families[fam::compute];
+    command_pools[fam::compute]  = device->createCommandPoolUnique(pool_info);
+    pool_info.queueFamilyIndex   = families[fam::transfer];
+    command_pools[fam::transfer] = device->createCommandPoolUnique(pool_info);
 
     /********************************************** Model loading *****************************************************/
-    gfx::scene_file scene("Bistro_Research_Exterior.fbx");
+    gfx::scene_file scene("sponza.obj");
     struct mesh_info
     {
         alignas(16) vk::DrawIndexedIndirectCommand indirect;
@@ -341,7 +366,7 @@ int main()
         vk::SubmitInfo transfer_submit;
         transfer_submit.commandBufferCount = 1;
         transfer_submit.pCommandBuffers    = &transfer_command.get();
-        vk::UniqueFence transfer_fence = device->createFenceUnique({});
+        vk::UniqueFence transfer_fence     = device->createFenceUnique({});
         queues[fam::transfer].submit(transfer_submit, transfer_fence.get());
         device->waitForFences(transfer_fence.get(), true, std::numeric_limits<uint64_t>::max());
     }
@@ -369,8 +394,8 @@ int main()
     descriptor_sets.light_info          = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
     scene_desc_alloc.pSetLayouts        = &descriptor_layouts.models.get();
     descriptor_sets.models_info         = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
-    scene_desc_alloc.pSetLayouts        = &descriptor_layouts.shadow_textures.get();
-    descriptor_sets.shadow_samplers     = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
+    scene_desc_alloc.pSetLayouts        = &descriptor_layouts.lights.get();
+    descriptor_sets.lights     = std::move(device->allocateDescriptorSetsUnique(scene_desc_alloc)[0]);
 
     struct scene_data
     {
@@ -404,12 +429,18 @@ int main()
     device->flushMappedMemoryRanges(vk::MappedMemoryRange(scene_memory.get(), 0, sizeof(scene_data)));
 
     /********************************************** Camera buffer for light *****************************************************/
+    struct light_data
+    {
+        scene_data scene;
+        glm::vec3  color{1, 1, 1};
+        int shadow_map = -1;
+    };
     vk::BufferCreateInfo light_buffer_create_info;
     light_buffer_create_info.pQueueFamilyIndices   = &families[fam::graphics];
     light_buffer_create_info.queueFamilyIndexCount = 1;
     light_buffer_create_info.sharingMode           = vk::SharingMode::eExclusive;
-    light_buffer_create_info.usage                 = vk::BufferUsageFlagBits::eUniformBuffer;
-    light_buffer_create_info.size                  = sizeof(scene_data);
+    light_buffer_create_info.usage                 = vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer;
+    light_buffer_create_info.size                  = 1 * sizeof(light_data);
     vk::UniqueBuffer             light_buffer      = device->createBufferUnique(light_buffer_create_info);
     const vk::MemoryRequirements light_buf_req     = device->getBufferMemoryRequirements(light_buffer.get());
     vk::UniqueDeviceMemory       light_memory      = device->allocateMemoryUnique(
@@ -418,14 +449,16 @@ int main()
     device->bindBufferMemory(light_buffer.get(), light_memory.get(), 0);
 
     gfx::camera light_camera;
-    light_camera.projection             = gfx::projection(glm::radians(70.f), 256, 256, 0.01f, 100.f, true, true);
-    light_camera.transform              = inverse(glm::lookAt(glm::vec3(1, 17, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
-    scene_data* current_light_data      = static_cast<scene_data*>(device->mapMemory(light_memory.get(), 0, sizeof(scene_data), {}));
-    current_light_data->view            = inverse(light_camera.transform.matrix());
-    current_light_data->projection      = light_camera.projection;
-    current_light_data->camera_position = light_camera.transform.position;
-    current_light_data->object_count    = mesh_infos.size();
-    device->flushMappedMemoryRanges(vk::MappedMemoryRange(light_memory.get(), 0, sizeof(scene_data)));
+    light_camera.projection                   = gfx::projection(glm::radians(70.f), 512, 512, 0.01f, 100.f, true, true);
+    light_camera.transform                    = inverse(glm::lookAt(glm::vec3(1, 17, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
+    light_data* current_light_data            = static_cast<light_data*>(device->mapMemory(light_memory.get(), 0, sizeof(light_data), {}));
+    current_light_data->scene.view            = inverse(light_camera.transform.matrix());
+    current_light_data->scene.projection      = light_camera.projection;
+    current_light_data->scene.camera_position = light_camera.transform.position;
+    current_light_data->scene.object_count    = mesh_infos.size();
+    current_light_data->color = glm::vec3(8, 7, 6);
+    current_light_data->shadow_map = 0;
+    device->flushMappedMemoryRanges(vk::MappedMemoryRange(light_memory.get(), 0, sizeof(light_data)));
 
     /********************************************** Descriptor set updates *****************************************************/
     vk::DescriptorBufferInfo scene_buffer_info;
@@ -472,9 +505,21 @@ int main()
     shadow_samplers_write.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
     shadow_samplers_write.dstArrayElement = 0;
     shadow_samplers_write.dstBinding      = 0;
-    shadow_samplers_write.dstSet          = descriptor_sets.shadow_samplers.get();
+    shadow_samplers_write.dstSet          = descriptor_sets.lights.get();
     shadow_samplers_write.pImageInfo      = &shadow_samplers_info;
     device->updateDescriptorSets(shadow_samplers_write, nullptr);
+
+    vk::DescriptorBufferInfo lights_buffer_info;
+    lights_buffer_info.buffer = light_buffer.get();
+    lights_buffer_info.range  = 1 * sizeof(light_data);
+    vk::WriteDescriptorSet lights_write;
+    lights_write.descriptorCount = 1;
+    lights_write.descriptorType  = vk::DescriptorType::eStorageBuffer;
+    lights_write.dstArrayElement = 0;
+    lights_write.dstBinding      = 1;
+    lights_write.dstSet          = descriptor_sets.lights.get();
+    lights_write.pBufferInfo     = &lights_buffer_info;
+    device->updateDescriptorSets(lights_write, nullptr);
 
     /********************************************** Late setup *****************************************************/
     vk::UniqueSemaphore          swap_semaphore   = device->createSemaphoreUnique({});
@@ -486,7 +531,7 @@ int main()
 
     vk::QueryPoolCreateInfo timer_pool_info;
     timer_pool_info.queryType            = vk::QueryType::eTimestamp;
-    timer_pool_info.queryCount           = static_cast<uint32_t>(2 * swapchain_images.size());
+    timer_pool_info.queryCount           = static_cast<uint32_t>(tstamp::count);
     vk::UniqueQueryPool timer_query_pool = device->createQueryPoolUnique(timer_pool_info);
 
     /********************************************** Record main cmd buffer *****************************************************/
@@ -495,12 +540,13 @@ int main()
     primary_buffers_allocation.level                      = vk::CommandBufferLevel::ePrimary;
     primary_buffers_allocation.commandPool                = command_pools[fam::graphics].get();
     std::vector<vk::UniqueCommandBuffer> primary_commands = device->allocateCommandBuffersUnique(primary_buffers_allocation);
+    std::vector<vk::UniqueCommandBuffer> imgui_commands   = device->allocateCommandBuffersUnique(primary_buffers_allocation);
     for(int i = 0; i < swapchain_images.size(); ++i)
     {
         primary_commands[i]->reset({});
         primary_commands[i]->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
-        primary_commands[i]->resetQueryPool(timer_query_pool.get(), 2 * i, 2);
-        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), 2 * i);
+        primary_commands[i]->resetQueryPool(timer_query_pool.get(), 0, tstamp::count);
+        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), tstamp::frame_begin);
 
         /********************************************** Frustum culling for light **************************************************/
         vk::BufferMemoryBarrier info_barrier;
@@ -513,12 +559,11 @@ int main()
         primary_commands[i]->pipelineBarrier(
                 vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eComputeShader, {}, {}, info_barrier, {});
         primary_commands[i]->bindPipeline(vk::PipelineBindPoint::eCompute, pipelines.culling.get());
-        primary_commands[i]->bindDescriptorSets(
-                vk::PipelineBindPoint::eCompute,
-                pipelines.layouts.default_mesh.get(),
-                0,
-                {descriptor_sets.light_info.get(), descriptor_sets.models_info.get(), descriptor_sets.shadow_samplers.get()},
-                nullptr);
+        primary_commands[i]->bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                                pipelines.layouts.reduced.get(),
+                                                0,
+                                                {descriptor_sets.light_info.get(), descriptor_sets.models_info.get()},
+                                                nullptr);
         primary_commands[i]->dispatch((mesh_infos.size() + 16) / 32, 1, 1);
         info_barrier.srcAccessMask       = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead;
         info_barrier.dstAccessMask       = vk::AccessFlagBits::eIndirectCommandRead | vk::AccessFlagBits::eShaderRead;
@@ -526,6 +571,7 @@ int main()
         info_barrier.srcQueueFamilyIndex = families[fam::compute];
         primary_commands[i]->pipelineBarrier(
                 vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eAllCommands, {}, {}, info_barrier, {});
+        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), tstamp::light_cull);
 
         /************************************************* Shadow map rendering *****************************************************/
         vk::RenderPassBeginInfo shadow_pass_begin_info;
@@ -533,21 +579,21 @@ int main()
         shadow_pass_begin_info.framebuffer     = shadow_map_fbo.get();
         vk::ClearValue depth_clear(vk::ClearDepthStencilValue(0.f, 0));
         shadow_pass_begin_info.pClearValues = &depth_clear;
-        shadow_pass_begin_info.renderArea   = vk::Rect2D{{0, 0}, {256, 256}};
+        shadow_pass_begin_info.renderArea   = vk::Rect2D{{0, 0}, {512, 512}};
         shadow_pass_begin_info.renderPass   = renderpasses.shadow.get();
         primary_commands[i]->beginRenderPass(shadow_pass_begin_info, vk::SubpassContents::eInline);
         primary_commands[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, pipelines.shadow_pass.get());
-        primary_commands[i]->bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics,
-                pipelines.layouts.default_mesh.get(),
-                0,
-                {descriptor_sets.light_info.get(), descriptor_sets.models_info.get(), descriptor_sets.shadow_samplers.get()},
-                nullptr);
+        primary_commands[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                                pipelines.layouts.reduced.get(),
+                                                0,
+                                                {descriptor_sets.light_info.get(), descriptor_sets.models_info.get()},
+                                                nullptr);
         primary_commands[i]->bindVertexBuffers(0, model_buffers.vertices.get(), 0ull);
         primary_commands[i]->bindIndexBuffer(model_buffers.indices.get(), 0ull, vk::IndexType::eUint32);
         primary_commands[i]->drawIndexedIndirect(
                 model_buffers.indirect.get(), offsetof(mesh_info, indirect), mesh_infos.size(), sizeof(mesh_info));
         primary_commands[i]->endRenderPass();
+        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), tstamp::light_sm);
 
         /********************************************** Frustum culling for main *****************************************************/
         info_barrier.buffer              = model_buffers.indirect.get();
@@ -559,12 +605,11 @@ int main()
         primary_commands[i]->pipelineBarrier(
                 vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eComputeShader, {}, {}, info_barrier, {});
         primary_commands[i]->bindPipeline(vk::PipelineBindPoint::eCompute, pipelines.culling.get());
-        primary_commands[i]->bindDescriptorSets(
-                vk::PipelineBindPoint::eCompute,
-                pipelines.layouts.default_mesh.get(),
-                0,
-                {descriptor_sets.scene_info.get(), descriptor_sets.models_info.get(), descriptor_sets.shadow_samplers.get()},
-                nullptr);
+        primary_commands[i]->bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+                                                pipelines.layouts.reduced.get(),
+                                                0,
+                                                {descriptor_sets.scene_info.get(), descriptor_sets.models_info.get()},
+                                                nullptr);
         primary_commands[i]->dispatch((mesh_infos.size() + 16) / 32, 1, 1);
         info_barrier.srcAccessMask       = vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead;
         info_barrier.dstAccessMask       = vk::AccessFlagBits::eIndirectCommandRead | vk::AccessFlagBits::eShaderRead;
@@ -572,6 +617,7 @@ int main()
         info_barrier.srcQueueFamilyIndex = families[fam::compute];
         primary_commands[i]->pipelineBarrier(
                 vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eAllCommands, {}, {}, info_barrier, {});
+        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), tstamp::render_cull);
 
         /**************************************************** Main render pass ********************************************************/
         std::vector<vk::ClearValue> clear_values{vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.1f, 0.3f, 0.4f, 1.f})),
@@ -589,7 +635,7 @@ int main()
                 vk::PipelineBindPoint::eGraphics,
                 pipelines.layouts.default_mesh.get(),
                 0,
-                {descriptor_sets.scene_info.get(), descriptor_sets.models_info.get(), descriptor_sets.shadow_samplers.get()},
+                {descriptor_sets.scene_info.get(), descriptor_sets.models_info.get(), descriptor_sets.lights.get()},
                 nullptr);
         primary_commands[i]->setViewport(0, vk::Viewport(0, 0, 1280, 720, 0.f, 1.f));
         primary_commands[i]->setScissor(0, vk::Rect2D({0, 0}, {1280, 720}));
@@ -598,14 +644,156 @@ int main()
         primary_commands[i]->drawIndexedIndirect(
                 model_buffers.indirect.get(), offsetof(mesh_info, indirect), mesh_infos.size(), sizeof(mesh_info));
         primary_commands[i]->endRenderPass();
-        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), 2 * i + 1);
+        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), tstamp::render);
+        primary_commands[i]->writeTimestamp(vk::PipelineStageFlagBits::eAllGraphics, timer_query_pool.get(), tstamp::frame_end);
         primary_commands[i]->end();
     }
+
+    /**************************************************** ImGui init ********************************************************/
+    ImGui_ImplGlfwVulkan_Init_Data imgui_init;
+    imgui_init.gpu             = static_cast<VkPhysicalDevice>(gpu);
+    imgui_init.device          = static_cast<VkDevice>(device.get());
+    imgui_init.descriptor_pool = static_cast<VkDescriptorPool>(main_descriptor_pool.get());
+    imgui_init.render_pass     = static_cast<VkRenderPass>(renderpasses.overlay.get());
+    ImGuiContext* imctx        = ImGui::CreateContext();
+    ImGui::SetCurrentContext(imctx);
+
+    auto atlas = ImGui::GetIO().Fonts;
+    // Default Font
+    gfx::file font_file("ui/fonts/Ruda-Bold.ttf");
+    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 12);
+    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 10);
+    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 14);
+    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 18);
+
+    atlas->Build();
+    ImGui::GetIO().FontDefault = atlas->Fonts[0];
+    ImGui_ImplGlfwVulkan_Init(*window, true, &imgui_init);
+
+    {
+        vk::CommandBufferAllocateInfo alloc;
+        alloc.commandBufferCount           = 1;
+        alloc.commandPool                  = command_pools[fam::transfer].get();
+        alloc.level                        = vk::CommandBufferLevel::ePrimary;
+        vk::UniqueCommandBuffer imfont_cmd = std::move(device->allocateCommandBuffersUnique(alloc)[0]);
+
+        vk::UniqueFence imfence = device->createFenceUnique({});
+
+        vk::CommandBufferBeginInfo begin;
+        begin.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+        imfont_cmd->begin(begin);
+        ImGui_ImplGlfwVulkan_CreateFontsTexture(static_cast<VkCommandBuffer>(imfont_cmd.get()));
+        imfont_cmd->end();
+
+        vk::SubmitInfo submit;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers    = &imfont_cmd.get();
+        queues[fam::transfer].submit(submit, imfence.get());
+        device->waitForFences(imfence.get(), true, std::numeric_limits<uint64_t>::max());
+    }
+
+    /************************************************* Asynchronous time provider ******************************************************/
+    struct time_printer
+    {
+        void operator()()
+        {
+            while(!stop)
+            {
+                using namespace std::chrono_literals;
+                waitfor(500ms);
+
+                std::unique_lock<std::mutex> lock(mtx);
+                submits = 0;
+
+                fixed_stamps = stamps;
+                if(print.load())
+                {
+                    log_h << "--- Time stamps ---";
+                    for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
+                    {
+                        log_i << "    " << stamp_names[i] << ": " << stamps[i] << "ms  ---  delta: " << (stamps[i] - stamps[i - 1]) << "ms";
+                    }
+                }
+            }
+            ended = true;
+        }
+
+        void end()
+        {
+            stop = true;
+            while(!ended.load())
+                ;
+        }
+
+        std::array<double, tstamp::count> get() const
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            return fixed_stamps;
+        }
+
+        void waitfor(const std::chrono::high_resolution_clock::duration& time)
+        {
+            auto then = std::chrono::high_resolution_clock::now();
+            while(std::chrono::high_resolution_clock::now() - then < time)
+                ;
+        }
+
+        void submit(double ms, int stamp)
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            if(submits == 0)
+                stamps[stamp] = ms;
+            else
+                stamps[stamp] = glm::mix(stamps[stamp], ms, submits / static_cast<double>(submits + 1));
+        }
+
+        const std::array<const char*, tstamp::count> stamp_names = []() {
+            std::array<const char*, tstamp::count> n;
+            n[tstamp::frame_begin] = "frame_begin";
+            n[tstamp::light_cull]  = "light_cull";
+            n[tstamp::light_sm]    = "light_sm";
+            n[tstamp::render_cull] = "render_cull";
+            n[tstamp::render]      = "render";
+            n[tstamp::frame_end]   = "frame_end";
+            return n;
+        }();
+        std::atomic_bool                  print = false;
+        std::atomic_bool                  stop  = false;
+        mutable std::mutex                mtx;
+        int                               submits = 0;
+        std::array<double, tstamp::count> stamps;
+        std::array<double, tstamp::count> fixed_stamps;
+
+    private:
+        std::atomic_bool ended = false;
+    };
+    time_printer printer;
+    std::thread  printer_thread([&]() { printer(); });
+    printer_thread.detach();
+
+    using namespace std::chrono_literals;
+    int max_framerate = 120;
 
     /**************************************************** Main loop ********************************************************/
     gfx::camera_controller ctrl(window);
     while(window->update())
     {
+        ImGui_ImplGlfwVulkan_NewFrame();
+
+        auto stamps = printer.get();
+        ImGui::Begin("Window");
+
+        ImGui::Text("Time stamps");
+        for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
+        {
+            ImGui::Text("%s: %.4fms, delta: %.4fms", printer.stamp_names[i], stamps[i], (stamps[i] - stamps[i - 1]));
+        }
+
+        if(ImGui::DragInt("Max Framerate", &max_framerate, 0.1f, 25, 80000))
+            window->set_max_framerate(max_framerate);
+
+        ImGui::End();
+
         // TODO: Not "stable"! double buffer or something.
         ctrl.update(camera);
         current_scene_data->view            = inverse(camera.transform.matrix());
@@ -614,15 +802,31 @@ int main()
         device->flushMappedMemoryRanges(vk::MappedMemoryRange(scene_memory.get(), 0, sizeof(scene_data)));
 
         uint32_t image = device->acquireNextImageKHR(*swapchain, std::numeric_limits<uint64_t>::max(), *swap_semaphore, nullptr).value;
+        // Wait until last frame using this image has finished rendering
         device->waitForFences(*render_fences[image], true, std::numeric_limits<uint64_t>::max());
         device->resetFences(*render_fences[image]);
 
+        // Render imgui
+        imgui_commands[image]->reset({});
+        imgui_commands[image]->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+        vk::RenderPassBeginInfo     begin;
+        std::vector<vk::ClearValue> clear_values{vk::ClearValue(vk::ClearColorValue(std::array<float, 4>{0.1f, 0.3f, 0.4f, 1.f}))};
+        begin.clearValueCount = static_cast<uint32_t>(clear_values.size());
+        begin.pClearValues    = clear_values.data();
+        begin.framebuffer     = gui_framebuffers[image].get();
+        begin.renderArea      = vk::Rect2D({0, 0}, {1280, 720});
+        begin.renderPass      = renderpasses.overlay.get();
+        imgui_commands[image]->beginRenderPass(begin, vk::SubpassContents::eInline);
+        ImGui_ImplGlfwVulkan_Render(imgui_commands[image].get().operator VkCommandBuffer());
+        imgui_commands[image]->endRenderPass();
+        imgui_commands[image]->end();
+
         std::array<vk::Semaphore, 1>          wait_semaphores{swap_semaphore.get()};
-        std::array<vk::PipelineStageFlags, 2> wait_masks{vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                         vk::PipelineStageFlagBits::eComputeShader};
+        std::array<vk::PipelineStageFlags, 1> wait_masks{vk::PipelineStageFlagBits::eColorAttachmentOutput};
+        std::array<vk::CommandBuffer, 2>      command_buffers{primary_commands[image].get(), imgui_commands[image].get()};
         vk::SubmitInfo                        submit;
-        submit.commandBufferCount   = 1;
-        submit.pCommandBuffers      = &primary_commands[image].get();
+        submit.commandBufferCount   = std::size(command_buffers);
+        submit.pCommandBuffers      = std::data(command_buffers);
         submit.pWaitSemaphores      = std::data(wait_semaphores);
         submit.waitSemaphoreCount   = std::size(wait_semaphores);
         submit.pSignalSemaphores    = &render_semaphore.get();
@@ -639,13 +843,26 @@ int main()
         vk::Result present_result       = queues[fam::present].presentKHR(present_info);
 
         /**************************************************** Timer output ********************************************************/
-        uint64_t times[2];
-        device->getQueryPoolResults(
-                timer_query_pool.get(), 2 * image, 2, 2 * sizeof(uint64_t), times, sizeof(uint64_t), vk::QueryResultFlagBits::eWait);
-        const auto diff = ((times[1] - times[0]) / 1'000'000.0);
-        log_i << diff << "ms => " << (1000 / diff) << "fps";
+
+        std::array<uint64_t, tstamp::count> time_stamps{0};
+        device->getQueryPoolResults(timer_query_pool.get(),
+                                    0,
+                                    std::size(time_stamps),
+                                    std::size(time_stamps) * sizeof(uint64_t),
+                                    time_stamps.data(),
+                                    sizeof(uint64_t),
+                                    vk::QueryResultFlagBits::eWait);
+
+        for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
+        {
+            const auto diff = (time_stamps[i] - time_stamps[tstamp::frame_begin]) / 1'000'000.0;
+            printer.submit(diff, i);
+        }
     }
+    printer.end();
     device->waitIdle();
+    ImGui::DestroyContext(imctx);
+    ImGui_ImplGlfwVulkan_Shutdown();
 }
 
 /***********************************************************************************************************************/
@@ -697,13 +914,26 @@ void create_pipelines()
     shadow_textures_binding.descriptorType     = vk::DescriptorType::eCombinedImageSampler;
     shadow_textures_binding.pImmutableSamplers = &shadow_sampler.get();
     shadow_textures_binding.stageFlags         = vk::ShaderStageFlagBits::eFragment;
-    vk::DescriptorSetLayoutCreateInfo shadow_desc_set_layout_info;
-    shadow_desc_set_layout_info.bindingCount = 1;
-    shadow_desc_set_layout_info.pBindings    = &shadow_textures_binding;
-    descriptor_layouts.shadow_textures       = device->createDescriptorSetLayoutUnique(shadow_desc_set_layout_info);
+    
+    vk::DescriptorSetLayoutBinding lights_binding;
+    lights_binding.binding            = 1;
+    lights_binding.descriptorCount    = 1;
+    lights_binding.descriptorType     = vk::DescriptorType::eStorageBuffer;
+    lights_binding.stageFlags         = vk::ShaderStageFlagBits::eFragment;
 
-    const auto layouts = {descriptor_layouts.scene.get(), descriptor_layouts.models.get(), descriptor_layouts.shadow_textures.get()};
+    const std::array<vk::DescriptorSetLayoutBinding, 2> lights_bindings = {shadow_textures_binding, lights_binding};
+    vk::DescriptorSetLayoutCreateInfo shadow_desc_set_layout_info;
+    shadow_desc_set_layout_info.bindingCount = std::size(lights_bindings);
+    shadow_desc_set_layout_info.pBindings    = std::data(lights_bindings);
+    descriptor_layouts.lights       = device->createDescriptorSetLayoutUnique(shadow_desc_set_layout_info);
+
     vk::PipelineLayoutCreateInfo layout_info;
+    const auto reduced_layouts = {descriptor_layouts.scene.get(), descriptor_layouts.models.get()};
+    layout_info.setLayoutCount = std::size(reduced_layouts);
+    layout_info.pSetLayouts    = std::data(reduced_layouts);
+    pipelines.layouts.reduced  = device->createPipelineLayoutUnique(layout_info);
+
+    const auto layouts = {descriptor_layouts.scene.get(), descriptor_layouts.models.get(), descriptor_layouts.lights.get()};
     layout_info.setLayoutCount     = std::size(layouts);
     layout_info.pSetLayouts        = std::data(layouts);
     pipelines.layouts.default_mesh = device->createPipelineLayoutUnique(layout_info);
@@ -749,14 +979,14 @@ void create_pipelines()
     attributes[attr::position].location = attr::position;
     attributes[attr::position].format   = vk::Format::eR32G32B32Sfloat;
     attributes[attr::position].offset   = offsetof(gfx::vertex3d, position);
-    attributes[attr::uv].binding  = 0;
-    attributes[attr::uv].location = attr::uv;
-    attributes[attr::uv].format   = vk::Format::eR32G32Sfloat;
-    attributes[attr::uv].offset   = offsetof(gfx::vertex3d, uv);
-    attributes[attr::normal].binding  = 0;
-    attributes[attr::normal].location = attr::normal;
-    attributes[attr::normal].format   = vk::Format::eR32G32B32Sfloat;
-    attributes[attr::normal].offset   = offsetof(gfx::vertex3d, normal);
+    attributes[attr::uv].binding        = 0;
+    attributes[attr::uv].location       = attr::uv;
+    attributes[attr::uv].format         = vk::Format::eR32G32Sfloat;
+    attributes[attr::uv].offset         = offsetof(gfx::vertex3d, uv);
+    attributes[attr::normal].binding    = 0;
+    attributes[attr::normal].location   = attr::normal;
+    attributes[attr::normal].format     = vk::Format::eR32G32B32Sfloat;
+    attributes[attr::normal].offset     = offsetof(gfx::vertex3d, normal);
 
     vk::VertexInputBindingDescription vertex_binding;
     vertex_binding.binding   = 0;
@@ -827,21 +1057,25 @@ void create_pipelines()
 
     // Shadow map pipeline
 
-    msaa.rasterizationSamples      = vk::SampleCountFlagBits::e1;
-    msaa.sampleShadingEnable       = false;
-    fragment_shader                = create_shader(device, "../shd/fs_shadow.frag.spv");
+    msaa.rasterizationSamples             = vk::SampleCountFlagBits::e1;
+    msaa.sampleShadingEnable              = false;
+    fragment_shader                       = create_shader(device, "../shd/fs_shadow.frag.spv");
     shader_stages[stage::fragment].module = fragment_shader.get();
-    vertex_shader                  = create_shader(device, "../shd/vs_shadow.vert.spv");
+    vertex_shader                         = create_shader(device, "../shd/vs_shadow.vert.spv");
     shader_stages[stage::vertex].module   = vertex_shader.get();
-    blend.attachmentCount          = 0;
-    pp_info.renderPass             = renderpasses.shadow.get();
-    dynamic.dynamicStateCount      = 0;
-    vk::Rect2D scissor{{0, 0}, {256, 256}};
+    blend.attachmentCount                 = 0;
+    pp_info.renderPass                    = renderpasses.shadow.get();
+    dynamic.dynamicStateCount             = 0;
+    vk::Rect2D scissor{{0, 0}, {512, 512}};
     viewport.pScissors = &scissor;
-    vk::Viewport vp{0.f, 0.f, 256.f, 256.f, 0.f, 1.f};
-    viewport.pViewports   = &vp;
-    pp_info.pDynamicState = nullptr;
-    pipelines.shadow_pass = device->createGraphicsPipelineUnique(nullptr, pp_info);
+    vk::Viewport vp{0.f, 0.f, 512.f, 512.f, 0.f, 1.f};
+    viewport.pViewports            = &vp;
+    pp_info.pDynamicState          = nullptr;
+    raster.depthBiasEnable         = true;
+    raster.depthBiasConstantFactor = 1.5f;
+    raster.depthBiasSlopeFactor    = -3.14159265359f;
+    pp_info.layout                 = pipelines.layouts.reduced.get();
+    pipelines.shadow_pass          = device->createGraphicsPipelineUnique(nullptr, pp_info);
 
     // View frustum culling compute pipeline
 
@@ -853,6 +1087,10 @@ void create_pipelines()
     cull_pp_info.stage.stage           = vk::ShaderStageFlagBits::eCompute;
     pipelines.culling                  = device->createComputePipelineUnique(nullptr, cull_pp_info);
 }
+
+/***********************************************************************************************************************/
+/***********************************************************************************************************************/
+/***********************************************************************************************************************/
 
 void create_renderpasses()
 {
@@ -916,6 +1154,8 @@ void create_renderpasses()
     fwd_renderpass_info.pDependencies   = &dep;
     renderpasses.forward                = device->createRenderPassUnique(fwd_renderpass_info);
 
+    // Depth only renderpass (Shadow maps)
+
     vk::SubpassDependency shadow_dep;
     shadow_dep.dependencyFlags = vk::DependencyFlagBits::eByRegion;
     shadow_dep.srcAccessMask   = vk::AccessFlagBits(0);
@@ -940,4 +1180,23 @@ void create_renderpasses()
     shadow_renderpass_info.subpassCount    = 1;
     shadow_renderpass_info.pSubpasses      = &shadow_subpass;
     renderpasses.shadow                    = device->createRenderPassUnique(shadow_renderpass_info);
+
+    // Overlay renderpass (GUI etc.)
+    vk::SubpassDependency overlay_dep = shadow_dep;
+    overlay_dep.dstAccessMask         = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    vk::SubpassDescription overlay_subpass;
+    overlay_subpass.colorAttachmentCount    = 1;
+    resolve_attachment_reference.attachment = 0;
+    overlay_subpass.pColorAttachments       = &resolve_attachment_reference;
+    overlay_subpass.pipelineBindPoint       = vk::PipelineBindPoint::eGraphics;
+    color_attachment.loadOp                 = vk::AttachmentLoadOp::eLoad;
+    color_attachment.initialLayout          = vk::ImageLayout::ePresentSrcKHR;
+    vk::RenderPassCreateInfo overlay_pass_info;
+    overlay_pass_info.attachmentCount = 1;
+    overlay_pass_info.pAttachments    = &color_attachment;
+    overlay_pass_info.dependencyCount = 1;
+    overlay_pass_info.pDependencies   = &overlay_dep;
+    overlay_pass_info.subpassCount    = 1;
+    overlay_pass_info.pSubpasses      = &overlay_subpass;
+    renderpasses.overlay              = device->createRenderPassUnique(overlay_pass_info);
 }

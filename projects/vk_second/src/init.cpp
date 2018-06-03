@@ -172,7 +172,7 @@ vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice& gpu, const vk:
     const vk::SurfaceCapabilitiesKHR capabilities = gpu.getSurfaceCapabilitiesKHR(surface.get());
     swapchain_info.surface                        = surface.get();
     swapchain_info.imageExtent                    = extent;
-    swapchain_info.minImageCount                  = capabilities.minImageCount;
+    swapchain_info.minImageCount                  = capabilities.maxImageCount;
     swapchain_info.preTransform                   = capabilities.currentTransform;
 
     const std::vector<vk::SurfaceFormatKHR> formats = gpu.getSurfaceFormatsKHR(surface.get());
