@@ -168,7 +168,7 @@ void main()
         vec3 brdf = (dggx * fresnel_v * ggx_geom);
         vec3 spec = max(dot(normal, light_dir), 0) * brdf * light_color;
         vec3 diff = max(dot(normal, light_dir), 0) * mat_color * att * light_color;
-        color += shd * vec4(mix(diff, spec, fresnel_l), 1);
+        color += shd* vec4(mix(diff, spec, fresnel_l), 1);
     }
 
     //color += vec4(mix(env * mat_color, vec3(0), metal), 0);
