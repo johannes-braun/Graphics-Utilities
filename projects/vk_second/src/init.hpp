@@ -4,7 +4,7 @@
 #include <fstream>
 #include <vulkan/vulkan.hpp>
 
-#define USE_VALIDATION_LAYERS 0
+#define USE_VALIDATION_LAYERS 1
 #if USE_VALIDATION_LAYERS
 constexpr std::array<const char*, 3> layers{"VK_LAYER_LUNARG_standard_validation",
                                             "VK_LAYER_LUNARG_core_validation",

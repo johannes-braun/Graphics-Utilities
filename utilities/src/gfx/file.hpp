@@ -2,7 +2,7 @@
 
 #include "geometry.hpp"
 
-#include <experimental/filesystem>
+#include <filesystem>
 #include <map>
 #include <optional>
 #include <string>
@@ -17,7 +17,7 @@
 
 namespace gfx
 {
-namespace files = std::experimental::filesystem;
+namespace files = std::filesystem;
 
 enum class bits
 {
