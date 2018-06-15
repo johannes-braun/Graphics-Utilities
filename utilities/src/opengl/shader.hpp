@@ -9,10 +9,11 @@
 #include <unordered_set>
 #include <mutex>
 #include <glsp/glsp.hpp>
+#include <filesystem>
 
 namespace gl
 {
-    namespace files = std::experimental::filesystem;
+    namespace files = std::filesystem;
     using glsp::definition;
 
     constexpr const char* opengl_prefix = R"glsl(

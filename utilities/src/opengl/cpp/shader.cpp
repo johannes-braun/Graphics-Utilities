@@ -32,8 +32,11 @@ shader::shader(const std::string& source, const std::string& name, const GLenum 
         , _definitions(definitions)
         , _enable_reload(false)
 {
-    glsp::processed_file processed =
-            glsp::preprocess_source(source, name, _include_directories, definitions);
+    std::vector<glsp::files::path> includes;
+    for(const auto& p : _include_directories)
+        includes.push_back(p.string());
+
+    glsp::processed_file processed = glsp::preprocess_source(source, name, includes, definitions);
 
     const char* sources[3] = {opengl_prefix, processed.contents.c_str(), opengl_postfix};
 
@@ -139,8 +142,11 @@ void shader::reload()
         return;
     do
     {
-        glsp::shader_binary bin = compiler().compile(
-                _path, glsp::format::gl_binary, false, _include_directories, _definitions);
+        std::vector<glsp::files::path> includes;
+        for(const auto& p : _include_directories)
+            includes.push_back(p.string());
+
+        glsp::shader_binary bin = compiler().compile(_path.string(), glsp::format::gl_binary, false, includes, _definitions);
         if(!bin.data.empty())
         {
             if(_id != mygl::shader_program::zero)

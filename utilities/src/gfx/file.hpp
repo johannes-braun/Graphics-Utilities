@@ -87,7 +87,7 @@ struct image_file : file
                                uint16_t channels, const uint8_t* data, int quality = 95);
     static void       save_hdr(const files::path& path, uint32_t width, uint32_t height,
                                uint16_t channels, const float* data);
-
+    image_file() = default;
     image_file(const files::path& path, bits channel_bits, uint16_t channels);
     image_file(const files::path& svg, float raster_scale);
     image_file(image_file&& other) noexcept;
@@ -125,18 +125,20 @@ struct scene_file : file
 {
     struct material
     {
-        std::string name;
-        glm::vec4   color_diffuse{0};
-        glm::vec4   color_emissive{0};
-        glm::vec4   color_reflective{0};
-        glm::vec4   color_specular{0};
-        glm::vec4   color_transparent{0};
+        std::string     name;
+        glm::vec4       color_diffuse{0};
+        glm::vec4       color_emissive{0};
+        glm::vec4       color_reflective{0};
+        glm::vec4       color_specular{0};
+        glm::vec4       color_transparent{0};
+        gfx::image_file texture_diffuse;
     };
 
     struct mesh
     {
         std::string                name;
         const material*            material;
+        uint32_t                   material_index;
         std::vector<gfx::index32>  indices;
         std::vector<gfx::vertex3d> vertices;
         gfx::transform             transform;
@@ -147,4 +149,4 @@ struct scene_file : file
 
     scene_file(const files::path& path);
 };
-}
+} // namespace gfx

@@ -10,11 +10,11 @@ constexpr std::array<const char*, 3> layers{"VK_LAYER_LUNARG_standard_validation
                                             "VK_LAYER_LUNARG_core_validation",
                                             "VK_LAYER_LUNARG_parameter_validation"};
 #else
-constexpr std::array<const char*, 0> layers {};
+constexpr std::array<const char*, 0> layers{};
 #endif
 constexpr std::array<const char*, 2> instance_extensions{"VK_KHR_surface", "VK_EXT_debug_report"};
-constexpr std::array<const char*, 3> device_extensions{
-        "VK_KHR_swapchain", "VK_KHR_push_descriptor", "VK_KHR_shader_draw_parameters"};
+constexpr std::array<const char*, 2> device_extensions{"VK_KHR_swapchain",
+                                                       "VK_KHR_shader_draw_parameters"};
 
 struct fam
 {

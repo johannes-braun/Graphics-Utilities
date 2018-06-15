@@ -3,10 +3,13 @@
 #include <gfx/log.hpp>
 #include <vulkan/vulkan_win32.h>
 
-//PFN_vkCmdDrawIndexedIndirectCountKHR vkCmdDrawIndexedIndirectCountKHR_impl;
-//VKAPI_ATTR void VKAPI_CALL vkCmdDrawIndexedIndirectCountKHR(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride)
+// PFN_vkCmdDrawIndexedIndirectCountKHR vkCmdDrawIndexedIndirectCountKHR_impl;
+// VKAPI_ATTR void VKAPI_CALL vkCmdDrawIndexedIndirectCountKHR(VkCommandBuffer commandBuffer,
+// VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset,
+// uint32_t maxDrawCount, uint32_t stride)
 //{
-//    vkCmdDrawIndexedIndirectCountKHR_impl(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
+//    vkCmdDrawIndexedIndirectCountKHR_impl(commandBuffer, buffer, offset, countBuffer,
+//    countBufferOffset, maxDrawCount, stride);
 //}
 
 vk::UniqueInstance create_instance()
@@ -39,18 +42,21 @@ vk::UniqueInstance create_instance()
 PFN_vkCreateDebugReportCallbackEXT  vkCreateDebugReportCallbackEXT_impl;
 PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT_impl;
 
-VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                                              const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugReportCallbackEXT(
+        VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+        const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
 {
     return vkCreateDebugReportCallbackEXT_impl(instance, pCreateInfo, pAllocator, pCallback);
 }
-VKAPI_ATTR void VKAPI_CALL vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT pCallback,
+VKAPI_ATTR void VKAPI_CALL vkDestroyDebugReportCallbackEXT(VkInstance                   instance,
+                                                           VkDebugReportCallbackEXT     pCallback,
                                                            const VkAllocationCallbacks* pAllocator)
 {
     return vkDestroyDebugReportCallbackEXT_impl(instance, pCallback, pAllocator);
 }
 
-vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance& instance, vk::DebugReportFlagsEXT flags)
+vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance& instance,
+                                                       vk::DebugReportFlagsEXT   flags)
 {
     vk::DebugReportCallbackCreateInfoEXT info;
     info.pUserData   = nullptr;
@@ -84,17 +90,20 @@ vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance&
         return true;
     };
 
-    //vkCmdDrawIndexedIndirectCountKHR_impl =
+    // vkCmdDrawIndexedIndirectCountKHR_impl =
     //        reinterpret_cast<decltype(vkCmdDrawIndexedIndirectCountKHR_impl)>(instance->getProcAddr("vkCmdDrawIndexedIndirectCountKHR"));
 
     vkCreateDebugReportCallbackEXT_impl =
-            reinterpret_cast<decltype(vkCreateDebugReportCallbackEXT_impl)>(instance->getProcAddr("vkCreateDebugReportCallbackEXT"));
+            reinterpret_cast<decltype(vkCreateDebugReportCallbackEXT_impl)>(
+                    instance->getProcAddr("vkCreateDebugReportCallbackEXT"));
     vkDestroyDebugReportCallbackEXT_impl =
-            reinterpret_cast<decltype(vkDestroyDebugReportCallbackEXT_impl)>(instance->getProcAddr("vkDestroyDebugReportCallbackEXT"));
+            reinterpret_cast<decltype(vkDestroyDebugReportCallbackEXT_impl)>(
+                    instance->getProcAddr("vkDestroyDebugReportCallbackEXT"));
     return instance->createDebugReportCallbackEXTUnique(info);
 }
 
-device_infos create_device(const vk::UniqueInstance& instance, const vk::PhysicalDevice& gpu, const vk::UniqueSurfaceKHR& surface)
+device_infos create_device(const vk::UniqueInstance& instance, const vk::PhysicalDevice& gpu,
+                           const vk::UniqueSurfaceKHR& surface)
 {
     struct queue_infos
     {
@@ -105,15 +114,20 @@ device_infos create_device(const vk::UniqueInstance& instance, const vk::Physica
     std::vector<vk::QueueFamilyProperties> queue_family_properties = gpu.getQueueFamilyProperties();
     for(uint32_t family = 0; family < queue_family_properties.size(); ++family)
     {
-        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
+        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eGraphics) ==
+           vk::QueueFlagBits::eGraphics)
             queues.families[fam::graphics] = family;
-        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
+        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eCompute) ==
+           vk::QueueFlagBits::eCompute)
             queues.families[fam::compute] = family;
-        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
+        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eTransfer) ==
+           vk::QueueFlagBits::eTransfer)
             queues.families[fam::transfer] = family;
 
         const bool supports = gpu.getSurfaceSupportKHR(family, *surface);
-        if(glfwGetPhysicalDevicePresentationSupport(static_cast<VkInstance>(*instance), static_cast<VkPhysicalDevice>(gpu), family) &&
+        if(glfwGetPhysicalDevicePresentationSupport(static_cast<VkInstance>(*instance),
+                                                    static_cast<VkPhysicalDevice>(gpu),
+                                                    family) &&
            supports)
             queues.families[fam::present] = family;
     }
@@ -157,8 +171,10 @@ device_infos create_device(const vk::UniqueInstance& instance, const vk::Physica
     return result;
 }
 
-vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice& gpu, const vk::UniqueDevice& device, const vk::UniqueSurfaceKHR& surface,
-                                        uint32_t family, const vk::Extent2D& extent)
+vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice&   gpu,
+                                        const vk::UniqueDevice&     device,
+                                        const vk::UniqueSurfaceKHR& surface, uint32_t family,
+                                        const vk::Extent2D& extent)
 {
     vk::SwapchainCreateInfoKHR swapchain_info;
     swapchain_info.clipped               = true;
@@ -191,10 +207,12 @@ vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice& gpu, const vk:
         swapchain_info.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
         swapchain_info.imageFormat     = vk::Format::eB8G8R8A8Unorm;
     }
-    const std::vector<vk::PresentModeKHR> present_modes = gpu.getSurfacePresentModesKHR(surface.get());
-    if(const auto it = std::find_if(present_modes.begin(),
-                                    present_modes.end(),
-                                    [](const vk::PresentModeKHR& mode) { return mode == vk::PresentModeKHR::eMailbox; });
+    const std::vector<vk::PresentModeKHR> present_modes =
+            gpu.getSurfacePresentModesKHR(surface.get());
+    if(const auto it = std::find_if(
+               present_modes.begin(),
+               present_modes.end(),
+               [](const vk::PresentModeKHR& mode) { return mode == vk::PresentModeKHR::eMailbox; });
        it == present_modes.end())
     {
         log_e << "Did not find mailbox present mode.";
@@ -204,12 +222,14 @@ vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice& gpu, const vk:
     return device->createSwapchainKHRUnique(swapchain_info);
 }
 
-uint32_t memory_index(const vk::PhysicalDevice& gpu, const vk::MemoryRequirements& req, vk::MemoryPropertyFlags flags)
+uint32_t memory_index(const vk::PhysicalDevice& gpu, const vk::MemoryRequirements& req,
+                      vk::MemoryPropertyFlags flags)
 {
     const vk::PhysicalDeviceMemoryProperties mem_props = gpu.getMemoryProperties();
     for(int i = 0; i < int(mem_props.memoryTypeCount); ++i)
     {
-        if(req.memoryTypeBits & (1 << i) && (mem_props.memoryTypes[i].propertyFlags & flags) == flags)
+        if(req.memoryTypeBits & (1 << i) &&
+           (mem_props.memoryTypes[i].propertyFlags & flags) == flags)
         {
             return i;
         }
@@ -217,7 +237,8 @@ uint32_t memory_index(const vk::PhysicalDevice& gpu, const vk::MemoryRequirement
     return 0;
 }
 
-vk::UniqueShaderModule create_shader(const vk::UniqueDevice& device, const std::filesystem::path& file)
+vk::UniqueShaderModule create_shader(const vk::UniqueDevice&      device,
+                                     const std::filesystem::path& file)
 {
     std::ifstream shader_file;
     shader_file.open(file, std::ios::in | std::ios::binary);
