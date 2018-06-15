@@ -108,9 +108,9 @@ void main()
 
     vec3 texcol = texture(textures[material.textures_diffuse], vec2(uv.x, 1 - uv.y)).xyz;
     mat_color   = texcol;
-    color       = vec4(texcol, 1);
+//    color       = vec4(texcol, 1);
 
-    return;
+//    return;
 
     vec3 fresnel = material.f0 + (1 - material.f0) * pow(1 - max(dot(view_dir, normal), 0), 5);
 

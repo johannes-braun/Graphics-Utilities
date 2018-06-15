@@ -16,13 +16,13 @@ struct GLFWwindow;
 
 struct ImGui_ImplGlfwVulkan_Init_Data
 {
-    VkAllocationCallbacks* allocator;
+    VkAllocationCallbacks* allocator = nullptr;
     VkPhysicalDevice       gpu;
     VkDevice               device;
     VkRenderPass           render_pass;
-    VkPipelineCache        pipeline_cache;
+    VkPipelineCache        pipeline_cache = VK_NULL_HANDLE;
     VkDescriptorPool       descriptor_pool;
-    void (*check_vk_result)(VkResult err);
+    void (*check_vk_result)(VkResult err) = nullptr;
 };
 
 IMGUI_API bool        ImGui_ImplGlfwVulkan_Init(GLFWwindow* window, bool install_callbacks, ImGui_ImplGlfwVulkan_Init_Data *init_data);
