@@ -1,8 +1,8 @@
 #pragma once
 
 #include <gfx/log.hpp>
-#define LOG_OUTPUT(x) tlog_i("GLShader") << (x)
-#define ERR_OUTPUT(x) tlog_e("GLShader") << (x)
+#define LOG_OUTPUT(x) gfx::clogi << (x)
+#define ERR_OUTPUT(x) gfx::cloge << (x)
 
 #include <mygl/mygl.hpp>
 #include <glsp/definition.hpp>

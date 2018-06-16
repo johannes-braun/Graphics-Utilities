@@ -63,7 +63,7 @@ scene_file::scene_file(const files::path& path)
         if(p.length != 0 && !std::filesystem::is_directory(texpath) &&
            std::filesystem::exists(texpath))
         {
-            log_i << "Loading texture from " << texpath;
+            clogi << "Loading texture from " << texpath;
             current_material.texture_diffuse = image_file(texpath, bits::b8, 4);
         }
     }

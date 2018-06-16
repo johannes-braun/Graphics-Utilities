@@ -42,7 +42,7 @@ shader::shader(const std::string& source, const std::string& name, const GLenum 
 
     if(!processed)
     {
-        log_e << "Failed to process source for " << name;
+        gfx::cloge << "Failed to process source for " << name;
         return;
     }
 
@@ -56,7 +56,7 @@ shader::shader(const std::string& source, const std::string& name, const GLenum 
         std::string log(log_length, ' ');
         glGetProgramInfoLog(_id, log_length, &log_length, log.data());
         glDeleteProgram(_id);
-        log_e << "Failed to compile source for " << name;
+        gfx::cloge << "Failed to compile source for " << name;
         return;
     }
 }
@@ -76,7 +76,7 @@ shader::shader(const files::path& path, const std::vector<definition>& definitio
                 break;
             }
     if(!path_valid)
-        log_e << "Shader not found: " << path;
+        gfx::cloge << "Shader not found: " << path;
 
     files::path extension = path.extension();
     if(extension == ".comp")
@@ -160,7 +160,7 @@ void shader::reload()
         {
             if(_id == mygl::shader_program::zero)
             {
-                tlog_h("GL Shader") << "Press [ENTER] to try again...";
+                gfx::clogh << "Press [ENTER] to try again...";
                 std::cin.get();
             }
         }

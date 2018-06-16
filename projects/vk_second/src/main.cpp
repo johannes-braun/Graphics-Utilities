@@ -8,6 +8,8 @@
 #include <numeric>
 #include <vulkan/vulkan.hpp>
 
+#include "family.hpp"
+
 #include "imgui_impl_glfw_vulkan.h"
 #include <window/imgui.hpp>
 
@@ -17,8 +19,10 @@ vk::UniqueDevice             device;
 std::shared_ptr<gfx::window> window;
 vk::UniqueSurfaceKHR         surface;
 vk::UniqueSwapchainKHR       swapchain;
-std::array<vk::Queue, 4>     queues;
-std::array<uint32_t, 4>      families;
+
+std::array<vk::Queue, 4>             queues;
+std::array<uint32_t, 4>              families;
+std::array<vk::UniqueCommandPool, 3> command_pools;
 
 std::vector<uint32_t> family_indices(const std::vector<uint32_t>& types)
 {
@@ -55,8 +59,7 @@ struct
     vk::UniqueRenderPass overlay;
 } renderpasses;
 
-std::array<vk::UniqueCommandPool, 3> command_pools;
-vk::UniqueDescriptorPool             main_descriptor_pool;
+vk::UniqueDescriptorPool main_descriptor_pool;
 
 vk::UniqueSampler shadow_sampler;
 vk::UniqueSampler default_sampler;
@@ -143,6 +146,42 @@ int main()
     auto debug_callback = create_debug_callback(instance, debug_flags);
 
     // use gpu[0]
+    for(auto&& gpus : instance->enumeratePhysicalDevices())
+    {
+        if(!gpu)
+            gpu = gpus;
+
+        auto props = gpus.getProperties();
+        gfx::clogi << "--------- DEVICE ---------";
+        gfx::clogi << "Vendor ID: " << props.vendorID;
+        gfx::clogi << "ID: " << props.deviceID;
+        gfx::clogi << "Name: " << props.deviceName;
+
+        switch(props.deviceType)
+        {
+        case vk::PhysicalDeviceType::eDiscreteGpu:
+            gfx::clogi << "Type: " << "Discrete GPU";
+            break;
+        case vk::PhysicalDeviceType::eCpu:
+            gfx::clogi << "Type: "
+                  << "CPU";
+            break;
+        case vk::PhysicalDeviceType::eIntegratedGpu:
+            gfx::clogi << "Type: "
+                  << "Integrated GPU";
+            break;
+        case vk::PhysicalDeviceType::eOther:
+            gfx::clogi << "Type: "
+                  << "Other";
+            break;
+        case vk::PhysicalDeviceType::eVirtualGpu:
+            gfx::clogi << "Type: "
+                  << "Virtual GPU";
+            break;
+        }
+        gfx::clogi << "Driver: " << props.driverVersion;
+        gfx::clogi << "API: " << props.apiVersion;
+    }
     gpu = instance->enumeratePhysicalDevices()[0];
 
     vk::SurfaceKHR surf;
@@ -326,7 +365,7 @@ int main()
                                            reduction());
 
         gfx::transform tf            = scene_ext.meshes[i].transform;
-        tf.scale                     = glm::vec3(0.01f);
+        tf.scale                     = glm::vec3(1.f);
         mesh_infos[i].model_matrix   = tf;
         mesh_infos[i].material_index = scene_ext.meshes[i].material_index;
 
@@ -820,10 +859,10 @@ int main()
                 fixed_stamps = stamps;
                 if(print.load())
                 {
-                    log_h << "--- Time stamps ---";
+                    gfx::clogh << "--- Time stamps ---";
                     for(int i = tstamp::frame_begin + 1; i < tstamp::count; ++i)
                     {
-                        log_i << "    " << stamp_names[i] << ": " << stamps[i] << "ms  ---  delta: " << (stamps[i] - stamps[i - 1]) << "ms";
+                        gfx::clogi << "    " << stamp_names[i] << ": " << stamps[i] << "ms  ---  delta: " << (stamps[i] - stamps[i - 1]) << "ms";
                     }
                 }
             }
@@ -1480,12 +1519,12 @@ std::pair<vk::UniqueImage, vk::UniqueDeviceMemory> load_tex2d_u8(const gfx::imag
     imginfo.initialLayout = vk::ImageLayout::eUndefined;
     imginfo.mipLevels     = floor(log2(std::max(image.width, image.height))) + 1;
 
-    std::vector<uint32_t>        fams_v = family_indices({fam::graphics, fam::transfer});
-    imginfo.pQueueFamilyIndices         = std::data(fams_v);
-    imginfo.queueFamilyIndexCount                                                             = std::size(fams_v);
-    imginfo.samples                                                                           = vk::SampleCountFlagBits::e1;
-    imginfo.sharingMode                                                                       = vk::SharingMode::eConcurrent;
-    imginfo.tiling                                                                            = vk::ImageTiling::eOptimal;
+    std::vector<uint32_t> fams_v  = family_indices({fam::graphics, fam::transfer});
+    imginfo.pQueueFamilyIndices   = std::data(fams_v);
+    imginfo.queueFamilyIndexCount = std::size(fams_v);
+    imginfo.samples               = vk::SampleCountFlagBits::e1;
+    imginfo.sharingMode           = vk::SharingMode::eConcurrent;
+    imginfo.tiling                = vk::ImageTiling::eOptimal;
     imginfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
 
     std::pair<vk::UniqueImage, vk::UniqueDeviceMemory> pair;

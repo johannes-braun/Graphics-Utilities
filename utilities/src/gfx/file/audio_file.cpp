@@ -80,7 +80,7 @@ namespace gfx
             format = 0x1100 + (16 >> 3) - 1 + c*2-2;
             return;
         }
-        log_e << "Unsupported file format: " << ext;
+        cloge << "Unsupported file format: " << ext;
     }
 
     void* audio_file::bytes() const noexcept

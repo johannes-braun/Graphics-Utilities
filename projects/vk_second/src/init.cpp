@@ -72,17 +72,17 @@ vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance&
         switch(f)
         {
         case VK_DEBUG_REPORT_INFORMATION_BIT_EXT:
-            tlog_i("VK Debug") << msg;
+            gfx::clogi << msg;
             break;
         case VK_DEBUG_REPORT_DEBUG_BIT_EXT:
-            tlog_d("VK Debug") << msg;
+            gfx::clogd << msg;
             break;
         case VK_DEBUG_REPORT_WARNING_BIT_EXT:
         case VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT:
-            tlog_w("VK Debug") << msg;
+            gfx::clogw << msg;
             break;
         case VK_DEBUG_REPORT_ERROR_BIT_EXT:
-            tlog_e("VK Debug") << msg;
+            gfx::cloge << msg;
             break;
         default:
             break;
@@ -200,7 +200,7 @@ vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice&   gpu,
                                     });
        it == formats.end())
     {
-        log_e << "Did not find bgra8 format with srgb-nonlinear color space.";
+        gfx::cloge << "Did not find bgra8 format with srgb-nonlinear color space.";
     }
     else
     {
@@ -215,7 +215,7 @@ vk::UniqueSwapchainKHR create_swapchain(const vk::PhysicalDevice&   gpu,
                [](const vk::PresentModeKHR& mode) { return mode == vk::PresentModeKHR::eMailbox; });
        it == present_modes.end())
     {
-        log_e << "Did not find mailbox present mode.";
+        gfx::cloge << "Did not find mailbox present mode.";
     }
     else
         swapchain_info.presentMode = vk::PresentModeKHR::eMailbox;

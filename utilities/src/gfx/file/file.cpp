@@ -15,7 +15,7 @@ namespace gfx
         else if (exists(global_res_directory / path))
             this->path = global_res_directory / path;
         else
-            tlog_e("GFX Core") << "File not found: " << path;
+            cloge << "File not found: " << path;
     }
 
     file::operator const files::path&() const noexcept 

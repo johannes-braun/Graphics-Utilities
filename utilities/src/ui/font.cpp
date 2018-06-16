@@ -26,13 +26,13 @@ namespace gfx::ui
         std::unique_ptr<stbtt_pack_context, pack_end> pctx(new stbtt_pack_context());
         if (!stbtt_PackBegin(pctx.get(), tex_data.data(), atlas_dimension, atlas_dimension, 0, 1, nullptr))
         {
-            log_e << "Failed to pack font atlas.";
+            cloge << "Failed to pack font atlas.";
             return;
         }
         stbtt_PackSetOversampling(pctx.get(), 2, 2);
         if (!stbtt_PackFontRange(pctx.get(), data.data(), 0, size, first_char, 512, _characters.data()))
         {
-            log_e << "Failed to pack font atlas.";
+            cloge << "Failed to pack font atlas.";
             return;
         }
 

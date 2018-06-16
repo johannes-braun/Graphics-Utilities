@@ -44,7 +44,7 @@ namespace gfx
 
         if (resolution_changed || samples_changed)
         {
-            tlog_i("Renderer") << "Resizing to (" << width << " x " << height << " x " << samples << ")";
+            clogi << "Resizing to (" << width << " x " << height << " x " << samples << ")";
             _msaa_attachments[0] = std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, gl::samples(uint32_t(std::log2(samples))), GL_RGBA16F);
             _msaa_attachments[1] = std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, _full_resolution.x, _full_resolution.y, gl::samples(uint32_t(std::log2(samples))), GL_RGBA16F);
             _main_framebuffer[GL_COLOR_ATTACHMENT0] = _msaa_attachments[0];

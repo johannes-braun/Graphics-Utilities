@@ -20,13 +20,13 @@ namespace gfx
 
         glfwWindowHint(GLFW_CLIENT_API, int(api_manager::info(_api).api_type));
 
-        glfwSetErrorCallback([](int code, const char* msg) { tlog_e("GLFW Callback") << "[ Code: " << code << " ]: " << msg; });
+        glfwSetErrorCallback([](int code, const char* msg) { cloge << "[ Code: " << code << " ]: " << msg; });
         _window = std::unique_ptr<GLFWwindow, glfw_delete_window>(glfwCreateWindow(int(width), int(height), title.data(), nullptr, _share ? _share->_window.get() : nullptr));
         init(_window.get());
 
         _handler = api_manager::info(_api).create_window(*this);
         if (!_handler)
-            log_e << "Invalid API name: " << _api;
+            cloge << "Invalid API name: " << _api;
     }
 
     window::operator GLFWwindow*() const noexcept
