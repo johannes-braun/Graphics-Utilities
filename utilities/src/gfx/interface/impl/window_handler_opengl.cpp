@@ -24,16 +24,16 @@ window_handler_opengl::window_handler_opengl(window& w)
                 switch(severity)
                 {
                 case GL_DEBUG_SEVERITY_HIGH:
-                    clogc<log_label("opengl"), 214> << message;
+                    clogc<color_bg(214)>("opengl") << message;
                     break;
                 case GL_DEBUG_SEVERITY_MEDIUM:
-                    clogc<log_label("opengl"), 214> << message;
+                    clogc<color_bg(214)>("opengl") << message;
                     break;
                 case GL_DEBUG_SEVERITY_LOW:
-                    clogc<log_label("opengl"), 214> << message;
+                    clogc<color_bg(214)>("opengl") << message;
                     break;
                 case GL_DEBUG_SEVERITY_NOTIFICATION:
-                    clogc<log_label("opengl"), 214> << message;
+                    clogc<color_bg(214)>("opengl") << message;
                     break;
                 default:
                     break;

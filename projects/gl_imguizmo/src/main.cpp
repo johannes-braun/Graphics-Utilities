@@ -1,5 +1,6 @@
-#include <gfx/log.hpp>
+#include <gfx/ecs/ecs.hpp>
 #include <gfx/imgui.hpp>
+#include <gfx/log.hpp>
 #include <gfx/window.hpp>
 
 #include <fstream>
@@ -14,9 +15,6 @@ int main()
     gfx::clogi << "This is a test number: " << 8;
     gfx::clogw << "This is a test number: " << 8;
     gfx::cloge << "This is a test number: " << 8;
-
-    gfx::clogc<gfx::log_label("opengl"), 112> << "Some OpenGL Output";
-    gfx::clogc<gfx::log_label("vulkan"), 88> << "Some Vulkan Output";
 
     auto       win = std::make_shared<gfx::window>(gfx::apis::opengl::name, "ImGuizmo", 1280, 720);
     gfx::imgui gui(win);

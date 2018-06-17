@@ -11,9 +11,9 @@ class ecs
 {
 public:
     ecs() = default;
-    ~ecs() {}
+    ~ecs();
 
-    entity_handle create_entity(component_base* components, const uint32_t* component_ids, size_t count);
+    entity_handle create_entity(component_base* components, const id_t* component_ids, size_t count);
     void delete_entity(entity_handle handle);
     
     template<typename Component>
@@ -34,8 +34,10 @@ public:
 
 private:
     std::vector<system_base*> _systems;
-    std::unordered_map<id_t, std::vector<component_base*>> _components;
+    std::unordered_map<id_t, std::vector<std::byte>> _components;
     std::vector<indexed_entity*> _entities;
+
+    void remove_component_impl(id_t id, size_t index);
 
     static indexed_entity* as_entity_ptr(entity_handle handle)
     {
