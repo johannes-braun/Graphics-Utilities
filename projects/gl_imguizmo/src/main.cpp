@@ -8,6 +8,10 @@
 
 int main()
 {
+    auto context_vk = gfx::context::create(gfx::gapi::vulkan, "Test", 1280, 720);
+    context_vk->make_current();
+
+
     auto context = gfx::context::create(gfx::gapi::opengl, "Test", 1280, 720);
     context->make_current();
 

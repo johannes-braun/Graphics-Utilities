@@ -70,7 +70,7 @@ private:
     {
         glfwWindowHint(GLFW_CLIENT_API, graphics_api == gapi::opengl ? GLFW_OPENGL_API : GLFW_NO_API);
         glfwSetErrorCallback([](int, const char* m) { gfx::clogd << m; });
-        _window         = glfwCreateWindow(width, height, name.c_str(), nullptr, current() ? current()->_window : nullptr);
+        _window         = glfwCreateWindow(width, height, name.c_str(), nullptr, (current() && current()->graphics_api == gapi::opengl) ? current()->_window : nullptr);
         _implementation = detail::make_context_implementation(graphics_api);
         _implementation->initialize(_window);
     }
