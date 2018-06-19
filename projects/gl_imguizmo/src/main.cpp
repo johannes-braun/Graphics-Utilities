@@ -7,7 +7,7 @@
 
 int main()
 {
-    auto context = gfx::context::create(gfx::gapi::vulkan, "Test", 1280, 720);
+    auto context = gfx::context::create(gfx::gapi::opengl, "Test", 1280, 720);
     context->make_current();
 
     gfx::swapchain swapchain;
@@ -37,10 +37,10 @@ int main()
         dint_buffer2.update({i++}, 5);
         dint_buffer2 >> dint_target;
 
-        for(auto&& i : int_buffer)
+        for(auto&& i : dint_target)
             gfx::clogi << i;
 
-        // swapchain.present();
+        swapchain.present();
         glfwPollEvents();
     }
 }
