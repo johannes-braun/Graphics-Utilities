@@ -2,6 +2,7 @@
 
 #include "context.hpp"
 #include "host_buffer_opengl.hpp"
+#include "host_buffer_vulkan.hpp"
 
 namespace gfx
 {
@@ -12,7 +13,7 @@ std::unique_ptr<detail::host_buffer_implementation> detail::make_host_buffer_imp
     case gapi::opengl:
         return std::make_unique<opengl::host_buffer_implementation>();
     case gapi::vulkan:
-        break;
+        return std::make_unique<vulkan::host_buffer_implementation>();
     default:
         break;
     }

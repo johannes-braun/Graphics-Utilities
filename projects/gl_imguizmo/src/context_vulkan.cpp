@@ -4,12 +4,14 @@
 PFN_vkCreateDebugReportCallbackEXT  vkCreateDebugReportCallbackEXT_impl;
 PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT_impl;
 
-VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                                              const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugReportCallbackEXT(
+        VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+        const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
 {
     return vkCreateDebugReportCallbackEXT_impl(instance, pCreateInfo, pAllocator, pCallback);
 }
-VKAPI_ATTR void VKAPI_CALL vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT pCallback,
+VKAPI_ATTR void VKAPI_CALL vkDestroyDebugReportCallbackEXT(VkInstance                   instance,
+                                                           VkDebugReportCallbackEXT     pCallback,
                                                            const VkAllocationCallbacks* pAllocator)
 {
     return vkDestroyDebugReportCallbackEXT_impl(instance, pCallback, pAllocator);
@@ -44,7 +46,8 @@ vk::UniqueInstance create_instance()
     return vk::createInstanceUnique(instance_info);
 }
 
-vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance& instance, vk::DebugReportFlagsEXT flags)
+vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance& instance,
+                                                       vk::DebugReportFlagsEXT   flags)
 {
     vk::DebugReportCallbackCreateInfoEXT info;
     info.pUserData   = nullptr;
@@ -82,9 +85,11 @@ vk::UniqueDebugReportCallbackEXT create_debug_callback(const vk::UniqueInstance&
     //        reinterpret_cast<decltype(vkCmdDrawIndexedIndirectCountKHR_impl)>(instance->getProcAddr("vkCmdDrawIndexedIndirectCountKHR"));
 
     vkCreateDebugReportCallbackEXT_impl =
-            reinterpret_cast<decltype(vkCreateDebugReportCallbackEXT_impl)>(instance->getProcAddr("vkCreateDebugReportCallbackEXT"));
+            reinterpret_cast<decltype(vkCreateDebugReportCallbackEXT_impl)>(
+                    instance->getProcAddr("vkCreateDebugReportCallbackEXT"));
     vkDestroyDebugReportCallbackEXT_impl =
-            reinterpret_cast<decltype(vkDestroyDebugReportCallbackEXT_impl)>(instance->getProcAddr("vkDestroyDebugReportCallbackEXT"));
+            reinterpret_cast<decltype(vkDestroyDebugReportCallbackEXT_impl)>(
+                    instance->getProcAddr("vkDestroyDebugReportCallbackEXT"));
     return instance->createDebugReportCallbackEXTUnique(info);
 }
 
@@ -94,7 +99,8 @@ struct device_infos
     std::array<uint32_t, 4> queue_families;
     std::array<uint32_t, 4> queue_indices;
 };
-device_infos create_device(const vk::UniqueInstance& instance, const vk::PhysicalDevice& gpu, const vk::UniqueSurfaceKHR& surface)
+device_infos create_device(const vk::UniqueInstance& instance, const vk::PhysicalDevice& gpu,
+                           const vk::UniqueSurfaceKHR& surface)
 {
     struct queue_infos
     {
@@ -105,15 +111,20 @@ device_infos create_device(const vk::UniqueInstance& instance, const vk::Physica
     std::vector<vk::QueueFamilyProperties> queue_family_properties = gpu.getQueueFamilyProperties();
     for(uint32_t family = 0; family < queue_family_properties.size(); ++family)
     {
-        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
+        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eGraphics) ==
+           vk::QueueFlagBits::eGraphics)
             queues.families[fam::graphics] = family;
-        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
+        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eCompute) ==
+           vk::QueueFlagBits::eCompute)
             queues.families[fam::compute] = family;
-        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
+        if((queue_family_properties[family].queueFlags & vk::QueueFlagBits::eTransfer) ==
+           vk::QueueFlagBits::eTransfer)
             queues.families[fam::transfer] = family;
 
         const bool supports = gpu.getSurfaceSupportKHR(family, *surface);
-        if(glfwGetPhysicalDevicePresentationSupport(static_cast<VkInstance>(*instance), static_cast<VkPhysicalDevice>(gpu), family) &&
+        if(glfwGetPhysicalDevicePresentationSupport(static_cast<VkInstance>(*instance),
+                                                    static_cast<VkPhysicalDevice>(gpu),
+                                                    family) &&
            supports)
             queues.families[fam::present] = family;
     }
@@ -157,28 +168,46 @@ device_infos create_device(const vk::UniqueInstance& instance, const vk::Physica
     return result;
 }
 
-vk::PhysicalDevice select_gpu(const vk::UniqueInstance& instance) { return instance->enumeratePhysicalDevices()[0]; }
+vk::PhysicalDevice select_gpu(const vk::UniqueInstance& instance)
+{
+    return instance->enumeratePhysicalDevices()[0];
+}
 
 void context_implementation::initialize(GLFWwindow* window)
 {
     _instance       = create_instance();
-    _debug_callback = create_debug_callback(_instance, vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning);
-    _gpu            = select_gpu(_instance);
+    _debug_callback = create_debug_callback(
+            _instance, vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning);
+    _gpu = select_gpu(_instance);
 
     vk::SurfaceKHR surf;
-    glfwCreateWindowSurface(static_cast<VkInstance>(*_instance), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surf));
-    _surface = vk::UniqueSurfaceKHR(surf, vk::UniqueHandleTraits<vk::SurfaceKHR>::deleter(*_instance));
+    glfwCreateWindowSurface(static_cast<VkInstance>(*_instance),
+                            window,
+                            nullptr,
+                            reinterpret_cast<VkSurfaceKHR*>(&surf));
+    _surface =
+            vk::UniqueSurfaceKHR(surf, vk::UniqueHandleTraits<vk::SurfaceKHR>::deleter(*_instance));
 
-    auto infos             = create_device(_instance, _gpu, _surface);
-    _device                = std::move(infos.device);
-    _families              = std::move(infos.queue_families);
-    _queues[fam::graphics] = _device->getQueue(_families[fam::graphics], infos.queue_indices[fam::graphics]);
-    _queues[fam::compute]  = _device->getQueue(_families[fam::compute], infos.queue_indices[fam::compute]);
-    _queues[fam::transfer] = _device->getQueue(_families[fam::transfer], infos.queue_indices[fam::transfer]);
-    _queues[fam::present]  = _device->getQueue(_families[fam::present], infos.queue_indices[fam::present]);
+    auto infos = create_device(_instance, _gpu, _surface);
+    _device    = std::move(infos.device);
+    _families  = std::move(infos.queue_families);
+    _queues[fam::graphics] =
+            _device->getQueue(_families[fam::graphics], infos.queue_indices[fam::graphics]);
+    _queues[fam::compute] =
+            _device->getQueue(_families[fam::compute], infos.queue_indices[fam::compute]);
+    _queues[fam::transfer] =
+            _device->getQueue(_families[fam::transfer], infos.queue_indices[fam::transfer]);
+    _queues[fam::present] =
+            _device->getQueue(_families[fam::present], infos.queue_indices[fam::present]);
+
+    VmaAllocatorCreateInfo alloc_create_info{0};
+    alloc_create_info.device = _device.get();
+    alloc_create_info.physicalDevice = _gpu;
+    alloc_create_info.flags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
+    vmaCreateAllocator(&alloc_create_info, &_allocator);
 
     vk::CommandPoolCreateInfo pool_info;
-    pool_info.flags              = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+    pool_info.flags               = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
     pool_info.queueFamilyIndex    = _families[fam::graphics];
     _command_pools[fam::graphics] = _device->createCommandPoolUnique(pool_info);
     pool_info.queueFamilyIndex    = _families[fam::compute];
@@ -188,4 +217,6 @@ void context_implementation::initialize(GLFWwindow* window)
 }
 
 void context_implementation::make_current(GLFWwindow* window) {}
+
+context_implementation::~context_implementation() { vmaDestroyAllocator(_allocator); }
 } // namespace gfx::vulkan

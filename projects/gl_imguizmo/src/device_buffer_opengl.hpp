@@ -18,6 +18,7 @@ public:
     void copy(const std::any& source, const std::any& target, difference_type src_offset, difference_type dst_offset, size_type size) override;
     void update(difference_type offset, size_type size, const std::byte* data) override;
 
+    std::any     api_handle();
     mygl::buffer handle() const noexcept;
 
 private:

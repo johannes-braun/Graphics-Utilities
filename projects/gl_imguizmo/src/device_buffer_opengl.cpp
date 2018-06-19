@@ -15,6 +15,8 @@ void device_buffer_implementation::update_flags(const buffer_usage_flags usage) 
 
 mygl::buffer device_buffer_implementation::handle() const noexcept { return _handle; }
 
+std::any device_buffer_implementation::api_handle() { return _handle; }
+
 void device_buffer_implementation::allocate(const size_type size)
 {
     if(_handle != mygl::buffer::zero)

@@ -8,8 +8,10 @@
 
 namespace gfx
 {
-template <typename T> class device_buffer;
-template <typename T> class host_buffer;
+template <typename T>
+class device_buffer;
+template <typename T>
+class host_buffer;
 
 enum class buffer_usage : uint32_t
 {
@@ -33,17 +35,20 @@ namespace detail
 
         virtual ~device_buffer_implementation() = default;
 
-        virtual void update_flags(buffer_usage_flags usage)                                = 0;
-        virtual void allocate(size_type size)                                              = 0;
-        virtual void copy(const std::any& source, const std::any& target, difference_type src_offset, difference_type dst_offset,
-                          size_type size)                                                  = 0;
-        virtual void update(difference_type offset, size_type size, const std::byte* data) = 0;
+        virtual void     update_flags(buffer_usage_flags usage)                                = 0;
+        virtual void     allocate(size_type size)                                              = 0;
+        virtual void     copy(const std::any& source, const std::any& target,
+                              difference_type src_offset, difference_type dst_offset,
+                              size_type size)                                                  = 0;
+        virtual void     update(difference_type offset, size_type size, const std::byte* data) = 0;
+        virtual std::any api_handle()                                                          = 0;
     };
 
     std::unique_ptr<device_buffer_implementation> make_device_buffer_implementation();
 } // namespace detail
 
-template <typename T> class device_buffer
+template <typename T>
+class device_buffer
 {
 public:
     using size_type                            = uint64_t;
@@ -62,7 +67,7 @@ public:
     void reallocate(size_type elements);
 
     buffer_usage_flags usage() const noexcept;
-    size_type capacity() const noexcept;
+    size_type          capacity() const noexcept;
 
     void operator>>(const host_buffer<T>& buffer);
     void operator<<(const host_buffer<T>& buffer);
@@ -74,11 +79,17 @@ public:
     template <typename Container, typename = detail::enable_if_container<Container, T>>
     void update(const Container& elements, difference_type start = 0) const;
 
-    void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start, size_type count);
-    void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start, size_type count);
+    void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start,
+                   size_type count);
+    void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start,
+                   size_type count);
 
-    void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
-    void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
+    void copy_to(const host_buffer<T>& buffer, difference_type src_offset,
+                 difference_type dst_offset, size_type count);
+    void copy_to(const device_buffer& buffer, difference_type src_offset,
+                 difference_type dst_offset, size_type count);
+
+    std::any api_handle() const;
 
 private:
     std::unique_ptr<detail::device_buffer_implementation> _implementation;
