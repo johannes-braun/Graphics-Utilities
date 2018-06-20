@@ -25,8 +25,10 @@ private:
     VmaAllocation _allocation = nullptr;
     VmaAllocator  _allocator;
 
-    vk::UniqueCommandBuffer _transfer_command;
+    int                                  _current_cmd = 0;
+    std::vector<vk::UniqueCommandBuffer> _transfer_commands;
+    std::vector<vk::Fence>               _transfer_fences;
     vk::Queue               _transfer_queue;
-    vk::Fence               _transfer_fence;
+    //vk::Fence               _transfer_fence;
 };
 }

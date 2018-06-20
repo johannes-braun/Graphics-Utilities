@@ -25,24 +25,38 @@ void device_buffer_implementation::allocate(const size_type size)
     glNamedBufferStorage(_handle, size, nullptr, flags);
 }
 
-void device_buffer_implementation::copy(const std::any& source, const std::any& target, const difference_type src_offset,
+void device_buffer_implementation::copy(const std::any& source, const std::any& target,
+                                        const difference_type src_offset,
                                         const difference_type dst_offset, const size_type size)
 {
-    const auto get_handle = [](const std::any& impl) {
+    const auto get_handle = [](const std::any& impl, bool& mapped) {
         if(impl.type() == typeid(detail::host_buffer_implementation*))
-            return static_cast<host_buffer_implementation*>(std::any_cast<detail::host_buffer_implementation*>(impl))->handle();
+        {
+            mapped = true;
+            return static_cast<host_buffer_implementation*>(
+                           std::any_cast<detail::host_buffer_implementation*>(impl))
+                    ->handle();
+        }
         else if(impl.type() == typeid(detail::device_buffer_implementation*))
-            return static_cast<device_buffer_implementation*>(std::any_cast<detail::device_buffer_implementation*>(impl))->handle();
+        {
+            mapped = false;
+            return static_cast<device_buffer_implementation*>(
+                           std::any_cast<detail::device_buffer_implementation*>(impl))
+                    ->handle();
+        }
         else
             throw std::invalid_argument("Invalid buffer implementation.");
     };
 
-    const mygl::buffer src_handle = get_handle(source);
-    const mygl::buffer dst_handle = get_handle(target);
+    bool               src_mapped, dst_mapped;
+    const mygl::buffer src_handle = get_handle(source, src_mapped);
+    const mygl::buffer dst_handle = get_handle(target, dst_mapped);
+
     glCopyNamedBufferSubData(src_handle, dst_handle, src_offset, dst_offset, size);
 }
 
-void device_buffer_implementation::update(difference_type offset, size_type size, const std::byte* data)
+void device_buffer_implementation::update(difference_type offset, size_type size,
+                                          const std::byte* data)
 {
     glNamedBufferSubData(_handle, offset, size, data);
 }

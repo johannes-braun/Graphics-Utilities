@@ -1,46 +1,62 @@
 #define _SCL_SECURE_NO_WARNINGS
 
-#include <glm/glm.hpp>
+#include "buffer.hpp"
 #include "context.hpp"
 #include "swapchain.hpp"
-#include "buffer.hpp"
+#include <glm/glm.hpp>
+
+#include <mygl/mygl.hpp>
+
+#include "context_vulkan.hpp"
+
+void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int length,
+         const char* message, const void* userParam)
+{
+    gfx::cloge << message;
+}
 
 int main()
 {
-    auto context = gfx::context::create(gfx::gapi::opengl, "Test", 1280, 720);
-    context->make_current();
+    auto ctx = gfx::context::create(gfx::gapi::vulkan, "Context", 1280, 720);
 
+    // Buffers etc for vulkan
+    ctx->make_current();
+    gfx::host_buffer<int>   input{3, 4, 581, 58189382, 38, 1839, 1289347};
+    gfx::device_buffer<int> device_target(input.size());
+    gfx::device_buffer<int> device_target2(input.size());
+    gfx::host_buffer<int>   readout(input.size());
     gfx::swapchain swapchain;
 
-    std::array<int32_t, 35> arr;
-    std::iota(arr.begin(), arr.end(), 0);
-    std::vector<glm::vec4> vectors{8, glm::vec4(8, 0, 0, 0)};
+    // Run Vulkan
+    double vfps    = 0;
+    int    vframes = 0;
+    ctx->do_on_update([&](double delta) {
+        vfps += delta;
+        ++vframes;
+        if(vfps >= 1.0)
+        {
+            gfx::clogw("FPS") << vframes / vfps;
+            vfps    = 0;
+            vframes = 0;
+        }
+        device_target << input;
+        device_target2 << device_target;
+        device_target >> readout;
 
-    gfx::host_buffer<float>   float_buffer{12.f, 11.f, 239.f, 12390.f, 1.f, 19302.f};
-    gfx::host_buffer<int32_t> int_buffer;
-    int_buffer.resize(1 << 3);
-    std::iota(int_buffer.begin(), int_buffer.end(), 0);
-    gfx::host_buffer<glm::vec4> vec4_buffer = vectors;
-    gfx::host_buffer<uint32_t>  empty_vector;
+        if(glFinish)
+            glFinish();
+        else
+        {
+            static_cast<gfx::vulkan::context_implementation*>(
+                    std::any_cast<gfx::detail::context_implementation*>(ctx->implementation()))
+                    ->device()
+                    .waitIdle();
+        }
 
-    gfx::device_buffer<int32_t> dint_buffer1(int_buffer.size());
-    gfx::device_buffer<int32_t> dint_buffer2(int_buffer.size());
-    gfx::host_buffer<int32_t>   dint_target(int_buffer.size());
+    });
 
-    int i = 0;
     while(true)
     {
-        uint32_t image = swapchain.current_image();
-
-        dint_buffer1 << int_buffer;
-        dint_buffer2 << dint_buffer1;
-        dint_buffer2.update({i++}, 5);
-        dint_buffer2 >> dint_target;
-
-        for(auto&& i : dint_target)
-            gfx::clogi << i;
-
-        swapchain.present();
-        glfwPollEvents();
+        ctx->run();
     }
 }

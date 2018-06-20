@@ -29,17 +29,18 @@ void device_buffer_implementation::allocate(const size_type size)
     auto  impl = static_cast<context_implementation*>(
             std::any_cast<detail::context_implementation*>(ctx->implementation()));
 
-    if(!_transfer_command)
+    if(!_device)
     {
+        _device = impl->device();
         vk::CommandBufferAllocateInfo cmd_alloc;
-        cmd_alloc.commandBufferCount = 1;
+        cmd_alloc.commandBufferCount = 2;
         cmd_alloc.commandPool        = impl->command_pools()[fam::transfer].get();
         cmd_alloc.level              = vk::CommandBufferLevel::ePrimary;
-        _transfer_command = std::move(impl->device().allocateCommandBuffersUnique(cmd_alloc)[0]);
+        _transfer_commands = _device.allocateCommandBuffersUnique(cmd_alloc);
 
         _transfer_queue = impl->queues()[fam::transfer];
-        _transfer_fence = impl->device().createFence({vk::FenceCreateFlagBits::eSignaled});
-        _device         = impl->device();
+        for(int i = 0; i < _transfer_commands.size(); ++i)
+            _transfer_fences.emplace_back(impl->device().createFence({vk::FenceCreateFlagBits::eSignaled}));
         _allocator      = impl->allocator();
     }
 
@@ -92,102 +93,107 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
     vk::Buffer      src_buffer = get_buffer(source, src_access);
     vk::Buffer      dst_buffer = get_buffer(target, dst_access);
 
-    _device.waitForFences(_transfer_fence, true, std::numeric_limits<uint64_t>::max());
-    _device.resetFences(_transfer_fence);
+    _device.waitForFences(_transfer_fences[_current_cmd], true, std::numeric_limits<uint64_t>::max());
+    _device.resetFences(_transfer_fences[_current_cmd]);
     vk::CommandBufferBeginInfo begin;
     begin.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-    _transfer_command->begin(begin);
+    _transfer_commands[_current_cmd]->begin(begin);
 
-    vk::BufferMemoryBarrier membarr_dst;
-    membarr_dst.buffer                  = dst_buffer;
-    membarr_dst.srcAccessMask           = dst_access;
-    membarr_dst.dstAccessMask           = vk::AccessFlagBits::eTransferWrite;
-    membarr_dst.srcQueueFamilyIndex     = VK_QUEUE_FAMILY_IGNORED;
-    membarr_dst.dstQueueFamilyIndex     = VK_QUEUE_FAMILY_IGNORED;
-    membarr_dst.offset                  = dst_offset;
-    membarr_dst.size                    = size;
-    vk::BufferMemoryBarrier membarr_src = membarr_dst;
-    membarr_src.srcAccessMask           = src_access;
-    membarr_src.buffer                  = src_buffer;
-    membarr_src.offset                  = src_offset;
-    membarr_src.dstAccessMask           = vk::AccessFlagBits::eTransferRead;
+    // vk::BufferMemoryBarrier membarr_dst;
+    // membarr_dst.buffer                  = dst_buffer;
+    // membarr_dst.srcAccessMask           = dst_access;
+    // membarr_dst.dstAccessMask           = vk::AccessFlagBits::eTransferWrite;
+    // membarr_dst.srcQueueFamilyIndex     = VK_QUEUE_FAMILY_IGNORED;
+    // membarr_dst.dstQueueFamilyIndex     = VK_QUEUE_FAMILY_IGNORED;
+    // membarr_dst.offset                  = dst_offset;
+    // membarr_dst.size                    = size;
+    // vk::BufferMemoryBarrier membarr_src = membarr_dst;
+    // membarr_src.srcAccessMask           = src_access;
+    // membarr_src.buffer                  = src_buffer;
+    // membarr_src.offset                  = src_offset;
+    // membarr_src.dstAccessMask           = vk::AccessFlagBits::eTransferRead;
 
-    _transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-                                       vk::PipelineStageFlagBits::eTransfer,
-                                       vk::DependencyFlagBits::eByRegion,
-                                       nullptr,
-                                       {membarr_src, membarr_dst},
-                                       nullptr);
+    //_transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+    //                                   vk::PipelineStageFlagBits::eTransfer,
+    //                                   vk::DependencyFlagBits::eByRegion,
+    //                                   nullptr,
+    //                                   {membarr_src, membarr_dst},
+    //                                   nullptr);
 
     vk::BufferCopy cpy;
     cpy.srcOffset = src_offset;
     cpy.dstOffset = dst_offset;
     cpy.size      = size;
-    _transfer_command->copyBuffer(src_buffer, dst_buffer, cpy);
+    _transfer_commands[_current_cmd]->copyBuffer(src_buffer, dst_buffer, cpy);
 
-    membarr_src.srcAccessMask = vk::AccessFlagBits::eTransferRead;
-    membarr_src.dstAccessMask = src_access;
+    // membarr_src.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+    // membarr_src.dstAccessMask = src_access;
 
-    membarr_dst.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-    membarr_dst.dstAccessMask = dst_access;
+    // membarr_dst.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    // membarr_dst.dstAccessMask = dst_access;
 
-    _transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                                       vk::PipelineStageFlagBits::eAllCommands,
-                                       vk::DependencyFlagBits::eByRegion,
-                                       nullptr,
-                                       {membarr_src, membarr_dst},
-                                       nullptr);
+    //_transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+    //                                   vk::PipelineStageFlagBits::eAllCommands,
+    //                                   vk::DependencyFlagBits::eByRegion,
+    //                                   nullptr,
+    //                                   {membarr_src, membarr_dst},
+    //                                   nullptr);
 
-    _transfer_command->end();
+    _transfer_commands[_current_cmd]->end();
 
     vk::SubmitInfo submit;
     submit.commandBufferCount = 1;
-    submit.pCommandBuffers    = &_transfer_command.get();
-    _transfer_queue.submit(submit, _transfer_fence);
+    submit.pCommandBuffers    = &_transfer_commands[_current_cmd].get();
+    _transfer_queue.submit(submit, _transfer_fences[_current_cmd]);
+
+    _current_cmd = (_current_cmd + 1) % _transfer_commands.size();
 }
 
 void device_buffer_implementation::update(difference_type offset, size_type size,
                                           const std::byte* data)
 {
-    _device.waitForFences(_transfer_fence, true, std::numeric_limits<uint64_t>::max());
-    _device.resetFences(_transfer_fence);
+    _device.waitForFences(
+            _transfer_fences[_current_cmd], true, std::numeric_limits<uint64_t>::max());
+    _device.resetFences(_transfer_fences[_current_cmd]);
     vk::CommandBufferBeginInfo begin;
     begin.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-    _transfer_command->begin(begin);
+    _transfer_commands[_current_cmd]->begin(begin);
 
-    vk::BufferMemoryBarrier membarr_dst;
-    membarr_dst.buffer        = _buffer;
-    membarr_dst.srcAccessMask = vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite;
-    membarr_dst.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-    membarr_dst.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    membarr_dst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    membarr_dst.offset              = offset;
-    membarr_dst.size                = size;
+    /* vk::BufferMemoryBarrier membarr_dst;
+     membarr_dst.buffer        = _buffer;
+     membarr_dst.srcAccessMask = vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite;
+     membarr_dst.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+     membarr_dst.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+     membarr_dst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+     membarr_dst.offset              = offset;
+     membarr_dst.size                = size;
 
-    _transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-                                       vk::PipelineStageFlagBits::eTransfer,
-                                       vk::DependencyFlagBits::eByRegion,
-                                       nullptr,
-                                       membarr_dst,
-                                       nullptr);
+     _transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                                        vk::PipelineStageFlagBits::eTransfer,
+                                        vk::DependencyFlagBits::eByRegion,
+                                        nullptr,
+                                        membarr_dst,
+                                        nullptr);*/
 
-    _transfer_command->updateBuffer(_buffer, offset, size, data);
+    _transfer_commands[_current_cmd]->updateBuffer(_buffer, offset, size, data);
 
-    membarr_dst.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-    membarr_dst.dstAccessMask = vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite;
-    _transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                                       vk::PipelineStageFlagBits::eAllCommands,
-                                       vk::DependencyFlagBits::eByRegion,
-                                       nullptr,
-                                       membarr_dst,
-                                       nullptr);
+    // membarr_dst.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+    // membarr_dst.dstAccessMask = vk::AccessFlagBits::eShaderRead |
+    // vk::AccessFlagBits::eShaderWrite;
+    //_transfer_command->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+    //                                   vk::PipelineStageFlagBits::eAllCommands,
+    //                                   vk::DependencyFlagBits::eByRegion,
+    //                                   nullptr,
+    //                                   membarr_dst,
+    //                                   nullptr);
 
-    _transfer_command->end();
+    _transfer_commands[_current_cmd]->end();
 
     vk::SubmitInfo submit;
     submit.commandBufferCount = 1;
-    submit.pCommandBuffers    = &_transfer_command.get();
-    _transfer_queue.submit(submit, _transfer_fence);
+    submit.pCommandBuffers    = &_transfer_commands[_current_cmd].get();
+    _transfer_queue.submit(submit, _transfer_fences[_current_cmd]);
+    _current_cmd = (_current_cmd + 1) % _transfer_commands.size();
 }
 
 std::any device_buffer_implementation::api_handle() { return vk::Buffer(_buffer); }

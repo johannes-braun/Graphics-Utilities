@@ -212,6 +212,7 @@ void context_implementation::initialize(GLFWwindow* window)
     _command_pools[fam::graphics] = _device->createCommandPoolUnique(pool_info);
     pool_info.queueFamilyIndex    = _families[fam::compute];
     _command_pools[fam::compute]  = _device->createCommandPoolUnique(pool_info);
+    pool_info.flags               |= vk::CommandPoolCreateFlagBits::eTransient;
     pool_info.queueFamilyIndex    = _families[fam::transfer];
     _command_pools[fam::transfer] = _device->createCommandPoolUnique(pool_info);
 }
