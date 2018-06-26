@@ -1,45 +1,73 @@
 {
   "environments": [
     {
-      "buildPath": "${workspaceRoot}\\.vsbuild\\${name}",
-      "installPath": "${workspaceRoot}\\.vsbuild\\install\\${name}"
+      "cmakeCommandArgs": "-Wno-dev"
     }
   ],
-  // Informationen zu dieser Datei finden Sie unter https://go.microsoft.com//fwlink//?linkid=834763.
   "configurations": [
     {
-      "name": "Debug",
+      "name": "x86-Debug",
       "generator": "Ninja",
       "configurationType": "Debug",
-      "intelliSenseMode": "windows-msvc-x64",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${env.buildPath}",
-      "installRoot": "${env.installPath}",
-      "cmakeCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x86", "cmake_default" ],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\install\\${name}",
+      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
       "buildCommandArgs": "",
       "ctestCommandArgs": ""
     },
     {
-      "name": "Release",
-      "generator": "Ninja",
-      "configurationType": "Release",
-      "intelliSenseMode": "windows-msvc-x64",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${env.buildPath}",
-      "installRoot": "${env.installPath}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": ""
-    },
-    {
-      "name": "Release with Debug Info",
+      "name": "x86-RelWithDebInfo",
       "generator": "Ninja",
       "configurationType": "RelWithDebInfo",
-      "intelliSenseMode": "windows-msvc-x64",
+      "inheritEnvironments": [ "msvc_x86" ],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\install\\${name}",
+      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": ""
+    },
+    {
+      "name": "x86-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x86" ],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\install\\${name}",
+      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": ""
+    },
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64_x64" ],
-      "buildRoot": "${env.buildPath}",
-      "installRoot": "${env.installPath}",
-      "cmakeCommandArgs": "",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\install\\${name}",
+      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": ""
+    },
+    {
+      "name": "x64-RelWithDebInfo",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\install\\${name}",
+      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": ""
+    },
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\install\\${name}",
+      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
       "buildCommandArgs": "",
       "ctestCommandArgs": ""
     }

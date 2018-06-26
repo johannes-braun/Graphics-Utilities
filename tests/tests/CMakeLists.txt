@@ -1,0 +1,1 @@
+create_test(test_int_compare)

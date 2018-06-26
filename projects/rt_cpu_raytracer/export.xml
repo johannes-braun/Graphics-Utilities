@@ -1,9 +1,0 @@
-<export>
-    <globals>
-        <item path="res/bunny.dae"/>
-    </globals>
-
-    <dll>
-        <item name="assimp-vc140-mt.dll"/>
-    </dll>
-</export>

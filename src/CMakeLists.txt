@@ -1,0 +1,131 @@
+set(gfx_dir ${var_source_dir}/gfx)
+
+file(GLOB_RECURSE gfx_sources *.cpp *.c)
+
+message("INCLUDE DIRECTORY IS " ${var_include_dir})
+add_library(gfx ${gfx_sources})
+target_include_directories(gfx 
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+)
+
+message(${CMAKE_CURRENT_BINARY_DIR})
+
+target_compile_features(gfx PUBLIC cxx_std_17)
+target_link_libraries(gfx PUBLIC glm::glm jbraun::mygl jbraun::glsp glfw::glfw assimp::assimp eigen)
+if(WIN32)
+    target_link_libraries(gfx PUBLIC opengl32)
+endif()
+
+target_compile_definitions(gfx 
+    PUBLIC 
+        GLFW_INCLUDE_NONE
+        STBI_MSC_SECURE_CRT
+        GLM_FORCE_RADIANS
+        GLM_ENABLE_EXPERIMENTAL
+        _WIN32_WINNT=0x0501
+        NOMINMAX)
+
+target_compile_options(gfx PRIVATE ${compile_options})
+add_library(jbraun::gfx ALIAS gfx)
+
+install(TARGETS gfx EXPORT gfxTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+function(register_public_headers ROOT)
+    list(REMOVE_AT ARGV 0)
+    foreach(file IN LISTS ARGV)
+        list(APPEND HEADERS ${ROOT}/${file})
+    endforeach()
+    install(FILES ${HEADERS} DESTINATION include/${ROOT})
+endfunction()
+
+register_public_headers(gfx 
+    file.hpp
+    flags.hpp
+    flags.inl
+    geometry.hpp
+    log.hpp
+    spline.hpp
+    input.hpp
+    context.hpp
+    callbacks.hpp
+    imgui.hpp)
+
+register_public_headers(gfx/imgui
+    imconfig.h
+    imgui.h)
+
+register_public_headers(gfx/input
+    button_press.inl)
+register_public_headers(gfx/interface
+    imgui_handler.hpp)
+
+register_public_headers(gfx/graphics
+    device_buffer.hpp
+    device_buffer.inl
+    host_buffer.hpp
+    host_buffer.inl
+    swapchain.hpp)
+
+register_public_headers(gfx/data
+    bvh.hpp
+    gpu_data.hpp
+    grid_line_space.hpp
+    line_space.hpp)
+    
+register_public_headers(gfx/data/impl
+    bvh.inl
+    grid_line_space.inl
+    line_space.inl)
+
+register_public_headers(gfx/geometry
+    bounds.inl
+    projection.inl
+    transform.inl
+    vertex.inl)
+    
+register_public_headers(opengl
+    buffer.hpp
+    command_list.hpp
+    context.hpp
+    enums.hpp
+    framebuffer.hpp
+    opengl.hpp
+    pipeline.hpp
+    query.hpp
+    shader.hpp
+    state.hpp
+    texture.hpp
+    uniform.hpp
+    vertex_array.hpp)
+    
+register_public_headers(opengl/impl
+    bounded_buffer_data.inl
+    bounded_buffer_iterator.inl
+    buffer.inl
+    command_list.inl
+    framebuffer.inl
+    pipeline.inl
+    shader.inl
+    uniform.inl
+    vertex_array.inl)
+
+configure_file(gfx/file/file_config.hpp.in gfx/file/file_config.hpp @ONLY)
+set(PUBLIC_HEADERS_FILE
+    ${CMAKE_CURRENT_BINARY_DIR}/gfx/file/file_config.hpp)
+install(FILES ${PUBLIC_HEADERS_FILE} DESTINATION include/gfx/file)
+
+configure_file(opengl/shader_include.hpp.in opengl/shader_include.hpp @ONLY)
+
+install(EXPORT gfxTargets
+    FILE gfxTargets.cmake
+    NAMESPACE jbraun::
+    DESTINATION lib/cmake/gfx
+)
+install(DIRECTORY shaders DESTINATION .)

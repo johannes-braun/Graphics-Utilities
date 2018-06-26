@@ -1,0 +1,6 @@
+#pragma once
+
+namespace gfx
+{
+    constexpr const char* relative_path = "@CMAKE_CURRENT_SOURCE_DIR@/";
+}

@@ -1,0 +1,10 @@
+function(create_test test_name)
+    set(full_name test-${test_name})
+    add_executable(${full_name} ${test_name}.cpp)
+    target_link_libraries(${full_name} jbraun::gfx)
+    target_compile_definitions(${full_name} PRIVATE CATCH_CONFIG_MAIN)
+    target_include_directories(${full_name} PRIVATE ..)
+    add_test(NAME ${full_name} COMMAND $<TARGET_FILE:${full_name}>)
+endfunction()
+
+add_subdirectory(tests)

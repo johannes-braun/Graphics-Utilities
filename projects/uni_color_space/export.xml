@@ -1,9 +1,0 @@
-<export>
-    <globals>
-        <item path="shd/postfx/screen.vert"/>
-        <item path="res/grid.jpg" />
-        <item path="res/ui/logo.png" />
-    </globals>
-
-    <dll/>
-</export>
