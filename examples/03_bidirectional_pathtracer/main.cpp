@@ -26,11 +26,17 @@ int main()
     options.window_title  = "[03] Bidirectional Pathtracer";
     options.window_height = 720;
     options.window_width  = 1280;
+    options.debug         = true;
     auto context          = gfx::context::create(options);
     context->make_current();
     tracer = std::make_unique<gl::compute_pipeline>(
             std::make_shared<gl::shader>("03_bidirectional_pathtracer/trace.comp"));
     gfx::imgui imgui;
+
+    glDebugMessageCallback(
+            [](GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
+    { gfx::ilog << message;
+    }, nullptr);
 
     gfx::scene_file        file("bunny.dae");
     gfx::scene_file::mesh& mesh = *(file.meshes.begin());
@@ -48,7 +54,7 @@ int main()
 
     gl::query timer(GL_TIME_ELAPSED);
 
-    auto render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D, 1280, 720, GL_RGBA32F, 1);
+    auto render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D_ARRAY, 1280, 720, 1, GL_RGBA32F, 1);
     gl::image img(*render_texture, GL_RGBA32F, GL_READ_WRITE);
 
     gl::framebuffer framebuffer;
@@ -60,7 +66,7 @@ int main()
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
     const auto[w, h, c] = gfx::image_file::info("hdri/hdr/posx.hdr");
-    gl::texture cubemap(GL_TEXTURE_CUBE_MAP, w, h, GL_R11F_G11F_B10F);
+    gl::texture cubemap(GL_TEXTURE_2D_ARRAY, w, h, 6, GL_R11F_G11F_B10F);
     cubemap.assign(0,
                    0,
                    0,
@@ -116,6 +122,11 @@ int main()
                    GL_FLOAT,
                    gfx::image_file("hdri/hdr/negz.hdr", gfx::bits::b32, 3).bytes());
     cubemap.generate_mipmaps();
+
+    mygl::texture tex;
+    glGenTextures(1, &tex);
+    glTextureView(tex, GL_TEXTURE_CUBE_MAP, cubemap, cubemap.internal_format(), 0, cubemap.levels(), 0, 6);
+
     const gl::sampler sampler;
 
     gl::buffer<tracer_data> data(1, GL_DYNAMIC_STORAGE_BIT);
@@ -124,7 +135,7 @@ int main()
     data[0].ibo       = ibo.handle();
     data[0].bvh       = bvh.handle();
     data[0].linespace = 0; // grid_line_space_datas.handle();
-    data[0].cubemap   = sampler.sample(cubemap);
+    data[0].cubemap   = sampler.sample(tex);
     data[0].frames    = 10;
     data.synchronize();
 

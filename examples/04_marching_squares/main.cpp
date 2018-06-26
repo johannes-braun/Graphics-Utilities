@@ -1,4 +1,5 @@
 #include <gfx/gfx.hpp>
+#include <gli/gli.hpp>
 #include <glm/ext.hpp>
 
 int main()
@@ -11,10 +12,13 @@ int main()
     auto context                = gfx::context::create(options);
     context->make_current();
 
+    gfx::texture1d tex(512, gli::FORMAT_RGBA32_SFLOAT_PACK32);
+
     gfx::imgui      imgui;
     gfx::image_file img("Lena.png", gfx::bits::b8, 4);
     gl::texture     texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
     texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
+
     gl::sampler sampler;
 
     struct data
@@ -44,6 +48,11 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         imgui.new_frame();
 
+        gl::buffer<glm::u8vec4> unpack(img.width * img.height, GL_DYNAMIC_STORAGE_BIT);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, unpack);
+        glGetTextureImage(texture, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.width * img.height * 4, nullptr);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, mygl::buffer::zero);
+
         static float scale = 1.f;
         ImGui::Begin("Controls");
         ImGui::SliderFloat("Offset", &buf[0].offset, 0.f, 1.f);
@@ -59,8 +68,7 @@ int main()
         }
         ImGui::End();
         ctrl.update(camera);
-        buf[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) *
-                    glm::scale(glm::vec3(scale));
+        buf[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) * glm::scale(glm::vec3(scale));
 
         uniform_buffer << buf;
 

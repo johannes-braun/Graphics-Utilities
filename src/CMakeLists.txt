@@ -1,6 +1,6 @@
 set(gfx_dir ${var_source_dir}/gfx)
 
-file(GLOB_RECURSE gfx_sources *.cpp *.c)
+file(GLOB_RECURSE gfx_sources *.cpp *.c *.h *.hpp)
 
 message("INCLUDE DIRECTORY IS " ${var_include_dir})
 add_library(gfx ${gfx_sources})
@@ -14,7 +14,7 @@ target_include_directories(gfx
 message(${CMAKE_CURRENT_BINARY_DIR})
 
 target_compile_features(gfx PUBLIC cxx_std_17)
-target_link_libraries(gfx PUBLIC glm::glm jbraun::mygl jbraun::glsp glfw::glfw assimp::assimp eigen)
+target_link_libraries(gfx PUBLIC glm::glm gli::gli jbraun::mygl jbraun::glsp glfw::glfw assimp::assimp eigen)
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32)
 endif()
@@ -71,7 +71,8 @@ register_public_headers(gfx/graphics
     device_buffer.inl
     host_buffer.hpp
     host_buffer.inl
-    swapchain.hpp)
+    swapchain.hpp
+    texture.hpp)
 
 register_public_headers(gfx/data
     bvh.hpp

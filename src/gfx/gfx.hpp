@@ -2,8 +2,8 @@
 // This file has been generated with CMake
 
 // Includes for gfx:
-#include <gfx/camera.hpp>
 #include <gfx/context.hpp>
+#include <gfx/camera.hpp>
 #include <gfx/file.hpp>
 #include <gfx/flags.hpp>
 #include <gfx/geometry.hpp>
@@ -20,6 +20,7 @@
 #include <gfx/graphics/device_buffer.hpp>
 #include <gfx/graphics/host_buffer.hpp>
 #include <gfx/graphics/swapchain.hpp>
+#include <gfx/graphics/texture.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>
