@@ -10,7 +10,7 @@ namespace gfx
 {
 std::unique_ptr<detail::host_buffer_implementation> detail::make_host_buffer_implementation()
 {
-    switch(context::current()->graphics_api)
+    switch(context::current()->options().graphics_api)
     {
     case gapi::opengl:
         return std::make_unique<opengl::host_buffer_implementation>();

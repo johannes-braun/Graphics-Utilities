@@ -8,7 +8,7 @@ namespace gfx
 {
 std::unique_ptr<detail::device_buffer_implementation> detail::make_device_buffer_implementation()
 {
-    switch(context::current()->graphics_api)
+    switch(context::current()->options().graphics_api)
     {
     case gapi::opengl:
         return std::make_unique<opengl::device_buffer_implementation>();

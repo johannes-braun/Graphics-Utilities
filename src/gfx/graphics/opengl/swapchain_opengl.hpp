@@ -12,6 +12,7 @@ public:
     swapchain_implementation();
     uint32_t current_image() const noexcept override;
     void     present()                     override;
+    void     resize(uint32_t width, uint32_t height) override;
 
 private:
     std::weak_ptr<context> _context;

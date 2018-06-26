@@ -54,7 +54,7 @@ float next_random()
 
 vec3 environment(samplerCube map, vec3 direction, float clamp_color, int mip)
 {
-    return clamp(pow(textureLod(map, direction, mip).rgb, vec3(1/2.8f)), 0, clamp_color);
+    return clamp(pow(textureLod(map, direction, mip).rgb, vec3(1/1.75f)), 0, clamp_color);
 }
 
 struct light_path

@@ -70,9 +70,9 @@ imgui::imgui() noexcept
             io.AddInputCharacter(static_cast<unsigned short>(c));
     });
 
-    if(_gfx_context->graphics_api == gapi::opengl)
+    if(_gfx_context->options().graphics_api == gapi::opengl)
         _handler = std::make_unique<imgui_handler_opengl>(*this);
-    else if(_gfx_context->graphics_api == gapi::vulkan)
+    else if(_gfx_context->options().graphics_api == gapi::vulkan)
         _handler = std::make_unique<imgui_handler_vulkan>(*this);
 }
 

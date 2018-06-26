@@ -24,11 +24,14 @@ void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int lengt
 
 int main()
 {
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-    auto context = gfx::context::create(gfx::gapi::opengl, "[GL] PlaygroundNext", 1280, 720);
+    gfx::context_options options;
+    options.debug               = true;
+    options.window_title        = "[GL] Forward Renderer";
+    options.window_width        = 1280;
+    options.window_height       = 720;
+    options.framebuffer_samples = 8;
+    auto context                = gfx::context::create(options);
     context->make_current();
-    gfx::swapchain swapchain;
 
     gfx::imgui gui;
     context->key_callback.add([](GLFWwindow*, int k, int sc, int ac, int md) {
@@ -333,7 +336,5 @@ int main()
         }
         ImGui::End();
         gui.render();
-
-        swapchain.present();
     }
 }

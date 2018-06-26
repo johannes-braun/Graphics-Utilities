@@ -1,6 +1,7 @@
 #include "context_opengl.hpp"
 #include "swapchain_opengl.hpp"
 #include <gfx/log.hpp>
+#include <mygl/mygl.hpp>
 
 namespace gfx::opengl
 {
@@ -19,5 +20,10 @@ void swapchain_implementation::present()
         glfwSwapBuffers(_window);
         _current_image = (_current_image + 1) % 2;
     }
+}
+
+void swapchain_implementation::resize(uint32_t width, uint32_t height)
+{
+    glViewport(0, 0, width, height);
 }
 }

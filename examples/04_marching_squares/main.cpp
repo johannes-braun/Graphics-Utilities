@@ -3,37 +3,39 @@
 
 int main()
 {
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    auto context = gfx::context::create(gfx::gapi::opengl, "[04] Marching Squares", 1280, 720);
+    gfx::context_options options;
+    options.window_title        = "[03] Bidirectional Pathtracer";
+    options.window_height       = 720;
+    options.window_width        = 1280;
+    options.framebuffer_samples = 8;
+    auto context                = gfx::context::create(options);
     context->make_current();
-    gfx::swapchain swapchain;
 
-    gfx::imgui imgui;
+    gfx::imgui      imgui;
     gfx::image_file img("Lena.png", gfx::bits::b8, 4);
-    gl::texture texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
+    gl::texture     texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
     texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
     gl::sampler sampler;
 
     struct data
     {
         glm::mat4 vp;
-        float offset;
+        float     offset;
     };
     gfx::host_buffer<data>   buf(1);
     gfx::device_buffer<data> uniform_buffer(gfx::buffer_usage::uniform, 1);
     buf[0].offset = 0.5f;
 
-    gfx::camera camera;
+    gfx::camera            camera;
     gfx::camera_controller ctrl;
 
     gl::pipeline pp;
-    pp[GL_VERTEX_SHADER]    = std::make_shared<gl::shader>("04_marching_squares/seg.vert");
-    pp[GL_GEOMETRY_SHADER]  = std::make_shared<gl::shader>("04_marching_squares/seg.geom");
-    pp[GL_FRAGMENT_SHADER]  = std::make_shared<gl::shader>("04_marching_squares/seg.frag");
+    pp[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("04_marching_squares/seg.vert");
+    pp[GL_GEOMETRY_SHADER] = std::make_shared<gl::shader>("04_marching_squares/seg.geom");
+    pp[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("04_marching_squares/seg.frag");
 
-    context->key_callback.add([&](GLFWwindow*, int k, int s, int a, int m)
-    {
-        if (k == GLFW_KEY_R && a == GLFW_PRESS)
+    context->key_callback.add([&](GLFWwindow*, int k, int s, int a, int m) {
+        if(k == GLFW_KEY_R && a == GLFW_PRESS)
             pp.reload();
     });
 
@@ -48,16 +50,17 @@ int main()
         ImGui::DragFloat("Scale", &scale, 0.1f, 0.f, 1.f);
         if(ImGui::Button("Load Image"))
         {
-            if (auto file = gfx::file::open_dialog("Load Image", "./", { "*.png", "*.jpg", "*.bmp" }))
+            if(auto file = gfx::file::open_dialog("Load Image", "./", {"*.png", "*.jpg", "*.bmp"}))
             {
-                img = gfx::image_file(file.value(), gfx::bits::b8, 4);
+                img     = gfx::image_file(file.value(), gfx::bits::b8, 4);
                 texture = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
                 texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
             }
         }
         ImGui::End();
         ctrl.update(camera);
-        buf[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) * glm::scale(glm::vec3(scale));
+        buf[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) *
+                    glm::scale(glm::vec3(scale));
 
         uniform_buffer << buf;
 
@@ -65,10 +68,9 @@ int main()
         sampler.bind(0);
         texture.bind(0);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer.api_handle<mygl::buffer>());
-        pp.draw(GL_POINTS, (img.width-1)*(img.height-1));
+        pp.draw(GL_POINTS, (img.width - 1) * (img.height - 1));
 
         imgui.render();
-        swapchain.present();
     }
 
     return 0;
