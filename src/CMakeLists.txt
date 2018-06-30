@@ -71,6 +71,9 @@ register_public_headers(gfx/graphics
     device_buffer.inl
     host_buffer.hpp
     host_buffer.inl
+    device_image.hpp
+    host_image.hpp
+    host_image.inl
     swapchain.hpp
     texture.hpp)
 

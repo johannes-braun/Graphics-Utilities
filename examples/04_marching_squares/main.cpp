@@ -12,8 +12,6 @@ int main()
     auto context                = gfx::context::create(options);
     context->make_current();
 
-    gfx::texture1d tex(512, gli::FORMAT_RGBA32_SFLOAT_PACK32);
-
     gfx::imgui      imgui;
     gfx::image_file img("Lena.png", gfx::bits::b8, 4);
     gl::texture     texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);

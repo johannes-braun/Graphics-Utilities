@@ -22,5 +22,5 @@ std::byte* host_buffer_implementation::grow(const std::byte* old_data, const siz
     return mapped;
 }
 
-mygl::buffer host_buffer_implementation::handle() const noexcept { return _handle; }
+std::any host_buffer_implementation::api_handle() { return _handle; }
 } // namespace gfx

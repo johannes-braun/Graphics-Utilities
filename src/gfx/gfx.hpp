@@ -19,8 +19,9 @@
 // Includes for gfx/graphics:
 #include <gfx/graphics/device_buffer.hpp>
 #include <gfx/graphics/host_buffer.hpp>
+#include <gfx/graphics/device_image.hpp>
+#include <gfx/graphics/host_image.hpp>
 #include <gfx/graphics/swapchain.hpp>
-#include <gfx/graphics/texture.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>

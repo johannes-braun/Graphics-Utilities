@@ -2,6 +2,7 @@
 #include <execution>
 #include <memory>
 #include <numeric>
+#include <any>
 
 namespace std
 {
@@ -24,6 +25,7 @@ namespace detail
         virtual ~host_buffer_implementation() = default;
 
         virtual std::byte* grow(const std::byte* old_data, size_type old_size, size_type new_capacity) = 0;
+        virtual std::any   api_handle() = 0;
     };
     std::unique_ptr<host_buffer_implementation> make_host_buffer_implementation();
 } // namespace detail
@@ -62,8 +64,10 @@ public:
     reference       operator[](size_type index);
     const_reference operator[](size_type index) const;
 
-    size_type size() const noexcept;
-    bool      empty() const noexcept;
+    size_type     size() const noexcept;
+    bool          empty() const noexcept;
+    pointer       data() noexcept;
+    const_pointer data() const noexcept;
 
     iterator               begin() noexcept { return _data; }
     iterator               end() noexcept { return _data + _size; }
@@ -85,6 +89,8 @@ public:
 
     template <bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>> void resize(size_type elements);
     void resize(size_type elements, const_reference base);
+
+    template <typename H = std::any> H api_handle() const;
 
 private:
     static const std::byte* byte_ptr(const_pointer ptr);

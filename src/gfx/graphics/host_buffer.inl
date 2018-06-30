@@ -77,6 +77,8 @@ template <typename T> typename host_buffer<T>::reference host_buffer<T>::operato
 template <typename T> typename host_buffer<T>::const_reference host_buffer<T>::operator[](const size_type index) const { return at(index); }
 template <typename T> typename host_buffer<T>::size_type                       host_buffer<T>::size() const noexcept { return _size; }
 template <typename T> bool                                                     host_buffer<T>::empty() const noexcept { return _size == 0; }
+template <typename T> typename host_buffer<T>::pointer                         host_buffer<T>::data() noexcept { return _data; }
+template <typename T> typename host_buffer<T>::const_pointer                   host_buffer<T>::data() const noexcept { return _data; }
 template <typename T> typename host_buffer<T>::iterator                        host_buffer<T>::find(const_reference object) noexcept
 {
     return std::find(begin(), end(), object);
@@ -93,4 +95,12 @@ template <typename T> typename host_buffer<T>::const_pointer host_buffer<T>::typ
     return reinterpret_cast<const_pointer>(ptr);
 }
 template <typename T> typename host_buffer<T>::pointer host_buffer<T>::type_ptr(std::byte* ptr) { return reinterpret_cast<pointer>(ptr); }
+
+template <typename T> template <typename H> H host_buffer<T>::api_handle() const
+{
+    if constexpr(std::is_same_v<H, std::any>)
+        return _implementation->api_handle();
+    else
+        return std::any_cast<H>(_implementation->api_handle());
+}
 }

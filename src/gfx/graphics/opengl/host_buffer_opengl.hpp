@@ -13,7 +13,7 @@ public:
     host_buffer_implementation();
     ~host_buffer_implementation();
     std::byte*   grow(const std::byte* old_data, size_type old_size, size_type new_capacity) override;
-    mygl::buffer handle() const noexcept;
+    std::any api_handle() override;
 
 private:
     mygl::buffer _handle;

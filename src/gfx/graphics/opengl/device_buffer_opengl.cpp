@@ -33,9 +33,9 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
         if(impl.type() == typeid(detail::host_buffer_implementation*))
         {
             mapped = true;
-            return static_cast<host_buffer_implementation*>(
+            return std::any_cast<mygl::buffer>(static_cast<host_buffer_implementation*>(
                            std::any_cast<detail::host_buffer_implementation*>(impl))
-                    ->handle();
+                    ->api_handle());
         }
         else if(impl.type() == typeid(detail::device_buffer_implementation*))
         {
@@ -53,6 +53,7 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
     const mygl::buffer dst_handle = get_handle(target, dst_mapped);
 
     glCopyNamedBufferSubData(src_handle, dst_handle, src_offset, dst_offset, size);
+    glFinish();
 }
 
 void device_buffer_implementation::update(difference_type offset, size_type size,
