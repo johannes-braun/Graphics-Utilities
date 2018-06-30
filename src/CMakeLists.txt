@@ -75,7 +75,7 @@ register_public_headers(gfx/graphics
     host_image.hpp
     host_image.inl
     swapchain.hpp
-    texture.hpp)
+    sampler.hpp)
 
 register_public_headers(gfx/data
     bvh.hpp

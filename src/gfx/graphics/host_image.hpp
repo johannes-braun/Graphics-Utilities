@@ -4,6 +4,7 @@
 #include <gfx/file.hpp>
 #include <glm/ext.hpp>
 #include <vector>
+#include <functional>
 
 namespace gfx
 {
@@ -120,6 +121,13 @@ public:
 
     const extent& extents() const noexcept;
 
+    glm::vec4  load(const glm::uvec3& pixel) const;
+    glm::uvec4 loadu(const glm::uvec3& pixel) const;
+    glm::ivec4 loadi(const glm::uvec3& pixel) const;
+    void       store(const glm::uvec3& pixel, const glm::vec4& p) ;
+    void       storeu(const glm::uvec3& pixel, const glm::uvec4& p) ;
+    void       storei(const glm::uvec3& pixel, const glm::ivec4& p) ;
+
 private:
     std::function<void(const glm::vec4&, int64_t i)> get_write_unorm_fun();
 
@@ -129,6 +137,6 @@ private:
     host_buffer<std::byte>                             _storage;
     std::function<void(const glm::vec4& v, int64_t i)> _write_unorm;
 };
-}
+} // namespace gfx
 
 #include "host_image.inl"

@@ -72,7 +72,6 @@ size_t format_element_size(img_format format)
     return 1;
 }
 
-
 host_image::host_image(img_format format, const extent& size)
         : _format(format)
         , _extent(size)
@@ -120,6 +119,369 @@ glm::vec4 to_vec4(data_format fmt, uint8_t* unorm_data)
         return {unorm_data[0] / 255.f, unorm_data[1] / 255.f, unorm_data[2] / 255.f, unorm_data[3] / 255.f};
     default:
         return {0, 0, 0, 1};
+    }
+}
+
+glm::vec4 host_image::load(const glm::uvec3& pixel) const
+{
+    const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
+
+    switch(_format)
+    {
+    case r8unorm:
+        return glm::vec4(*reinterpret_cast<const uint8_t*>(&_storage[index]), 0, 0, 255) / 255.f;
+    case r8snorm:
+        return glm::vec4(*reinterpret_cast<const int8_t*>(&_storage[index]), 0, 0, 255) / 255.f;
+    case rg8unorm:
+        return glm::vec4(*reinterpret_cast<const glm::u8vec2*>(&_storage[index]), 0, 255) / 255.f;
+    case rg8snorm:
+        return glm::vec4(*reinterpret_cast<const glm::i8vec2*>(&_storage[index]), 0, 255) / 255.f;
+    case rgb8unorm:
+        return glm::vec4(*reinterpret_cast<const glm::u8vec3*>(&_storage[index]), 255) / 255.f;
+    case rgb8snorm:
+        return glm::vec4(*reinterpret_cast<const glm::i8vec3*>(&_storage[index]), 255) / 255.f;
+    case rgba8unorm:
+        return glm::vec4(*reinterpret_cast<const glm::u8vec4*>(&_storage[index])) / 255.f;
+    case rgba8snorm:
+        return glm::vec4(*reinterpret_cast<const glm::i8vec4*>(&_storage[index])) / 255.f;
+
+    case r16unorm:
+        return glm::vec4(*reinterpret_cast<const uint16_t*>(&_storage[index]), 0, 0, std::numeric_limits<uint16_t>::max()) /
+               float(std::numeric_limits<uint16_t>::max());
+    case r16snorm:
+        return glm::vec4(*reinterpret_cast<const int16_t*>(&_storage[index]), 0, 0, std::numeric_limits<uint16_t>::max()) /
+               float(std::numeric_limits<uint16_t>::max());
+    case rg16unorm:
+        return glm::vec4(*reinterpret_cast<const glm::u16vec2*>(&_storage[index]), 0, std::numeric_limits<uint16_t>::max()) /
+               float(std::numeric_limits<uint16_t>::max());
+    case rg16snorm:
+        return glm::vec4(*reinterpret_cast<const glm::i16vec2*>(&_storage[index]), 0, std::numeric_limits<uint16_t>::max()) /
+               float(std::numeric_limits<uint16_t>::max());
+    case rgb16unorm:
+        return glm::vec4(*reinterpret_cast<const glm::u16vec3*>(&_storage[index]), std::numeric_limits<uint16_t>::max()) /
+               float(std::numeric_limits<uint16_t>::max());
+    case rgb16snorm:
+        return glm::vec4(*reinterpret_cast<const glm::i16vec3*>(&_storage[index]), std::numeric_limits<uint16_t>::max()) /
+               float(std::numeric_limits<uint16_t>::max());
+    case rgba16unorm:
+        return glm::vec4(*reinterpret_cast<const glm::u16vec4*>(&_storage[index])) / float(std::numeric_limits<uint16_t>::max());
+    case rgba16snorm:
+        return glm::vec4(*reinterpret_cast<const glm::i16vec4*>(&_storage[index])) / float(std::numeric_limits<uint16_t>::max());
+
+    case r5g6b5unorm:
+        return glm::vec4(glm::unpackUnorm1x5_1x6_1x5(*reinterpret_cast<const uint16_t*>(&_storage[index])), 1);
+    case rgb5a1unorm:
+        return glm::vec4(glm::unpackUnorm3x5_1x1(*reinterpret_cast<const uint16_t*>(&_storage[index])));
+
+    case rgb10a2snorm:
+        return glm::vec4(glm::unpackSnorm3x10_1x2(*reinterpret_cast<const uint32_t*>(&_storage[index])));
+    case rgb10a2unorm:
+        return glm::vec4(glm::unpackUnorm3x10_1x2(*reinterpret_cast<const uint32_t*>(&_storage[index])));
+
+    case r11g11b10f:
+        return glm::vec4(glm::unpackF2x11_1x10(*reinterpret_cast<const uint32_t*>(&_storage[index])), 1.f);
+    case rgb9e5:
+        return glm::vec4(glm::unpackF3x9_E1x5(*reinterpret_cast<const uint32_t*>(&_storage[index])), 1.f);
+
+    case r16f:
+        return glm::vec4(glm::unpackHalf1x16(*reinterpret_cast<const uint16_t*>(&_storage[index])), 0, 0, 1.f);
+    case rg16f:
+        return glm::vec4(glm::unpackHalf2x16(*reinterpret_cast<const uint32_t*>(&_storage[index])), 0, 1.f);
+    case rgb16f:
+        return glm::vec4(glm::unpackHalf<3, glm::defaultp>(*reinterpret_cast<const glm::u16vec3*>(&_storage[index])), 1.f);
+    case rgba16f:
+        return glm::vec4(glm::unpackHalf4x16(*reinterpret_cast<const uint64_t*>(&_storage[index])));
+
+    case r32f:
+        return glm::vec4(*reinterpret_cast<const float*>(&_storage[index]), 0, 0, 1);
+    case rg32f:
+        return glm::vec4(*reinterpret_cast<const glm::vec2*>(&_storage[index]), 0, 1);
+    case rgb32f:
+        return glm::vec4(*reinterpret_cast<const glm::vec3*>(&_storage[index]), 1);
+    case rgba32f:
+        return *reinterpret_cast<const glm::vec4*>(&_storage[index]);
+
+    default:
+        throw std::invalid_argument("Cannot call load4f on a non-normalized or non-floating-point image.");
+    }
+}
+
+glm::uvec4 host_image::loadu(const glm::uvec3& pixel) const
+{
+    const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
+    switch(_format)
+    {
+    case r8u:
+        return glm::uvec4(*reinterpret_cast<const uint8_t*>(&_storage[index]), 0, 0, 0);
+    case rg8u:
+        return glm::uvec4(*reinterpret_cast<const glm::u8vec2*>(&_storage[index]), 0, 0);
+    case rgb8u:
+        return glm::uvec4(*reinterpret_cast<const glm::u8vec3*>(&_storage[index]), 0);
+    case rgba8u:
+        return glm::uvec4(*reinterpret_cast<const glm::u8vec4*>(&_storage[index]));
+
+    case r16u:
+        return glm::uvec4(*reinterpret_cast<const uint16_t*>(&_storage[index]), 0, 0, 0);
+    case rg16u:
+        return glm::uvec4(*reinterpret_cast<const glm::u16vec2*>(&_storage[index]), 0, 0);
+    case rgb16u:
+        return glm::uvec4(*reinterpret_cast<const glm::u16vec3*>(&_storage[index]), 0);
+    case rgba16u:
+        return glm::uvec4(*reinterpret_cast<const glm::u16vec4*>(&_storage[index]));
+
+    case r32u:
+        return glm::uvec4(*reinterpret_cast<const uint32_t*>(&_storage[index]), 0, 0, 0);
+    case rg32u:
+        return glm::uvec4(*reinterpret_cast<const glm::u32vec2*>(&_storage[index]), 0, 0);
+    case rgb32u:
+        return glm::uvec4(*reinterpret_cast<const glm::u32vec3*>(&_storage[index]), 0);
+    case rgba32u:
+        return glm::uvec4(*reinterpret_cast<const glm::u32vec4*>(&_storage[index]));
+
+    default:
+        throw std::invalid_argument("Cannot call load4u on an image which has no uint type.");
+    }
+}
+
+glm::ivec4 host_image::loadi(const glm::uvec3& pixel) const
+{
+    const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
+    switch(_format)
+    {
+    case r8i:
+        return glm::ivec4(*reinterpret_cast<const int8_t*>(&_storage[index]), 0, 0, 0);
+    case rg8i:
+        return glm::ivec4(*reinterpret_cast<const glm::i8vec2*>(&_storage[index]), 0, 0);
+    case rgb8i:
+        return glm::ivec4(*reinterpret_cast<const glm::i8vec3*>(&_storage[index]), 0);
+    case rgba8i:
+        return glm::ivec4(*reinterpret_cast<const glm::i8vec4*>(&_storage[index]));
+
+    case r16i:
+        return glm::ivec4(*reinterpret_cast<const int16_t*>(&_storage[index]), 0, 0, 0);
+    case rg16i:
+        return glm::ivec4(*reinterpret_cast<const glm::i16vec2*>(&_storage[index]), 0, 0);
+    case rgb16i:
+        return glm::ivec4(*reinterpret_cast<const glm::i16vec3*>(&_storage[index]), 0);
+    case rgba16i:
+        return glm::ivec4(*reinterpret_cast<const glm::i16vec4*>(&_storage[index]));
+
+    case r32i:
+        return glm::ivec4(*reinterpret_cast<const int32_t*>(&_storage[index]), 0, 0, 0);
+    case rg32i:
+        return glm::ivec4(*reinterpret_cast<const glm::i32vec2*>(&_storage[index]), 0, 0);
+    case rgb32i:
+        return glm::ivec4(*reinterpret_cast<const glm::i32vec3*>(&_storage[index]), 0);
+    case rgba32i:
+        return glm::ivec4(*reinterpret_cast<const glm::i32vec4*>(&_storage[index]));
+
+    default:
+        throw std::invalid_argument("Cannot call load4u on an image which has no uint type.");
+    }
+}
+
+void host_image::store(const glm::uvec3& pixel, const glm::vec4& p)
+{
+    const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
+    switch(_format)
+    {
+    case r8unorm:
+        *reinterpret_cast<uint8_t*>(&_storage[index]) = uint8_t(p.x * 255.f);
+        break;
+    case r8snorm:
+        *reinterpret_cast<int8_t*>(&_storage[index]) = int8_t(p.x * 255.f);
+        break;
+    case rg8unorm:
+        *reinterpret_cast<glm::u8vec2*>(&_storage[index]) = glm::u8vec2(p * 255.f);
+        break;
+    case rg8snorm:
+        *reinterpret_cast<glm::i8vec2*>(&_storage[index]) = glm::i8vec2(p * 255.f);
+        break;
+    case rgb8unorm:
+        *reinterpret_cast<glm::u8vec3*>(&_storage[index]) = glm::u8vec3(p * 255.f);
+        break;
+    case rgb8snorm:
+        *reinterpret_cast<glm::u8vec3*>(&_storage[index]) = glm::u8vec3(p * 255.f);
+        break;
+    case rgba8unorm:
+        *reinterpret_cast<glm::u8vec4*>(&_storage[index]) = glm::u8vec4(p * 255.f);
+        break;
+    case rgba8snorm:
+        *reinterpret_cast<glm::i8vec4*>(&_storage[index]) = glm::i8vec4(p * 255.f);
+        break;
+
+    case r16unorm:
+        *reinterpret_cast<uint16_t*>(&_storage[index]) = uint16_t(p.x * 255.f);
+        break;
+    case r16snorm:
+        *reinterpret_cast<int16_t*>(&_storage[index]) = int16_t(p.x * 255.f);
+        break;
+    case rg16unorm:
+        *reinterpret_cast<glm::u16vec2*>(&_storage[index]) = glm::u16vec2(p * 255.f);
+        break;
+    case rg16snorm:
+        *reinterpret_cast<glm::i16vec2*>(&_storage[index]) = glm::i16vec2(p * 255.f);
+        break;
+    case rgb16unorm:
+        *reinterpret_cast<glm::u16vec3*>(&_storage[index]) = glm::u16vec3(p * 255.f);
+        break;
+    case rgb16snorm:
+        *reinterpret_cast<glm::u16vec3*>(&_storage[index]) = glm::u16vec3(p * 255.f);
+        break;
+    case rgba16unorm:
+        *reinterpret_cast<glm::u16vec4*>(&_storage[index]) = glm::u16vec4(p * 255.f);
+        break;
+    case rgba16snorm:
+        *reinterpret_cast<glm::i16vec4*>(&_storage[index]) = glm::i16vec4(p * 255.f);
+        break;
+
+    case r5g6b5unorm:
+        *reinterpret_cast<uint16_t*>(&_storage[index]) = glm::packUnorm1x5_1x6_1x5(p);
+        break;
+    case rgb5a1unorm:
+        *reinterpret_cast<uint16_t*>(&_storage[index]) = glm::packUnorm3x5_1x1(p);
+        break;
+
+    case rgb10a2snorm:
+        *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packSnorm3x10_1x2(p);
+        break;
+    case rgb10a2unorm:
+        *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packUnorm3x10_1x2(p);
+        break;
+
+    case r11g11b10f:
+        *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packF2x11_1x10(p);
+        break;
+    case rgb9e5:
+        *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packF3x9_E1x5(p);
+        break;
+
+    case r16f:
+        *reinterpret_cast<uint16_t*>(&_storage[index]) = glm::packHalf1x16(p.x);
+        break;
+    case rg16f:
+        *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packHalf2x16(p);
+        break;
+    case rgb16f:
+        *reinterpret_cast<glm::u16vec3*>(&_storage[index]) = glm::packHalf<3, glm::defaultp>(p);
+        break;
+    case rgba16f:
+        *reinterpret_cast<uint64_t*>(&_storage[index]) = glm::packHalf4x16(p);
+        break;
+
+    case r32f:
+        *reinterpret_cast<float*>(&_storage[index]) = p.x;
+        break;
+    case rg32f:
+        *reinterpret_cast<glm::vec2*>(&_storage[index]) = p;
+        break;
+    case rgb32f:
+        *reinterpret_cast<glm::vec3*>(&_storage[index]) = p;
+        break;
+    case rgba32f:
+        *reinterpret_cast<glm::vec4*>(&_storage[index]) = p;
+        break;
+
+    default:
+        throw std::invalid_argument("Cannot call storef on a non-normalized or non-floating-point image.");
+    }
+}
+
+void host_image::storeu(const glm::uvec3& pixel, const glm::uvec4& p)
+{
+    const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
+    switch(_format)
+    {
+    case r8i:
+        *reinterpret_cast<glm::u8vec1*>(&_storage[index]) = p;
+        break;
+    case rg8i:
+        *reinterpret_cast<glm::u8vec2*>(&_storage[index]) = p;
+        break;
+    case rgb8i:
+        *reinterpret_cast<glm::u8vec3*>(&_storage[index]) = p;
+        break;
+    case rgba8i:
+        *reinterpret_cast<glm::u8vec4*>(&_storage[index]) = p;
+        break;
+
+    case r16i:
+        *reinterpret_cast<glm::u16vec1*>(&_storage[index]) = p;
+        break;
+    case rg16i:
+        *reinterpret_cast<glm::u16vec2*>(&_storage[index]) = p;
+        break;
+    case rgb16i:
+        *reinterpret_cast<glm::u16vec3*>(&_storage[index]) = p;
+        break;
+    case rgba16i:
+        *reinterpret_cast<glm::u16vec4*>(&_storage[index]) = p;
+        break;
+
+    case r32i:
+        *reinterpret_cast<glm::u32vec1*>(&_storage[index]) = p;
+        break;
+    case rg32i:
+        *reinterpret_cast<glm::u32vec2*>(&_storage[index]) = p;
+        break;
+    case rgb32i:
+        *reinterpret_cast<glm::u32vec3*>(&_storage[index]) = p;
+        break;
+    case rgba32i:
+        *reinterpret_cast<glm::u32vec4*>(&_storage[index]) = p;
+        break;
+
+    default:
+        throw std::invalid_argument("Cannot call storeu on an image which has no uint type.");
+    }
+}
+
+void host_image::storei(const glm::uvec3& pixel, const glm::ivec4& p)
+{
+    const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
+    switch(_format)
+    {
+    case r8i:
+        *reinterpret_cast<glm::i8vec1*>(&_storage[index]) = p;
+        break;
+    case rg8i:
+        *reinterpret_cast<glm::i8vec2*>(&_storage[index]) = p;
+        break;
+    case rgb8i:
+        *reinterpret_cast<glm::i8vec3*>(&_storage[index]) = p;
+        break;
+    case rgba8i:
+        *reinterpret_cast<glm::i8vec4*>(&_storage[index]) = p;
+        break;
+
+    case r16i:
+        *reinterpret_cast<glm::i16vec1*>(&_storage[index]) = p;
+        break;
+    case rg16i:
+        *reinterpret_cast<glm::i16vec2*>(&_storage[index]) = p;
+        break;
+    case rgb16i:
+        *reinterpret_cast<glm::i16vec3*>(&_storage[index]) = p;
+        break;
+    case rgba16i:
+        *reinterpret_cast<glm::i16vec4*>(&_storage[index]) = p;
+        break;
+
+    case r32i:
+        *reinterpret_cast<glm::i32vec1*>(&_storage[index]) = p;
+        break;
+    case rg32i:
+        *reinterpret_cast<glm::i32vec2*>(&_storage[index]) = p;
+        break;
+    case rgb32i:
+        *reinterpret_cast<glm::i32vec3*>(&_storage[index]) = p;
+        break;
+    case rgba32i:
+        *reinterpret_cast<glm::i32vec4*>(&_storage[index]) = p;
+        break;
+
+    default:
+        throw std::invalid_argument("Cannot call storeu on an image which has no uint type.");
     }
 }
 
@@ -200,6 +562,8 @@ std::function<void(const glm::vec4& v, int64_t i)> host_image::get_write_unorm_f
         return pack_fun([](const auto& v) { return glm::vec3(v); });
     case rgba32f:
         return pack_fun([](const auto& v) { return glm::vec4(v); });
+    default:
+        break;
     }
     return pack_fun([](const auto& v) { return glm::vec4(v); });
 }
@@ -221,7 +585,7 @@ void host_image::update(data_format format, const uint8_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -236,7 +600,7 @@ void host_image::update(data_format format, const uint8_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -251,7 +615,7 @@ void host_image::update(data_format format, const uint8_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -269,7 +633,7 @@ void host_image::update(data_format format, const uint8_t* data)
             data_type max_val = _format == rgba8unorm ? std::numeric_limits<data_type>::max()
                                                       : (_format == rgba8snorm ? std::numeric_limits<data_type>::max() : 0);
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
             {
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
                 memcpy(&(_storage.data()[_storage_element_size * i + 3 * sizeof(max_val)]), &max_val, sizeof(max_val));
@@ -278,6 +642,8 @@ void host_image::update(data_format format, const uint8_t* data)
         break;
         }
         return;
+    default:
+        break;
     }
 
     //... or widen to u16 or u32
@@ -293,7 +659,7 @@ void host_image::update(data_format format, const uint8_t* data)
     case rgba16i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u16vec4 u16v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -315,7 +681,7 @@ void host_image::update(data_format format, const uint8_t* data)
     case rgba32i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u32vec4 u32v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -327,10 +693,12 @@ void host_image::update(data_format format, const uint8_t* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
@@ -358,7 +726,7 @@ void host_image::update(data_format format, const uint16_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -373,7 +741,7 @@ void host_image::update(data_format format, const uint16_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -388,7 +756,7 @@ void host_image::update(data_format format, const uint16_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -406,7 +774,7 @@ void host_image::update(data_format format, const uint16_t* data)
             data_type max_val = _format == rgba16unorm ? std::numeric_limits<data_type>::max()
                                                        : (_format == rgba16snorm ? std::numeric_limits<data_type>::max() : 0);
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
             {
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
                 memcpy(&(_storage.data()[_storage_element_size * i + 3 * sizeof(max_val)]), &max_val, sizeof(max_val));
@@ -415,6 +783,8 @@ void host_image::update(data_format format, const uint16_t* data)
         break;
         }
         return;
+    default:
+        break;
     }
 
     //... or widen to u16 or u32
@@ -430,11 +800,11 @@ void host_image::update(data_format format, const uint16_t* data)
     case rgba8i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u8vec4 u8v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
-                u8v4[c] = data[data_components * i + c];
+                u8v4[c] = static_cast<uint8_t>(data[data_components * i + c]);
 
             memcpy(&(_storage.data()[_storage_element_size * i]),
                    &u8v4,
@@ -452,7 +822,7 @@ void host_image::update(data_format format, const uint16_t* data)
     case rgba32i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u32vec4 u32v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -464,10 +834,12 @@ void host_image::update(data_format format, const uint16_t* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
@@ -495,7 +867,7 @@ void host_image::update(data_format format, const uint32_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -510,7 +882,7 @@ void host_image::update(data_format format, const uint32_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -525,7 +897,7 @@ void host_image::update(data_format format, const uint32_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -543,7 +915,7 @@ void host_image::update(data_format format, const uint32_t* data)
             data_type max_val = _format == rgba16unorm ? std::numeric_limits<data_type>::max()
                                                        : (_format == rgba16snorm ? std::numeric_limits<data_type>::max() : 0);
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
             {
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
                 memcpy(&(_storage.data()[_storage_element_size * i + 3 * sizeof(max_val)]), &max_val, sizeof(max_val));
@@ -552,6 +924,8 @@ void host_image::update(data_format format, const uint32_t* data)
         break;
         }
         return;
+    default:
+        break;
     }
 
     //... or widen to u16 or u32
@@ -567,7 +941,7 @@ void host_image::update(data_format format, const uint32_t* data)
     case rgba8i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u8vec4 u8v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -589,7 +963,7 @@ void host_image::update(data_format format, const uint32_t* data)
     case rgba16i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u16vec4 u16v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -601,10 +975,12 @@ void host_image::update(data_format format, const uint32_t* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
@@ -632,7 +1008,7 @@ void host_image::update(data_format format, const int8_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -647,7 +1023,7 @@ void host_image::update(data_format format, const int8_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -662,7 +1038,7 @@ void host_image::update(data_format format, const int8_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -680,7 +1056,7 @@ void host_image::update(data_format format, const int8_t* data)
             data_type max_val = _format == rgba8unorm ? std::numeric_limits<data_type>::max()
                                                       : (_format == rgba8snorm ? std::numeric_limits<data_type>::max() : 0);
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
             {
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
                 memcpy(&(_storage.data()[_storage_element_size * i + 3 * sizeof(max_val)]), &max_val, sizeof(max_val));
@@ -689,6 +1065,8 @@ void host_image::update(data_format format, const int8_t* data)
         break;
         }
         return;
+    default:
+        break;
     }
 
     //... or widen to u16 or u32
@@ -704,7 +1082,7 @@ void host_image::update(data_format format, const int8_t* data)
     case rgba16i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u16vec4 u16v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -726,7 +1104,7 @@ void host_image::update(data_format format, const int8_t* data)
     case rgba32i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u32vec4 u32v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -738,10 +1116,12 @@ void host_image::update(data_format format, const int8_t* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
@@ -769,7 +1149,7 @@ void host_image::update(data_format format, const int16_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -784,7 +1164,7 @@ void host_image::update(data_format format, const int16_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -799,7 +1179,7 @@ void host_image::update(data_format format, const int16_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -817,7 +1197,7 @@ void host_image::update(data_format format, const int16_t* data)
             data_type max_val = _format == rgba16unorm ? std::numeric_limits<data_type>::max()
                                                        : (_format == rgba16snorm ? std::numeric_limits<data_type>::max() : 0);
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
             {
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
                 memcpy(&(_storage.data()[_storage_element_size * i + 3 * sizeof(max_val)]), &max_val, sizeof(max_val));
@@ -826,6 +1206,8 @@ void host_image::update(data_format format, const int16_t* data)
         break;
         }
         return;
+    default:
+        break;
     }
 
     //... or widen to u16 or u32
@@ -841,11 +1223,11 @@ void host_image::update(data_format format, const int16_t* data)
     case rgba8i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u8vec4 u8v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
-                u8v4[c] = data[data_components * i + c];
+                u8v4[c] = static_cast<uint8_t>(data[data_components * i + c]);
 
             memcpy(&(_storage.data()[_storage_element_size * i]),
                    &u8v4,
@@ -863,7 +1245,7 @@ void host_image::update(data_format format, const int16_t* data)
     case rgba32i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u32vec4 u32v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -875,10 +1257,12 @@ void host_image::update(data_format format, const int16_t* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
@@ -906,7 +1290,7 @@ void host_image::update(data_format format, const int32_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -921,7 +1305,7 @@ void host_image::update(data_format format, const int32_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -936,7 +1320,7 @@ void host_image::update(data_format format, const int32_t* data)
             break;
         default:
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
             break;
         }
@@ -954,7 +1338,7 @@ void host_image::update(data_format format, const int32_t* data)
             data_type max_val = _format == rgba16unorm ? std::numeric_limits<data_type>::max()
                                                        : (_format == rgba16snorm ? std::numeric_limits<data_type>::max() : 0);
 #pragma omp parallel for schedule(static)
-            for(int64_t i = 0; i < _extent.count(); ++i)
+            for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
             {
                 memcpy(&(_storage.data()[_storage_element_size * i]), &(data[data_components * i]), data_size);
                 memcpy(&(_storage.data()[_storage_element_size * i + 3 * sizeof(max_val)]), &max_val, sizeof(max_val));
@@ -963,6 +1347,8 @@ void host_image::update(data_format format, const int32_t* data)
         break;
         }
         return;
+    default:
+        break;
     }
 
     //... or widen to u16 or u32
@@ -978,7 +1364,7 @@ void host_image::update(data_format format, const int32_t* data)
     case rgba8i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u8vec4 u8v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -1000,7 +1386,7 @@ void host_image::update(data_format format, const int32_t* data)
     case rgba16i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u16vec4 u16v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
@@ -1012,10 +1398,12 @@ void host_image::update(data_format format, const int32_t* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
@@ -1044,11 +1432,11 @@ void host_image::update(data_format format, const float* data)
     case rgba8i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u8vec4 u8v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
-                u8v4[c] = data[data_components * i + c];
+                u8v4[c] = static_cast<uint8_t>(data[data_components * i + c]);
 
             memcpy(&(_storage.data()[_storage_element_size * i]),
                    &u8v4,
@@ -1066,11 +1454,11 @@ void host_image::update(data_format format, const float* data)
     case rgba16i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u16vec4 u16v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
-                u16v4[c] = data[data_components * i + c];
+                u16v4[c] = static_cast<uint16_t>(data[data_components * i + c]);
 
             memcpy(&(_storage.data()[_storage_element_size * i]),
                    &u16v4,
@@ -1088,11 +1476,11 @@ void host_image::update(data_format format, const float* data)
     case rgba32i:
     {
 #pragma omp parallel for schedule(static)
-        for(int64_t i = 0; i < _extent.count(); ++i)
+        for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
         {
             glm::u32vec4 u32v4{0, 0, 0, 0};
             for(int c = 0; c < data_components; ++c)
-                u32v4[c] = data[data_components * i + c];
+                u32v4[c] = static_cast<uint32_t>(data[data_components * i + c]);
 
             memcpy(&(_storage.data()[_storage_element_size * i]),
                    &u32v4,
@@ -1100,10 +1488,12 @@ void host_image::update(data_format format, const float* data)
         }
     }
         return;
+    default:
+        break;
     }
 
 #pragma omp parallel for schedule(static)
-    for(int64_t i = 0; i < _extent.count(); ++i)
+    for(int64_t i = 0; i < static_cast<int64_t>(_extent.count()); ++i)
     {
         glm::vec4 unpacked{0, 0, 0, 1};
         for(int c = 0; c < data_components; ++c)
