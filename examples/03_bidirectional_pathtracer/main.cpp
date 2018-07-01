@@ -74,7 +74,6 @@ int main()
     gfx::sampler sampler;
 
     gfx::host_buffer<tracer_data>   data_buffer(1);
-    gfx::device_buffer<tracer_data> provider_buffers[2] = {{gfx::buffer_usage::storage, 1}, {gfx::buffer_usage::storage, 1}};
 
     const auto get_handle = [](const auto& buf) -> uint64_t {
         uint64_t hnd;
@@ -102,9 +101,8 @@ int main()
         data_buffer[0].camera_matrix   = camera_matrix;
         data_buffer[0].camera_position = glm::vec4(camera.transform.position, 1.f);
         data_buffer[0].seed            = dist(gen);
-        provider_buffers[context->swapchain()->current_image()] << data_buffer;
 
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, provider_buffers[context->swapchain()->current_image()]);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer);
         tracer->dispatch(1280, 720);
 
         framebuffer.blit(nullptr, GL_COLOR_BUFFER_BIT);

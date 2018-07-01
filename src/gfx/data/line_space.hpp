@@ -34,5 +34,3 @@ namespace gfx
         std::array<std::array<std::vector<line>, 6>, 6> _storages;
     };
 }
-
-#include "impl/line_space.inl"

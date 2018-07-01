@@ -5,7 +5,7 @@
 
 namespace gfx
 {
-    std::function<void(float)> grid_updated;
+    inline std::function<void(float)> grid_updated;
 
     class grid_line_space
     {
@@ -35,5 +35,3 @@ namespace gfx
         std::vector<gfx::line_space> _line_spaces;
     };
 }
-
-#include "impl/grid_line_space.inl"

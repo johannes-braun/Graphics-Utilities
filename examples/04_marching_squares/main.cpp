@@ -35,9 +35,8 @@ int main()
         glm::mat4 vp;
         float     offset;
     };
-    gfx::host_buffer<data>   buf(1);
-    gfx::device_buffer<data> uniform_buffer(gfx::buffer_usage::uniform, 1);
-    buf[0].offset = 0.5f;
+    gfx::host_buffer<data> uniform_buffer(1);
+    uniform_buffer[0].offset = 0.5f;
 
     gfx::camera            camera;
     gfx::camera_controller ctrl;
@@ -59,7 +58,7 @@ int main()
 
         static float scale = 1.f;
         ImGui::Begin("Controls");
-        ImGui::SliderFloat("Offset", &buf[0].offset, 0.f, 1.f);
+        ImGui::SliderFloat("Offset", &uniform_buffer[0].offset, 0.f, 1.f);
         ImGui::DragFloat("Scale", &scale, 0.1f, 0.f, 1.f);
         if(ImGui::Button("Load Image"))
         {
@@ -74,9 +73,7 @@ int main()
         }
         ImGui::End();
         ctrl.update(camera);
-        buf[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) * glm::scale(glm::vec3(scale));
-
-        uniform_buffer << buf;
+        uniform_buffer[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) * glm::scale(glm::vec3(scale));
 
         pp.bind();
         glBindTextureUnit(0, texture_view);

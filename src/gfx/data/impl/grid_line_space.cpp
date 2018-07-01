@@ -1,4 +1,4 @@
-#pragma once
+#include "../grid_line_space.hpp"
 
 namespace gfx
 {

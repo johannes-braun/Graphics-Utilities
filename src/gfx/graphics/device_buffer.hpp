@@ -24,6 +24,10 @@ enum class buffer_usage : uint32_t
     all = ~0u
 };
 using buffer_usage_flags = gfx::flags<uint32_t, buffer_usage>;
+static buffer_usage_flags operator|(buffer_usage x, buffer_usage y)
+{
+    return buffer_usage_flags(x) | y;
+}
 
 namespace detail
 {

@@ -1,6 +1,6 @@
 #pragma once
 #include <execution>
-#include <gfx/geometry.hpp>
+#include <gfx/gfx.hpp>
 #include <memory>
 #include <numeric>
 #include <opengl/opengl.hpp>
@@ -44,9 +44,9 @@ struct mesh_holder
     void          cull() const;
     void          render() const;
 
-    gl::buffer<vertex3d>      vertex_buffer;
-    gl::buffer<index32>       index_buffer;
-    gl::buffer<mesh_instance> info_buffer;
+    device_buffer<vertex3d>      vertex_buffer;
+    device_buffer<index32>       index_buffer;
+    device_buffer<mesh_instance> info_buffer;
 
 private:
     gl::vertex_array     _vertex_array;

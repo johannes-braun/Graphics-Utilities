@@ -1,0 +1,75 @@
+layout(local_size_x = 32) in;
+
+struct spring
+{
+    int particle1;
+    int particle2;
+    float stiff;
+    float damping;
+    float length;
+    float _p[3];
+};
+
+struct vertex
+{
+    vec3 position;
+    uint meta;
+    vec3 normal;
+    uint meta2;
+    vec2 uv;
+    uint meta3[2];
+};
+
+layout(binding = 0) uniform Data
+{
+    restrict vec4* spring_results; 
+    restrict vec4* particle_velocities; 
+    restrict spring* springs; 
+    restrict vertex* vertices;
+    restrict uint* vertex_springs;
+    int spring_count;
+    int vertex_count;
+    mat4 inv_model;
+};
+
+layout(binding = 1) uniform Timings
+{
+    float time_step;
+    float velocity_time_step;
+    float time;
+};
+
+const vec3 gravity = vec3(0, -9.81, 0);
+const int springs_per_particle = 12;
+
+void main()
+{
+    if(gl_GlobalInvocationID.x >= vertex_count)
+        return;
+
+    vertex particle = vertices[gl_GlobalInvocationID.x];
+
+    // Calculate total force on the particle from spring forces
+    vec4 force = vec4(0, 0, 0, 0);
+
+    uint base_index = springs_per_particle * gl_GlobalInvocationID.x;
+    uint end_index = base_index + vertex_springs[gl_GlobalInvocationID.x];
+    for (uint i = base_index; i < end_index; i++)
+        force += spring_results[i];
+
+    // Leapfrog integration method: Calculate velocities at upcoming time point.
+    // Caution: Timings might be half a time step off.
+    float imass = 10.f;
+    if(particle.meta2 == 1)
+        imass = 0;
+
+    vec4 acceleration = force * imass + inv_model * vec4(gravity + abs(dot(particle.normal, vec3(0, 0, 1))) * vec3(40.f * sin(2.2f * time), 0, 80.f), 0) * int(imass != 0);
+    vec4 next_velocity = particle_velocities[gl_GlobalInvocationID.x] + acceleration * velocity_time_step;
+    vec4 next_position = vec4(particle.position, 1) + next_velocity * time_step;
+
+    particle.position = next_position.xyz;
+
+    particle_velocities[gl_GlobalInvocationID.x] = next_velocity;
+    vertices[gl_GlobalInvocationID.x] = particle;
+    vertex_springs[gl_GlobalInvocationID.x] = 0;
+}

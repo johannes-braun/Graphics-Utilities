@@ -94,15 +94,14 @@ context::context(const context_options& options)
                                (current() && current()->options().graphics_api == gapi::opengl)
                                        ? current()->_window
                                        : nullptr);
-    framebuffer_size_callback.add([](GLFWwindow* win, int w, int h) {
-        auto& c                  = *reinterpret_cast<context*>(glfwGetWindowUserPointer(win));
-        c._options.window_width  = w; 
-        c._options.window_height = h;
-        if(c._swapchain)
-            c._swapchain.value().resize(w, h);
+    framebuffer_size_callback.add([this](GLFWwindow* win, int w, int h) {
+        make_current();
+        _options.window_width  = w; 
+        _options.window_height = h;
+        if(_swapchain)
+            _swapchain.value().resize(w, h);
 
     });
-    glfwSetWindowUserPointer(_window, this);
     _implementation = detail::make_context_implementation(_options.graphics_api);
     _implementation->initialize(_window);
     callbacks::init(_window);

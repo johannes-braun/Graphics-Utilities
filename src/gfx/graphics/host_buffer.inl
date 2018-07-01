@@ -46,10 +46,7 @@ host_buffer<T>::host_buffer(Iter begin, Iter end)
         , _size(std::distance(begin, end))
         , _data(type_ptr(_implementation->grow(nullptr, 0, _size * type_size)))
 {
-#pragma warning(push)
-#pragma warning(disable:4996)
     std::copy(std::execution::par_unseq, begin, end, _data);
-#pragma warning(pop)
 }
 
 template <typename T>

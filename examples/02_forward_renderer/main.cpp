@@ -1,10 +1,8 @@
 #include "light.hpp"
 #include "mesh.hpp"
-#include <GLFW/glfw3.h>
 #include <execution>
 #include <gfx/gfx.hpp>
 #include <numeric>
-#include <opengl/opengl.hpp>
 #include <random>
 
 std::unique_ptr<gl::framebuffer> main_framebuffer;
@@ -81,13 +79,6 @@ int main()
             vertices += mesh.vertices.size();
             indices += mesh.indices.size();
         }
-        large_meshes.info_buffer.reserve(large_meshes.info_buffer.size() + large_mesh_count);
-        small_meshes.info_buffer.reserve(small_meshes.info_buffer.size() + small_mesh_count);
-        large_meshes.vertex_buffer.reserve(large_meshes.vertex_buffer.size() + large_vertex_count);
-        small_meshes.vertex_buffer.reserve(small_meshes.vertex_buffer.size() + small_vertex_count);
-        large_meshes.index_buffer.reserve(large_meshes.index_buffer.size() + large_index_count);
-        small_meshes.index_buffer.reserve(small_meshes.index_buffer.size() + small_index_count);
-
         for(const auto& mesh : file.meshes)
         {
             gfx::mesh_holder& meshes = [&]() -> gfx::mesh_holder& { return mesh.indices.size() > 128 ? large_meshes : small_meshes; }();
