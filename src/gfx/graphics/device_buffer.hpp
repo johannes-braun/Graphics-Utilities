@@ -3,8 +3,10 @@
 #include "host_buffer.hpp"
 #include <any>
 #include <cinttypes>
+#include <gfx/api.hpp>
 #include <gfx/flags.hpp>
 #include <memory>
+#include <gfx/api.hpp>
 
 namespace gfx
 {
@@ -44,6 +46,8 @@ namespace detail
     std::unique_ptr<device_buffer_implementation> make_device_buffer_implementation();
 } // namespace detail
 
+GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer)
+
 template <typename T> class device_buffer
 {
 public:
@@ -59,6 +63,11 @@ public:
     device_buffer(buffer_usage_flags usage = buffer_usage::all);
     device_buffer(size_type elements);
     device_buffer(buffer_usage_flags usage, size_type elements);
+    device_buffer(buffer_usage_flags usage, const host_buffer<T>& source)
+            : device_buffer(usage, source.size())
+    {
+        *this << source;
+    }
 
     void reallocate(size_type elements);
 
@@ -81,13 +90,16 @@ public:
     void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
     void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
 
-    template <typename H = std::any> H api_handle() const;
+    GFX_api_cast_op(gapi::opengl, device_buffer)
 
 private:
     std::unique_ptr<detail::device_buffer_implementation> _implementation;
     size_type                                             _size = 0;
     buffer_usage_flags                                    _usage_flags;
 };
+
+GFX_api_cast_template_impl(gapi::opengl, device_buffer)
+
 } // namespace gfx
 
 #include "device_buffer.inl"

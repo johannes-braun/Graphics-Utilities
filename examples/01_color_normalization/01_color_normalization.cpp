@@ -1,4 +1,5 @@
 #include <Eigen/Eigenvalues>
+#define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
 #include <numeric>
 #include <opengl/opengl.hpp>
@@ -138,22 +139,23 @@ int main()
     if(!source_data)
         return 0;
 
-    gfx::image_file picture(*source_data, gfx::bits::b8, 3);
-    gl::texture     texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
-    texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.bytes());
+    gfx::host_image picture(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
+    gfx::device_image texture(2, gfx::rgb8unorm, picture.extents(), picture.max_levels());
+    texture.level(0) << picture;
     texture.generate_mipmaps();
+    gfx::image_view   texture_view(gfx::view_type::image_2d, gfx::rgb8unorm, texture, 0, picture.max_levels(), 0, 1);
     const gl::sampler sampler;
 
-    glm::u8vec3*        begin = reinterpret_cast<glm::u8vec3*>(picture.bytes());
-    axis_transformation trafo = principal_axis_transformation(begin, picture.pixel_count());
+    glm::u8vec3*        begin = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
+    axis_transformation trafo = principal_axis_transformation(begin, picture.extents().count());
     glm::vec3           average =
-            glm::vec3(std::accumulate(begin, begin + picture.pixel_count(), glm::u8vec3(0))) /
-            (picture.pixel_count() * 255.f);
+            glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
 
-    gfx::image_file grid_image("grid.jpg", gfx::bits::b8, 4);
-    gl::texture     grid(GL_TEXTURE_2D, grid_image.width, grid_image.height, GL_RGBA8);
-    grid.assign(GL_RGBA, GL_UNSIGNED_BYTE, grid_image.bytes());
+    gfx::host_image   grid_image(gfx::rgba8unorm, gfx::image_file("grid.jpg", gfx::bits::b8, 4));
+    gfx::device_image grid(2, gfx::rgba8unorm, grid_image.extents(), grid_image.max_levels());
+    grid.level(0) << grid_image;
     grid.generate_mipmaps();
+    gfx::image_view grid_view(gfx::view_type::image_2d, gfx::rgba8unorm, grid, 0, grid_image.max_levels(), 0, 1);
 
     gl::pipeline points_pipeline;
     points_pipeline[GL_VERTEX_SHADER] =
@@ -185,13 +187,13 @@ int main()
             std::make_shared<gl::shader>("01_color_normalization/cube.frag");
 
     namespace cube = gfx::cube_preset;
-    gl::buffer<gfx::vertex3d> vbo(cube::vertices.begin(), cube::vertices.end());
-    gl::buffer<gfx::index32>  ibo(cube::indices.begin(), cube::indices.end());
+    gfx::device_buffer<gfx::vertex3d> vbo(gfx::buffer_usage::vertex, cube::vertices);
+    gfx::device_buffer<gfx::index32> ibo(gfx::buffer_usage::index, cube::indices);
     gl::vertex_array          vao;
     vao.attrib(0).enable(true).bind(0).format(
             3, GL_FLOAT, false, offsetof(gfx::vertex3d, position));
     vao.attrib(1).enable(true).bind(0).format(2, GL_FLOAT, false, offsetof(gfx::vertex3d, uv));
-    vao.vertex_buffer(0, vbo);
+    vao.vertex_buffer(0, vbo, 0, sizeof(gfx::vertex3d));
     vao.element_buffer(ibo);
 
     gl::vertex_array empty_vao;
@@ -213,7 +215,7 @@ int main()
         gl::framebuffer::zero().clear(0, {0.15f, 0.15f, 0.15f, 1.f});
         gl::framebuffer::zero().clear(0.f, 0);
 
-        const auto id = sampler.sample(texture);
+        const auto id = sampler.sample(texture_view);
         ImGui::Begin("Primary Axis Transformation");
         static bool hat_en = true;
         ImGui::Checkbox("Enable Transformation", &hat_en);
@@ -251,25 +253,24 @@ int main()
             if(const auto source_data = gfx::file::open_dialog(
                        "Open Image", "../", {"*.jpg", "*.png"}, "Image Files"))
             {
-                gfx::image_file picture(*source_data, gfx::bits::b8, 3);
-                texture = gl::texture(GL_TEXTURE_2D, picture.width, picture.height, GL_RGB8);
-                texture.assign(GL_RGB, GL_UNSIGNED_BYTE, picture.bytes());
+                picture = gfx::host_image(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
+                texture = gfx::device_image(2, gfx::rgba8unorm, picture.extents(), picture.max_levels());
+                texture.level(0) << picture;
                 texture.generate_mipmaps();
+                texture_view = gfx::image_view(gfx::view_type::image_2d, gfx::rgb8unorm, texture, 0, picture.max_levels(), 0, 1);
 
-                glm::u8vec3* begin = reinterpret_cast<glm::u8vec3*>(picture.bytes());
-                trafo              = principal_axis_transformation(begin, picture.pixel_count());
-                average            = glm::vec3(std::accumulate(
-                                  begin, begin + picture.pixel_count(), glm::u8vec3(0))) /
-                          (picture.pixel_count() * 255.f);
+                begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
+                trafo   = principal_axis_transformation(begin, picture.extents().count());
+                average = glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) /
+                                    (picture.extents().count() * 255.f);
             }
         }
         ImGui::SameLine();
         if(ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
         {
-            glm::u8vec3*             data_cast = static_cast<glm::u8vec3*>(picture.bytes());
-            std::vector<glm::u8vec3> new_img(picture.pixel_count());
-            std::transform(data_cast,
-                           data_cast + picture.pixel_count(),
+            glm::u8vec3*             data_cast = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
+            std::vector<glm::u8vec3> new_img(picture.extents().count());
+            std::transform(data_cast, data_cast + picture.extents().count(),
                            new_img.begin(),
                            [&patmat](const glm::u8vec3& vec) {
                                return clamp(
@@ -280,7 +281,7 @@ int main()
                            });
 
             if(const auto dst = gfx::file::save_dialog("Save output", "../", {"*.png"}, "PNG"))
-                gfx::image_file::save_png(*dst, picture.width, picture.height, 3, &new_img[0][0]);
+                gfx::image_file::save_png(*dst, picture.extents().width, picture.extents().height, 3, &new_img[0][0]);
         }
         ImGui::End();
 
@@ -293,7 +294,7 @@ int main()
                 hat_en ? patmat : glm::mat4(1.0);
         points_pipeline[GL_VERTEX_SHADER]->uniform<uint64_t>("picture")          = id;
         points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
-        empty_vao.draw(GL_POINTS, texture.width() * texture.height());
+        empty_vao.draw(GL_POINTS, picture.extents().width * picture.extents().height);
 
         glDisable(GL_DEPTH_TEST);
         center_pipeline.bind();
@@ -312,19 +313,19 @@ int main()
 
         cube_pipeline.bind();
         cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
-        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex")   = sampler.sample(grid);
+        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex")            = sampler.sample(grid_view);
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, 1);
-        vao.draw(GL_TRIANGLES, ibo.size(), GL_UNSIGNED_INT);
+        vao.draw(GL_TRIANGLES, ibo.capacity(), GL_UNSIGNED_INT);
 
         glFrontFace(GL_CCW);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
-        vao.draw(GL_TRIANGLES, ibo.size(), GL_UNSIGNED_INT);
+        vao.draw(GL_TRIANGLES, ibo.capacity(), GL_UNSIGNED_INT);
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
-        glViewportIndexedf(0, 0, 0, texture.width() * scale, texture.height() * scale);
+        glViewportIndexedf(0, 0, 0, picture.extents().width * scale, picture.extents().height * scale);
         img_pipeline.bind();
         img_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::mat4>("hat_mat") =
                 hat_en ? patmat : glm::mat4(1.0);

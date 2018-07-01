@@ -1,5 +1,7 @@
 #pragma once
 
+#include <any>
+#include <gfx/api.hpp>
 #include <memory>
 #include <unordered_map>
 
@@ -75,10 +77,14 @@ namespace detail
         virtual void set_lod(lod mode, float value)              = 0;
         virtual void set_anisotropy(bool enable, float value)    = 0;
         virtual void set_compare(bool enable, compare_op op)     = 0;
+
+        virtual std::any api_handle() = 0;
     };
 
     std::unique_ptr<sampler_implementation> make_sampler_implementation();
 } // namespace detail
+
+GFX_api_cast_type(gapi::opengl, sampler, mygl::sampler)
 
 class sampler
 {
@@ -93,16 +99,21 @@ public:
     void set_anisotropy(bool enable, float value);
     void set_compare(bool enable, compare_op op = compare_op::never);
 
+    GFX_api_cast_op(gapi::opengl, sampler)
+
 private:
     std::unique_ptr<detail::sampler_implementation> _implementation;
-    std::unordered_map<filter_mode, filter> _filters;
-    std::unordered_map<wrap, wrap_mode>     _wraps;
-    border_color                            _border_color = border_color::float_transparent_black;
-    std::unordered_map<lod, float>          _lod;
+    std::unordered_map<filter_mode, filter>         _filters;
+    std::unordered_map<wrap, wrap_mode>             _wraps;
+    border_color                                    _border_color = border_color::float_transparent_black;
+    std::unordered_map<lod, float>                  _lod;
 
     bool       _enable_anisotropy = false;
     float      _anisotropy_value  = 0.f;
     bool       _enable_compare    = false;
     compare_op _compare_op        = compare_op::never;
 };
+
+GFX_api_cast_impl(gapi::opengl, sampler)
+
 } // namespace gfx

@@ -1,22 +1,17 @@
 #pragma once
 
 #include "callbacks.hpp"
+#include "graphics/swapchain.hpp"
 #include <GLFW/glfw3.h>
 #include <any>
 #include <gfx/log.hpp>
 #include <memory>
 #include <optional>
 #include <string_view>
-#include "graphics/swapchain.hpp"
+#include "api.hpp"
 
 namespace gfx
 {
-enum class gapi
-{
-    opengl = 0,
-    vulkan
-};
-
 struct context_options
 {
     gapi graphics_api = gapi::opengl;
@@ -59,6 +54,8 @@ public:
     bool     should_close();
     bool     run();
     double   delta() const noexcept;
+
+    const std::optional<gfx::swapchain>& swapchain() const noexcept { return _swapchain; }
 
 private:
     static inline struct glfw

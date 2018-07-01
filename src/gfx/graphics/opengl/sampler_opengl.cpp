@@ -4,18 +4,22 @@
 
 namespace gfx::opengl
 {
+    sampler_implementation::sampler_implementation()
+{
+    glCreateSamplers(1, &_handle);
+    glSamplerParameteri(_handle, GL_TEXTURE_CUBE_MAP_SEAMLESS, true);
+}
+
 sampler_implementation::~sampler_implementation()
 {
     if(glIsSampler(_handle))
         glDeleteSamplers(1, &_handle);
 }
 
+std::any sampler_implementation::api_handle() { return _handle; }
+
 void sampler_implementation::set_filter(filter_mode mode, filter filter)
 {
-    if(glIsSampler(_handle))
-        glDeleteSamplers(1, &_handle);
-    glCreateSamplers(1, &_handle);
-
     if(mode == filter_mode::mipmap)
     {
         _mipmap_filter = filter;
@@ -29,7 +33,7 @@ void sampler_implementation::set_filter(filter_mode mode, filter filter)
     }
 
     glSamplerParameteri(_handle,
-                        GL_TEXTURE_MAG_FILTER,
+                        GL_TEXTURE_MIN_FILTER,
                         _mipmap_filter == filter::nearest
                                 ? (_min_filter == filter::nearest ? GL_NEAREST_MIPMAP_NEAREST : GL_LINEAR_MIPMAP_NEAREST)
                                 : (_min_filter == filter::nearest ? GL_NEAREST_MIPMAP_LINEAR : GL_LINEAR_MIPMAP_LINEAR));
@@ -54,9 +58,6 @@ void sampler_implementation::set_wrap(wrap w, wrap_mode mode)
             return GLenum(0);
         }
     }();
-    if(glIsSampler(_handle))
-        glDeleteSamplers(1, &_handle);
-    glCreateSamplers(1, &_handle);
 
     switch(w)
     {
@@ -76,9 +77,6 @@ void sampler_implementation::set_wrap(wrap w, wrap_mode mode)
 
 void sampler_implementation::set_border(border_color color)
 {
-    if(glIsSampler(_handle))
-        glDeleteSamplers(1, &_handle);
-    glCreateSamplers(1, &_handle);
     switch(color)
     {
     case border_color::float_transparent_black:
@@ -124,9 +122,6 @@ void sampler_implementation::set_border(border_color color)
 
 void sampler_implementation::set_lod(lod mode, float value)
 {
-    if(glIsSampler(_handle))
-        glDeleteSamplers(1, &_handle);
-    glCreateSamplers(1, &_handle);
     switch(mode)
     {
     case lod::bias:
@@ -145,17 +140,11 @@ void sampler_implementation::set_lod(lod mode, float value)
 
 void sampler_implementation::set_anisotropy(bool enable, float value)
 {
-    if(glIsSampler(_handle))
-        glDeleteSamplers(1, &_handle);
-    glCreateSamplers(1, &_handle);
     glSamplerParameterf(_handle, GL_TEXTURE_MAX_ANISOTROPY, enable ? value : 0.f);
 }
 
 void sampler_implementation::set_compare(bool enable, compare_op op)
 {
-    if(glIsSampler(_handle))
-        glDeleteSamplers(1, &_handle);
-    glCreateSamplers(1, &_handle);
     glSamplerParameteri(_handle, GL_TEXTURE_COMPARE_MODE, enable ? GL_NONE : GL_COMPARE_REF_TO_TEXTURE);
     switch(op)
     {

@@ -20,6 +20,12 @@ std::unique_ptr<detail::sampler_implementation> detail::make_sampler_implementat
 sampler::sampler()
         : _implementation(detail::make_sampler_implementation())
 {
+    set_filter(gfx::filter_mode::min, gfx::filter::linear);
+    set_filter(gfx::filter_mode::mag, gfx::filter::linear);
+    set_filter(gfx::filter_mode::mipmap, gfx::filter::linear);
+    set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
+    set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
+    set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
 }
 
 void sampler::set_filter(filter_mode mode, filter filter) { _implementation->set_filter(mode, filter); }

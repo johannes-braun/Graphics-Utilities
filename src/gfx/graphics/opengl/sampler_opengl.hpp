@@ -8,6 +8,7 @@ namespace gfx::opengl
 class sampler_implementation : public detail::sampler_implementation
 {
 public:
+    sampler_implementation();
     ~sampler_implementation();
     void set_filter(filter_mode mode, filter filter) override;
     void set_wrap(wrap w, wrap_mode mode) override;
@@ -15,6 +16,8 @@ public:
     void set_lod(lod mode, float value) override;
     void set_anisotropy(bool enable, float value) override;
     void set_compare(bool enable, compare_op op) override;
+
+    std::any api_handle() override;
 
 private:
     mygl::sampler _handle        = mygl::sampler::zero;

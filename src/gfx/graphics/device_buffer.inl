@@ -83,15 +83,15 @@ void device_buffer<T>::fill_from(const host_buffer<T>& buffer, const difference_
     _implementation->copy(&*buffer._implementation, &*_implementation, src_offset * type_size, start * type_size, count * type_size);
 }
 
-template <typename T>
-template <typename H> 
-H device_buffer<T>::api_handle() const
-{
-    if constexpr(std::is_same_v<H, std::any>)
-        return _implementation->api_handle();
-    else
-        return std::any_cast<H>(_implementation->api_handle());
-}
+//template <typename T>
+//template <typename H> 
+//H device_buffer<T>::api_handle() const
+//{
+//    if constexpr(std::is_same_v<H, std::any>)
+//        return _implementation->api_handle();
+//    else
+//        return std::any_cast<H>(_implementation->api_handle());
+//}
 
 template <typename T>
 void device_buffer<T>::fill_from(const device_buffer& buffer, const difference_type src_offset, const difference_type start,

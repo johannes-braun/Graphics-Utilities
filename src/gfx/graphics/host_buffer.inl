@@ -46,7 +46,10 @@ host_buffer<T>::host_buffer(Iter begin, Iter end)
         , _size(std::distance(begin, end))
         , _data(type_ptr(_implementation->grow(nullptr, 0, _size * type_size)))
 {
+#pragma warning(push)
+#pragma warning(disable:4996)
     std::copy(std::execution::par_unseq, begin, end, _data);
+#pragma warning(pop)
 }
 
 template <typename T>
@@ -95,12 +98,4 @@ template <typename T> typename host_buffer<T>::const_pointer host_buffer<T>::typ
     return reinterpret_cast<const_pointer>(ptr);
 }
 template <typename T> typename host_buffer<T>::pointer host_buffer<T>::type_ptr(std::byte* ptr) { return reinterpret_cast<pointer>(ptr); }
-
-template <typename T> template <typename H> H host_buffer<T>::api_handle() const
-{
-    if constexpr(std::is_same_v<H, std::any>)
-        return _implementation->api_handle();
-    else
-        return std::any_cast<H>(_implementation->api_handle());
-}
 }

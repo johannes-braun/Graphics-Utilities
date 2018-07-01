@@ -1,3 +1,4 @@
+#define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
 
 int main()
@@ -9,13 +10,13 @@ int main()
     context->make_current();
 
     // Buffer
-    gfx::host_buffer<float> src{1.f, 23.f, 29.f};
+    gfx::host_buffer<float>   src{1.f, 23.f, 29.f};
     gfx::device_buffer<float> dst(gfx::buffer_usage::storage, src.size());
     dst << src;
 
     // Images
     const auto        cubemap_format = gfx::r11g11b10f;
-    const auto         info           = gfx::image_file::info("hdri/hdr/posx.hdr");
+    const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
     gfx::device_image file_texture(2, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
     file_texture.layer(0) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3));
     file_texture.layer(1) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3));
@@ -33,6 +34,10 @@ int main()
     sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
     sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
     sampler.set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
+
+    mygl::buffer  mgl_buffer  = dst;
+    mygl::texture mgl_texture = file_texture;
+    mygl::sampler mgl_sampler = sampler;
 
     while(context->run())
     {

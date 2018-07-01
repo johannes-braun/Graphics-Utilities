@@ -1,4 +1,6 @@
+#define GFX_EXPOSE_APIS
 #include "device_image_opengl.hpp"
+#include <mygl/mygl.hpp>
 
 namespace gfx::opengl
 {
@@ -119,6 +121,10 @@ std::tuple<GLenum, GLenum, GLenum> format_from(img_format format)
     return {};
 }
 
+std::any device_image_implementation::api_handle()
+{ return _handle; }
+void device_image_implementation::generate_mipmaps() { glGenerateTextureMipmap(_handle); }
+
 void device_image_implementation::initialize(uint32_t layer_dimensions, img_format format, const extent& size, uint32_t levels)
 {
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -157,7 +163,7 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, img_form
 }
 void device_image_implementation::fill_from(const host_image& image, uint32_t level, uint32_t layer)
 {
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, std::any_cast<mygl::buffer>(image.storage().api_handle()));
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, api_cast<gapi::opengl>(image.storage()));
     switch(_type)
     {
     case GL_TEXTURE_3D:

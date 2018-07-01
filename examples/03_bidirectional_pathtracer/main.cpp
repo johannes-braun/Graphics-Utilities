@@ -1,3 +1,4 @@
+#define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
 #include <memory>
 #include <opengl/opengl.hpp>
@@ -29,32 +30,26 @@ int main()
     options.debug         = true;
     auto context          = gfx::context::create(options);
     context->make_current();
-    tracer = std::make_unique<gl::compute_pipeline>(
-            std::make_shared<gl::shader>("03_bidirectional_pathtracer/trace.comp"));
+    tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("03_bidirectional_pathtracer/trace.comp"));
     gfx::imgui imgui;
-
-    glDebugMessageCallback(
-            [](GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
-    { gfx::ilog << message;
-    }, nullptr);
 
     gfx::scene_file        file("bunny.dae");
     gfx::scene_file::mesh& mesh = *(file.meshes.begin());
 
-    gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
-    gen_bvh.sort(mesh.indices.begin(), mesh.indices.end(), [&](uint32_t index) {
-        return mesh.vertices[index].position;
-    });
-    const std::vector<gl::byte>& packed = gen_bvh.pack(
-            sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
+    gfx::host_buffer<gfx::vertex3d> vertices = mesh.vertices;
+    gfx::host_buffer<gfx::index32>  indices  = mesh.indices;
 
-    gl::buffer<gfx::vertex3d> vbo(mesh.vertices.begin(), mesh.vertices.end());
-    gl::buffer<gfx::index32>  ibo(mesh.indices.begin(), mesh.indices.end());
-    gl::buffer<gl::byte>      bvh(packed.begin(), packed.end());
+    gfx::bvh<3> gen_bvh(gfx::shape::triangle, gfx::bvh_mode::persistent_iterators);
+    gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) { return vertices[index].position; });
+    gfx::host_buffer<uint8_t> packed_bvh = gen_bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
+
+    gfx::device_buffer<gfx::vertex3d> vbo(gfx::buffer_usage::storage, vertices);
+    gfx::device_buffer<gfx::index32>  ibo(gfx::buffer_usage::storage, indices);
+    gfx::device_buffer<uint8_t>       bvh(gfx::buffer_usage::storage, packed_bvh);
 
     gl::query timer(GL_TIME_ELAPSED);
 
-    auto render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D_ARRAY, 1280, 720, 1, GL_RGBA32F, 1);
+    auto      render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D_ARRAY, 1280, 720, 1, GL_RGBA32F, 1);
     gl::image img(*render_texture, GL_RGBA32F, GL_READ_WRITE);
 
     gl::framebuffer framebuffer;
@@ -65,95 +60,51 @@ int main()
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    const auto[w, h, c] = gfx::image_file::info("hdri/hdr/posx.hdr");
-    gl::texture cubemap(GL_TEXTURE_2D_ARRAY, w, h, 6, GL_R11F_G11F_B10F);
-    cubemap.assign(0,
-                   0,
-                   0,
-                   w,
-                   h,
-                   1,
-                   GL_RGB,
-                   GL_FLOAT,
-                   gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0,
-                   0,
-                   1,
-                   w,
-                   h,
-                   1,
-                   GL_RGB,
-                   GL_FLOAT,
-                   gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0,
-                   0,
-                   2,
-                   w,
-                   h,
-                   1,
-                   GL_RGB,
-                   GL_FLOAT,
-                   gfx::image_file("hdri/hdr/posy.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0,
-                   0,
-                   3,
-                   w,
-                   h,
-                   1,
-                   GL_RGB,
-                   GL_FLOAT,
-                   gfx::image_file("hdri/hdr/negy.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0,
-                   0,
-                   4,
-                   w,
-                   h,
-                   1,
-                   GL_RGB,
-                   GL_FLOAT,
-                   gfx::image_file("hdri/hdr/posz.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.assign(0,
-                   0,
-                   5,
-                   w,
-                   h,
-                   1,
-                   GL_RGB,
-                   GL_FLOAT,
-                   gfx::image_file("hdri/hdr/negz.hdr", gfx::bits::b32, 3).bytes());
-    cubemap.generate_mipmaps();
+    const auto        cubemap_format = gfx::r11g11b10f;
+    const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
+    gfx::device_image cubemap_texture(2, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
+    cubemap_texture.layer(0) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3));
+    cubemap_texture.layer(1) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3));
+    cubemap_texture.layer(2) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posy.hdr", gfx::bits::b32, 3));
+    cubemap_texture.layer(3) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negy.hdr", gfx::bits::b32, 3));
+    cubemap_texture.layer(4) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posz.hdr", gfx::bits::b32, 3));
+    cubemap_texture.layer(5) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negz.hdr", gfx::bits::b32, 3));
+    gfx::image_view cubemap_view(gfx::view_type::image_cube, cubemap_format, cubemap_texture, 0, 10, 0, 6);
 
-    mygl::texture tex;
-    glGenTextures(1, &tex);
-    glTextureView(tex, GL_TEXTURE_CUBE_MAP, cubemap, cubemap.internal_format(), 0, cubemap.levels(), 0, 6);
+    gfx::sampler sampler;
 
-    const gl::sampler sampler;
+    gfx::host_buffer<tracer_data>   data_buffer(1);
+    gfx::device_buffer<tracer_data> provider_buffers[2] = {{gfx::buffer_usage::storage, 1}, {gfx::buffer_usage::storage, 1}};
 
-    gl::buffer<tracer_data> data(1, GL_DYNAMIC_STORAGE_BIT);
-    data[0].img       = img.handle();
-    data[0].vbo       = vbo.handle();
-    data[0].ibo       = ibo.handle();
-    data[0].bvh       = bvh.handle();
-    data[0].linespace = 0; // grid_line_space_datas.handle();
-    data[0].cubemap   = sampler.sample(tex);
-    data[0].frames    = 10;
-    data.synchronize();
+    const auto get_handle = [](const auto& buf) -> uint64_t {
+        uint64_t hnd;
+        glGetNamedBufferParameterui64vNV(buf, GL_BUFFER_GPU_ADDRESS_NV, &hnd);
+        glMakeNamedBufferResidentNV(buf, GL_READ_WRITE);
+        return hnd;
+    };
+
+    data_buffer[0].img       = img.handle();
+    data_buffer[0].vbo       = get_handle(vbo);
+    data_buffer[0].ibo       = get_handle(ibo);
+    data_buffer[0].bvh       = get_handle(bvh);
+    data_buffer[0].linespace = 0;
+    data_buffer[0].cubemap   = glGetTextureSamplerHandleARB(cubemap_view, sampler);
+    glMakeTextureHandleResidentARB(data_buffer[0].cubemap);
+    data_buffer[0].frames = 10;
 
     while(context->run())
     {
         imgui.new_frame();
         controller.update(camera);
-        const glm::mat4 camera_matrix =
-                inverse(camera.projection.matrix() *
-                        glm::mat4(glm::mat3(inverse(camera.transform.matrix()))));
+        const glm::mat4 camera_matrix = inverse(camera.projection.matrix() * glm::mat4(glm::mat3(inverse(camera.transform.matrix()))));
 
         timer.start();
-        data[0].camera_matrix   = camera_matrix;
-        data[0].camera_position = glm::vec4(camera.transform.position, 1.f);
-        data[0].seed            = dist(gen);
-        data.synchronize();
+        data_buffer[0].camera_matrix   = camera_matrix;
+        data_buffer[0].camera_position = glm::vec4(camera.transform.position, 1.f);
+        data_buffer[0].seed            = dist(gen);
+        provider_buffers[context->swapchain()->current_image()] << data_buffer;
 
-        data.bind(GL_UNIFORM_BUFFER, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, provider_buffers[context->swapchain()->current_image()]);
         tracer->dispatch(1280, 720);
 
         framebuffer.blit(nullptr, GL_COLOR_BUFFER_BIT);
@@ -165,18 +116,15 @@ int main()
         static bool improve = false;
         ImGui::Checkbox("Improve", &improve);
         if(improve)
-            data[0].frames++;
-        ImGui::DragInt("Int. Samples", &data[0].frames, 0.1f, 1, 10000);
+            data_buffer[0].frames++;
+        ImGui::DragInt("Int. Samples", &data_buffer[0].frames, 0.1f, 1, 10000);
 
         if(ImGui::Button("Reload"))
             tracer->reload();
         if(ImGui::Button("Load"))
         {
-            if(const auto item = gfx::file::open_dialog(
-                       "Open Mesh",
-                       "../",
-                       {"*.dae", "*.fbx", "*.obj", "*.stl", "*.ply", "*.blend"},
-                       "Meshes"))
+            if(const auto item =
+                       gfx::file::open_dialog("Open Mesh", "../", {"*.dae", "*.fbx", "*.obj", "*.stl", "*.ply", "*.blend"}, "Meshes"))
             {
                 gfx::scene_file            file(item.value());
                 std::vector<uint32_t>      indices;
@@ -203,32 +151,28 @@ int main()
                     begin += mesh.vertices.size();
                 }
 
-                gen_bvh.sort(indices.begin(), indices.end(), [&](uint32_t index) {
-                    return vertices[index].position;
-                });
-                const std::vector<gl::byte>& packed =
-                        gen_bvh.pack(sizeof(gfx::vertex3d),
-                                     offsetof(gfx::vertex3d, position),
-                                     sizeof(uint32_t),
-                                     0);
+                gfx::host_buffer<gfx::vertex3d> xvertices = vertices;
+                gfx::host_buffer<gfx::index32>  xindices  = indices;
 
-                vbo         = gl::buffer<gfx::vertex3d>(vertices.begin(), vertices.end());
-                ibo         = gl::buffer<gfx::index32>(indices.begin(), indices.end());
-                bvh         = gl::buffer<gl::byte>(packed.begin(), packed.end());
-                data[0].vbo = vbo.handle();
-                data[0].ibo = ibo.handle();
-                data[0].bvh = bvh.handle();
-                data.synchronize();
+                gen_bvh.sort(xindices.begin(), xindices.end(), [&](uint32_t index) { return xvertices[index].position; });
+                gfx::host_buffer<uint8_t> xpacked_bvh =
+                        gen_bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
+
+                vbo = gfx::device_buffer<gfx::vertex3d>(gfx::buffer_usage::storage, xvertices);
+                ibo = gfx::device_buffer<gfx::index32>(gfx::buffer_usage::storage, xindices);
+                bvh = gfx::device_buffer<uint8_t>(gfx::buffer_usage::storage, xpacked_bvh);
+
+                data_buffer[0].vbo = get_handle(vbo);
+                data_buffer[0].ibo = get_handle(ibo);
+                data_buffer[0].bvh = get_handle(bvh);
             }
         }
         if(ImGui::Button("Save"))
         {
-            if(const auto path =
-                       gfx::file::save_dialog("Save Render", "../", {"*.png"}, "PNG Files"))
+            if(const auto path = gfx::file::save_dialog("Save Render", "../", {"*.png"}, "PNG Files"))
             {
                 std::vector<float> data(1280 * 720 * 4);
-                render_texture->get_data(
-                        GL_RGBA, GL_FLOAT, 1280 * 720 * 4 * sizeof(float), data.data());
+                render_texture->get_data(GL_RGBA, GL_FLOAT, 1280 * 720 * 4 * sizeof(float), data.data());
 
                 std::vector<uint8_t> u8data(1280 * 720 * 4);
                 for(int i = 0; i < 1280 * 720 * 4; ++i)

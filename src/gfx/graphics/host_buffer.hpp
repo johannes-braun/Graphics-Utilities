@@ -3,6 +3,7 @@
 #include <memory>
 #include <numeric>
 #include <any>
+#include <gfx/api.hpp>
 
 namespace std
 {
@@ -29,6 +30,8 @@ namespace detail
     };
     std::unique_ptr<host_buffer_implementation> make_host_buffer_implementation();
 } // namespace detail
+
+GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)
 
 // buffer for host memory (mapped/contiguous)
 template <typename T> class device_buffer;
@@ -90,7 +93,7 @@ public:
     template <bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>> void resize(size_type elements);
     void resize(size_type elements, const_reference base);
 
-    template <typename H = std::any> H api_handle() const;
+    GFX_api_cast_op(gapi::opengl, host_buffer)
 
 private:
     static const std::byte* byte_ptr(const_pointer ptr);
@@ -102,6 +105,9 @@ private:
     size_type                       _size           = 0;
     pointer                         _data           = nullptr;
 };
+
+GFX_api_cast_template_impl(gapi::opengl, host_buffer)
+
 } // namespace gfx
 
 #include "host_buffer.inl"

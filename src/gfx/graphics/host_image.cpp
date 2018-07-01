@@ -105,6 +105,8 @@ void host_image::update(const image_file& file)
 
 const extent& host_image::extents() const noexcept { return _extent; }
 
+uint32_t host_image::max_levels() const noexcept { return 1u + static_cast<uint32_t>(floor(log2(std::max(_extent.width, std::max(_extent.height, _extent.depth))))); }
+
 glm::vec4 to_vec4(data_format fmt, uint8_t* unorm_data)
 {
     switch(fmt)
@@ -488,13 +490,15 @@ void host_image::storei(const glm::uvec3& pixel, const glm::ivec4& p)
 std::function<void(const glm::vec4& v, int64_t i)> host_image::get_write_unorm_fun()
 {
     const auto pack_fun = [this](auto fun) {
-        return [this, f = fun](const glm::vec4& v, int64_t i) {
+        return [ this, f = fun ](const glm::vec4& v, int64_t i)
+        {
             auto x = f(v);
             memcpy(&(_storage.data()[_storage_element_size * i]), &x, sizeof(x));
         };
     };
     const auto pack_funf = [this](auto fun) {
-        return [this, f = fun](const glm::vec4& v, int64_t i) {
+        return [ this, f = fun ](const glm::vec4& v, int64_t i)
+        {
             auto x = f(v.x);
             memcpy(&(_storage.data()[_storage_element_size * i]), &x, sizeof(x));
         };
@@ -1506,4 +1510,5 @@ void host_image::update(data_format format, const float* data)
 }
 
 const host_buffer<std::byte>& host_image::storage() const noexcept { return _storage; }
+host_buffer<std::byte>& host_image::storage() noexcept { return _storage; }
 } // namespace gfx

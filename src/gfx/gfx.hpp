@@ -22,6 +22,7 @@
 #include <gfx/graphics/device_image.hpp>
 #include <gfx/graphics/host_image.hpp>
 #include <gfx/graphics/swapchain.hpp>
+#include <gfx/graphics/image_view.hpp>
 #include <gfx/graphics/sampler.hpp>
 
 // Includes for gfx/data:

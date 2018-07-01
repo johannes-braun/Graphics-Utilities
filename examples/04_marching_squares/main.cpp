@@ -1,6 +1,11 @@
+#define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
-#include <gli/gli.hpp>
 #include <glm/ext.hpp>
+
+void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
+{
+   gfx::ilog << message;
+}
 
 int main()
 {
@@ -12,12 +17,18 @@ int main()
     auto context                = gfx::context::create(options);
     context->make_current();
 
-    gfx::imgui      imgui;
-    gfx::image_file img("Lena.png", gfx::bits::b8, 4);
-    gl::texture     texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
-    texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
+    glDebugMessageCallback(&dbg, nullptr);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
 
-    gl::sampler sampler;
+    gfx::imgui imgui;
+
+    gfx::host_image image(gfx::rgba8unorm, gfx::image_file("Lena.png", gfx::bits::b8, 4));
+    gfx::device_image texture(2, gfx::rgba8unorm, image.extents(), 10);
+    texture.level(0) << image;
+    texture.generate_mipmaps();
+    gfx::image_view texture_view(gfx::view_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+    gfx::sampler    sampler;
 
     struct data
     {
@@ -46,11 +57,6 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         imgui.new_frame();
 
-        gl::buffer<glm::u8vec4> unpack(img.width * img.height, GL_DYNAMIC_STORAGE_BIT);
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, unpack);
-        glGetTextureImage(texture, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.width * img.height * 4, nullptr);
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, mygl::buffer::zero);
-
         static float scale = 1.f;
         ImGui::Begin("Controls");
         ImGui::SliderFloat("Offset", &buf[0].offset, 0.f, 1.f);
@@ -59,9 +65,11 @@ int main()
         {
             if(auto file = gfx::file::open_dialog("Load Image", "./", {"*.png", "*.jpg", "*.bmp"}))
             {
-                img     = gfx::image_file(file.value(), gfx::bits::b8, 4);
-                texture = gl::texture(GL_TEXTURE_2D, img.width, img.height, GL_RGBA8, 1);
-                texture.assign(GL_RGBA, GL_UNSIGNED_BYTE, img.bytes());
+                image = gfx::host_image(gfx::rgba8unorm, gfx::image_file(file.value(), gfx::bits::b8, 4));
+                texture = gfx::device_image(2, gfx::rgba8unorm, image.extents(), 10);
+                texture_view = gfx::image_view(gfx::view_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+                texture.level(0) << image;
+                texture.generate_mipmaps();
             }
         }
         ImGui::End();
@@ -71,10 +79,10 @@ int main()
         uniform_buffer << buf;
 
         pp.bind();
-        sampler.bind(0);
-        texture.bind(0);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer.api_handle<mygl::buffer>());
-        pp.draw(GL_POINTS, (img.width - 1) * (img.height - 1));
+        glBindTextureUnit(0, texture_view);
+        glBindSampler(0, sampler);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer);
+        pp.draw(GL_POINTS, (image.extents().width - 1) * (image.extents().height - 1));
 
         imgui.render();
     }

@@ -117,9 +117,11 @@ public:
     void update(data_format format, const float* data);
     void update(const image_file& file);
 
+    host_buffer<std::byte>& storage() noexcept;
     const host_buffer<std::byte>& storage() const noexcept;
 
     const extent& extents() const noexcept;
+    uint32_t      max_levels() const noexcept;
 
     glm::vec4  load(const glm::uvec3& pixel) const;
     glm::uvec4 loadu(const glm::uvec3& pixel) const;

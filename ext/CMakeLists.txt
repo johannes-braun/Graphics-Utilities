@@ -2,9 +2,6 @@ set(GLM_STATIC_LIBRARY_ENABLE ON)
 add_subdirectory(glm)
 add_library(glm::glm ALIAS glm)
 
-add_subdirectory(gli)
-add_library(gli::gli ALIAS gli)
-
 add_subdirectory(mygl)
 add_subdirectory(glsp)
 

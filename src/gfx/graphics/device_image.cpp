@@ -19,6 +19,9 @@ std::unique_ptr<detail::device_image_implementation> detail::make_device_image_i
 }
 void device_image::img_reference::operator<<(const host_image& image) const { _img._implementation->fill_from(image, _level, _layer); }
 
+void device_image::generate_mipmaps()
+{ _implementation->generate_mipmaps(); }
+
 device_image::img_reference::img_reference(uint32_t level, uint32_t layer, device_image& img)
         : _level(level)
         , _layer(layer)
