@@ -44,6 +44,16 @@ namespace glshader::process::compress::huffman
             return container;
         }
     };
+    
+    /*******************************/
+    /*  Base functions
+    /*******************************/
+
+    /* Encode a given uncompressed input with a given length into a compressed stream form using the huffman algorithm. */
+    stream encode(const uint8_t* in, size_t in_length);
+
+    /* Encode a given compressed input with a given length into an uncompressed stream form using the huffman algorithm. */
+    stream decode(const uint8_t* in, size_t in_length);
 
     /*******************************/
     /*  STL container wrapper
@@ -56,14 +66,4 @@ namespace glshader::process::compress::huffman
     /* Helper function calling decode(const uint8_t*, size_t) */
     template<typename Container, typename = enable_if_container<Container>>
     stream decode(const Container& in) { return decode(std::data(in), std::size(in)); }
-
-    /*******************************/
-    /*  Base functions
-    /*******************************/
-
-    /* Encode a given uncompressed input with a given length into a compressed stream form using the huffman algorithm. */
-    stream encode(const uint8_t* in, size_t in_length);
-
-    /* Encode a given compressed input with a given length into an uncompressed stream form using the huffman algorithm. */
-    stream decode(const uint8_t* in, size_t in_length);
 }

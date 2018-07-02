@@ -3,6 +3,7 @@
 #include <iterator>
 #include <array>
 #include <vector>
+#include <list>
 #include <algorithm>
 #include <functional>
 #include <thread>
@@ -66,7 +67,7 @@ namespace gfx
 
         struct node
         {
-            bounds bounds;
+            bounds aabb;
             node_type type = node_type::leaf;
             int32_t child_left = -1;
             int32_t child_right = -1;

@@ -398,13 +398,13 @@ sampler::sampler() noexcept
     glCreateSamplers(1, &_id);
 
     // Default settings.
-    set(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    set(GL_TEXTURE_MIN_FILTER, int(GL_LINEAR_MIPMAP_LINEAR));
+    set(GL_TEXTURE_MAG_FILTER, int(GL_LINEAR));
     set(GL_TEXTURE_MAX_ANISOTROPY, 16);
     set(GL_TEXTURE_CUBE_MAP_SEAMLESS, true);
-    set(GL_TEXTURE_WRAP_R, GL_MIRRORED_REPEAT);
-    set(GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    set(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    set(GL_TEXTURE_WRAP_R, int(GL_MIRRORED_REPEAT));
+    set(GL_TEXTURE_WRAP_S, int(GL_MIRRORED_REPEAT));
+    set(GL_TEXTURE_WRAP_T, int(GL_MIRRORED_REPEAT));
 }
 
 sampler::sampler(const sampler& other) noexcept { operator=(std::forward<const sampler&>(other)); }

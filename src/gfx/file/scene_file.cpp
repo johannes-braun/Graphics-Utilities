@@ -100,7 +100,7 @@ scene_file::scene_file(const files::path& path)
         [[maybe_unused]] aiReturn r = ai_material->Get(AI_MATKEY_NAME, name);
 
         current_mesh.material_index = ai_mesh->mMaterialIndex;
-        current_mesh.material       = &(materials.at(ai_mesh->mMaterialIndex));
+        current_mesh.material_ptr       = &(materials.at(ai_mesh->mMaterialIndex));
         meshes.emplace_back(current_mesh);
     }
 

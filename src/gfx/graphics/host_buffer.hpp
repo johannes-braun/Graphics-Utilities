@@ -1,8 +1,16 @@
 #pragma once
+
+#if __has_include(<execution>)
 #include <execution>
+#define IN_PARALLEL(FUN, ...) FUN(std::execution::par_unseq, __VA_ARGS__)
+#else
+#define IN_PARALLEL(FUN, ...) FUN(__VA_ARGS__)
+#endif
+
 #include <memory>
 #include <numeric>
 #include <any>
+#include <algorithm>
 #include <gfx/api.hpp>
 
 namespace std

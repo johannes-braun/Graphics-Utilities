@@ -18,6 +18,7 @@
 #   endif //APIENTRY
 #else
 #   include <dlfcn.h>
+# define APIENTRY
 #endif
 
 extern void (APIENTRY*glActiveShaderProgram)(mygl::pipeline pipeline, mygl::shader_program program) MYGL_NOEXCEPT;

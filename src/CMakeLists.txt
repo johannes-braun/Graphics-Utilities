@@ -22,12 +22,17 @@ endif()
 target_compile_definitions(gfx 
     PUBLIC 
         GLFW_INCLUDE_NONE
-        STBI_MSC_SECURE_CRT
-        _SCL_SECURE_NO_WARNINGS
         GLM_FORCE_RADIANS
-        GLM_ENABLE_EXPERIMENTAL
-        _WIN32_WINNT=0x0501
-        NOMINMAX)
+        GLM_ENABLE_EXPERIMENTAL)
+
+if(MSVC)
+    target_compile_definitions(gfx 
+        PUBLIC 
+            STBI_MSC_SECURE_CRT
+            _SCL_SECURE_NO_WARNINGS
+            _WIN32_WINNT=0x0501
+            NOMINMAX)
+endif()
 
 target_compile_options(gfx PRIVATE ${compile_options})
 add_library(jbraun::gfx ALIAS gfx)

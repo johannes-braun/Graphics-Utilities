@@ -11,8 +11,8 @@ namespace gfx
 {
 struct camera
 {
-    transform  transform;
-    projection projection{glm::radians(80.f), 100, 100, 0.1f, 1000.f, false, true};
+    transform  transform_mode;
+    projection projection_mode{glm::radians(80.f), 100, 100, 0.1f, 1000.f, false, true};
 
     struct data
     {

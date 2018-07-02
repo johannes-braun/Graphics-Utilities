@@ -73,7 +73,7 @@ int main()
         }
         ImGui::End();
         ctrl.update(camera);
-        uniform_buffer[0].vp = camera.projection.matrix() * glm::inverse(camera.transform.matrix()) * glm::scale(glm::vec3(scale));
+        uniform_buffer[0].vp = camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix()) * glm::scale(glm::vec3(scale));
 
         pp.bind();
         glBindTextureUnit(0, texture_view);

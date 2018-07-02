@@ -136,7 +136,7 @@ namespace gfx
     template<size_t Dimension>
     typename bvh<Dimension>::bounds bvh<Dimension>::get_bounds() const
     {
-        return _nodes[0].bounds;
+        return _nodes[0].aabb;
     }
 
     template<size_t Dimension>
@@ -222,9 +222,9 @@ namespace gfx
                     last.hits = true;
                     last.distance = distance;
                     last.indices.clear();
-                    last.indices.push_back(hit_result::shape_index{ uint32_t(3 * i + 1), barycentric.x });
-                    last.indices.push_back(hit_result::shape_index{ uint32_t(3 * i + 2), barycentric.y });
-                    last.indices.push_back(hit_result::shape_index{ uint32_t(3 * i + 0), 1 - barycentric.x - barycentric.y });
+                    last.indices.push_back({ uint32_t(3 * i + 1), barycentric.x });
+                    last.indices.push_back({ uint32_t(3 * i + 2), barycentric.y });
+                    last.indices.push_back({ uint32_t(3 * i + 0), 1 - barycentric.x - barycentric.y });
                 }
                 return last;
             }, any);
@@ -247,7 +247,7 @@ namespace gfx
         const node* current_node = _nodes.data();
         std::stack<const node*> node_stack;
 
-        bool hits_scene = intersect_ray_bounds(origin, direction, current_node->bounds, max_distance, nullptr);
+        bool hits_scene = intersect_ray_bounds(origin, direction, current_node->aabb, max_distance, nullptr);
 
         while (hits_scene)
         {
@@ -257,8 +257,8 @@ namespace gfx
                 const node* right = root_node + current_node->child_right;
                 float min_left = std::numeric_limits<float>::max();
                 float min_right = std::numeric_limits<float>::max();
-                bool hits_left = intersect_ray_bounds(origin, direction, left->bounds, result.distance, &min_left);
-                bool hits_right = intersect_ray_bounds(origin, direction, right->bounds, result.distance, &min_right);
+                bool hits_left = intersect_ray_bounds(origin, direction, left->aabb, result.distance, &min_left);
+                bool hits_right = intersect_ray_bounds(origin, direction, right->aabb, result.distance, &min_right);
 
                 if (!hits_left && !hits_right)
                     break;
@@ -324,7 +324,7 @@ namespace gfx
 
             struct bin
             {
-                bounds bounds;
+                bounds aabb;
                 int objects = 0;
             };
 
@@ -341,34 +341,34 @@ namespace gfx
                 {
                     const auto centroid = temporaries.centroids[candidate];
                     const auto id = static_cast<int32_t>(k * (centroid[axis] - cb_axis_min));
-                    bins[id].bounds += centroid;
+                    bins[id].aabb += centroid;
                     ++bins[id].objects;
                 }
 
                 std::array<bin, plane_count> bins_left;
-                bins_left[0].bounds += bins[0].bounds;
+                bins_left[0].aabb += bins[0].aabb;
                 bins_left[0].objects = bins[0].objects;
                 for (int plane = 1; plane < plane_count; ++plane)
                 {
-                    bins_left[plane].bounds += bins_left[plane - 1].bounds;
-                    bins_left[plane].bounds += bins[plane].bounds;
+                    bins_left[plane].aabb += bins_left[plane - 1].aabb;
+                    bins_left[plane].aabb += bins[plane].aabb;
                     bins_left[plane].objects = bins_left[plane - 1].objects + bins[plane].objects;
                 }
 
                 std::array<bin, plane_count> bins_right;
                 for (int plane = plane_count - 1; plane >= 0; --plane)
                 {
-                    bins_right[plane].bounds += bins[plane + 1].bounds;
+                    bins_right[plane].aabb += bins[plane + 1].aabb;
                     bins_right[plane].objects = bins[plane + 1].objects;
 
                     if (plane != plane_count - 1)
                     {
-                        bins_right[plane].bounds += bins_right[plane + 1].bounds;
+                        bins_right[plane].aabb += bins_right[plane + 1].aabb;
                         bins_right[plane].objects += bins_right[plane + 1].objects;
                     }
 
-                    const float surface_left = bins_left[plane].bounds.surface();
-                    const float surface_right = bins_right[plane].bounds.surface();
+                    const float surface_left = bins_left[plane].aabb.surface();
+                    const float surface_right = bins_right[plane].aabb.surface();
 
                     const float exponent = 2;
                     const float cost = std::pow(surface_left, exponent) * bins_left[plane].objects + std::pow(surface_right, exponent) * bins_right[plane].objects;
@@ -379,8 +379,8 @@ namespace gfx
                         best.plane = plane;
                         best.centbox_min = cb_axis_min;
                         best.k = k;
-                        best.left_bounds = bins_left[plane].bounds;
-                        best.right_bounds = bins_right[plane].bounds;
+                        best.left_bounds = bins_left[plane].aabb;
+                        best.right_bounds = bins_right[plane].aabb;
                     }
                 }
             }
@@ -471,7 +471,7 @@ namespace gfx
             node node;
             for (int i = current_range.start; i <= current_range.end; ++i)
                 for (int j = 0; j < int(_shape); ++j)
-                    node.bounds += _get_vertex(i * int(_shape) + j);
+                    node.aabb += _get_vertex(i * int(_shape) + j);
 
             node.type = node_type::inner;
             node.parent = current_range.parent;
@@ -494,7 +494,7 @@ namespace gfx
             auto&& new_leaf = _nodes[current_node];
             for (int i = current_range.start; i <= current_range.end; ++i)
                 for (int j = 0; j < int(_shape); ++j)
-                    new_leaf.bounds += _get_vertex(i * int(_shape) + j);
+                    new_leaf.aabb += _get_vertex(i * int(_shape) + j);
 
             new_leaf.type = node_type::leaf;
             new_leaf.child_left = current_range.start;

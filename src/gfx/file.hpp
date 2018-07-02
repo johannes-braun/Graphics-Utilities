@@ -132,7 +132,7 @@ struct scene_file : file
     struct mesh
     {
         std::string                name;
-        const material*            material;
+        const material*            material_ptr;
         uint32_t                   material_index;
         std::vector<gfx::index32>  indices;
         std::vector<gfx::vertex3d> vertices;

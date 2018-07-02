@@ -204,8 +204,8 @@ int main()
         ship_transform.rotation *= glm::angleAxis(glm::radians(40.f * float(context->delta())), glm::vec3(0, 1, 0));
 
         controller.update(camera);
-        data_buffer[0].projection_mat = camera.projection.matrix();
-        data_buffer[0].view_mat       = inverse(camera.transform.matrix());
+        data_buffer[0].projection_mat = camera.projection_mode.matrix();
+        data_buffer[0].view_mat       = inverse(camera.transform_mode.matrix());
         data_buffer_device << data_buffer;
 
         model_buffer[0].model_mat   = glm::mat4(ship_transform) * glm::rotate(glm::radians(-90.f), glm::vec3(1, 0, 0));

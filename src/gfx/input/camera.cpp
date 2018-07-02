@@ -8,9 +8,9 @@ namespace gfx
 camera::data camera::info() const noexcept
 {
     data d;
-    d.projection = projection;
-    d.view       = inverse(transform.matrix());
-    d.position   = transform.position;
+    d.projection = projection_mode;
+    d.view       = inverse(transform_mode.matrix());
+    d.position   = transform_mode.position;
     return d;
 }
 
@@ -21,7 +21,7 @@ void camera_controller::update(camera& camera)
     if(&camera != _cam_ptr)
     {
         _cam_ptr          = &camera;
-        _target_transform = camera.transform;
+        _target_transform = camera.transform_mode;
     }
 
     auto delta = glfwGetTime() - _last_time;
@@ -30,8 +30,8 @@ void camera_controller::update(camera& camera)
     const auto      _window                       = gfx::context::current()->window();
     glm::ivec2 size;
     glfwGetFramebufferSize(_window, &size.x, &size.y);
-    camera.projection.perspective().screen_width  = int(size.x);
-    camera.projection.perspective().screen_height = int(size.y);
+    camera.projection_mode.perspective().screen_width  = int(size.x);
+    camera.projection_mode.perspective().screen_height = int(size.y);
 
     grab_action.update(_window);
     btn_forward.update(_window);
@@ -67,8 +67,8 @@ void camera_controller::update(camera& camera)
                                   static_cast<float>(delta) * movement_speed;
 
     const float alpha         = float(glm::clamp(20.0 * delta, 0.0, 1.0));
-    camera.transform.position = mix(camera.transform.position, _target_transform.position, alpha);
-    camera.transform.scale    = mix(camera.transform.scale, _target_transform.scale, alpha);
-    camera.transform.rotation = glm::slerp(camera.transform.rotation, _target_transform.rotation, alpha);
+    camera.transform_mode.position = mix(camera.transform_mode.position, _target_transform.position, alpha);
+    camera.transform_mode.scale    = mix(camera.transform_mode.scale, _target_transform.scale, alpha);
+    camera.transform_mode.rotation = glm::slerp(camera.transform_mode.rotation, _target_transform.rotation, alpha);
 }
 }

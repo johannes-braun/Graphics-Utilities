@@ -36,7 +36,8 @@ host_buffer<T>::host_buffer(const size_type elements, const_reference base)
         , _size(elements)
         , _data(type_ptr(_implementation->grow(nullptr, 0, _size * type_size)))
 {
-    std::generate(std::execution::par_unseq, _data, _data + _size, [&]() { return base; });
+    IN_PARALLEL(std::generate, _data, _data+_size, [&]() { return base; });
+   // std::generate(std::execution::par_unseq, _data, _data + _size, [&]() { return base; });
 }
 
 template <typename T>
@@ -46,7 +47,7 @@ host_buffer<T>::host_buffer(Iter begin, Iter end)
         , _size(std::distance(begin, end))
         , _data(type_ptr(_implementation->grow(nullptr, 0, _size * type_size)))
 {
-    std::copy(std::execution::par_unseq, begin, end, _data);
+    IN_PARALLEL(std::copy, begin, end, _data);
 }
 
 template <typename T>

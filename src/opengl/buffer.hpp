@@ -12,10 +12,15 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 namespace gl
 {
 using byte = uint8_t;
+
+template <typename T = byte>
+struct bounded_buffer_data;
+template <typename T, typename Ptr, int Inc> struct bounded_buffer_iterator_base;
 
 template <typename T = byte> class buffer
 {
@@ -48,9 +53,6 @@ template <typename T = byte> class buffer
             typename std::iterator_traits<It>::iterator_category>;
 
 public:
-    struct bounded_buffer_data;
-    template <typename Ptr, int Inc> struct bounded_buffer_iterator_base;
-
     using value_type      = std::decay_t<std::remove_pointer_t<T>>;
     using pointer         = value_type*;
     using const_pointer   = const value_type*;
@@ -59,10 +61,10 @@ public:
     using size_type       = size_t;
     using difference_type = ptrdiff_t;
 
-    using iterator               = bounded_buffer_iterator_base<T*, 1>;
-    using const_iterator         = bounded_buffer_iterator_base<const T*, 1>;
-    using reverse_iterator       = bounded_buffer_iterator_base<T*, -1>;
-    using const_reverse_iterator = bounded_buffer_iterator_base<T*, -1>;
+    using iterator               = bounded_buffer_iterator_base<T, T*, 1>;
+    using const_iterator         = bounded_buffer_iterator_base<T, const T*, 1>;
+    using reverse_iterator       = bounded_buffer_iterator_base<T, T*, -1>;
+    using const_reverse_iterator = bounded_buffer_iterator_base<T, T*, -1>;
 
     using sized_type                         = std::conditional_t<std::is_same_v<void, T>, byte, T>;
     constexpr const static size_t type_size  = sizeof(sized_type);
@@ -124,7 +126,7 @@ public:
     const T* data() const noexcept;
              operator mygl::buffer() const noexcept;
 
-    bounded_buffer_data    iterate() noexcept;
+    bounded_buffer_data<T>    iterate() noexcept;
     iterator               begin() noexcept;
     iterator               end() noexcept;
     const_iterator         begin() const noexcept;
@@ -157,34 +159,33 @@ private:
     uint64_t   _handle         = 0;
 };
 
-template <typename T> struct buffer<T>::bounded_buffer_data
+template <typename T> struct bounded_buffer_data
 {
-    bounded_buffer_data(buffer* b, size_t size);
+    bounded_buffer_data(buffer<T>* b, size_t size);
 
-    typename buffer::iterator               begin() noexcept;
-    typename buffer::iterator               end() noexcept;
-    typename buffer::const_iterator         cbegin() const noexcept;
-    typename buffer::const_iterator         cend() const noexcept;
-    typename buffer::const_iterator         begin() const noexcept;
-    typename buffer::const_iterator         end() const noexcept;
-    typename buffer::reverse_iterator       rbegin() noexcept;
-    typename buffer::reverse_iterator       rend() noexcept;
-    typename buffer::const_reverse_iterator rbegin() const noexcept;
-    typename buffer::const_reverse_iterator rend() const noexcept;
-    typename buffer::const_reverse_iterator crbegin() const noexcept;
-    typename buffer::const_reverse_iterator crend() const noexcept;
+    typename buffer<T>::iterator               begin() noexcept;
+    typename buffer<T>::iterator               end() noexcept;
+    typename buffer<T>::const_iterator         cbegin() const noexcept;
+    typename buffer<T>::const_iterator         cend() const noexcept;
+    typename buffer<T>::const_iterator         begin() const noexcept;
+    typename buffer<T>::const_iterator         end() const noexcept;
+    typename buffer<T>::reverse_iterator       rbegin() noexcept;
+    typename buffer<T>::reverse_iterator       rend() noexcept;
+    typename buffer<T>::const_reverse_iterator rbegin() const noexcept;
+    typename buffer<T>::const_reverse_iterator rend() const noexcept;
+    typename buffer<T>::const_reverse_iterator crbegin() const noexcept;
+    typename buffer<T>::const_reverse_iterator crend() const noexcept;
 
 private:
-    buffer* _parent;
+    buffer<T>* _parent;
     size_t  _size;
 };
 
-template <typename T>
-template <typename Ptr, int Inc>
-struct buffer<T>::bounded_buffer_iterator_base
+template <typename T, typename Ptr, int Inc>
+struct bounded_buffer_iterator_base
 {
-    friend buffer::bounded_buffer_data;
-    friend buffer;
+    friend bounded_buffer_data<T>;
+    friend buffer<T>;
 
     using iterator_category = std::random_access_iterator_tag;
     using value_type        = std::decay_t<std::remove_pointer_t<Ptr>>;
@@ -223,7 +224,7 @@ private:
     bool compatible(const bounded_buffer_iterator_base& other) const noexcept;
     bool valid() const noexcept;
 
-    std::conditional_t<std::is_const_v<Ptr>, const buffer*, buffer*> _parent;
+    std::conditional_t<std::is_const_v<Ptr>, const buffer<T>*, buffer<T>*> _parent;
     size_t                                                           _size;
     ptrdiff_t                                                        _offset;
 };

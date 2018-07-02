@@ -135,6 +135,7 @@ namespace gl
 
         void set(GLenum name, int value) const noexcept;
         void set(GLenum name, float value) const noexcept;
+        void set(GLenum name, GLenum value) const noexcept { set(name, int(value)); }
 
         uint64_t sample(mygl::texture t) const noexcept;
         void bind(uint32_t binding) const noexcept;

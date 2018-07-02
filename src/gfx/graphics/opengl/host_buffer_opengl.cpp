@@ -1,4 +1,5 @@
 #include "host_buffer_opengl.hpp"
+#include <cstring>
 
 namespace gfx::opengl
 {

@@ -38,10 +38,10 @@ namespace gl
     template<typename T>
     void pipeline::draw(GLenum primitive, const buffer<T>& index_buffer, GLenum type, size_t count, size_t first_index, size_t first_vertex) const noexcept
     {
-        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, 0ui64, std::numeric_limits<int64_t>::max());
+        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, 0ull, std::numeric_limits<int64_t>::max());
         glDrawElementsBaseVertex(primitive, int(count == ~0 ? index_buffer.size() : count), type,
             reinterpret_cast<const void*>(index_buffer.handle() + first_index * std::max<size_t>(1, type - GL_UNSIGNED_BYTE)), int(first_vertex));
-        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, 0ui64, 1ui64);
+        glBufferAddressRangeNV(GL_ELEMENT_ARRAY_ADDRESS_NV, 0, 0ull, 1ull);
     }
 
     template<typename T>

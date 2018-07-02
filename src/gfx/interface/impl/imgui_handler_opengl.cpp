@@ -53,8 +53,8 @@ void main() {
         _fonts_atlas->assign(GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
         _sampler = gl::sampler();
-        _sampler.set(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        _sampler.set(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        _sampler.set(GL_TEXTURE_MIN_FILTER, int(GL_LINEAR));
+        _sampler.set(GL_TEXTURE_MAG_FILTER, int(GL_LINEAR));
         _sampler.set(GL_TEXTURE_MAX_LOD, 1);
         ImGui::GetIO().Fonts->TexID = static_cast<uint64_t>(mygl::texture(*_fonts_atlas));
 

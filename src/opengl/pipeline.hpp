@@ -77,7 +77,7 @@ namespace gl
         void draw_instanced(GLenum primitive, size_t count, size_t instances, size_t first_vertex = 0, size_t first_instance = 0) const noexcept;
 
         template<typename T>
-        void draw(GLenum primitive, const buffer<T>& index_buffer, GLenum type, size_t count = ~0ui64, size_t first_index = 0, size_t first_vertex = 0) const noexcept;
+        void draw(GLenum primitive, const buffer<T>& index_buffer, GLenum type, size_t count = ~0ull, size_t first_index = 0, size_t first_vertex = 0) const noexcept;
 
     private:
         static std::unordered_set<pipeline*> _all_pipelines;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <functional>
 #include <algorithm>
 #include <GLFW/glfw3.h>

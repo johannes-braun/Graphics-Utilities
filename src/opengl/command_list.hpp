@@ -17,7 +17,7 @@ namespace gl
         using u64 = uint64_t;
 
         const uint8_t* as_bytes() const noexcept { return reinterpret_cast<const uint8_t*>(this); }
-        constexpr static uint32_t byte_size() noexcept { return sizeof Command; }
+        constexpr static uint32_t byte_size() noexcept { return sizeof(Command); }
     private: 
         u32 _header = glGetCommandHeaderNV(Token, byte_size());
     };
@@ -161,9 +161,9 @@ namespace gl
     struct cmd_front_face : command<GL_FRONT_FACE_COMMAND_NV, cmd_front_face>
     {
         cmd_front_face(const front_face ff) noexcept
-            : front_face(ff)
+            : face(ff)
         {}
-        front_face front_face;
+        front_face face;
     };
 
     class command_buffer

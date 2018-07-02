@@ -32,10 +32,10 @@ light::info light::make_info() const
 {
     info i;
     i.shadow_map    = use_shadowmap ? sampler.sample(*depth_attachment) : 0ull;
-    i.position      = glm::vec4(map_camera.transform.position, 1);
-    i.direction     = glm::mat4(map_camera.transform) * glm::vec4(0, 0, -1, 0);
+    i.position      = glm::vec4(map_camera.transform_mode.position, 1);
+    i.direction     = glm::mat4(map_camera.transform_mode) * glm::vec4(0, 0, -1, 0);
     i.color         = color;
-    i.shadow_matrix = use_shadowmap ? glm::mat4(map_camera.projection) * inverse(map_camera.transform.matrix()) : glm::mat4(1.f);
+    i.shadow_matrix = use_shadowmap ? glm::mat4(map_camera.projection_mode) * inverse(map_camera.transform_mode.matrix()) : glm::mat4(1.f);
     return i;
 }
 }

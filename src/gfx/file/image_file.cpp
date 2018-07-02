@@ -1,5 +1,5 @@
 #include <gfx/file.hpp>
-
+#include <cstdio>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define NANOSVGRAST_IMPLEMENTATION
