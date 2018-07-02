@@ -81,7 +81,9 @@ register_public_headers(gfx/graphics
     host_image.hpp
     host_image.inl
     swapchain.hpp
-    sampler.hpp)
+    sampler.hpp
+	image_view.hpp
+	vertex_input.hpp)
 
 register_public_headers(gfx/data
     bvh.hpp

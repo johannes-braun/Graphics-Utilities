@@ -11,7 +11,7 @@ namespace detail
     {
     public:
         virtual ~device_image_implementation()                                                                         = default;
-        virtual void     initialize(uint32_t layer_dimensions, img_format format, const extent& size, uint32_t levels) = 0;
+        virtual void     initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels) = 0;
         virtual void     fill_from(const host_image& image, uint32_t level, uint32_t layer)                            = 0;
         virtual std::any api_handle()                                                                                  = 0;
         virtual void     generate_mipmaps() = 0;
@@ -37,7 +37,7 @@ public:
         device_image& _img;
     };
 
-    device_image(uint32_t layer_dimensions, img_format format, const extent& size, uint32_t levels);
+    device_image(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels);
     img_reference operator[](uint32_t layer);
     img_reference level(uint32_t level);
     img_reference layer(uint32_t layer);

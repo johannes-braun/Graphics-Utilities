@@ -52,9 +52,11 @@ namespace detail
 
 GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer)
 
+        class vertex_input;
 template <typename T> class device_buffer
 {
 public:
+    friend class vertex_input;
     using size_type                            = uint64_t;
     using difference_type                      = int64_t;
     using value_type                           = T;

@@ -1,10 +1,11 @@
 #include "host_image.hpp"
+#include <numeric>
 
 namespace gfx
 {
-size_t format_element_size(img_format format)
+size_t format_element_size(format fmt)
 {
-    switch(format)
+    switch(fmt)
     {
     case r8unorm:
     case r8snorm:
@@ -72,16 +73,16 @@ size_t format_element_size(img_format format)
     return 1;
 }
 
-host_image::host_image(img_format format, const extent& size)
-        : _format(format)
+host_image::host_image(format fmt, const extent& size)
+        : _format(fmt)
         , _extent(size)
-        , _storage_element_size(format_element_size(format))
+        , _storage_element_size(format_element_size(fmt))
         , _storage(_storage_element_size * _extent.count())
         , _write_unorm(get_write_unorm_fun())
 {
 }
 
-host_image::host_image(img_format format, const image_file& file)
+host_image::host_image(format format, const image_file& file)
         : host_image(format, {file.width, file.height})
 {
     update(file);

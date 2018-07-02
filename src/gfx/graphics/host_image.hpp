@@ -5,78 +5,10 @@
 #include <glm/ext.hpp>
 #include <vector>
 #include <functional>
+#include "formats.hpp"
 
 namespace gfx
 {
-enum img_format
-{
-    // unorm
-    r8unorm,
-    rg8unorm,
-    rgb8unorm,
-    rgba8unorm,
-    r16unorm,
-    rg16unorm,
-    rgb16unorm,
-    rgba16unorm,
-
-    // snorm
-    r8snorm,
-    rg8snorm,
-    rgb8snorm,
-    rgba8snorm,
-    r16snorm,
-    rg16snorm,
-    rgb16snorm,
-    rgba16snorm,
-
-    // uint
-    r8u,
-    rg8u,
-    rgb8u,
-    rgba8u,
-    r16u,
-    rg16u,
-    rgb16u,
-    rgba16u,
-    r32u,
-    rg32u,
-    rgb32u,
-    rgba32u,
-
-    // int
-    r8i,
-    rg8i,
-    rgb8i,
-    rgba8i,
-    r16i,
-    rg16i,
-    rgb16i,
-    rgba16i,
-    r32i,
-    rg32i,
-    rgb32i,
-    rgba32i,
-
-    // float
-    r16f,
-    rg16f,
-    rgb16f,
-    rgba16f,
-    r32f,
-    rg32f,
-    rgb32f,
-    rgba32f,
-
-    // special formats
-    rgb5a1unorm,
-    rgb10a2unorm,
-    rgb10a2snorm,
-    r11g11b10f,
-    rgb9e5,
-    r5g6b5unorm,
-};
-
 struct extent
 {
     constexpr extent(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
@@ -105,16 +37,16 @@ enum class data_format
 class host_image
 {
 public:
-    host_image(img_format format, const extent& size);
-    host_image(img_format format, const image_file& file);
+    host_image(format fmt, const extent& size);
+    host_image(format fmt, const image_file& file);
 
-    void update(data_format format, const uint8_t* data);
-    void update(data_format format, const uint16_t* data);
-    void update(data_format format, const uint32_t* data);
-    void update(data_format format, const int8_t* data);
-    void update(data_format format, const int16_t* data);
-    void update(data_format format, const int32_t* data);
-    void update(data_format format, const float* data);
+    void update(data_format fmt, const uint8_t* data);
+    void update(data_format fmt, const uint16_t* data);
+    void update(data_format fmt, const uint32_t* data);
+    void update(data_format fmt, const int8_t* data);
+    void update(data_format fmt, const int16_t* data);
+    void update(data_format fmt, const int32_t* data);
+    void update(data_format fmt, const float* data);
     void update(const image_file& file);
 
     host_buffer<std::byte>& storage() noexcept;
@@ -133,7 +65,7 @@ public:
 private:
     std::function<void(const glm::vec4&, int64_t i)> get_write_unorm_fun();
 
-    img_format                                         _format;
+    format                                         _format;
     extent                                             _extent;
     size_t                                             _storage_element_size;
     host_buffer<std::byte>                             _storage;

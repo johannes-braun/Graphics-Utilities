@@ -46,6 +46,9 @@ int main()
     pp[GL_GEOMETRY_SHADER] = std::make_shared<gl::shader>("04_marching_squares/seg.geom");
     pp[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("04_marching_squares/seg.frag");
 
+    gfx::vertex_input input;
+    input.set_assembly(gfx::topology::point_list);
+
     context->key_callback.add([&](GLFWwindow*, int k, int s, int a, int m) {
         if(k == GLFW_KEY_R && a == GLFW_PRESS)
             pp.reload();
@@ -79,7 +82,7 @@ int main()
         glBindTextureUnit(0, texture_view);
         glBindSampler(0, sampler);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer);
-        pp.draw(GL_POINTS, (image.extents().width - 1) * (image.extents().height - 1));
+        input.draw((image.extents().width - 1) * (image.extents().height - 1));
 
         imgui.render();
     }

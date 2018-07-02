@@ -29,7 +29,7 @@ device_image::img_reference::img_reference(uint32_t level, uint32_t layer, devic
 {
 }
 
-device_image::device_image(uint32_t layer_dimensions, img_format format, const extent& size, uint32_t levels)
+device_image::device_image(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels)
         : _implementation(detail::make_device_image_implementation())
 {
     _implementation->initialize(layer_dimensions, format, size, levels);

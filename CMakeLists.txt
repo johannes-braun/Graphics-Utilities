@@ -13,7 +13,7 @@ project(${var_project_name}
 )
 
 if(MSVC)
-    set(compile_options /MP /openmp /permissive- /Zc:twoPhase- /wd4251)
+    set(compile_options -MP -openmp -permissive- -Zc:twoPhase- -wd4251)
 else()
     set(compile_options -Wnon-template-friend -Wclass-memaccess -Wtautological-compare -Wconversion-null -std=c++1z)
 endif()

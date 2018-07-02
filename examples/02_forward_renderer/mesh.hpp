@@ -41,14 +41,14 @@ struct mesh_holder
     mesh_instance copy_instance(const mesh_instance& instance);
     void          free_instance(const mesh_instance& instance);
     void          cull() const;
-    void          render() const;
+    void          render();
 
     device_buffer<vertex3d>      vertex_buffer;
     device_buffer<index32>       index_buffer;
     device_buffer<mesh_instance> info_buffer;
 
 private:
-    gl::vertex_array     _vertex_array;
+    vertex_input    _vertex_input;
     std::stack<uint32_t> _free_meshes;
 
     struct range

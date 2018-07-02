@@ -1,10 +1,11 @@
 #define GFX_EXPOSE_APIS
 #include "device_image_opengl.hpp"
 #include "image_view_opengl.hpp"
+#include "formats.hpp"
 
 namespace gfx::opengl
 {
-void image_view_implementation::initialize(view_type type, img_format format, const device_image& image, uint32_t base_mip,
+void image_view_implementation::initialize(view_type type, format format, const device_image& image, uint32_t base_mip,
                                            uint32_t mip_count, uint32_t base_layer, uint32_t layer_count)
 {
     if(glIsTexture(_handle))
@@ -38,9 +39,15 @@ void image_view_implementation::initialize(view_type type, img_format format, co
         break;
     }
 
-    const auto internal_format = std::get<0>(format_from(format));
     glGenTextures(1, &_handle);
-    glTextureView(_handle, target, api_cast<gapi::opengl>(image), internal_format, base_mip, mip_count, base_layer, layer_count);
+    glTextureView(_handle,
+                  target,
+                  api_cast<gapi::opengl>(image),
+                  format_from(format).internal_format,
+                  base_mip,
+                  mip_count,
+                  base_layer,
+                  layer_count);
 }
 
 std::any image_view_implementation::api_handle() { return _handle; }

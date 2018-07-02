@@ -2,15 +2,14 @@
 
 #include "../device_image.hpp"
 #include <mygl/mygl.hpp>
+#include <any>
 
 namespace gfx::opengl
 {
-std::tuple<GLenum, GLenum, GLenum> format_from(img_format format);
-
 class device_image_implementation : public detail::device_image_implementation
 {
 public:
-    void initialize(uint32_t layer_dimensions, img_format format, const extent& size, uint32_t levels) override;
+    void initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels) override;
     void fill_from(const host_image& image, uint32_t level, uint32_t layer) override;
     std::any api_handle() override;
     void     generate_mipmaps() override;

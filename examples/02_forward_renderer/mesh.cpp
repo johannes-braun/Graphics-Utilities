@@ -1,5 +1,6 @@
 #define GFX_EXPOSE_APIS
 #include "mesh.hpp"
+#include <execution>
 
 namespace gfx
 {
@@ -8,9 +9,10 @@ mesh_holder::mesh_holder()
         , index_buffer(buffer_usage::storage | buffer_usage::index)
         , info_buffer(buffer_usage::storage | buffer_usage::indirect)
 {
-    _vertex_array.attrib(0).enable(true).format(3, GL_FLOAT, false, offsetof(gfx::vertex3d, position)).bind(0);
-    _vertex_array.attrib(1).enable(true).format(2, GL_FLOAT, false, offsetof(gfx::vertex3d, uv)).bind(0);
-    _vertex_array.attrib(2).enable(true).format(3, GL_FLOAT, false, offsetof(gfx::vertex3d, normal)).bind(0);
+    _vertex_input.add_attribute(0, rgb32f, offsetof(vertex3d, position));
+    _vertex_input.add_attribute(0, rg32f, offsetof(vertex3d, uv));
+    _vertex_input.add_attribute(0, rgb32f, offsetof(vertex3d, normal));
+    _vertex_input.set_binding_info(0, sizeof(vertex3d), input_rate::vertex);
 }
 
 mesh_instance mesh_holder::create_mesh(std::vector<gfx::vertex3d> vertices, std::optional<std::vector<gfx::index32>> indices)
@@ -100,9 +102,6 @@ mesh_instance mesh_holder::create_mesh(std::vector<gfx::vertex3d> vertices, std:
             _free_vertex_ranges.erase(_free_vertex_ranges.begin() + vertex_range_index);
     }
 
-    _vertex_array.vertex_buffer(0, vertex_buffer, 0, sizeof(gfx::vertex3d));
-    _vertex_array.element_buffer(index_buffer);
-
     mesh.instance_index = static_cast<uint32_t>(info_buffer.capacity());
     gfx::host_buffer<mesh_instance> old(info_buffer.capacity() + 1);
     info_buffer >> old;
@@ -168,12 +167,11 @@ void mesh_holder::cull() const
     cull_frustum.dispatch(static_cast<uint32_t>(info_buffer.capacity()));
 }
 
-void mesh_holder::render() const
+void mesh_holder::render()
 {
-    _vertex_array.bind();
+    _vertex_input.bind_vertex_buffer(0, vertex_buffer, 0);
+    _vertex_input.bind_index_buffer(index_buffer, index_type::uint32);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, info_buffer);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, info_buffer);
-    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, static_cast<int>(info_buffer.capacity()), sizeof(mesh_instance));
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer(0));
+    _vertex_input.draw_indexed_indirect(info_buffer, 0, info_buffer.capacity(), sizeof(mesh_instance));
 }
 }
