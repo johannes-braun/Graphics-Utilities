@@ -6,6 +6,11 @@ int main()
     gfx::context_options opt;
     opt.debug        = true;
     opt.window_title = "odijs";
+
+    // OpenGL 4.3 test
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
     auto context     = gfx::context::create(opt);
     context->make_current();
 

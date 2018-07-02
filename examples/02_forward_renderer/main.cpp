@@ -111,11 +111,11 @@ int main()
     mesh_shadow_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("02_forward_renderer/mesh_shadow.frag");
 
     std::vector<gfx::light> lights(4);
-    lights[0].map_camera.transform = inverse(glm::lookAt(glm::vec3(4, 24, 0), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
+    lights[0].map_camera.transform_mode = inverse(glm::lookAt(glm::vec3(4, 24, 0), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
     lights[0].color                = glm::vec4(1.f, 0.6f, 0.4f, 15.f);
-    lights[1].map_camera.transform = inverse(glm::lookAt(glm::vec3(4, 20, 4), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
+    lights[1].map_camera.transform_mode = inverse(glm::lookAt(glm::vec3(4, 20, 4), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
     lights[1].color                = glm::vec4(0.3f, 0.7f, 1.f, 15.f);
-    lights[2].map_camera.transform = inverse(glm::lookAt(glm::vec3(-7, 8, -4), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
+    lights[2].map_camera.transform_mode = inverse(glm::lookAt(glm::vec3(-7, 8, -4), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
     lights[2].color                = glm::vec4(0.4f, 0.8f, 0.1f, 13.f);
     lights[3].color                = glm::vec4(0.9f, 0.8f, 0.7f, 10.f);
 
@@ -177,22 +177,22 @@ int main()
         queries["scene"]["lights"].queries["shadowmap"].finish();
 
         queries["scene"]["lights"].queries["update"].start();
-        lights[1].map_camera.transform = inverse(
+        lights[1].map_camera.transform_mode = inverse(
                 glm::lookAt(glm::vec3(7 * glm::sin(static_cast<float>(glfwGetTime())), 20, 7 * glm::cos(static_cast<float>(glfwGetTime()))),
                             glm::vec3(0, 0, 0),
                             glm::vec3(0, 1, 0)));
-        lights[3].map_camera.transform.position =
-                glm::lerp(lights[3].map_camera.transform.position, camera.transform.position, static_cast<float>(10.f * context->delta()));
-        lights[3].map_camera.transform.rotation =
-                glm::slerp(lights[3].map_camera.transform.rotation, camera.transform.rotation, static_cast<float>(10.f * context->delta()));
+        lights[3].map_camera.transform_mode.position =
+                glm::lerp(lights[3].map_camera.transform_mode.position, camera.transform_mode.position, static_cast<float>(10.f * context->delta()));
+        lights[3].map_camera.transform_mode.rotation =
+                glm::slerp(lights[3].map_camera.transform_mode.rotation, camera.transform_mode.rotation, static_cast<float>(10.f * context->delta()));
         queries["scene"]["lights"].queries["update"].finish();
 
         queries["scene"]["camera"].queries["update"].start();
         glViewport(0, 0, 1280, 720);
         controller.update(camera);
-        matrix_buffer[0].view       = inverse(camera.transform.matrix());
-        matrix_buffer[0].projection = camera.projection;
-        matrix_buffer[0].position   = camera.transform.position;
+        matrix_buffer[0].view       = inverse(camera.transform_mode.matrix());
+        matrix_buffer[0].projection = camera.projection_mode;
+        matrix_buffer[0].position   = camera.transform_mode.position;
         matrix_buffer.synchronize();
         queries["scene"]["camera"].queries["update"].finish();
 

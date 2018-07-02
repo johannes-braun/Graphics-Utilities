@@ -533,8 +533,7 @@ template <typename T> void buffer<T>::reserve(size_t size)
         const ptrdiff_t max_size = static_cast<ptrdiff_t>(size) - map_offset;
         if(_size > size)
         {
-            map_size = static_cast<size_t>(
-                    std::max(std::min(static_cast<ptrdiff_t>(map_size), max_size), 0l));
+            map_size = static_cast<size_t>(std::max<ptrdiff_t>(std::min(static_cast<ptrdiff_t>(map_size), max_size), 0l));
         }
         if(!data_full_size && map_size > 0)
             map(map_offset, map_size, map_access);
@@ -697,9 +696,9 @@ template <typename T> buffer<T>::operator mygl::buffer() const noexcept { return
 template <typename T> bounded_buffer_data<T> buffer<T>::iterate() noexcept
 {
     if(_data)
-        return bounded_buffer_data(this, _data_size);
+        return bounded_buffer_data<T>(this, _data_size);
     else
-        return bounded_buffer_data(this, _size);
+        return bounded_buffer_data<T>(this, _size);
 }
 
 template <typename T> typename buffer<T>::iterator buffer<T>::begin() noexcept

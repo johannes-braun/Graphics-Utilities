@@ -1,5 +1,3 @@
-#pragma once
-
 #include <gfx/context.hpp>
 #include <gfx/graphics/host_buffer.hpp>
 #include "opengl/host_buffer_opengl.hpp"

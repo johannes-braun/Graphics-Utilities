@@ -1,5 +1,4 @@
 #pragma once
-#include <execution>
 #include <gfx/gfx.hpp>
 #include <memory>
 #include <numeric>

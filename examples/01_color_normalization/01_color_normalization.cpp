@@ -205,7 +205,7 @@ int main()
     glLineWidth(4.f);
 
     gfx::camera camera;
-    camera.transform.position = glm::vec3(0, 0, 5);
+    camera.transform_mode.position = glm::vec3(0, 0, 5);
     gfx::camera_controller controller;
 
     while(context->run())
@@ -287,7 +287,7 @@ int main()
 
         controller.update(camera);
 
-        glm::mat4 vp = camera.projection.matrix() * inverse(camera.transform.matrix());
+        glm::mat4 vp = camera.projection_mode.matrix() * inverse(camera.transform_mode.matrix());
 
         points_pipeline.bind();
         points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat") =

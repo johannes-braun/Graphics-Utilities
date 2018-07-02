@@ -121,9 +121,8 @@ std::tuple<GLenum, GLenum, GLenum> format_from(img_format format)
     return {};
 }
 
-std::any device_image_implementation::api_handle()
-{ return _handle; }
-void device_image_implementation::generate_mipmaps() { glGenerateTextureMipmap(_handle); }
+std::any device_image_implementation::api_handle() { return _handle; }
+void     device_image_implementation::generate_mipmaps() { glGenerateTextureMipmap(_handle); }
 
 void device_image_implementation::initialize(uint32_t layer_dimensions, img_format format, const extent& size, uint32_t levels)
 {
@@ -141,22 +140,52 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, img_form
     case 1:
     {
         _type = GL_TEXTURE_1D_ARRAY;
-        glCreateTextures(_type, 1, &_handle);
-        glTextureStorage2D(_handle, _levels, _internal_format, _extent.width, _extent.height);
+        if(glCreateTextures)
+        {
+            glCreateTextures(_type, 1, &_handle);
+            glTextureStorage2D(_handle, _levels, _internal_format, _extent.width, _extent.height);
+        }
+        else
+        {
+            glGenTextures(1, &_handle);
+            glBindTexture(_type, _handle);
+            glTexStorage2D(_type, _levels, _internal_format, _extent.width, _extent.height);
+            glBindTexture(_type, mygl::texture::zero);
+        }
     }
     break;
     case 2:
     {
         _type = GL_TEXTURE_2D_ARRAY;
-        glCreateTextures(_type, 1, &_handle);
-        glTextureStorage3D(_handle, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
+        if(glCreateTextures)
+        {
+            glCreateTextures(_type, 1, &_handle);
+            glTextureStorage3D(_handle, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
+        }
+        else
+        {
+            glGenTextures(1, &_handle);
+            glBindTexture(_type, _handle);
+            glTexStorage3D(_type, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
+            glBindTexture(_type, mygl::texture::zero);
+        }
     }
     break;
     case 3:
     {
         _type = GL_TEXTURE_3D;
-        glCreateTextures(_type, 1, &_handle);
-        glTextureStorage3D(_handle, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
+        if(glCreateTextures)
+        {
+            glCreateTextures(_type, 1, &_handle);
+            glTextureStorage3D(_handle, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
+        }
+        else
+        {
+            glGenTextures(1, &_handle);
+            glBindTexture(_type, _handle);
+            glTexStorage3D(_type, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
+            glBindTexture(_type, mygl::texture::zero);
+        }
     }
     break;
     }
@@ -167,12 +196,35 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
     switch(_type)
     {
     case GL_TEXTURE_3D:
-        glTextureSubImage3D(
-                _handle, level, 0, 0, 0, _extent.width, _extent.height, _extent.depth, _external_format, _external_type, nullptr);
+        if(glTextureSubImage3D)
+            glTextureSubImage3D(
+                    _handle, level, 0, 0, 0, _extent.width, _extent.height, _extent.depth, _external_format, _external_type, nullptr);
+        else
+        {
+            glBindTexture(_type, _handle);
+            glTexSubImage3D(_type, level, 0, 0, 0, _extent.width, _extent.height, _extent.depth, _external_format, _external_type, nullptr);
+            glBindTexture(_type, mygl::texture::zero);
+        }
     case GL_TEXTURE_2D_ARRAY:
-        glTextureSubImage3D(_handle, level, 0, 0, layer, _extent.width, _extent.height, 1, _external_format, _external_type, nullptr);
+        if(glTextureSubImage3D)
+            glTextureSubImage3D(
+                    _handle, level, 0, 0, layer, _extent.width, _extent.height, 1, _external_format, _external_type, nullptr);
+        else
+        {
+            glBindTexture(_type, _handle);
+            glTexSubImage3D(
+                    _type, level, 0, 0, layer, _extent.width, _extent.height, 1, _external_format, _external_type, nullptr);
+            glBindTexture(_type, mygl::texture::zero);
+        }
     case GL_TEXTURE_1D_ARRAY:
-        glTextureSubImage2D(_handle, level, 0, layer, _extent.width, 1, _external_format, _external_type, nullptr);
+        if(glTextureSubImage3D)
+            glTextureSubImage2D(_handle, level, 0, layer, _extent.width, 1, _external_format, _external_type, nullptr);
+        else
+        {
+            glBindTexture(_type, _handle);
+            glTexSubImage2D(_type, level, 0, layer, _extent.width, 1, _external_format, _external_type, nullptr);
+            glBindTexture(_type, mygl::texture::zero);
+        }
     }
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mygl::buffer::zero);
     glFinish();

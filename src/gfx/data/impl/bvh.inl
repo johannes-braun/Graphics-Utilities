@@ -8,7 +8,9 @@ namespace gfx
     {
         const int count = int(std::distance(begin, end) / float(_shape));
         if (count <= 0) return;
-        _get_vertex = [begin, get_vertex](size_t index) -> vec_type { return reinterpret_cast<vec_type&>(get_vertex(*std::next(begin, index))); };
+        _get_vertex = [begin, get_vertex](size_t index) -> vec_type { 
+            auto v = get_vertex(*std::next(begin, index));
+            return reinterpret_cast<vec_type&>(v); };
 
         _node_count = 0;
         _depth = 0;

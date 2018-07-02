@@ -95,11 +95,11 @@ int main()
     {
         imgui.new_frame();
         controller.update(camera);
-        const glm::mat4 camera_matrix = inverse(camera.projection.matrix() * glm::mat4(glm::mat3(inverse(camera.transform.matrix()))));
+        const glm::mat4 camera_matrix = inverse(camera.projection_mode.matrix() * glm::mat4(glm::mat3(inverse(camera.transform_mode.matrix()))));
 
         timer.start();
         data_buffer[0].camera_matrix   = camera_matrix;
-        data_buffer[0].camera_position = glm::vec4(camera.transform.position, 1.f);
+        data_buffer[0].camera_position = glm::vec4(camera.transform_mode.position, 1.f);
         data_buffer[0].seed            = dist(gen);
 
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer);

@@ -7,6 +7,7 @@ namespace gfx::opengl
 {
 void context_implementation::initialize(GLFWwindow* window)
 {
+
     make_current(window);
     mygl::load();
     glDepthFunc(GL_GEQUAL);

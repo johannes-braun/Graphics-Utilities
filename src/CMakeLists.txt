@@ -16,7 +16,7 @@ message(${CMAKE_CURRENT_BINARY_DIR})
 target_compile_features(gfx PUBLIC cxx_std_17)
 target_link_libraries(gfx PUBLIC glm::glm jbraun::mygl jbraun::glsp glfw::glfw assimp::assimp eigen)
 if(WIN32)
-    target_link_libraries(gfx PUBLIC opengl32)
+    target_link_libraries(gfx PUBLIC opengl32) 
 endif()
 
 target_compile_definitions(gfx 
