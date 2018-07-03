@@ -8,4 +8,4 @@ vec2 deep_parallax(
     int max_layers, 
     float depth_scale);
 
-#include "impl/deep_parallax.inl"
+#include "impl/deep_parallax.glinl"

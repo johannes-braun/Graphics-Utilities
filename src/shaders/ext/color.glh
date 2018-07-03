@@ -12,4 +12,4 @@ vec3 color_hsl_to_rgb(vec3 c);
 vec3 color_xyz_to_lab(vec3 c);
 vec3 color_lab_to_xyz(vec3 c);
 
-#include "impl/color_impl.inl"
+#include "impl/color_impl.glinl"

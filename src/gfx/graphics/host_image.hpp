@@ -1,11 +1,11 @@
 #pragma once
+#include "formats.hpp"
 #include "host_buffer.hpp"
 #include <cinttypes>
+#include <functional>
 #include <gfx/file.hpp>
 #include <glm/ext.hpp>
 #include <vector>
-#include <functional>
-#include "formats.hpp"
 
 namespace gfx
 {
@@ -49,23 +49,24 @@ public:
     void update(data_format fmt, const float* data);
     void update(const image_file& file);
 
-    host_buffer<std::byte>& storage() noexcept;
+    host_buffer<std::byte>&       storage() noexcept;
     const host_buffer<std::byte>& storage() const noexcept;
 
     const extent& extents() const noexcept;
     uint32_t      max_levels() const noexcept;
+    format        pixel_format() const noexcept;
 
     glm::vec4  load(const glm::uvec3& pixel) const;
     glm::uvec4 loadu(const glm::uvec3& pixel) const;
     glm::ivec4 loadi(const glm::uvec3& pixel) const;
-    void       store(const glm::uvec3& pixel, const glm::vec4& p) ;
-    void       storeu(const glm::uvec3& pixel, const glm::uvec4& p) ;
-    void       storei(const glm::uvec3& pixel, const glm::ivec4& p) ;
+    void       store(const glm::uvec3& pixel, const glm::vec4& p);
+    void       storeu(const glm::uvec3& pixel, const glm::uvec4& p);
+    void       storei(const glm::uvec3& pixel, const glm::ivec4& p);
 
 private:
     std::function<void(const glm::vec4&, int64_t i)> get_write_unorm_fun();
 
-    format                                         _format;
+    format                                             _format;
     extent                                             _extent;
     size_t                                             _storage_element_size;
     host_buffer<std::byte>                             _storage;

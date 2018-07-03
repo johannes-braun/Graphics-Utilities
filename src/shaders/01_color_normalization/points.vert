@@ -1,3 +1,4 @@
+//! #version 450 core
 
 out gl_PerVertex
 {
@@ -5,17 +6,16 @@ out gl_PerVertex
     float gl_PointSize;
 };
 
-uniform sampler2D picture;
-uniform mat4 hat_mat;
-uniform mat4 view_projection;
-uniform float scale = 4.f;
+layout(binding = 0) uniform sampler2D picture;
+
+layout(binding = 0) uniform render_info
+{
+    mat4 view_projection;
+    mat4 hat_mat;
+    vec3 average;
+};
 
 layout(location=0) out vec4 position;
-
-void run()
-{
-
-}
 
 void main()
 {
@@ -27,5 +27,5 @@ void main()
 
     gl_PointSize = 1.0f;
 
-    gl_Position = view_projection * vec4(scale*position.xyz, 1);
+    gl_Position = view_projection * vec4(4.f*position.xyz, 1);
 }

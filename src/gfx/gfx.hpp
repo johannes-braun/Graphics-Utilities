@@ -1,9 +1,11 @@
 #pragma once
-// This file has been generated with CMake
+
+// Utility includes
+#include <glm/glm.hpp>
 
 // Includes for gfx:
-#include <gfx/context.hpp>
 #include <gfx/camera.hpp>
+#include <gfx/context.hpp>
 #include <gfx/file.hpp>
 #include <gfx/flags.hpp>
 #include <gfx/geometry.hpp>
@@ -18,12 +20,12 @@
 
 // Includes for gfx/graphics:
 #include <gfx/graphics/device_buffer.hpp>
-#include <gfx/graphics/host_buffer.hpp>
 #include <gfx/graphics/device_image.hpp>
+#include <gfx/graphics/host_buffer.hpp>
 #include <gfx/graphics/host_image.hpp>
-#include <gfx/graphics/swapchain.hpp>
 #include <gfx/graphics/image_view.hpp>
 #include <gfx/graphics/sampler.hpp>
+#include <gfx/graphics/swapchain.hpp>
 #include <gfx/graphics/vertex_input.hpp>
 
 // Includes for gfx/data:

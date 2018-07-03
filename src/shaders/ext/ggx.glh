@@ -17,4 +17,4 @@ vec2 ggx_importance_sample(const in vec2 random_sample, const in float roughness
 // Transforms the importance sample into a z-up normal space vector.
 vec3 ggx_importance_hemisphere(const in vec2 importance_sample);
 
-#include "impl/ggx_impl.inl"
+#include "impl/ggx_impl.glinl"

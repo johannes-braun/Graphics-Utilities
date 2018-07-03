@@ -122,30 +122,22 @@ int main()
 
     gfx::imgui imgui;
 
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
     const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files");
     if(!source_data)
         return 0;
 
-    gfx::host_image   picture(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
-    gfx::device_image texture(2, gfx::rgb8unorm, picture.extents(), picture.max_levels());
-    texture.level(0) << picture;
-    texture.generate_mipmaps();
-    gfx::image_view   texture_view(gfx::view_type::image_2d, gfx::rgb8unorm, texture, 0, picture.max_levels(), 0, 1);
-    const gl::sampler sampler;
+    gfx::host_image    picture(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
+    gfx::device_image  texture(picture);
+    gfx::image_view    texture_view(gfx::view_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
+    const gfx::sampler sampler;
 
     glm::u8vec3*        begin = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
     axis_transformation trafo = principal_axis_transformation(begin, picture.extents().count());
     glm::vec3           average =
             glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
 
-    gfx::host_image   grid_image(gfx::rgba8unorm, gfx::image_file("grid.jpg", gfx::bits::b8, 4));
-    gfx::device_image grid(2, gfx::rgba8unorm, grid_image.extents(), grid_image.max_levels());
-    grid.level(0) << grid_image;
-    grid.generate_mipmaps();
-    gfx::image_view grid_view(gfx::view_type::image_2d, gfx::rgba8unorm, grid, 0, grid_image.max_levels(), 0, 1);
+    gfx::device_image grid(gfx::host_image(gfx::rgba8unorm, gfx::image_file("grid.jpg", gfx::bits::b8, 4)));
+    gfx::image_view   grid_view(gfx::view_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
 
     gl::pipeline points_pipeline;
     points_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/points.vert");
@@ -167,15 +159,17 @@ int main()
     cube_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/cube.vert");
     cube_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/cube.frag");
 
-    namespace cube = gfx::cube_preset;
-    gfx::device_buffer<gfx::vertex3d> vbo(gfx::buffer_usage::vertex, cube::vertices);
-    gfx::device_buffer<gfx::index32>  ibo(gfx::buffer_usage::index, cube::indices);
-    gfx::vertex_input vao;
+    gl::pipeline cube_front;
+    cube_front[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/cube.vert");
+    cube_front[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/cube_front.frag");
+
+    gfx::device_buffer<gfx::vertex3d> vbo(gfx::buffer_usage::vertex, gfx::cube_preset::vertices);
+    gfx::device_buffer<gfx::index32>  ibo(gfx::buffer_usage::index, gfx::cube_preset::indices);
+    gfx::vertex_input                 vao;
     vao.add_attribute(0, gfx::format::rgb32f, offsetof(gfx::vertex3d, position));
     vao.add_attribute(0, gfx::format::rg32f, offsetof(gfx::vertex3d, uv));
     vao.set_binding_info(0, sizeof(gfx::vertex3d), gfx::input_rate::vertex);
 
-    //gl::vertex_array empty_vao;
     gfx::vertex_input lines_vao;
     lines_vao.set_assembly(gfx::topology::line_list);
     gfx::vertex_input points_vao;
@@ -193,6 +187,15 @@ int main()
     camera.transform_mode.position = glm::vec3(0, 0, 5);
     gfx::camera_controller controller;
 
+
+    struct render_info
+    {
+        glm::mat4 vp;
+        glm::mat4 transform_matrix;
+        glm::vec3 average;
+    };
+    gfx::host_buffer<render_info> render_info_buffer(1);
+
     while(context->run())
     {
         imgui.new_frame();
@@ -200,7 +203,6 @@ int main()
         gl::framebuffer::zero().clear(0, {0.15f, 0.15f, 0.15f, 1.f});
         gl::framebuffer::zero().clear(0.f, 0);
 
-        const auto id = sampler.sample(texture_view);
         ImGui::Begin("Primary Axis Transformation");
         static bool hat_en = true;
         ImGui::Checkbox("Enable Transformation", &hat_en);
@@ -236,11 +238,9 @@ int main()
         {
             if(const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files"))
             {
-                picture = gfx::host_image(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
-                texture = gfx::device_image(2, gfx::rgba8unorm, picture.extents(), picture.max_levels());
-                texture.level(0) << picture;
-                texture.generate_mipmaps();
-                texture_view = gfx::image_view(gfx::view_type::image_2d, gfx::rgb8unorm, texture, 0, picture.max_levels(), 0, 1);
+                picture      = gfx::host_image(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
+                texture      = gfx::device_image(picture);
+                texture_view = gfx::image_view(gfx::view_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
 
                 begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
                 trafo   = principal_axis_transformation(begin, picture.extents().count());
@@ -264,32 +264,30 @@ int main()
 
         controller.update(camera);
 
-        glm::mat4 vp = camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix());
+        render_info_buffer[0].vp               = camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix());
+        render_info_buffer[0].transform_matrix = hat_en ? patmat : glm::mat4(1.f);
+        render_info_buffer[0].average          = average;
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, render_info_buffer);
+
+        glBindSampler(0, sampler);
+        glBindTextureUnit(0, texture_view);
 
         points_pipeline.bind();
-        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat")         = hat_en ? patmat : glm::mat4(1.0);
-        points_pipeline[GL_VERTEX_SHADER]->uniform<uint64_t>("picture")          = id;
-        points_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
+        glBindTextureUnit(0, texture_view);
         points_vao.draw(picture.extents().width * picture.extents().height);
-
+        
         glDisable(GL_DEPTH_TEST);
         center_pipeline.bind();
-        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("hat_mat")         = hat_en ? patmat : glm::mat4(1.0);
-        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
-        center_pipeline[GL_VERTEX_SHADER]->uniform<glm::vec3>("center")          = average;
         points_vao.draw(1);
         glEnable(GL_DEPTH_TEST);
 
         gizmo_pipeline.bind();
-        gizmo_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
         lines_vao.draw(6);
 
         glFrontFace(GL_CW);
 
         cube_pipeline.bind();
-        cube_pipeline[GL_VERTEX_SHADER]->uniform<glm::mat4>("view_projection") = vp;
-        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex")            = sampler.sample(grid_view);
-        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint")          = glm::vec4(1, 1, 1, 1);
+        glBindTextureUnit(0, grid_view);
         vao.bind_vertex_buffer(0, vbo, 0);
         vao.bind_index_buffer(ibo, gfx::index_type::uint32);
         vao.draw_indexed(ibo.capacity());
@@ -297,15 +295,14 @@ int main()
         glFrontFace(GL_CCW);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        cube_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::vec4>("tint") = glm::vec4(1, 1, 1, -1);
+        cube_front.bind();
         vao.draw_indexed(ibo.capacity());
         glDisable(GL_BLEND);
 
         glDisable(GL_DEPTH_TEST);
         glViewportIndexedf(0, 0, 0, picture.extents().width * scale, picture.extents().height * scale);
         img_pipeline.bind();
-        img_pipeline[GL_FRAGMENT_SHADER]->uniform<glm::mat4>("hat_mat") = hat_en ? patmat : glm::mat4(1.0);
-        img_pipeline[GL_FRAGMENT_SHADER]->uniform<uint64_t>("tex")      = id;
+        glBindTextureUnit(0, texture_view);
         tris_vao.draw(3);
 
         int w, h;

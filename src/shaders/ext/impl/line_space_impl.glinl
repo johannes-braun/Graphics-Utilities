@@ -1,6 +1,6 @@
 #pragma once
 
-#include "intersect_impl.inl"
+#include "intersect_impl.glinl"
 
 struct grid_ls
 {

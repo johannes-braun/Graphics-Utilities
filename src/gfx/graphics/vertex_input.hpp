@@ -72,11 +72,11 @@ public:
 
     void set_assembly(topology mode, bool enable_primitive_restart = false);
 
-    void draw(uint32_t vertices, uint32_t instances = 1, uint32_t base_vertex = 0, uint32_t base_instance = 0);
-    void draw_indexed(uint32_t indices, uint32_t instances = 1, uint32_t base_index = 0, int32_t base_vertex = 0,
+    [[deprecated("Should be replaced by some pipeline state system.")]] void draw(uint32_t vertices, uint32_t instances = 1, uint32_t base_vertex = 0, uint32_t base_instance = 0);
+    [[deprecated("Should be replaced by some pipeline state system.")]] void draw_indexed(uint32_t indices, uint32_t instances = 1, uint32_t base_index = 0, int32_t base_vertex = 0,
                       uint32_t base_instance = 0);
 
-    template <typename T> void draw_indexed_indirect(const device_buffer<T>& buffer, size_t offset, uint32_t draw_count, uint32_t stride);
+    template <typename T> [[deprecated("Should be replaced by some pipeline state system.")]] void draw_indexed_indirect(const device_buffer<T>& buffer, size_t offset, uint32_t draw_count, uint32_t stride);
 
 private:
     std::unique_ptr<detail::vertex_input_implementation> _implementation;

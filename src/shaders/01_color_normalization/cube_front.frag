@@ -8,5 +8,7 @@ layout(location = 0) out vec4 color;
 
 void main()
 {
-	color = vec4((1.f - 0.85f*texture(tex, uv)).rgb, 1.f);
+    color = texture(tex, uv);
+    color.a = (1-color.r) * 0.3f;
+    color.rgb = vec3(0.85f);
 }

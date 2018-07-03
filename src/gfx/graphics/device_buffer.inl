@@ -17,6 +17,12 @@ device_buffer<T>::device_buffer(const buffer_usage_flags usage, const size_type 
     _size = elements;
 }
 
+template <typename T> device_buffer<T>::device_buffer(buffer_usage_flags usage, const host_buffer<T>& source)
+    : device_buffer(usage, source.size())
+{
+    *this << source;
+}
+
 template <typename T>
 device_buffer<T>::device_buffer(const size_type elements)
         : device_buffer(buffer_usage::all, elements)

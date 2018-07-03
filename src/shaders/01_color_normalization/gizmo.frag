@@ -1,3 +1,5 @@
+//! #version 450 core
+
 layout(location=0) flat in int axis;
 
 layout(location=0) out vec4 color;

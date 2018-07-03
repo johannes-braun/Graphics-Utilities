@@ -62,4 +62,4 @@ bvh_result bvh_hit(
     // Search distance on ray
     const float max_distance);
 
-#include "impl/bvh_impl.inl"
+#include "impl/bvh_impl.glinl"

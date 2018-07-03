@@ -6,7 +6,6 @@
 #include <gfx/api.hpp>
 #include <gfx/flags.hpp>
 #include <memory>
-#include <gfx/api.hpp>
 
 namespace gfx
 {
@@ -24,10 +23,7 @@ enum class buffer_usage : uint32_t
     all = ~0u
 };
 using buffer_usage_flags = gfx::flags<uint32_t, buffer_usage>;
-static buffer_usage_flags operator|(buffer_usage x, buffer_usage y)
-{
-    return buffer_usage_flags(x) | y;
-}
+static buffer_usage_flags operator|(buffer_usage x, buffer_usage y) { return buffer_usage_flags(x) | y; }
 
 namespace detail
 {
@@ -50,9 +46,9 @@ namespace detail
     std::unique_ptr<device_buffer_implementation> make_device_buffer_implementation();
 } // namespace detail
 
-GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer)
+GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer);
 
-        class vertex_input;
+class vertex_input;
 template <typename T> class device_buffer
 {
 public:
@@ -69,11 +65,7 @@ public:
     device_buffer(buffer_usage_flags usage = buffer_usage::all);
     device_buffer(size_type elements);
     device_buffer(buffer_usage_flags usage, size_type elements);
-    device_buffer(buffer_usage_flags usage, const host_buffer<T>& source)
-            : device_buffer(usage, source.size())
-    {
-        *this << source;
-    }
+    device_buffer(buffer_usage_flags usage, const host_buffer<T>& source);
 
     void reallocate(size_type elements);
 
@@ -96,7 +88,7 @@ public:
     void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
     void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
 
-    GFX_api_cast_op(gapi::opengl, device_buffer)
+    GFX_api_cast_op(gapi::opengl, device_buffer);
 
 private:
     std::unique_ptr<detail::device_buffer_implementation> _implementation;
@@ -104,7 +96,7 @@ private:
     buffer_usage_flags                                    _usage_flags;
 };
 
-GFX_api_cast_template_impl(gapi::opengl, device_buffer)
+GFX_api_cast_template_impl(gapi::opengl, device_buffer);
 
 } // namespace gfx
 

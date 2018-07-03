@@ -10,20 +10,22 @@ namespace detail
     class device_image_implementation
     {
     public:
-        virtual ~device_image_implementation()                                                                         = default;
+        virtual ~device_image_implementation()                                                                     = default;
         virtual void     initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels) = 0;
-        virtual void     fill_from(const host_image& image, uint32_t level, uint32_t layer)                            = 0;
-        virtual std::any api_handle()                                                                                  = 0;
-        virtual void     generate_mipmaps() = 0;
+        virtual void     fill_from(const host_image& image, uint32_t level, uint32_t layer)                        = 0;
+        virtual std::any api_handle()                                                                              = 0;
+        virtual void     generate_mipmaps()                                                                        = 0;
     };
     std::unique_ptr<device_image_implementation> make_device_image_implementation();
 } // namespace detail
 
-GFX_api_cast_type(gapi::opengl, device_image, mygl::texture)
+GFX_api_cast_type(gapi::opengl, device_image, mygl::texture);
 
 class device_image
 {
 public:
+    constexpr static uint32_t max_levels = ~0u;
+
     class img_reference
     {
     public:
@@ -38,17 +40,27 @@ public:
     };
 
     device_image(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels);
+    device_image(const host_image& image, uint32_t levels = max_levels);
     img_reference operator[](uint32_t layer);
     img_reference level(uint32_t level);
     img_reference layer(uint32_t layer);
     img_reference sub_image(uint32_t level, uint32_t layer);
     void          generate_mipmaps();
 
-    GFX_api_cast_op(gapi::opengl, device_image)
+    const uint32_t& dimensions() const noexcept;
+    const format&   pixel_format() const noexcept;
+    const extent&   extents() const noexcept;
+    const uint32_t& levels() const noexcept;
 
-private: 
+    GFX_api_cast_op(gapi::opengl, device_image);
+
+private:
     std::unique_ptr<detail::device_image_implementation> _implementation;
+    uint32_t                                             _layer_dimensions;
+    format                                               _format;
+    extent                                               _extent;
+    uint32_t                                             _levels;
 };
 
 GFX_api_cast_impl(gapi::opengl, device_image)
-}
+} // namespace gfx

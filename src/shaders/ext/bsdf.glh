@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ggx.h"
+#include "ggx.glh"
 
 struct bsdf
 {
@@ -60,4 +60,4 @@ bsdf_env_sample bsdf_env_get_sample(
     // Squared roughness of a coating laying over the material.
     float coat_roughness_squared);
 
-#include "impl/bsdf_impl.inl"
+#include "impl/bsdf_impl.glinl"

@@ -1,8 +1,11 @@
-#include <ext/bvh.h>
-#include <ext/random.h>
-#include <ext/sampling.h>
-#include <ext/bsdf.h>
-#include <ext/line_space.h>
+//! #version 450 core
+//! #extension GL_ARB_shading_language_include : enable
+
+#include <ext/bvh.glh>
+#include <ext/random.glh>
+#include <ext/sampling.glh>
+#include <ext/bsdf.glh>
+#include <ext/line_space.glh>
 
 #define PI 3.1415926535
 #define INV_PI 0.31830988618
@@ -13,7 +16,7 @@ layout(local_size_x = 8, local_size_y = 8) in;
 layout(binding=0, std140) uniform Data
 {
     mat4 camera_matrix;
-    vec4 camera_position;
+    vec4 camera_position; 
 
     layout(rgba32f) image2D img;
     uintptr_t bvh;
