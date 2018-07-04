@@ -126,7 +126,7 @@ int main()
     if(!source_data)
         return 0;
 
-    gfx::host_image    picture(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
+    gfx::host_image    picture(gfx::rgb8unorm, *source_data);
     gfx::device_image  texture(picture);
     gfx::image_view    texture_view(gfx::view_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
     const gfx::sampler sampler;
@@ -136,7 +136,7 @@ int main()
     glm::vec3           average =
             glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
 
-    gfx::device_image grid(gfx::host_image(gfx::rgba8unorm, gfx::image_file("grid.jpg", gfx::bits::b8, 4)));
+    gfx::device_image grid(gfx::host_image(gfx::rgba8unorm, "grid.jpg"));
     gfx::image_view   grid_view(gfx::view_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
 
     gl::pipeline points_pipeline;
@@ -238,7 +238,7 @@ int main()
         {
             if(const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files"))
             {
-                picture      = gfx::host_image(gfx::rgb8unorm, gfx::image_file(*source_data, gfx::bits::b8, 3));
+                picture      = gfx::host_image(gfx::rgb8unorm, *source_data);
                 texture      = gfx::device_image(picture);
                 texture_view = gfx::image_view(gfx::view_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
 

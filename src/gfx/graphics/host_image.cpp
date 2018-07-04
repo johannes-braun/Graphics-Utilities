@@ -83,9 +83,14 @@ host_image::host_image(format fmt, const extent& size)
 }
 
 host_image::host_image(format format, const image_file& file)
-        : host_image(format, {file.width, file.height})
+        : host_image(format, extent{file.width, file.height})
 {
     update(file);
+}
+
+host_image::host_image(format fmt, const std::filesystem::path& file) 
+    : host_image(fmt, image_file(file, bits::b32, image_file::info(file).channels))
+{
 }
 
 void host_image::update(const image_file& file)

@@ -57,8 +57,10 @@ namespace gfx
             void operator()(void* d) { free(d); }
         };
 
-        stbi_hdr_to_ldr_gamma(2.2f);
-        stbi_hdr_to_ldr_scale(1.0f);
+        stbi_hdr_to_ldr_gamma(1.f);
+        stbi_hdr_to_ldr_scale(1.f);
+        stbi_ldr_to_hdr_gamma(1.f);
+        stbi_ldr_to_hdr_scale(1.f);
 
         int w, h;
         switch (channel_bits)

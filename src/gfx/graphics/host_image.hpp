@@ -39,6 +39,7 @@ class host_image
 public:
     host_image(format fmt, const extent& size);
     host_image(format fmt, const image_file& file);
+    host_image(format fmt, const std::filesystem::path& file);
 
     void update(data_format fmt, const uint8_t* data);
     void update(data_format fmt, const uint16_t* data);

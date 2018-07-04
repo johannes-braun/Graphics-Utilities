@@ -3,6 +3,7 @@
 #include <memory>
 #include <opengl/opengl.hpp>
 #include <random>
+#include <gfx/file.hpp>
 
 std::unique_ptr<gl::compute_pipeline> tracer;
 
@@ -63,12 +64,12 @@ int main()
     const auto        cubemap_format = gfx::r11g11b10f;
     const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
     gfx::device_image cubemap_texture(2, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
-    cubemap_texture.layer(0) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3));
-    cubemap_texture.layer(1) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3));
-    cubemap_texture.layer(2) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posy.hdr", gfx::bits::b32, 3));
-    cubemap_texture.layer(3) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negy.hdr", gfx::bits::b32, 3));
-    cubemap_texture.layer(4) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posz.hdr", gfx::bits::b32, 3));
-    cubemap_texture.layer(5) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negz.hdr", gfx::bits::b32, 3));
+    cubemap_texture.layer(0) << gfx::host_image(cubemap_format, "hdri/hdr/posx.hdr");
+    cubemap_texture.layer(1) << gfx::host_image(cubemap_format, "hdri/hdr/negx.hdr");
+    cubemap_texture.layer(2) << gfx::host_image(cubemap_format, "hdri/hdr/posy.hdr");
+    cubemap_texture.layer(3) << gfx::host_image(cubemap_format, "hdri/hdr/negy.hdr");
+    cubemap_texture.layer(4) << gfx::host_image(cubemap_format, "hdri/hdr/posz.hdr");
+    cubemap_texture.layer(5) << gfx::host_image(cubemap_format, "hdri/hdr/negz.hdr");
     gfx::image_view cubemap_view(gfx::view_type::image_cube, cubemap_format, cubemap_texture, 0, 10, 0, 6);
 
     gfx::sampler sampler;
