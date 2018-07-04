@@ -14,7 +14,16 @@ target_include_directories(gfx
 message(${CMAKE_CURRENT_BINARY_DIR})
 
 target_compile_features(gfx PUBLIC cxx_std_17)
-target_link_libraries(gfx PUBLIC glm::glm jbraun::mygl jbraun::glsp glfw::glfw assimp::assimp eigen)
+target_link_libraries(gfx
+	PUBLIC 
+		glm::glm 
+		jbraun::mygl 
+		jbraun::glsp 
+		glfw::glfw 
+		assimp::assimp 
+		eigen::eigen 
+		vulkan::vulkan
+		OpenAL::OpenAL)
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 
 endif()

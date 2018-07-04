@@ -4,6 +4,16 @@ add_library(glm::glm ALIAS glm)
 
 add_subdirectory(mygl)
 add_subdirectory(glsp)
+add_subdirectory(vulkan)
+
+set(ALSOFT_UTILS OFF)
+set(ALSOFT_EXAMPLES OFF)
+set(ALSOFT_TESTS OFF)
+add_subdirectory(openal)
+target_include_directories(OpenAL PUBLIC 
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/openal/include>
+	$<INSTALL_INTERFACE:include>)
+add_library(OpenAL::OpenAL ALIAS OpenAL)
 
 set(GLFW_BUILD_EXAMPLES OFF)
 set(GLFW_BUILD_TESTS OFF)
