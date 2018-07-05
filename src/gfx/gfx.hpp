@@ -27,6 +27,7 @@
 #include <gfx/graphics/sampler.hpp>
 #include <gfx/graphics/swapchain.hpp>
 #include <gfx/graphics/vertex_input.hpp>
+#include <gfx/graphics/state_info.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>

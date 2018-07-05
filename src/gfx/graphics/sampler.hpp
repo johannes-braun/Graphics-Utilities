@@ -4,6 +4,7 @@
 #include <gfx/api.hpp>
 #include <memory>
 #include <unordered_map>
+#include "state_info.hpp"
 
 namespace gfx
 {
@@ -44,18 +45,6 @@ enum class border_color
     int_opaque_black,
     float_opaque_white,
     int_opaque_white
-};
-
-enum class compare_op
-{
-    never,
-    less,
-    equal,
-    less_or_equal,
-    greater,
-    not_equal,
-    greater_or_equal,
-    always
 };
 
 enum class lod

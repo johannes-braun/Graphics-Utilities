@@ -21,6 +21,7 @@
 # define APIENTRY
 #endif
 
+extern void (APIENTRY*glDepthBoundsEXT)(float zmin, float zmax) MYGL_NOEXCEPT;
 extern void (APIENTRY*glActiveShaderProgram)(mygl::pipeline pipeline, mygl::shader_program program) MYGL_NOEXCEPT;
 extern void (APIENTRY*glActiveTexture)(mygl::texture texture) MYGL_NOEXCEPT;
 extern void (APIENTRY*glAttachShader)(mygl::shader_program program, mygl::shader shader) MYGL_NOEXCEPT;

@@ -86,6 +86,7 @@ void* __get_mygl_func(const char* name)
 
 namespace mygl {
 void load() {
+    glDepthBoundsEXT = reinterpret_cast<decltype(glDepthBoundsEXT)>(__get_mygl_func("glDepthBoundsEXT"));
     glGetIntegerui64i_vNV = reinterpret_cast<decltype(glGetIntegerui64i_vNV)>(__get_mygl_func("glGetIntegerui64i_vNV"));
     glVertexAttribIFormatNV = reinterpret_cast<decltype(glVertexAttribIFormatNV)>(__get_mygl_func("glVertexAttribIFormatNV"));
     glVertexAttribFormatNV = reinterpret_cast<decltype(glVertexAttribFormatNV)>(__get_mygl_func("glVertexAttribFormatNV"));

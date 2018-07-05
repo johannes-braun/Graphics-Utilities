@@ -14,39 +14,39 @@
 #include <windows.h>
 #include <shellapi.h>
 
-static FILE *my_fopen(const char *fname, const char *mode)
-{
-    WCHAR *wname=NULL, *wmode=NULL;
-    int namelen, modelen;
-    FILE *file = NULL;
-    errno_t err;
-
-    namelen = MultiByteToWideChar(CP_UTF8, 0, fname, -1, NULL, 0);
-    modelen = MultiByteToWideChar(CP_UTF8, 0, mode, -1, NULL, 0);
-
-    if(namelen <= 0 || modelen <= 0)
-    {
-        fprintf(stderr, "Failed to convert UTF-8 fname \"%s\", mode \"%s\"\n", fname, mode);
-        return NULL;
-    }
-
-    wname = calloc(sizeof(WCHAR), namelen+modelen);
-    wmode = wname + namelen;
-    MultiByteToWideChar(CP_UTF8, 0, fname, -1, wname, namelen);
-    MultiByteToWideChar(CP_UTF8, 0, mode, -1, wmode, modelen);
-
-    err = _wfopen_s(&file, wname, wmode);
-    if(err)
-    {
-        errno = err;
-        file = NULL;
-    }
-
-    free(wname);
-
-    return file;
-}
-#define fopen my_fopen
+//static FILE *my_fopen(const char *fname, const char *mode)
+//{
+//    WCHAR *wname=NULL, *wmode=NULL;
+//    int namelen, modelen;
+//    FILE *file = NULL;
+//    errno_t err;
+//
+//    namelen = MultiByteToWideChar(CP_UTF8, 0, fname, -1, NULL, 0);
+//    modelen = MultiByteToWideChar(CP_UTF8, 0, mode, -1, NULL, 0);
+//
+//    if(namelen <= 0 || modelen <= 0)
+//    {
+//        fprintf(stderr, "Failed to convert UTF-8 fname \"%s\", mode \"%s\"\n", fname, mode);
+//        return NULL;
+//    }
+//
+//    wname = calloc(sizeof(WCHAR), namelen+modelen);
+//    wmode = wname + namelen;
+//    MultiByteToWideChar(CP_UTF8, 0, fname, -1, wname, namelen);
+//    MultiByteToWideChar(CP_UTF8, 0, mode, -1, wmode, modelen);
+//
+//    err = _wfopen_s(&file, wname, wmode);
+//    if(err)
+//    {
+//        errno = err;
+//        file = NULL;
+//    }
+//
+//    free(wname);
+//
+//    return file;
+//}
+//#define fopen my_fopen
 
 
 static char **arglist;

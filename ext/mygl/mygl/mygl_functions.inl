@@ -1,4 +1,5 @@
 #pragma once
+decltype(glDepthBoundsEXT) glDepthBoundsEXT;
 decltype(glActiveShaderProgram) glActiveShaderProgram;
 decltype(glActiveTexture) glActiveTexture;
 decltype(glAttachShader) glAttachShader;
