@@ -9,8 +9,7 @@ void enable_for(bool b, GLenum e) { b ? glEnable(e) : glDisable(e); }
 void apply(const state_info& info)
 {
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    glEnable(GL_CULL_FACE);
-	glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
     glClearDepth(0);
 
     // Depth/Stencil
@@ -48,6 +47,7 @@ void apply(const state_info& info)
 
     // Rasterizer
     enable_for(info.rasterizer.rasterizer_discard_enable, GL_RASTERIZER_DISCARD);
+    enable_for(info.rasterizer.cull != cull_mode::none, GL_CULL_FACE);
     glCullFace([&]() {
         switch(info.rasterizer.cull)
         {
@@ -57,7 +57,7 @@ void apply(const state_info& info)
             return GL_FRONT;
         case cull_mode::front_and_back:
             return GL_FRONT_AND_BACK;
-        case cull_mode::none:
+        default:
             return GL_NONE;
         }
     }());
@@ -84,10 +84,11 @@ void apply(const state_info& info)
 
     glLineWidth(info.rasterizer.line_width);
     enable_for(info.rasterizer.depth_clamp_enable, GL_DEPTH_CLAMP);
-    enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_CLAMP);
+    enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_FILL);
+    enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_LINE);
+    enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_POINT);
     glPolygonOffsetClamp(info.rasterizer.depth_bias_slope_factor,
-                         info.rasterizer.depth_bias_constant_factor,
-                         info.rasterizer.depth_bias_clamp);
+                         info.rasterizer.depth_bias_constant_factor, info.rasterizer.depth_bias_clamp);
 
     // Tesselation
     glPatchParameteri(GL_PATCH_VERTICES, info.tesselation.patch_control_points);

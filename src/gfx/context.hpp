@@ -31,7 +31,7 @@ namespace detail
     {
     public:
         virtual ~context_implementation()             = default;
-        virtual void initialize(GLFWwindow* window)   = 0;
+        virtual void initialize(GLFWwindow* window, const context_options& options)   = 0;
         virtual void make_current(GLFWwindow* window) = 0;
     };
     std::unique_ptr<context_implementation> make_context_implementation(gapi api);
@@ -51,7 +51,7 @@ public:
     const context_options& options() const noexcept;
 
     std::any implementation() const noexcept;
-    bool     should_close();
+    bool     should_close() const;
     bool     run();
     double   delta() const noexcept;
 

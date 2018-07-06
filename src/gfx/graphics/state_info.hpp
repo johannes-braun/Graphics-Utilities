@@ -204,9 +204,9 @@ struct state_info
 
     struct stencil_state
     {
-        stencil_op failOp;
-        stencil_op passOp;
-        stencil_op depthFailOp;
+        stencil_op failOp = stencil_op::zero;
+        stencil_op passOp = stencil_op::zero;
+        stencil_op depthFailOp = stencil_op::zero;
         compare_op compareOp = compare_op::never;
         uint32_t   compareMask = 0;
         uint32_t   writeMask   = 0;

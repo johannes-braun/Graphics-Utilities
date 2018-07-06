@@ -90,7 +90,7 @@ ls_result resolve_line_space(vec3 orig, vec3 dir, uintptr_t gls, uintptr_t vers,
     return result;
 }
 
-const int bounce_count = 7;
+const int bounce_count = 1;
 const int lpcount = 1;
 light_path lighting[lpcount];
 

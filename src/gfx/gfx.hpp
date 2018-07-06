@@ -13,6 +13,7 @@
 #include <gfx/input.hpp>
 #include <gfx/log.hpp>
 #include <gfx/spline.hpp>
+#include <gfx/math.hpp>
 
 // Includes for gfx/imgui:
 #include <gfx/imgui/imconfig.h>

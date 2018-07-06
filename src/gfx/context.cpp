@@ -49,9 +49,12 @@ GLFWwindow* context::window() const noexcept { return _window; }
 
 std::any context::implementation() const noexcept { return &*_implementation; }
 
-bool context::should_close() { return _should_close; }
+bool context::should_close() const { return _should_close; }
 bool context::run()
 {
+    if(!_options.use_window)
+        return _should_close;
+
     make_current();
 
     if(_swapchain)
@@ -61,7 +64,7 @@ bool context::run()
     _should_close = glfwWindowShouldClose(_window);
     glfwPollEvents();
 
-    double t   = glfwGetTime();
+    const double t   = glfwGetTime();
     _delta     = t - _last_time;
     _last_time = glfwGetTime();
     return !should_close();
@@ -85,6 +88,7 @@ context::context(const context_options& options)
                    _options.graphics_api == gapi::opengl ? GLFW_OPENGL_API : GLFW_NO_API);
     glfwWindowHint(GLFW_SAMPLES, _options.framebuffer_samples);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, _options.debug);
+    glfwWindowHint(GLFW_VISIBLE, _options.use_window);
 
     _last_time = glfwGetTime();
     _window    = glfwCreateWindow(options.window_width,
@@ -103,7 +107,7 @@ context::context(const context_options& options)
 
     });
     _implementation = detail::make_context_implementation(_options.graphics_api);
-    _implementation->initialize(_window);
+    _implementation->initialize(_window, _options);
     callbacks::init(_window);
     glfwSwapInterval(0);
 }
