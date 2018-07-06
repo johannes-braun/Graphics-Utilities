@@ -27,7 +27,7 @@ int main()
     gfx::device_image texture(2, gfx::rgba8unorm, image.extents(), 10);
     texture.level(0) << image;
     texture.generate_mipmaps();
-    gfx::image_view texture_view(gfx::view_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+    gfx::image_view texture_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
     gfx::sampler    sampler;
 
     struct data
@@ -69,7 +69,7 @@ int main()
             {
                 image = gfx::host_image(gfx::rgba8unorm, gfx::image_file(file.value(), gfx::bits::b8, 4));
                 texture = gfx::device_image(2, gfx::rgba8unorm, image.extents(), 10);
-                texture_view = gfx::image_view(gfx::view_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+                texture_view = gfx::image_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
                 texture.level(0) << image;
                 texture.generate_mipmaps();
             }

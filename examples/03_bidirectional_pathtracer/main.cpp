@@ -1,9 +1,9 @@
 #define GFX_EXPOSE_APIS
+#include <gfx/file.hpp>
 #include <gfx/gfx.hpp>
 #include <memory>
 #include <opengl/opengl.hpp>
 #include <random>
-#include <gfx/file.hpp>
 
 std::unique_ptr<gl::compute_pipeline> tracer;
 
@@ -12,12 +12,9 @@ struct tracer_data
     alignas(16) glm::mat4 camera_matrix;
     alignas(16) glm::vec4 camera_position;
 
-    alignas(16) uintptr_t img;
     alignas(16) uintptr_t bvh;
     alignas(8) uintptr_t vbo;
     alignas(8) uintptr_t ibo;
-    alignas(8) uintptr_t linespace;
-    alignas(8) uintptr_t cubemap;
     alignas(4) float seed;
     alignas(4) int frames;
 };
@@ -50,11 +47,9 @@ int main()
 
     gl::query timer(GL_TIME_ELAPSED);
 
-    auto      render_texture = std::make_shared<gl::texture>(GL_TEXTURE_2D_ARRAY, 1280, 720, 1, GL_RGBA32F, 1);
-    gl::image img(*render_texture, GL_RGBA32F, GL_READ_WRITE);
-
+    gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba16f, {1280, 720}, 1);
     gl::framebuffer framebuffer;
-    framebuffer[GL_COLOR_ATTACHMENT0] = render_texture;
+    glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, render_target, 0, 0);
 
     gfx::camera                           camera;
     gfx::camera_controller                controller;
@@ -63,18 +58,18 @@ int main()
 
     const auto        cubemap_format = gfx::r11g11b10f;
     const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
-    gfx::device_image cubemap_texture(2, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
+    gfx::device_image cubemap_texture(gfx::img_type::image2d, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
     cubemap_texture.layer(0) << gfx::host_image(cubemap_format, "hdri/hdr/posx.hdr");
     cubemap_texture.layer(1) << gfx::host_image(cubemap_format, "hdri/hdr/negx.hdr");
     cubemap_texture.layer(2) << gfx::host_image(cubemap_format, "hdri/hdr/posy.hdr");
     cubemap_texture.layer(3) << gfx::host_image(cubemap_format, "hdri/hdr/negy.hdr");
     cubemap_texture.layer(4) << gfx::host_image(cubemap_format, "hdri/hdr/posz.hdr");
     cubemap_texture.layer(5) << gfx::host_image(cubemap_format, "hdri/hdr/negz.hdr");
-    gfx::image_view cubemap_view(gfx::view_type::image_cube, cubemap_format, cubemap_texture, 0, 10, 0, 6);
+    gfx::image_view cubemap_view(gfx::imgv_type::image_cube, cubemap_format, cubemap_texture, 0, cubemap_texture.levels(), 0, 6);
 
     gfx::sampler sampler;
 
-    gfx::host_buffer<tracer_data>   data_buffer(1);
+    gfx::host_buffer<tracer_data> data_buffer(1);
 
     const auto get_handle = [](const auto& buf) -> uint64_t {
         uint64_t hnd;
@@ -83,30 +78,28 @@ int main()
         return hnd;
     };
 
-    data_buffer[0].img       = img.handle();
     data_buffer[0].vbo       = get_handle(vbo);
     data_buffer[0].ibo       = get_handle(ibo);
     data_buffer[0].bvh       = get_handle(bvh);
-    data_buffer[0].linespace = 0;
-    data_buffer[0].cubemap   = glGetTextureSamplerHandleARB(cubemap_view, sampler);
-    glMakeTextureHandleResidentARB(data_buffer[0].cubemap);
     data_buffer[0].frames = 10;
 
     while(context->run())
     {
         imgui.new_frame();
-        controller.update(camera);
-        const glm::mat4 camera_matrix = inverse(camera.projection_mode.matrix() * glm::mat4(glm::mat3(inverse(camera.transform_mode.matrix()))));
+        controller.update(camera);                
 
         timer.start();
-        data_buffer[0].camera_matrix   = camera_matrix;
+        data_buffer[0].camera_matrix =
+                inverse(camera.projection_mode.matrix() * glm::mat4(glm::mat3(inverse(camera.transform_mode.matrix()))));
         data_buffer[0].camera_position = glm::vec4(camera.transform_mode.position, 1.f);
         data_buffer[0].seed            = dist(gen);
-
+        glBindSampler(0, sampler);
+        glBindTextureUnit(0, cubemap_view);
+        glBindImageTexture(0, render_target, 0, false, 0, GL_READ_WRITE, GL_RGBA16F);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer);
         tracer->dispatch(1280, 720);
 
-        framebuffer.blit(nullptr, GL_COLOR_BUFFER_BIT);
+        framebuffer.blit(nullptr, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT);
         timer.finish();
 
         ImGui::Begin("Settings");
@@ -170,14 +163,11 @@ int main()
         {
             if(const auto path = gfx::file::save_dialog("Save Render", "../", {"*.png"}, "PNG Files"))
             {
-                std::vector<float> data(1280 * 720 * 4);
-                render_texture->get_data(GL_RGBA, GL_FLOAT, 1280 * 720 * 4 * sizeof(float), data.data());
+                gfx::host_image    render_data(render_target.pixel_format(), render_target.extents());
+                render_target.level(0) >> render_data;
+                render_data.flip_vertically();
 
-                std::vector<uint8_t> u8data(1280 * 720 * 4);
-                for(int i = 0; i < 1280 * 720 * 4; ++i)
-                    u8data[i] = uint8_t(std::clamp(data[i] * 255, 0.f, 255.f));
-
-                gfx::image_file::save_png(path.value(), 1280, 720, 4, u8data.data());
+                gfx::image_file::save_png(path.value(), 1280, 720, 3, reinterpret_cast<const uint8_t*>(&(render_data.converted(gfx::rgb8unorm).storage()[0])));
             }
         }
         ImGui::End();

@@ -5,7 +5,7 @@
 
 namespace gfx::opengl
 {
-void image_view_implementation::initialize(view_type type, format format, const device_image& image, uint32_t base_mip,
+void image_view_implementation::initialize(imgv_type type, format format, const device_image& image, uint32_t base_mip,
                                            uint32_t mip_count, uint32_t base_layer, uint32_t layer_count)
 {
     if(glIsTexture(_handle))
@@ -14,25 +14,25 @@ void image_view_implementation::initialize(view_type type, format format, const 
     GLenum target = GLenum(0);
     switch(type)
     {
-    case view_type::image_1d:
+    case imgv_type::image_1d:
         target = GL_TEXTURE_1D;
         break;
-    case view_type::image_2d:
+    case imgv_type::image_2d:
         target = GL_TEXTURE_2D;
         break;
-    case view_type::image_3d:
+    case imgv_type::image_3d:
         target = GL_TEXTURE_3D;
         break;
-    case view_type::image_cube:
+    case imgv_type::image_cube:
         target = GL_TEXTURE_CUBE_MAP;
         break;
-    case view_type::image_1d_array:
+    case imgv_type::image_1d_array:
         target = GL_TEXTURE_1D_ARRAY;
         break;
-    case view_type::image_2d_array:
+    case imgv_type::image_2d_array:
         target = GL_TEXTURE_2D_ARRAY;
         break;
-    case view_type::image_cube_array:
+    case imgv_type::image_cube_array:
         target = GL_TEXTURE_CUBE_MAP_ARRAY;
         break;
     default:

@@ -9,8 +9,9 @@ namespace gfx::opengl
 class device_image_implementation : public detail::device_image_implementation
 {
 public:
-    void initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels) override;
-    void fill_from(const host_image& image, uint32_t level, uint32_t layer) override;
+    void     initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels, sample_count samples) override;
+    void     fill_from(const host_image& image, uint32_t level, uint32_t layer) override;
+    void     fill_to(const host_image& image, uint32_t level, uint32_t layer) override;
     std::any api_handle() override;
     void     generate_mipmaps() override;
 
@@ -22,5 +23,6 @@ private:
     extent        _extent;
     GLenum        _type;
     uint32_t      _levels;
+    format        _format;
 };
 } // namespace gfx::opengl

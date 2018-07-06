@@ -5,19 +5,29 @@
 
 namespace gfx
 {
+enum class sample_count;
+
 namespace detail
 {
     class device_image_implementation
     {
     public:
-        virtual ~device_image_implementation()                                                                     = default;
-        virtual void     initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels) = 0;
-        virtual void     fill_from(const host_image& image, uint32_t level, uint32_t layer)                        = 0;
-        virtual std::any api_handle()                                                                              = 0;
-        virtual void     generate_mipmaps()                                                                        = 0;
+        virtual ~device_image_implementation() = default;
+        virtual void initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels, sample_count samples) = 0;
+        virtual void fill_from(const host_image& image, uint32_t level, uint32_t layer)                                              = 0;
+        virtual void fill_to(const host_image& image, uint32_t level, uint32_t layer)                                                = 0;
+        virtual std::any api_handle()                                                                                                = 0;
+        virtual void     generate_mipmaps()                                                                                          = 0;
     };
     std::unique_ptr<device_image_implementation> make_device_image_implementation();
 } // namespace detail
+
+enum class img_type
+{
+    image1d = 1,
+    image2d = 2,
+    image3d = 3
+};
 
 GFX_api_cast_type(gapi::opengl, device_image, mygl::texture);
 
@@ -30,6 +40,7 @@ public:
     {
     public:
         void operator<<(const host_image& image) const;
+        void operator>>(const host_image& image) const;
 
     private:
         friend class device_image;
@@ -39,7 +50,8 @@ public:
         device_image& _img;
     };
 
-    device_image(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels);
+    device_image(img_type type, format format, const extent& size, uint32_t levels);
+    device_image(img_type type, format format, const extent& size, sample_count samples);
     device_image(const host_image& image, uint32_t levels = max_levels);
     img_reference operator[](uint32_t layer);
     img_reference level(uint32_t level);
@@ -60,6 +72,7 @@ private:
     format                                               _format;
     extent                                               _extent;
     uint32_t                                             _levels;
+    sample_count                                         _samples;
 };
 
 GFX_api_cast_impl(gapi::opengl, device_image)

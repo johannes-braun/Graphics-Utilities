@@ -115,6 +115,19 @@ format_info format_from(format format)
         return {GL_RGBA32I, GL_RGBA_INTEGER, GL_UNSIGNED_INT, false};
     case rgba32f:
         return {GL_RGBA32F, GL_RGBA, GL_FLOAT, false};
+
+    case d16unorm:
+        return {GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, true};
+    case d24unorm:
+        return {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT_24_8, true};
+    case s8ui:
+        return {GL_STENCIL_INDEX8, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, false};
+    case d32f:
+        return {GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT, false};
+    case d24unorms8ui:
+        return {GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, true};
+    case d32fs8ui:
+        return {GL_DEPTH32F_STENCIL8, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, true};
     }
     return {};
 }

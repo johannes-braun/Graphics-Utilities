@@ -111,7 +111,7 @@ int main()
 
     gfx::host_image    picture(gfx::rgb8unorm, *source_data);
     gfx::device_image  texture(picture);
-    gfx::image_view    texture_view(gfx::view_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
+    gfx::image_view    texture_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
     const gfx::sampler sampler;
 
     glm::u8vec3*        begin = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
@@ -120,7 +120,7 @@ int main()
             glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
 
     gfx::device_image grid(gfx::host_image(gfx::rgba8unorm, "grid.jpg"));
-    gfx::image_view   grid_view(gfx::view_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
+    gfx::image_view   grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
 
     gl::pipeline points_pipeline;
     points_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/points.vert");
@@ -230,7 +230,7 @@ int main()
     };
 
     command_buffer main_buffer;
-
+    
     while(context->run())
     {
         imgui.new_frame();
@@ -275,7 +275,7 @@ int main()
             {
                 picture      = gfx::host_image(gfx::rgb8unorm, *source_data);
                 texture      = gfx::device_image(picture);
-                texture_view = gfx::image_view(gfx::view_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
+                texture_view = gfx::image_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
 
                 begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
                 trafo   = principal_axis_transformation(begin, picture.extents().count());

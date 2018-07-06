@@ -17,16 +17,17 @@ layout(binding=0, std140) uniform Data
 {
     mat4 camera_matrix;
     vec4 camera_position; 
-
-    layout(rgba32f) image2D img;
+	
     uintptr_t bvh;
     uintptr_t vbo;
     uintptr_t ibo;
     uintptr_t grid_line_space;
-    samplerCube cubemap;
     float seed;
     int frames;
 };
+
+layout(binding = 0, rgba16f) uniform image2D img;
+layout(binding = 0)			 uniform samplerCube cubemap;
 
 struct vertex {
     vec3 position;
@@ -90,7 +91,7 @@ ls_result resolve_line_space(vec3 orig, vec3 dir, uintptr_t gls, uintptr_t vers,
     return result;
 }
 
-const int bounce_count = 1;
+const int bounce_count = 5;
 const int lpcount = 1;
 light_path lighting[lpcount];
 

@@ -18,8 +18,12 @@ struct extent
     constexpr        operator glm::uvec3() const noexcept;
     constexpr size_t count() const noexcept;
 
-    constexpr extent as_1d() const noexcept;
-    constexpr extent as_2d() const noexcept;
+    constexpr extent   as_1d() const noexcept;
+    constexpr extent   as_2d() const noexcept;
+    constexpr uint32_t linear(const glm::uvec3& p) const noexcept
+    {
+        return width * height * p.z + width * p.y + p.x;
+    }
 
     uint32_t width  = 1;
     uint32_t height = 1;
@@ -40,6 +44,9 @@ public:
     host_image(format fmt, const extent& size);
     host_image(format fmt, const image_file& file);
     host_image(format fmt, const std::filesystem::path& file);
+
+    host_image converted(format fmt) const;
+    void       flip_vertically();
 
     void update(data_format fmt, const uint8_t* data);
     void update(data_format fmt, const uint16_t* data);

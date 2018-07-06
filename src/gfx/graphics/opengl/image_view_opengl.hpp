@@ -9,7 +9,7 @@ namespace gfx::opengl
 class image_view_implementation : public detail::image_view_implementation
 {
 public:
-    void     initialize(view_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer, uint32_t layer_count) override;
+    void     initialize(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer, uint32_t layer_count) override;
     std::any api_handle() override;
 
 private:

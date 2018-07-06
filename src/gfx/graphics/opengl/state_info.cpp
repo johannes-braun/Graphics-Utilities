@@ -48,19 +48,21 @@ void apply(const state_info& info)
     // Rasterizer
     enable_for(info.rasterizer.rasterizer_discard_enable, GL_RASTERIZER_DISCARD);
     enable_for(info.rasterizer.cull != cull_mode::none, GL_CULL_FACE);
-    glCullFace([&]() {
-        switch(info.rasterizer.cull)
-        {
-        case cull_mode::back:
-            return GL_BACK;
-        case cull_mode::front:
-            return GL_FRONT;
-        case cull_mode::front_and_back:
-            return GL_FRONT_AND_BACK;
-        default:
-            return GL_NONE;
-        }
-    }());
+
+    if(info.rasterizer.cull != cull_mode::none)
+        glCullFace([&]() {
+            switch(info.rasterizer.cull)
+            {
+            case cull_mode::back:
+                return GL_BACK;
+            case cull_mode::front:
+                return GL_FRONT;
+            case cull_mode::front_and_back:
+                return GL_FRONT_AND_BACK;
+            default:
+                return GL_NONE;
+            }
+        }());
     glFrontFace([&]() {
         switch(info.rasterizer.front_face)
         {
@@ -87,8 +89,8 @@ void apply(const state_info& info)
     enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_FILL);
     enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_LINE);
     enable_for(info.rasterizer.depth_bias_enable, GL_POLYGON_OFFSET_POINT);
-    glPolygonOffsetClamp(info.rasterizer.depth_bias_slope_factor,
-                         info.rasterizer.depth_bias_constant_factor, info.rasterizer.depth_bias_clamp);
+    glPolygonOffsetClamp(
+            info.rasterizer.depth_bias_slope_factor, info.rasterizer.depth_bias_constant_factor, info.rasterizer.depth_bias_clamp);
 
     // Tesselation
     glPatchParameteri(GL_PATCH_VERTICES, info.tesselation.patch_control_points);
@@ -98,8 +100,7 @@ void apply(const state_info& info)
     enable_for(info.multisample.alpha_to_coverage_enable, GL_SAMPLE_ALPHA_TO_COVERAGE);
     enable_for(info.multisample.alpha_to_one_enable, GL_SAMPLE_ALPHA_TO_ONE);
     glMinSampleShading(info.multisample.min_sample_shading);
-    for(auto i = 0; i < static_cast<int>(info.multisample.samples) && info.multisample.sample_masks;
-        ++i)
+    for(auto i = 0; i < static_cast<int>(info.multisample.samples) && info.multisample.sample_masks; ++i)
     {
         glSampleMaski(i, GLbitfield(info.multisample.sample_masks[i]));
     }
@@ -158,10 +159,8 @@ void apply(const state_info& info)
             return GL_XOR;
         }
     }());
-    glBlendColor(info.blend.blend_constants[0],
-                 info.blend.blend_constants[1],
-                 info.blend.blend_constants[2],
-                 info.blend.blend_constants[3]);
+    glBlendColor(
+            info.blend.blend_constants[0], info.blend.blend_constants[1], info.blend.blend_constants[2], info.blend.blend_constants[3]);
 
     for(int i = 0; i < 15; ++i)
     {

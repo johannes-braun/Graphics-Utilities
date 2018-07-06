@@ -4,7 +4,7 @@
 
 namespace gfx
 {
-enum class view_type
+enum class imgv_type
 {
     image_1d,
     image_2d,
@@ -21,7 +21,7 @@ namespace detail
     {
     public:
         virtual ~image_view_implementation()                                   = default;
-        virtual void     initialize(view_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count,
+        virtual void     initialize(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count,
                                     uint32_t base_layer, uint32_t layer_count) = 0;
         virtual std::any api_handle()                                          = 0;
     };
@@ -36,7 +36,7 @@ class image_view
 public:
     friend struct api_cast_t<gapi::opengl, image_view>;
 
-    image_view(view_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer,
+    image_view(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer,
                uint32_t layer_count)
             : _implementation(detail::make_image_view_implementation())
     {

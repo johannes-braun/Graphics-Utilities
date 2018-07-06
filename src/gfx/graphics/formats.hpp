@@ -69,5 +69,15 @@ enum format
     r11g11b10f,
     rgb9e5,
     r5g6b5unorm,
+
+    // depth/stencil formats
+    d16unorm,
+    d24unorm,
+    s8ui,
+    d32f,
+    d24unorms8ui,
+    d32fs8ui
 };
+
+size_t format_element_size(format fmt);
 }
