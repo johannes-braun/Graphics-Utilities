@@ -1,5 +1,6 @@
 #pragma once
 
+#include "api.hpp"
 #include "callbacks.hpp"
 #include "graphics/swapchain.hpp"
 #include <GLFW/glfw3.h>
@@ -8,7 +9,6 @@
 #include <memory>
 #include <optional>
 #include <string_view>
-#include "api.hpp"
 
 namespace gfx
 {
@@ -27,19 +27,19 @@ struct context_options
 
 namespace detail
 {
-    class context_implementation
-    {
+class context_implementation
+{
     public:
-        virtual ~context_implementation()             = default;
-        virtual void initialize(GLFWwindow* window, const context_options& options)   = 0;
-        virtual void make_current(GLFWwindow* window) = 0;
-    };
-    std::unique_ptr<context_implementation> make_context_implementation(gapi api);
-} // namespace detail
+    virtual ~context_implementation()                                           = default;
+    virtual void initialize(GLFWwindow* window, const context_options& options) = 0;
+    virtual void make_current(GLFWwindow* window)                               = 0;
+};
+std::unique_ptr<context_implementation> make_context_implementation(gapi api);
+}    // namespace detail
 
 class context : public std::enable_shared_from_this<context>, public callbacks
 {
-public:
+    public:
     static std::shared_ptr<context>  create(const context_options& options);
     static std::shared_ptr<context>& current();
     static void                      make_current(const std::shared_ptr<context>& ctx);
@@ -57,7 +57,7 @@ public:
 
     const std::optional<gfx::swapchain>& swapchain() const noexcept { return _swapchain; }
 
-private:
+    private:
     static inline struct glfw
     {
         glfw();
@@ -65,8 +65,7 @@ private:
     } glfw_init;
 
     context(const context_options& options);
-    static inline std::shared_ptr<context> _null_context    = nullptr;
-    static inline std::shared_ptr<context> _current_context = nullptr;
+    static inline std::shared_ptr<context> _null_context = nullptr;
 
     context_options                                 _options;
     std::optional<gfx::swapchain>                   _swapchain;
@@ -77,4 +76,4 @@ private:
     std::unique_ptr<detail::context_implementation> _implementation;
 };
 
-} // namespace gfx
+}    // namespace gfx

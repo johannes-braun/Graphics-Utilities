@@ -2,10 +2,7 @@
 #include <gfx/gfx.hpp>
 #include <glm/ext.hpp>
 
-void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
-{
-   gfx::ilog << message;
-}
+#include <opengl/opengl.hpp>
 
 int main()
 {
@@ -17,18 +14,11 @@ int main()
     auto context                = gfx::context::create(options);
     context->make_current();
 
-    glDebugMessageCallback(&dbg, nullptr);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
-
     gfx::imgui imgui;
 
-    gfx::host_image image(gfx::rgba8unorm, gfx::image_file("Lena.png", gfx::bits::b8, 4));
-    gfx::device_image texture(2, gfx::rgba8unorm, image.extents(), 10);
-    texture.level(0) << image;
-    texture.generate_mipmaps();
-    gfx::image_view texture_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
-    gfx::sampler    sampler;
+    gfx::device_image texture(gfx::host_image(gfx::rgba8unorm, "Lena.png"));
+    gfx::image_view   texture_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+    gfx::sampler      sampler;
 
     struct data
     {
@@ -67,22 +57,20 @@ int main()
         {
             if(auto file = gfx::file::open_dialog("Load Image", "./", {"*.png", "*.jpg", "*.bmp"}))
             {
-                image = gfx::host_image(gfx::rgba8unorm, gfx::image_file(file.value(), gfx::bits::b8, 4));
-                texture = gfx::device_image(2, gfx::rgba8unorm, image.extents(), 10);
+                texture      = gfx::host_image(gfx::rgba8unorm, *file);
                 texture_view = gfx::image_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
-                texture.level(0) << image;
-                texture.generate_mipmaps();
             }
         }
         ImGui::End();
         ctrl.update(camera);
-        uniform_buffer[0].vp = camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix()) * glm::scale(glm::vec3(scale));
+        uniform_buffer[0].vp =
+                camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix()) * glm::scale(glm::vec3(scale));
 
         pp.bind();
         glBindTextureUnit(0, texture_view);
         glBindSampler(0, sampler);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer);
-        input.draw((image.extents().width - 1) * (image.extents().height - 1));
+        input.draw((texture.extents().width - 1) * (texture.extents().height - 1));
 
         imgui.render();
     }

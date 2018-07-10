@@ -1,9 +1,11 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/hash.hpp>
 #include <glm/mat4x4.hpp>
 #include <variant>
 
@@ -54,7 +56,7 @@ struct transform
     constexpr transform  operator*(const transform& other) const noexcept;
     constexpr transform& operator*=(const transform& other) noexcept;
     constexpr vertex3d   operator*(const vertex3d& other) const noexcept;
-    
+
     glm::mat4 matrix() const noexcept;
     transform(const glm::mat4& mat) noexcept;
     operator glm::mat4() const noexcept;
@@ -75,7 +77,7 @@ class projection
 {
     struct perspective_info
     {
-        perspective_info() = default;
+        perspective_info()  = default;
         float field_of_view = glm::radians(80.f);
         int   screen_width  = 100;
         int   screen_height = 100;
@@ -101,7 +103,7 @@ class projection
         orthographic
     };
 
-public:
+    public:
     constexpr projection(float fov, int width, int height, float znear, float zfar, bool neg_y = false, bool inv_z = true) noexcept;
     constexpr projection(float left, float right, float bottom, float top, float znear = -1.f, float zfar = -1.f) noexcept;
 
@@ -112,12 +114,13 @@ public:
     glm::mat4                          matrix() const noexcept;
                                        operator glm::mat4() const noexcept;
 
-private:
+    private:
     type                                              _type;
     std::variant<perspective_info, orthographic_info> _info;
 };
 
-template <typename T, size_t Dim, size_t Align> struct bounds
+template<typename T, size_t Dim, size_t Align>
+struct bounds
 {
     constexpr static size_t         dimensions = Dim;
     constexpr static size_t         alignment  = Align;
@@ -132,9 +135,9 @@ template <typename T, size_t Dim, size_t Align> struct bounds
     constexpr value_type&       operator[](size_t i) noexcept;
 
     constexpr bounds& operator+=(const bounds& other) noexcept;
-    constexpr bounds operator+(const bounds& other) const noexcept;
+    constexpr bounds  operator+(const bounds& other) const noexcept;
     constexpr bounds& operator+=(const value_type& other) noexcept;
-    constexpr bounds operator+(const value_type& other) const noexcept;
+    constexpr bounds  operator+(const value_type& other) const noexcept;
     constexpr bounds& enclose(const bounds& other) noexcept;
     constexpr bounds& enclose(const value_type& other) noexcept;
     constexpr bounds& clip(const bounds& other) noexcept;
@@ -146,8 +149,7 @@ template <typename T, size_t Dim, size_t Align> struct bounds
         bounds temp = *this;
         min         = value_type(std::numeric_limits<float>::max());
         max         = value_type(std::numeric_limits<float>::lowest());
-        for(unsigned corner = 0; corner < 8; ++corner)
-        {
+        for (unsigned corner = 0; corner < 8; ++corner) {
             const unsigned factor_x = (corner & 0b001);
             const unsigned factor_y = (corner & 0b010) >> 1;
             const unsigned factor_z = (corner & 0b100) >> 2;
@@ -178,6 +180,7 @@ using bounds4f = bounds<float, 4, 16>;
 }
 
 #include "geometry/bounds.inl"
+#include "geometry/hashes.inl"
 #include "geometry/projection.inl"
 #include "geometry/transform.inl"
 #include "geometry/vertex.inl"
@@ -185,40 +188,40 @@ using bounds4f = bounds<float, 4, 16>;
 namespace gfx::cube_preset
 {
 constexpr std::array<vertex3d, 24> vertices{
-        // Back
-        vertex3d({-1, 1, -1}, {0, 1}, {0, 0, -1}),
-        vertex3d({1, 1, -1}, {1, 1}, {0, 0, -1}),
-        vertex3d({1, -1, -1}, {1, 0}, {0, 0, -1}),
-        vertex3d({-1, -1, -1}, {0, 0}, {0, 0, -1}),
-        // Front
-        vertex3d({-1, 1, 1}, {0, 1}, {0, 0, 1}),
-        vertex3d({1, 1, 1}, {1, 1}, {0, 0, 1}),
-        vertex3d({1, -1, 1}, {1, 0}, {0, 0, 1}),
-        vertex3d({-1, -1, 1}, {0, 0}, {0, 0, 1}),
-        // Bottom
-        vertex3d({-1, -1, -1}, {0, 0}, {0, -1, 0}),
-        vertex3d({1, -1, -1}, {0, 1}, {0, -1, 0}),
-        vertex3d({1, -1, 1}, {1, 1}, {0, -1, 0}),
-        vertex3d({-1, -1, 1}, {0, 1}, {0, -1, 0}),
-        // Top
-        vertex3d({-1, 1, -1}, {0, 0}, {0, 1, 0}),
-        vertex3d({1, 1, -1}, {1, 0}, {0, 1, 0}),
-        vertex3d({1, 1, 1}, {1, 1}, {0, 1, 0}),
-        vertex3d({-1, 1, 1}, {0, 1}, {0, 1, 0}),
-        // Right
-        vertex3d({1, -1, -1}, {0, 0}, {1, 0, 0}),
-        vertex3d({1, 1, -1}, {1, 0}, {1, 0, 0}),
-        vertex3d({1, 1, 1}, {1, 1}, {1, 0, 0}),
-        vertex3d({1, -1, 1}, {0, 1}, {1, 0, 0}),
-        // Left
-        vertex3d({-1, -1, -1}, {0, 0}, {-1, 0, 0}),
-        vertex3d({-1, 1, -1}, {1, 0}, {-1, 0, 0}),
-        vertex3d({-1, 1, 1}, {1, 1}, {-1, 0, 0}),
-        vertex3d({-1, -1, 1}, {0, 1}, {-1, 0, 0}),
+    // Back
+    vertex3d({-1, 1, -1}, {0, 1}, {0, 0, -1}),
+    vertex3d({1, 1, -1}, {1, 1}, {0, 0, -1}),
+    vertex3d({1, -1, -1}, {1, 0}, {0, 0, -1}),
+    vertex3d({-1, -1, -1}, {0, 0}, {0, 0, -1}),
+    // Front
+    vertex3d({-1, 1, 1}, {0, 1}, {0, 0, 1}),
+    vertex3d({1, 1, 1}, {1, 1}, {0, 0, 1}),
+    vertex3d({1, -1, 1}, {1, 0}, {0, 0, 1}),
+    vertex3d({-1, -1, 1}, {0, 0}, {0, 0, 1}),
+    // Bottom
+    vertex3d({-1, -1, -1}, {0, 0}, {0, -1, 0}),
+    vertex3d({1, -1, -1}, {0, 1}, {0, -1, 0}),
+    vertex3d({1, -1, 1}, {1, 1}, {0, -1, 0}),
+    vertex3d({-1, -1, 1}, {0, 1}, {0, -1, 0}),
+    // Top
+    vertex3d({-1, 1, -1}, {0, 0}, {0, 1, 0}),
+    vertex3d({1, 1, -1}, {1, 0}, {0, 1, 0}),
+    vertex3d({1, 1, 1}, {1, 1}, {0, 1, 0}),
+    vertex3d({-1, 1, 1}, {0, 1}, {0, 1, 0}),
+    // Right
+    vertex3d({1, -1, -1}, {0, 0}, {1, 0, 0}),
+    vertex3d({1, 1, -1}, {1, 0}, {1, 0, 0}),
+    vertex3d({1, 1, 1}, {1, 1}, {1, 0, 0}),
+    vertex3d({1, -1, 1}, {0, 1}, {1, 0, 0}),
+    // Left
+    vertex3d({-1, -1, -1}, {0, 0}, {-1, 0, 0}),
+    vertex3d({-1, 1, -1}, {1, 0}, {-1, 0, 0}),
+    vertex3d({-1, 1, 1}, {1, 1}, {-1, 0, 0}),
+    vertex3d({-1, -1, 1}, {0, 1}, {-1, 0, 0}),
 };
 
 constexpr std::array<index32, 36> indices{
-        0, 1, 2, 0, 2, 3, 6, 5, 4, 7, 6, 4, 8, 9, 10, 8, 10, 11, 14, 13, 12, 15, 14, 12, 16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20,
+    0, 1, 2, 0, 2, 3, 6, 5, 4, 7, 6, 4, 8, 9, 10, 8, 10, 11, 14, 13, 12, 15, 14, 12, 16, 17, 18, 16, 18, 19, 22, 21, 20, 23, 22, 20,
 };
 
 constexpr bounds3f bounds({-1, -1, -1}, {1, 1, 1});

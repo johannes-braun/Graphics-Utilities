@@ -1,5 +1,4 @@
 #define GFX_EXPOSE_APIS
-#include <gfx/file.hpp>
 #include <gfx/gfx.hpp>
 #include <memory>
 #include <opengl/opengl.hpp>
@@ -48,7 +47,7 @@ int main()
     gl::query timer(GL_TIME_ELAPSED);
 
     gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba16f, {1280, 720}, 1);
-    gl::framebuffer framebuffer;
+    gl::framebuffer   framebuffer;
     glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, render_target, 0, 0);
 
     gfx::camera                           camera;
@@ -78,15 +77,15 @@ int main()
         return hnd;
     };
 
-    data_buffer[0].vbo       = get_handle(vbo);
-    data_buffer[0].ibo       = get_handle(ibo);
-    data_buffer[0].bvh       = get_handle(bvh);
+    data_buffer[0].vbo    = get_handle(vbo);
+    data_buffer[0].ibo    = get_handle(ibo);
+    data_buffer[0].bvh    = get_handle(bvh);
     data_buffer[0].frames = 10;
 
     while(context->run())
     {
         imgui.new_frame();
-        controller.update(camera);                
+        controller.update(camera);
 
         timer.start();
         data_buffer[0].camera_matrix =
@@ -163,11 +162,15 @@ int main()
         {
             if(const auto path = gfx::file::save_dialog("Save Render", "../", {"*.png"}, "PNG Files"))
             {
-                gfx::host_image    render_data(render_target.pixel_format(), render_target.extents());
+                gfx::host_image render_data(render_target.pixel_format(), render_target.extents());
                 render_target.level(0) >> render_data;
                 render_data.flip_vertically();
 
-                gfx::image_file::save_png(path.value(), 1280, 720, 3, reinterpret_cast<const uint8_t*>(&(render_data.converted(gfx::rgb8unorm).storage()[0])));
+                gfx::image_file::save_png(path.value(),
+                                          1280,
+                                          720,
+                                          3,
+                                          reinterpret_cast<const uint8_t*>(&(render_data.converted(gfx::rgb8unorm).storage()[0])));
             }
         }
         ImGui::End();

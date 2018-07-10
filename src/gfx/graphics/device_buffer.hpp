@@ -72,9 +72,9 @@ public:
     buffer_usage_flags usage() const noexcept;
     size_type          capacity() const noexcept;
 
-    void operator>>(const host_buffer<T>& buffer);
+    void operator>>(const host_buffer<T>& buffer) const;
     void operator<<(const host_buffer<T>& buffer);
-    void operator>>(const device_buffer& buffer);
+    void operator>>(const device_buffer& buffer) const;
     void operator<<(const device_buffer& buffer);
 
     void update(const T* data, size_type count, difference_type start = 0) const;
@@ -85,8 +85,10 @@ public:
     void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start, size_type count);
     void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start, size_type count);
 
-    void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
-    void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count);
+    void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count) const;
+    void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count) const;
+
+    host_buffer<T> to_host() const;
 
     GFX_api_cast_op(gapi::opengl, device_buffer);
 

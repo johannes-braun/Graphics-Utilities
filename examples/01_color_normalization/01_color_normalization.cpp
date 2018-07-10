@@ -24,13 +24,10 @@ axis_transformation principal_axis_transformation(glm::u8vec3* pixels, const siz
     const glm::dmat3 pomierski{0.5, -0.875, 1.5, -1.0, 0, 1.5, 0.5, 0.875, 1.5};
     const glm::dmat3 pomierski_inverse = inverse(pomierski);
 
-    const glm::dvec3 average_rgb = std::accumulate(pixels,
-                                                   pixels + count,
-                                                   glm::dvec3(0.0),
-                                                   [color_to_float](const glm::dvec3& lhs, const glm::u8vec3& rhs) {
-                                                       return lhs + glm::dvec3(rhs) * color_to_float;
-                                                   }) /
-                                   static_cast<double>(count);
+    const glm::dvec3 average_rgb =
+        std::accumulate(pixels, pixels + count, glm::dvec3(0.0),
+                        [color_to_float](const glm::dvec3& lhs, const glm::u8vec3& rhs) { return lhs + glm::dvec3(rhs) * color_to_float; })
+        / static_cast<double>(count);
     const glm::dvec3 average_pomierski = pomierski * average_rgb;
 
     const glm::dmat4 translate_rgb            = glm::translate(-average_rgb);
@@ -38,14 +35,12 @@ axis_transformation principal_axis_transformation(glm::u8vec3* pixels, const siz
     const glm::dmat4 translate_pomierski      = glm::translate(-average_pomierski);
     const glm::dmat4 translate_back_pomierski = glm::translate(main_axis_pomierski * length(average_pomierski));
 
-    const glm::dmat3 covariance_rgb = std::accumulate(pixels,
-                                                      pixels + count,
-                                                      glm::dmat3(0.0),
+    const glm::dmat3 covariance_rgb = std::accumulate(pixels, pixels + count, glm::dmat3(0.0),
                                                       [color_to_float, average_rgb](const glm::dmat3& lhs, const glm::u8vec3& rhs) {
                                                           const glm::dvec3 error = glm::dvec3(rhs) * color_to_float - average_rgb;
                                                           return lhs + outerProduct(error, error);
-                                                      }) /
-                                      static_cast<double>(count);
+                                                      })
+                                      / static_cast<double>(count);
     const glm::dmat3 covariance_pomierski = pomierski * covariance_rgb * transpose(pomierski);
 
     const auto eigen_rgb       = gfx::eig(covariance_rgb);
@@ -54,20 +49,16 @@ axis_transformation principal_axis_transformation(glm::u8vec3* pixels, const siz
     const auto get_axis_basic = [](const glm::dmat3& covariance) {
         double length  = glm::length(covariance[0]);
         int    current = 0;
-        if(glm::length(covariance[1]) > length)
-            current = (length = glm::length(covariance[1]), 1);
-        if(glm::length(covariance[2]) > length)
-            current = (length = glm::length(covariance[2]), 2);
+        if (glm::length(covariance[1]) > length) current = (length = glm::length(covariance[1]), 1);
+        if (glm::length(covariance[2]) > length) current = (length = glm::length(covariance[2]), 2);
         return covariance[current] / length;
     };
 
     const auto get_axis_eigen = [](const auto& eigen) {
         double length  = eigen.eigenvalues[0];
         int    current = 0;
-        if(eigen.eigenvalues[1] > length)
-            current = (length = eigen.eigenvalues[1], 1);
-        if(eigen.eigenvalues[2] > length)
-            current = (length = eigen.eigenvalues[2], 2);
+        if (eigen.eigenvalues[1] > length) current = (length = eigen.eigenvalues[1], 1);
+        if (eigen.eigenvalues[2] > length) current = (length = eigen.eigenvalues[2], 2);
         return eigen.eigenvectors[current];
     };
 
@@ -84,10 +75,10 @@ axis_transformation principal_axis_transformation(glm::u8vec3* pixels, const siz
     axis_transformation result;
     result.basic_rgb       = translate_back_rgb * make_rotation(axis_basic_rgb, main_axis_rgb) * translate_rgb;
     result.eigen_rgb       = translate_back_rgb * make_rotation(axis_eigen_rgb, main_axis_rgb) * translate_rgb;
-    result.basic_pomierski = glm::dmat4(pomierski_inverse) * translate_back_pomierski *
-                             make_rotation(axis_basic_pomierski, main_axis_pomierski) * translate_pomierski * glm::dmat4(pomierski);
-    result.eigen_pomierski = glm::dmat4(pomierski_inverse) * translate_back_pomierski *
-                             make_rotation(axis_eigen_pomierski, main_axis_pomierski) * translate_pomierski * glm::dmat4(pomierski);
+    result.basic_pomierski = glm::dmat4(pomierski_inverse) * translate_back_pomierski
+                             * make_rotation(axis_basic_pomierski, main_axis_pomierski) * translate_pomierski * glm::dmat4(pomierski);
+    result.eigen_pomierski = glm::dmat4(pomierski_inverse) * translate_back_pomierski
+                             * make_rotation(axis_eigen_pomierski, main_axis_pomierski) * translate_pomierski * glm::dmat4(pomierski);
 
     return result;
 }
@@ -106,8 +97,7 @@ int main()
     gfx::imgui imgui;
 
     const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files");
-    if(!source_data)
-        return 0;
+    if (!source_data) return 0;
 
     gfx::host_image    picture(gfx::rgb8unorm, *source_data);
     gfx::device_image  texture(picture);
@@ -117,7 +107,7 @@ int main()
     glm::u8vec3*        begin = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
     axis_transformation trafo = principal_axis_transformation(begin, picture.extents().count());
     glm::vec3           average =
-            glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
+        glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
 
     gfx::device_image grid(gfx::host_image(gfx::rgba8unorm, "grid.jpg"));
     gfx::image_view   grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
@@ -202,13 +192,12 @@ int main()
 
     class command_buffer
     {
-    public:
+        public:
         void set_viewports(uint32_t first, const std::vector<gfx::viewport>& vps)
         {
             //_commands.push_back([ first, count, vps ]
             //{
-            for(int i = first; i < first + vps.size(); ++i)
-            {
+            for (int i = first; i < first + vps.size(); ++i) {
                 glViewportIndexedf(i, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
                 glDepthRangeIndexed(i, vps[i].min_depth, vps[i].max_depth);
             }
@@ -219,20 +208,18 @@ int main()
 
         void commit()
         {
-            for(const auto& x : std::exchange(_commands, {}))
-            {
+            for (const auto& x : std::exchange(_commands, {})) {
                 x();
             }
         }
 
-    private:
+        private:
         std::vector<std::function<void()>> _commands;
     };
 
     command_buffer main_buffer;
-    
-    while(context->run())
-    {
+
+    while (context->run()) {
         imgui.new_frame();
 
         gl::framebuffer::zero().clear(0, {0.1f, 0.1f, 0.1f, 1.f});
@@ -243,25 +230,16 @@ int main()
         ImGui::Checkbox("Enable Transformation", &hat_en);
 
         glm::mat4 patmat = glm::mat4(1.f);
-        if(hat_en)
-        {
+        if (hat_en) {
             static int mode = 0;
             ImGui::Combo("Mode", &mode, " Basic (RGB) \0 Eigen (RGB) \0 Basic (POM) \0 Eigen (POM) \0");
 
-            switch(mode)
+            switch (mode)
             {
-            case 0:
-                patmat = trafo.basic_rgb;
-                break;
-            case 1:
-                patmat = trafo.eigen_rgb;
-                break;
-            case 2:
-                patmat = trafo.basic_pomierski;
-                break;
-            case 3:
-                patmat = trafo.eigen_pomierski;
-                break;
+            case 0: patmat = trafo.basic_rgb; break;
+            case 1: patmat = trafo.eigen_rgb; break;
+            case 2: patmat = trafo.basic_pomierski; break;
+            case 3: patmat = trafo.eigen_pomierski; break;
             default:;
             }
         }
@@ -269,30 +247,27 @@ int main()
         static float scale = 1.f;
         ImGui::DragFloat("Preview Scale", &scale, 0.01f, 0.f, 100.f);
 
-        if(ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
-        {
-            if(const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files"))
-            {
+        if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0))) {
+            if (const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files")) {
                 picture      = gfx::host_image(gfx::rgb8unorm, *source_data);
                 texture      = gfx::device_image(picture);
                 texture_view = gfx::image_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
 
                 begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
                 trafo   = principal_axis_transformation(begin, picture.extents().count());
-                average = glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) /
-                          (picture.extents().count() * 255.f);
+                average = glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0)))
+                          / (picture.extents().count() * 255.f);
             }
         }
         ImGui::SameLine();
-        if(ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
-        {
+        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
             glm::u8vec3*             data_cast = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
             std::vector<glm::u8vec3> new_img(picture.extents().count());
             std::transform(data_cast, data_cast + picture.extents().count(), new_img.begin(), [&patmat](const glm::u8vec3& vec) {
                 return clamp(glm::vec3(patmat * glm::vec4(glm::vec3(vec) / 255.f, 1)) * 255.f, glm::vec3(0), glm::vec3(255.f));
             });
 
-            if(const auto dst = gfx::file::save_dialog("Save output", "../", {"*.png"}, "PNG"))
+            if (const auto dst = gfx::file::save_dialog("Save output", "../", {"*.png"}, "PNG"))
                 gfx::image_file::save_png(*dst, picture.extents().width, picture.extents().height, 3, &new_img[0][0]);
         }
         ImGui::End();

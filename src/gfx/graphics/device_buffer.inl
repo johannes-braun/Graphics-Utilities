@@ -38,7 +38,7 @@ template <typename T> void device_buffer<T>::reallocate(const size_type elements
 template <typename T> buffer_usage_flags device_buffer<T>::usage() const noexcept { return _usage_flags; }
 template <typename T> typename device_buffer<T>::size_type device_buffer<T>::capacity() const noexcept { return _size; }
 
-template <typename T> void device_buffer<T>::operator>>(const host_buffer<T>& buffer)
+template <typename T> void device_buffer<T>::operator>>(const host_buffer<T>& buffer) const
 {
     copy_to(buffer, 0, 0, std::min<size_type>(buffer.size(), capacity()));
 }
@@ -48,7 +48,7 @@ template <typename T> void device_buffer<T>::operator<<(const host_buffer<T>& bu
     fill_from(buffer, 0, 0, std::min<size_type>(buffer.size(), capacity()));
 }
 
-template <typename T> void device_buffer<T>::operator>>(const device_buffer& buffer)
+template <typename T> void device_buffer<T>::operator>>(const device_buffer& buffer) const
 {
     copy_to(buffer, 0, 0, std::min<size_type>(buffer.capacity(), capacity()));
 }
@@ -98,6 +98,12 @@ void device_buffer<T>::fill_from(const host_buffer<T>& buffer, const difference_
 //    else
 //        return std::any_cast<H>(_implementation->api_handle());
 //}
+template <typename T> host_buffer<T> device_buffer<T>::to_host() const 
+{ 
+	host_buffer<T> result(_size);
+	*this >> result;
+	return result;
+}
 
 template <typename T>
 void device_buffer<T>::fill_from(const device_buffer& buffer, const difference_type src_offset, const difference_type start,
@@ -113,7 +119,7 @@ void device_buffer<T>::fill_from(const device_buffer& buffer, const difference_t
 
 template <typename T>
 void device_buffer<T>::copy_to(const host_buffer<T>& buffer, const difference_type src_offset, const difference_type dst_offset,
-                               const size_type count)
+                               const size_type count) const
 {
     if(dst_offset + count > _size)
         throw std::out_of_range("Destination out of range.");
@@ -125,7 +131,7 @@ void device_buffer<T>::copy_to(const host_buffer<T>& buffer, const difference_ty
 
 template <typename T>
 void device_buffer<T>::copy_to(const device_buffer& buffer, const difference_type src_offset, const difference_type dst_offset,
-                               const size_type count)
+                               const size_type count) const
 {
     if(dst_offset + count > _size)
         throw std::out_of_range("Destination out of range.");

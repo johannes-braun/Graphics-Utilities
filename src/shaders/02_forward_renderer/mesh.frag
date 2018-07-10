@@ -1,4 +1,4 @@
-#include <ext/ggx.h>
+#include <ext/ggx.glh>
 
 #pragma optionNV(unroll all)
 

@@ -22,7 +22,7 @@ int main()
     // Images
     const auto        cubemap_format = gfx::r11g11b10f;
     const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
-    gfx::device_image file_texture(2, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
+    gfx::device_image file_texture(gfx::img_type::image2d, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
     file_texture.layer(0) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3));
     file_texture.layer(1) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3));
     file_texture.layer(2) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posy.hdr", gfx::bits::b32, 3));

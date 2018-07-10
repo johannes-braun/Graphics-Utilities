@@ -1,9 +1,13 @@
+#define GFX_EXPOSE_APIS
 #include "light.hpp"
 #include "mesh.hpp"
 #include <execution>
 #include <gfx/gfx.hpp>
+#include <map>
 #include <numeric>
+#include <opengl/opengl.hpp>
 #include <random>
+#include <vector>
 
 std::unique_ptr<gl::framebuffer> main_framebuffer;
 
@@ -14,10 +18,6 @@ void build_framebuffer(int width, int height)
             std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, width, height, gl::samples::x8, GL_RGBA16F);
     main_framebuffer->at(GL_DEPTH_ATTACHMENT) =
             std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, width, height, gl::samples::x8, GL_DEPTH32F_STENCIL8, 1);
-}
-void dbg(GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam)
-{
-    // log_i << message;
 }
 
 int main()
@@ -37,10 +37,6 @@ int main()
             gl::pipeline::reload_all();
     });
     glfwSwapInterval(0);
-
-    glDebugMessageCallback(&dbg, nullptr);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
 
     gfx::camera            camera;
     gfx::camera_controller controller;
@@ -100,7 +96,7 @@ int main()
 
     gfx::ilog << "Loaded " << vertices << " vertices with " << indices << " indices.";
 
-    gl::buffer<gfx::camera::data> matrix_buffer(camera.info(), GL_DYNAMIC_STORAGE_BIT);
+    gfx::host_buffer<gfx::camera::data> matrix_buffer{camera.info()};
 
     gl::pipeline mesh_pipeline;
     mesh_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("02_forward_renderer/mesh.vert");
@@ -112,25 +108,21 @@ int main()
 
     std::vector<gfx::light> lights(4);
     lights[0].map_camera.transform_mode = inverse(glm::lookAt(glm::vec3(4, 24, 0), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
-    lights[0].color                = glm::vec4(1.f, 0.6f, 0.4f, 15.f);
+    lights[0].color                     = glm::vec4(1.f, 0.6f, 0.4f, 15.f);
     lights[1].map_camera.transform_mode = inverse(glm::lookAt(glm::vec3(4, 20, 4), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
-    lights[1].color                = glm::vec4(0.3f, 0.7f, 1.f, 15.f);
+    lights[1].color                     = glm::vec4(0.3f, 0.7f, 1.f, 15.f);
     lights[2].map_camera.transform_mode = inverse(glm::lookAt(glm::vec3(-7, 8, -4), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
-    lights[2].color                = glm::vec4(0.4f, 0.8f, 0.1f, 13.f);
-    lights[3].color                = glm::vec4(0.9f, 0.8f, 0.7f, 10.f);
+    lights[2].color                     = glm::vec4(0.4f, 0.8f, 0.1f, 13.f);
+    lights[3].color                     = glm::vec4(0.9f, 0.8f, 0.7f, 10.f);
 
-    gl::buffer<gfx::light::info> light_buffer(
-            lights.size(), GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
-    light_buffer.map(GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
+    gfx::host_buffer<gfx::light::info> light_buffer(lights.size());
+    gfx::host_buffer<float> time_buffer({static_cast<float>(glfwGetTime())});
 
     build_framebuffer(1280, 720);
 
     gl::texture          noise_texture(GL_TEXTURE_3D, 128, 128, 128, GL_R16F, 1);
     gl::compute_pipeline simplex_pipeline(std::make_shared<gl::shader>("02_forward_renderer/simplex.comp"));
     gl::sampler          noise_sampler;
-    gl::buffer<float>    time({static_cast<float>(glfwGetTime())},
-                              GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
-    time.map(GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT);
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -155,12 +147,11 @@ int main()
         gl::framebuffer::zero().clear(0, {0.003f, 0.203f, 0.004f, 1.f});
         gl::framebuffer::zero().clear(0.f, 0);
 
-        light_buffer.reserve(lights.size());
+        light_buffer.resize(lights.size());
         int enabled_lights = 0;
         for(int i = 0; i < lights.size(); ++i)
             if(lights[i].enabled)
                 light_buffer[enabled_lights++] = lights[i].make_info();
-        light_buffer.synchronize();
         glFinish();
 
         queries["scene"]["lights"].queries["shadowmap"].start();
@@ -181,10 +172,10 @@ int main()
                 glm::lookAt(glm::vec3(7 * glm::sin(static_cast<float>(glfwGetTime())), 20, 7 * glm::cos(static_cast<float>(glfwGetTime()))),
                             glm::vec3(0, 0, 0),
                             glm::vec3(0, 1, 0)));
-        lights[3].map_camera.transform_mode.position =
-                glm::lerp(lights[3].map_camera.transform_mode.position, camera.transform_mode.position, static_cast<float>(10.f * context->delta()));
-        lights[3].map_camera.transform_mode.rotation =
-                glm::slerp(lights[3].map_camera.transform_mode.rotation, camera.transform_mode.rotation, static_cast<float>(10.f * context->delta()));
+        lights[3].map_camera.transform_mode.position = glm::lerp(
+                lights[3].map_camera.transform_mode.position, camera.transform_mode.position, static_cast<float>(10.f * context->delta()));
+        lights[3].map_camera.transform_mode.rotation = glm::slerp(
+                lights[3].map_camera.transform_mode.rotation, camera.transform_mode.rotation, static_cast<float>(10.f * context->delta()));
         queries["scene"]["lights"].queries["update"].finish();
 
         queries["scene"]["camera"].queries["update"].start();
@@ -193,14 +184,17 @@ int main()
         matrix_buffer[0].view       = inverse(camera.transform_mode.matrix());
         matrix_buffer[0].projection = camera.projection_mode;
         matrix_buffer[0].position   = camera.transform_mode.position;
-        matrix_buffer.synchronize();
         queries["scene"]["camera"].queries["update"].finish();
 
         queries["scene"].queries["culling"].start();
         gl::framebuffer::zero().bind();
-        matrix_buffer.bind(GL_UNIFORM_BUFFER, 0);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
         if(enabled_lights != 0)
-            light_buffer.bind(GL_SHADER_STORAGE_BUFFER, 0, 0, enabled_lights);
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                              0,
+                              light_buffer,
+                              0,
+                              light_buffer.size() * sizeof(gfx::light::info)); // enabled_lights * sizeof(gfx::light::info));
         else
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mygl::buffer::zero);
         large_meshes.cull();
@@ -213,12 +207,12 @@ int main()
         queries["scene"].queries["render"].finish();
 
         queries["simplex"].queries["update"].start();
-        time[0] = static_cast<float>(glfwGetTime());
-        time.bind(GL_UNIFORM_BUFFER, 5);
+        time_buffer[0] = static_cast<float>(glfwGetTime());
+        glBindBufferBase(GL_UNIFORM_BUFFER, 5, time_buffer);
         noise_sampler.bind(15);
         noise_texture.bind(15);
         noise_texture.bind_image(0, GL_WRITE_ONLY);
-        simplex_pipeline.dispatch(128, 128, 128);
+       // simplex_pipeline.dispatch(128, 128, 128);
         queries["simplex"].queries["update"].finish();
 
         ImGui::Begin("Test", nullptr, ImGuiWindowFlags_MenuBar);
