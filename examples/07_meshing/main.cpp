@@ -147,20 +147,10 @@ half_edge_structure::half_edge_structure(const std::vector<gfx::index32>& indice
     vertices.resize(max_index);
     half_edges.resize(indices.size());
 
-    for (int f = 0; f < indices.size() / 3; ++f) {
-        const auto he_index = 3 * f;
-
-        half_edges[he_index].vertex     = indices[he_index];
-        half_edges[he_index + 1].vertex = indices[he_index + 1];
-        half_edges[he_index + 2].vertex = indices[he_index + 2];
-
-        vertices[indices[he_index]].halfedge     = he_index;
-        vertices[indices[he_index + 1]].halfedge = he_index + 1;
-        vertices[indices[he_index + 2]].halfedge = he_index + 2;
-
-        vertex_to_halfedge[indices[he_index]].push_back(he_index);
-        vertex_to_halfedge[indices[he_index + 1]].push_back(he_index + 1);
-        vertex_to_halfedge[indices[he_index + 2]].push_back(he_index + 2);
+    for (int i = 0; i < indices.size(); ++i) {
+        half_edges[i].vertex          = indices[i];
+        vertices[indices[i]].halfedge = i;
+        vertex_to_halfedge[indices[i]].push_back(i);
     }
 
 #pragma omp parallel for schedule(dynamic)
