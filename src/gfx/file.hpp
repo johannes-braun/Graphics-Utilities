@@ -135,6 +135,7 @@ struct scene_file : file
         glm::vec4       color_specular{0};
         glm::vec4       color_transparent{0};
         gfx::image_file texture_diffuse;
+        gfx::image_file texture_bump;
     };
 
     struct mesh

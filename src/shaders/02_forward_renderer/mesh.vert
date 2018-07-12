@@ -7,6 +7,7 @@ layout(binding = 0) uniform Camera
     mat4 view;
     mat4 projection;
     vec3 camera_position;
+	int do_cull;
 };
 
 struct instance_info
@@ -25,6 +26,9 @@ struct instance_info
     mat4 model_matrix;
     vec3 color;
     float roughness;
+
+	uvec2 diffuse_texture;
+	uvec2 bump_texture;
 };
 
 layout(binding = 10, std430) readonly buffer ModelData

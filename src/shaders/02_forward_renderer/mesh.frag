@@ -12,6 +12,7 @@ layout(binding = 0) uniform Camera
     mat4 view;
     mat4 projection;
     vec3 camera_position;
+	int do_cull;
 };
 
 struct instance_info
@@ -30,6 +31,9 @@ struct instance_info
     mat4 model_matrix;
     vec3 color;
     uint rough_metal;
+
+	uvec2 diffuse_texture;
+	uvec2 bump_texture;
 };
 
 layout(binding = 10, std430) readonly buffer ModelData
@@ -96,6 +100,46 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
     }
     return max(dot(normal, light_dir),0) * shadow / (size*size);
 }
+mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv)
+{
+    // get edge vectors of the pixel triangle
+    vec3 dp1  = dFdx(p);
+    vec3 dp2  = dFdy(p);
+    vec2 duv1 = dFdx(uv);
+    vec2 duv2 = dFdy(uv);
+
+    // solve the linear system
+    vec3 dp2perp = cross(dp2, N);
+    vec3 dp1perp = cross(N, dp1);
+    vec3 T       = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 B       = dp2perp * duv1.y + dp1perp * duv2.y;
+
+    // construct a scale-invariant frame
+    float invmax = 1.0 / sqrt(max(dot(T, T), dot(B, B)));
+    return mat3(T * invmax, B * invmax, N);
+}
+vec3 from_bump(vec3 surf_pos, vec3 surf_norm, vec2 uv, vec3 view_dir, sampler2D bmap, float bscale)
+{
+    mat3 tbn = cotangentFrame(surf_norm, surf_pos, uv);
+
+    float height = bscale * (texture(bmap, uv).r - 0.5f);
+    uv += height * (view_dir * tbn).xy;
+
+    vec2 duv = 1.f / vec2(textureSize(bmap, 0));
+    vec4 h   = bscale *
+             vec4(texture(bmap, uv + vec2(duv.x, 0)).r,
+                  texture(bmap, uv + vec2(-duv.x, 0)).r,
+                  texture(bmap, uv + vec2(0, duv.y)).r,
+                  texture(bmap, uv + vec2(0, -duv.y)).r) /
+             duv.xxyy;
+
+    return tbn * normalize(cross(vec3(2, 0, h[0] - h[1]), vec3(0, 2, h[2] - h[3])));
+}
+
+bool is_texture(uvec2 v)
+{
+	return v.x + v.y != 0;
+}
 
 void main()
 {
@@ -121,7 +165,14 @@ void main()
 
     float mat_ior = 1.5f;
     vec3 mat_color = instances[draw_id].color;
+	vec3 view_dir = normalize(camera_position - position);
 
+	if(is_texture(instances[draw_id].diffuse_texture))
+		mat_color = texture(sampler2D(instances[draw_id].diffuse_texture), uv).rgb;
+		
+	if(is_texture(instances[draw_id].bump_texture))
+		normal = from_bump(position, normal, uv, view_dir, sampler2D(instances[draw_id].bump_texture), 0.02f);
+		
     for(int i=0; i<lights.length(); ++i)
     {
         light current_light = lights[i];
@@ -140,11 +191,9 @@ void main()
         if(current_light.map.x + current_light.map.y != 0) 
             shd *= shadow(sampler2DShadow(current_light.map), current_light.matrix, position, normal, light_dir);
         
-
         vec3 light_color = current_light.color.w * current_light.color.xyz;
-        vec3 view_dir = normalize(camera_position - position);
         float len2 = dot(to_light, to_light);
-        float att = 2*pi / (len2);
+        float att = 2*pi / (1 + 0.2*len2);
     
         vec3 half_vector = normalize(light_dir + view_dir);
 

@@ -31,6 +31,7 @@ enum class wrap
 enum class wrap_mode
 {
     none,
+	repeat,
     mirror_repeat,
     clamp_to_edge,
     clamp_to_border,

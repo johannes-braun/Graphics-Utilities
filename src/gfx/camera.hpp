@@ -19,6 +19,7 @@ struct camera
         glm::mat4 view;
         glm::mat4 projection;
         glm::vec3 position;
+        int       do_cull = 1;
     };
 
     data info() const noexcept;
@@ -41,10 +42,10 @@ struct camera_controller
 
     mouse_button grab_action{GLFW_MOUSE_BUTTON_RIGHT};
 
-private:
-    camera*   _cam_ptr = nullptr;
-    transform _target_transform;
+    private:
+    camera*         _cam_ptr = nullptr;
+    transform       _target_transform;
     double          _last_time;
-    cursor_controls              _cursor_controls;
+    cursor_controls _cursor_controls;
 };
 }

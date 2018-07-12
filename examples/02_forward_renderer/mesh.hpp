@@ -30,6 +30,8 @@ struct mesh_instance
     alignas(16) glm::mat4 model_matrix     = glm::mat4(1.f);
     alignas(16) glm::vec3 color            = {1.f, 1.f, 1.f};
     alignas(4) uint32_t packed_rough_metal = 0u;
+    alignas(16) uint64_t diffuse_texture   = 0ull;
+    alignas(8) uint64_t bump_texture       = 0ull;
 };
 
 struct mesh_holder
@@ -47,8 +49,8 @@ struct mesh_holder
     device_buffer<index32>       index_buffer;
     device_buffer<mesh_instance> info_buffer;
 
-private:
-    vertex_input    _vertex_input;
+    private:
+    vertex_input         _vertex_input;
     std::stack<uint32_t> _free_meshes;
 
     struct range
