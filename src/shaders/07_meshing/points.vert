@@ -16,6 +16,6 @@ layout(binding = 0, std140) uniform Camera
 
 void main()
 {
-	gl_Position = camera.proj * camera.view * vec4(position, 1);
+	gl_Position = camera.proj * camera.view * vec4(position, 1) + vec4(0, 0, 0.001f, 0);
     gl_PointSize = 5.0f;
 }

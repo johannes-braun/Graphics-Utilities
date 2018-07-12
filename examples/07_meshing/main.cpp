@@ -135,7 +135,6 @@ int main()
     outline_state.rasterizer.cull                = gfx::cull_mode::front;
     gfx::state_info points_state                 = mesh_state;
     points_state.rasterizer.cull                 = gfx::cull_mode::none;
-    points_state.depth_stencil.depth_test_enable = false;
 
     gfx::device_image color_attachment(gfx::img_type::image2d, gfx::rgba16f, {1280, 720, 1}, gfx::sample_count::x8);
     gfx::device_image depth_attachment(gfx::img_type::image2d, gfx::d32f, {1280, 720, 1}, gfx::sample_count::x8);

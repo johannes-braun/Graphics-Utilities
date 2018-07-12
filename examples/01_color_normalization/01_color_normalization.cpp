@@ -190,34 +190,13 @@ int main()
     };
     gfx::host_buffer<render_info> render_info_buffer(1);
 
-    class command_buffer
+	const auto set_viewports = [](uint32_t first, const std::vector<gfx::viewport>& vps)
     {
-        public:
-        void set_viewports(uint32_t first, const std::vector<gfx::viewport>& vps)
-        {
-            //_commands.push_back([ first, count, vps ]
-            //{
-            for (int i = first; i < first + vps.size(); ++i) {
-                glViewportIndexedf(i, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
-                glDepthRangeIndexed(i, vps[i].min_depth, vps[i].max_depth);
-            }
-            //});
+        for (int i = first; i < first + vps.size(); ++i) {
+            glViewportIndexedf(i, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
+            glDepthRangeIndexed(i, vps[i].min_depth, vps[i].max_depth);
         }
-
-        void run(std::function<void()> fun) { _commands.push_back(fun); }
-
-        void commit()
-        {
-            for (const auto& x : std::exchange(_commands, {})) {
-                x();
-            }
-        }
-
-        private:
-        std::vector<std::function<void()>> _commands;
     };
-
-    command_buffer main_buffer;
 
     while (context->run()) {
         imgui.new_frame();
@@ -294,32 +273,32 @@ int main()
         gfx::viewport main_viewport(0, 0, float(w), float(h), 0.f, 1.f);
 
         gfx::apply(default_state);
-        main_buffer.set_viewports(0, {main_viewport});
+        set_viewports(0, {main_viewport});
         points_pipeline.bind();
         glBindTextureUnit(0, texture_view);
         points_vao.draw(picture.extents().width * picture.extents().height);
 
         gfx::apply(points_state);
-        main_buffer.set_viewports(0, {main_viewport});
+        set_viewports(0, {main_viewport});
         center_pipeline.bind();
         points_vao.draw(1);
 
         gfx::apply(default_state);
-        main_buffer.set_viewports(0, {main_viewport});
+        set_viewports(0, {main_viewport});
         gizmo_pipeline.bind();
         lines_vao.draw(6);
 
         glBindTextureUnit(0, grid_view);
 
         gfx::apply(cube_backfaces);
-        main_buffer.set_viewports(0, {main_viewport});
+        set_viewports(0, {main_viewport});
         cube_pipeline.bind();
         vao.bind_vertex_buffer(0, vbo, 0);
         vao.bind_index_buffer(ibo, gfx::index_type::uint32);
         vao.draw_indexed(ibo.capacity());
 
         gfx::apply(cube_frontfaces);
-        main_buffer.set_viewports(0, {main_viewport});
+        set_viewports(0, {main_viewport});
         cube_front.bind();
         vao.draw_indexed(ibo.capacity());
 
@@ -327,7 +306,7 @@ int main()
 
         gfx::apply(picture_state);
         gfx::viewport pic_vp(0, 0, picture.extents().width * scale, picture.extents().height * scale, 0.f, 1.f);
-        main_buffer.set_viewports(0, {pic_vp});
+        set_viewports(0, {pic_vp});
         img_pipeline.bind();
         tris_vao.draw(3);
 
