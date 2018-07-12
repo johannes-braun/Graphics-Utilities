@@ -19,12 +19,12 @@ out gl_PerVertex
 	int gl_Layer;
 };
 
-layout(binding = 1) uniform Info
+layout(binding = 3) restrict readonly buffer Info
 {
 	mat4 view;
 };
 
-layout(binding = 2) restrict readonly buffer Layer
+layout(binding = 2) uniform Layer
 {
 	int layer;
 };
@@ -44,12 +44,12 @@ const mat4 cubemapViewMatrices[6] = {
 };
 
 const float cnear = 0.001;
-const float cfar = 100.0;
+const float cfar = 1000.0;
 const mat4 cubemapProjMat = mat4(
     1,	0,	0,	0,
     0,	1,  0,	0,
-    0,	0,	-(cfar+cnear)/(cfar-cnear), -1,
-    0,	0,	-(2*cfar*cnear)/(cfar-cnear),	0
+    0,	0,	-(cfar)/(cfar-cnear), -1,
+    0,	0,	-(cfar*cnear)/(cfar-cnear),	0
 );
 
 layout(location=0) out vec3 out_position;

@@ -39,9 +39,9 @@ struct instance_info
 	uvec2 bump_texture;
 };
 
-layout(binding = 4, std430) restrict readonly buffer Cubemaps
+layout(binding = 12, std430) restrict readonly buffer Cubemaps
 {
-	uvec2 textures[/*5*5*5*/];
+	uvec2 textures[];
 } cubemaps;
 
 layout(binding = 10, std430) readonly buffer ModelData
@@ -179,11 +179,44 @@ void main()
 		mat_color = texture(sampler2D(instances[draw_id].diffuse_texture), uv).rgb;
 		
 	if(is_texture(instances[draw_id].bump_texture))
-		normal = from_bump(position, normal, uv, view_dir, sampler2D(instances[draw_id].bump_texture), 0.02f);
+		normal = from_bump(position, normal, uv, view_dir, sampler2D(instances[draw_id].bump_texture), 0.01f);
 		
-//	color = vec4(mat_color, 1);
+		if(position.z < 0 || position.x < 0 || position.z < 0) discard;
+
+	const int cmcount = 8;
+
+	vec3 ppp = (position.xyz + vec3(cmcount / 2, 0, cmcount / 2))*0.333333333333;
+
+	vec3 frc = fract(ppp);
+	vec3 frc2 = 2*frc -1;
+	vec3 ffrc = floor(ppp);
+	vec3 cfrc = ceil(ppp);
+
+	vec3 svec = normal;
+	
+	vec3 c000 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*ffrc.z + cmcount * ffrc.y + ffrc.x)]), svec).rgb;
+	vec3 c001 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*ffrc.z + cmcount * ffrc.y + cfrc.x)]), svec).rgb;
+	vec3 c010 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*ffrc.z + cmcount * cfrc.y + ffrc.x)]), svec).rgb;
+	vec3 c011 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*ffrc.z + cmcount * cfrc.y + cfrc.x)]), svec).rgb;
+	vec3 c100 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*cfrc.z + cmcount * ffrc.y + ffrc.x)]), svec).rgb;
+	vec3 c101 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*cfrc.z + cmcount * ffrc.y + cfrc.x)]), svec).rgb;
+	vec3 c110 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*cfrc.z + cmcount * cfrc.y + ffrc.x)]), svec).rgb;
+	vec3 c111 = texture(samplerCube(cubemaps.textures[int(cmcount * cmcount*cfrc.z + cmcount * cfrc.y + cfrc.x)]), svec).rgb;
+
+	vec3 mx000_001 = mix(c000, c001, frc.x);
+	vec3 mx010_011 = mix(c010, c011, frc.x);
+	vec3 mx100_101 = mix(c100, c101, frc.x);
+	vec3 mx110_111 = mix(c110, c111, frc.x);
+
+	vec3 mx000x001_010x011 = mix(mx000_001, mx010_011, frc.y);
+	vec3 mx100x101_110x111 = mix(mx100_101, mx110_111, frc.y);
+
+	vec3 fcol = mix(mx000x001_010x011, mx100x101_110x111, frc.z);
+
+	env = fcol;
+//	color = vec4( fcol,  1);
 //	return;
-//
+	
     for(int i=0; i<lights.length(); ++i)
     {
         light current_light = lights[i];
@@ -244,6 +277,5 @@ void main()
 
     }
 
-	color *= 1.f;
     //color /= lights.length();
 }
