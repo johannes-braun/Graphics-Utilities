@@ -39,11 +39,6 @@ struct instance_info
 	uvec2 bump_texture;
 };
 
-layout(binding = 4, std430) restrict readonly buffer Cubemaps
-{
-	uvec2 textures[/*5*5*5*/];
-} cubemaps;
-
 layout(binding = 10, std430) readonly buffer ModelData
 {
     instance_info instances[];
@@ -181,9 +176,6 @@ void main()
 	if(is_texture(instances[draw_id].bump_texture))
 		normal = from_bump(position, normal, uv, view_dir, sampler2D(instances[draw_id].bump_texture), 0.02f);
 		
-//	color = vec4(mat_color, 1);
-//	return;
-//
     for(int i=0; i<lights.length(); ++i)
     {
         light current_light = lights[i];
@@ -243,7 +235,4 @@ void main()
         color += vec4(shd * (spec + diff) + mix(env * mat_color, vec3(0), metal), 1);
 
     }
-
-	color *= 1.f;
-    //color /= lights.length();
 }
