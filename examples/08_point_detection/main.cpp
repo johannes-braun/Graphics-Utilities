@@ -3,57 +3,13 @@
 #include <regex>
 #include <unordered_set>
 
-void gauss_blur(gfx::host_image& image, int kernel_radius, float sigma)
-{
-    gfx::host_image img2(image.pixel_format(), image.extents());
-
-    std::vector<float> kernel(2 * kernel_radius + 1);
-    kernel[kernel_radius + 1] = glm::gauss(0.f, 0.f, sigma);
-#pragma omp parallel for schedule(static)
-    for (int i = 1; i < kernel_radius; ++i) {
-        kernel[kernel_radius + 1 - i] = glm::gauss(i * 1.f, 0.f, sigma);
-        kernel[kernel_radius + 1 + i] = glm::gauss(i * 1.f, 0.f, sigma);
-    }
-#pragma omp parallel for schedule(static)
-    for (int x = 0; x < image.extents().width; ++x)
-        for (int y = 0; y < image.extents().height; ++y) {
-            glm::vec4 color{0};
-            for (int i = -int(kernel.size() >> 1); i <= int(kernel.size() >> 1); ++i)
-                color += kernel[i + (kernel.size() >> 1)] * image.load({glm::clamp<int>(x + i, 0, image.extents().width - 1), y, 0});
-            img2.store({x, y, 0}, color);
-        }
-#pragma omp parallel for schedule(static)
-    for (int x = 0; x < img2.extents().width; ++x)
-        for (int y = 0; y < img2.extents().height; ++y) {
-            glm::vec4 color{0};
-            for (int i = -int(kernel.size() >> 1); i <= int(kernel.size() >> 1); ++i)
-                color += kernel[i + (kernel.size() >> 1)] * img2.load({x, glm::clamp<int>(y + i, 0, img2.extents().height - 1), 0});
-            image.store({x, y, 0}, color);
-        }
-}
-
 auto gradient_image(const gfx::host_image& image, int window_size = 5)
 {
-    const float        sigma = 1.f;
-    std::vector<float> kernel(window_size);
-    kernel[window_size >> 1] = glm::gauss(0.f, 0.f, sigma);
-#pragma omp parallel for schedule(static)
-    for (int i = 1; i <= window_size >> 1; ++i) {
-        kernel[(window_size >> 1) - i] = glm::gauss(i * 1.f, 0.f, sigma);
-        kernel[(window_size >> 1) + i] = glm::gauss(i * 1.f, 0.f, sigma);
-    }
-
-    std::vector<std::vector<float>> kernel2d;
-    for (int i = 0; i < window_size; ++i) {
-        kernel2d.push_back(kernel);
-        std::transform(kernel2d.back().begin(), kernel2d.back().end(), kernel2d.back().begin(), [&](auto x) { return x * kernel[i]; });
-    }
+    const float sigma = 1.f;
+    const glm::dvec4 lum = glm::dvec4{1, 1, 1, 1};
 
     gfx::host_image df_img(image.pixel_format(), image.extents());
-
-    // glm::dvec4 lum = glm::dvec4{glm::vec3(.299, .587, .114) * 0.75f, 0.25f};
-    glm::dvec4 lum = glm::dvec4{1, 1, 1, 0.0f};
-
+    const auto      pow2 = [](auto x) { return x * x; };
 #pragma omp parallel for
     for (int p = 0; p < image.extents().count(); ++p) {
         const glm::uvec3 pixel = image.extents().subpixel(p);
@@ -69,42 +25,15 @@ auto gradient_image(const gfx::host_image& image, int window_size = 5)
                 sobelx += dot(glm::dvec4(image.load(cl)), lum) * s_op[i][j];
                 sobely += dot(glm::dvec4(image.load(cl)), lum) * s_op[j][i];
             }
-        df_img.store({x, y, 0}, {sobelx, sobely, 0, 1});
+        df_img.store({x, y, 0}, {pow2(sobelx), (sobelx * sobely), (sobelx * sobely), pow2(sobely)});
     }
 
-    gfx::host_image deriv_image(image.pixel_format(), image.extents());
-#pragma omp parallel for
-    for (int p = 0; p < image.extents().count(); ++p) {
-        const glm::uvec3 pixel = image.extents().subpixel(p);
-        const int        x     = pixel.x;
-        const int        y     = pixel.y;
+    const auto[gauss_x, gauss_y, gauss_z] = gfx::image_filter::gauss_separable(window_size, sigma);
+    gfx::host_image temporary(image.pixel_format(), image.extents());
+    df_img.convolute(gauss_x, temporary);
+    temporary.convolute(gauss_y, df_img);
 
-        const int win_size      = window_size;
-        const int win_size_half = win_size >> 1;
-
-        double dfdxx = 0;
-        double dfdxy = 0;
-        double dfdyx = 0;
-        double dfdyy = 0;
-
-        for (int dwx = 0; dwx < win_size; ++dwx)
-            for (int dwy = 0; dwy < win_size; ++dwy) {
-                const auto pow2 = [](auto x) { return x * x; };
-
-                const auto clamped_pixel = df_img.extents().clamp({x + dwx - win_size_half, y + dwy - win_size_half, 0});
-                const auto gradient      = df_img.load(clamped_pixel);
-                const auto dfdx          = gradient.x;
-                const auto dfdy          = gradient.y;
-
-                dfdxx += kernel2d[dwx][dwy] * pow2(dfdx);
-                dfdxy += kernel2d[dwx][dwy] * (dfdx * dfdy);
-                dfdyx += kernel2d[dwx][dwy] * (dfdx * dfdy);
-                dfdyy += kernel2d[dwx][dwy] * pow2(dfdy);
-            }
-
-        deriv_image.store(glm::uvec3{x, y, 0}, glm::vec4{dfdxx, dfdxy, dfdyx, dfdyy});
-    }
-    return deriv_image;
+    return df_img;
 }
 
 namespace std

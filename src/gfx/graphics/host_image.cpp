@@ -334,23 +334,23 @@ bool is_unorm_compatible(const format fmt)
     {
     case r8unorm:
     case r8snorm:
-    case rg8unorm: 
-    case rg8snorm: 
-    case rgb8unorm: 
+    case rg8unorm:
+    case rg8snorm:
+    case rgb8unorm:
     case rgb8snorm:
     case rgba8unorm:
     case rgba8snorm:
-    case r5g6b5unorm: 
+    case r5g6b5unorm:
     case r16unorm:
     case r16snorm:
     case rg16unorm:
-    case rg16snorm: 
-    case r16f: 
-    case rgb16unorm: 
+    case rg16snorm:
+    case r16f:
+    case rgb16unorm:
     case rgb16snorm:
-    case rgb5a1unorm: 
-    case rgb9e5: 
-    case rg16f: 
+    case rgb5a1unorm:
+    case rgb9e5:
+    case rg16f:
     case rgb10a2unorm:
     case rgb10a2snorm:
     case r11g11b10f:
@@ -373,13 +373,13 @@ bool is_unsigned(const format fmt)
     {
     case r8u:
     case rg8u:
-    case rgb8u: 
+    case rgb8u:
     case rgba8u:
     case r16u:
     case rg16u:
     case rgb16u:
     case rgba16u:
-    case r32u: 
+    case r32u:
     case rg32u:
     case rgb32u:
     case rgba32u: return true;
@@ -406,6 +406,34 @@ bool is_signed(const format fmt)
     default: break;
     }
     return false;
+}
+
+void host_image::convolute(const image_filter& f)
+{
+    gfx::host_image       tmp(pixel_format(), extents());
+    convolute(f, tmp);
+    memcpy(storage().data(), tmp.storage().data(), storage().size());
+}
+
+void host_image::convolute(const image_filter& f, host_image& into) const
+{
+    assert(is_unorm_compatible(_format));
+
+    const auto      half_size = f.extents().vec / 2u;
+
+#pragma omp parallel for
+    for (int p = 0; p < extents().count(); ++p) {
+        const glm::uvec3 pixel = extents().subpixel(p);
+
+        glm::vec4 color{0};
+        for (auto i = 0u; i < f.extents().count(); ++i) {
+            const auto filter_pixel = f.extents().subpixel(i);
+            const auto cl           = extents().clamp(pixel + filter_pixel - half_size);
+
+            color += load(cl) * f[filter_pixel];
+        }
+        into.store(pixel, color);
+    }
 }
 
 bool host_image::operator==(const host_image& image) const
@@ -475,8 +503,8 @@ std::function<void(const glm::vec4& v, int64_t i)> host_image::get_write_unorm_f
 
 void host_image::update(data_format format, const uint8_t* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
-    const auto data_components = static_cast<size_t>(format);
+    using data_type              = std::decay_t<decltype(data[0])>;
+    const auto   data_components = static_cast<size_t>(format);
     const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
@@ -595,7 +623,7 @@ void host_image::update(data_format format, const uint8_t* data)
 }
 void host_image::update(data_format format, const uint16_t* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
+    using data_type              = std::decay_t<decltype(data[0])>;
     const size_t data_components = static_cast<size_t>(format);
     const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
@@ -715,7 +743,7 @@ void host_image::update(data_format format, const uint16_t* data)
 }
 void host_image::update(data_format format, const uint32_t* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
+    using data_type              = std::decay_t<decltype(data[0])>;
     const size_t data_components = static_cast<size_t>(format);
     const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
@@ -835,7 +863,7 @@ void host_image::update(data_format format, const uint32_t* data)
 }
 void host_image::update(data_format format, const int8_t* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
+    using data_type              = std::decay_t<decltype(data[0])>;
     const size_t data_components = static_cast<size_t>(format);
     const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
@@ -955,7 +983,7 @@ void host_image::update(data_format format, const int8_t* data)
 }
 void host_image::update(data_format format, const int16_t* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
+    using data_type              = std::decay_t<decltype(data[0])>;
     const size_t data_components = static_cast<size_t>(format);
     const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
@@ -1075,7 +1103,7 @@ void host_image::update(data_format format, const int16_t* data)
 }
 void host_image::update(data_format format, const int32_t* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
+    using data_type              = std::decay_t<decltype(data[0])>;
     const size_t data_components = static_cast<size_t>(format);
     const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
@@ -1195,7 +1223,7 @@ void host_image::update(data_format format, const int32_t* data)
 }
 void host_image::update(data_format format, const float* data)
 {
-    using data_type        = std::decay_t<decltype(data[0])>;
+    using data_type              = std::decay_t<decltype(data[0])>;
     const size_t data_components = static_cast<size_t>(format);
 
     switch (_format)

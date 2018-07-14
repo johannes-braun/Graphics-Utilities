@@ -1,5 +1,5 @@
 BasedOnStyle: WebKit
-AccessModifierOffset: 0
+AccessModifierOffset: -4
 AlignAfterOpenBracket: true
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true

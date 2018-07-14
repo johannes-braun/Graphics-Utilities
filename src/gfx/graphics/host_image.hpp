@@ -18,9 +18,9 @@ union extent
 
     constexpr extent     as_1d() const noexcept;
     constexpr extent     as_2d() const noexcept;
-    constexpr uint32_t linear(const glm::uvec3& p) const noexcept;
+    constexpr uint32_t   linear(const glm::uvec3& p) const noexcept;
     constexpr glm::uvec3 subpixel(uint32_t index) const noexcept;
-    constexpr operator const glm::uvec3&() const noexcept;
+    constexpr            operator const glm::uvec3&() const noexcept;
     constexpr glm::ivec3 clamp(glm::ivec3 pixel) const noexcept;
     constexpr glm::ivec3 wrap(glm::ivec3 pixel) const noexcept;
 
@@ -44,6 +44,45 @@ enum class data_format
     rgba = 4
 };
 
+class image_filter
+{
+public:
+    static std::tuple<image_filter, image_filter, image_filter> gauss_separable(int width, float sigma)
+    {
+        std::tuple<image_filter, image_filter, image_filter> t{image_filter(extent(width, 1, 1)), image_filter(extent(1, width, 1)),
+                                                               image_filter(extent(1, 1, width))};
+        const auto                                           val        = glm::gauss(0.f, 0.f, sigma);
+        const auto                                           half_width = uint32_t(width >> 1);
+        std::get<0>(t)[{half_width, 0, 0}]                              = val;
+        std::get<1>(t)[{0, half_width, 0}]                              = val;
+        std::get<2>(t)[{0, 0, half_width}]                              = val;
+        for (int i = 1; i <= half_width; ++i) {
+            const auto g                           = glm::gauss(1.f * i, 0.f, sigma);
+            std::get<0>(t)[{half_width - i, 0, 0}] = g;
+            std::get<1>(t)[{0, half_width - i, 0}] = g;
+            std::get<2>(t)[{0, 0, half_width - i}] = g;
+            std::get<0>(t)[{half_width + i, 0, 0}] = g;
+            std::get<1>(t)[{0, half_width + i, 0}] = g;
+            std::get<2>(t)[{0, 0, half_width + i}] = g;
+        }
+		return t;
+    }
+    image_filter(extent extents) : _extents(extents), _data(extents.count(), 0.f)
+    {
+        assert(extents.width % 2 == 1 && extents.height % 2 == 1 && extents.depth % 2 == 1);
+    }
+
+    float&       operator[](const glm::uvec3& p) { return _data[_extents.linear(_extents.clamp(p))]; }
+    const float& operator[](const glm::uvec3& p) const { return _data[_extents.linear(_extents.clamp(p))]; }
+
+    const auto& extents() const noexcept { return _extents; }
+    const auto* data() const noexcept { return _data.data(); }
+    auto*       data() noexcept { return _data.data(); }
+
+private:
+    extent             _extents;
+    std::vector<float> _data;
+};
 
 bool is_unsigned(format fmt);
 bool is_signed(format fmt);
@@ -51,13 +90,13 @@ bool is_unorm_compatible(format fmt);
 
 class host_image
 {
-    public:
+public:
     host_image(format fmt, const extent& size);
     host_image(format fmt, const image_file& file);
     host_image(format fmt, const std::filesystem::path& file);
 
     host_image(const host_image& o);
-    host_image& operator=(const host_image& o);
+    host_image& operator       =(const host_image& o);
     host_image(host_image&& o) = default;
     host_image& operator=(host_image&& o) = default;
 
@@ -89,7 +128,8 @@ class host_image
     void       storei(const glm::uvec3& pixel, const glm::ivec4& p);
 
     using available_types = std::variant<float, int32_t, uint32_t, glm::vec4, glm::ivec4, glm::uvec4, host_image>;
-    template<typename T> using enable_if_available = decltype(std::get<std::decay_t<T>>(std::declval<available_types>()));
+    template<typename T>
+    using enable_if_available = decltype(std::get<std::decay_t<T>>(std::declval<available_types>()));
 
     template<typename T, typename = enable_if_available<T>>
     host_image operator+(const T& value) const;
@@ -110,6 +150,9 @@ class host_image
 
     bool operator==(const host_image& image) const;
     bool operator!=(const host_image& image) const;
+
+    void convolute(const image_filter& f);
+    void convolute(const image_filter& f, host_image& into) const;
 
 private:
     template<typename OpFun>
