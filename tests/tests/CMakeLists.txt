@@ -1,1 +1,1 @@
-create_test(test_int_compare)
+create_test(test_host_image)

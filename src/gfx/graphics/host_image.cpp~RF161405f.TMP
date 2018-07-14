@@ -1,8 +1,10 @@
 #include "host_image.hpp"
+#include <gfx/log.hpp>
+#include <numeric>
 
 namespace gfx
 {
-host_image::host_image(const format fmt, const extent& size)
+host_image::host_image(format fmt, const extent& size)
       : _format(fmt)
       , _extent(size)
       , _storage_element_size(format_element_size(fmt))
@@ -10,12 +12,12 @@ host_image::host_image(const format fmt, const extent& size)
       , _write_unorm(get_write_unorm_fun())
 {}
 
-host_image::host_image(const format format, const image_file& file) : host_image(format, extent{file.width, file.height})
+host_image::host_image(format format, const image_file& file) : host_image(format, extent{file.width, file.height})
 {
     update(file);
 }
 
-host_image::host_image(const format fmt, const std::filesystem::path& file)
+host_image::host_image(format fmt, const std::filesystem::path& file)
       : host_image(fmt, image_file(file, bits::b32, image_file::info(file).channels))
 {}
 
@@ -30,7 +32,7 @@ host_image& host_image::operator=(const host_image& o)
     return *this;
 }
 
-host_image host_image::converted(const format fmt) const
+host_image host_image::converted(format fmt) const
 {
     host_image n(fmt, _extent);
 #pragma omp parallel for schedule(static)
@@ -47,9 +49,9 @@ host_image host_image::converted(const format fmt) const
 void host_image::flip_vertically()
 {
     const auto fmt_size = _storage_element_size;
-    for (int d = 0; d < static_cast<int>(_extent.depth); ++d) {
-        for (int x = 0; x < static_cast<int>(_extent.width); ++x) {
-            for (int hy = 0; hy < static_cast<int>(_extent.height / 2); ++hy) {
+    for (int d = 0; d < _extent.depth; ++d) {
+        for (int x = 0; x < _extent.width; ++x) {
+            for (int hy = 0; hy < _extent.height / 2; ++hy) {
                 const int     other   = _extent.height - 1 - hy;
                 const int64_t offset1 = fmt_size * _extent.linear({x, hy, d});
                 const int64_t offset2 = fmt_size * _extent.linear({x, other, d});
@@ -86,6 +88,18 @@ uint32_t host_image::max_levels() const noexcept
 format host_image::pixel_format() const noexcept
 {
     return _format;
+}
+
+glm::vec4 to_vec4(data_format fmt, uint8_t* unorm_data)
+{
+    switch (fmt)
+    {
+    case data_format::r: return {unorm_data[0] / 255.f, 0, 0, 1};
+    case data_format::rg: return {unorm_data[0] / 255.f, unorm_data[1] / 255.f, 0, 1};
+    case data_format::rgb: return {unorm_data[0] / 255.f, unorm_data[1] / 255.f, unorm_data[2] / 255.f, 1};
+    case data_format::rgba: return {unorm_data[0] / 255.f, unorm_data[1] / 255.f, unorm_data[2] / 255.f, unorm_data[3] / 255.f};
+    default: return {0, 0, 0, 1};
+    }
 }
 
 glm::vec4 host_image::load_bilinear(const glm::vec3& pixel) const
@@ -257,19 +271,19 @@ void host_image::store(const glm::uvec3& pixel, const glm::vec4& p)
     case rgba16unorm: *reinterpret_cast<glm::u16vec4*>(&_storage[index]) = cnorm<uint16_t, 4>(p); break;
     case rgba16snorm: *reinterpret_cast<glm::i16vec4*>(&_storage[index]) = cnorm<int16_t, 4>(p); break;
 
-    case r5g6b5unorm: *reinterpret_cast<uint16_t*>(&_storage[index]) = packUnorm1x5_1x6_1x5(p); break;
-    case rgb5a1unorm: *reinterpret_cast<uint16_t*>(&_storage[index]) = packUnorm3x5_1x1(p); break;
+    case r5g6b5unorm: *reinterpret_cast<uint16_t*>(&_storage[index]) = glm::packUnorm1x5_1x6_1x5(p); break;
+    case rgb5a1unorm: *reinterpret_cast<uint16_t*>(&_storage[index]) = glm::packUnorm3x5_1x1(p); break;
 
-    case rgb10a2snorm: *reinterpret_cast<uint32_t*>(&_storage[index]) = packSnorm3x10_1x2(p); break;
-    case rgb10a2unorm: *reinterpret_cast<uint32_t*>(&_storage[index]) = packUnorm3x10_1x2(p); break;
+    case rgb10a2snorm: *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packSnorm3x10_1x2(p); break;
+    case rgb10a2unorm: *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packUnorm3x10_1x2(p); break;
 
-    case r11g11b10f: *reinterpret_cast<uint32_t*>(&_storage[index]) = packF2x11_1x10(p); break;
-    case rgb9e5: *reinterpret_cast<uint32_t*>(&_storage[index]) = packF3x9_E1x5(p); break;
+    case r11g11b10f: *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packF2x11_1x10(p); break;
+    case rgb9e5: *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packF3x9_E1x5(p); break;
 
     case r16f: *reinterpret_cast<uint16_t*>(&_storage[index]) = glm::packHalf1x16(p.x); break;
-    case rg16f: *reinterpret_cast<uint32_t*>(&_storage[index]) = packHalf2x16(p); break;
+    case rg16f: *reinterpret_cast<uint32_t*>(&_storage[index]) = glm::packHalf2x16(p); break;
     case rgb16f: *reinterpret_cast<glm::u16vec3*>(&_storage[index]) = glm::packHalf<3, glm::defaultp>(p); break;
-    case rgba16f: *reinterpret_cast<uint64_t*>(&_storage[index]) = packHalf4x16(p); break;
+    case rgba16f: *reinterpret_cast<uint64_t*>(&_storage[index]) = glm::packHalf4x16(p); break;
 
     case r32f: *reinterpret_cast<float*>(&_storage[index]) = p.x; break;
     case rg32f: *reinterpret_cast<glm::vec2*>(&_storage[index]) = p; break;
@@ -328,93 +342,96 @@ void host_image::storei(const glm::uvec3& pixel, const glm::ivec4& p)
     }
 }
 
-bool is_unorm_compatible(const format fmt)
+host_image host_image::operator*(float f) const
 {
-    switch (fmt)
-    {
-    case r8unorm:
-    case r8snorm:
-    case rg8unorm: 
-    case rg8snorm: 
-    case rgb8unorm: 
-    case rgb8snorm:
-    case rgba8unorm:
-    case rgba8snorm:
-    case r5g6b5unorm: 
-    case r16unorm:
-    case r16snorm:
-    case rg16unorm:
-    case rg16snorm: 
-    case r16f: 
-    case rgb16unorm: 
-    case rgb16snorm:
-    case rgb5a1unorm: 
-    case rgb9e5: 
-    case rg16f: 
-    case rgb10a2unorm:
-    case rgb10a2snorm:
-    case r11g11b10f:
-    case rgb16f:
-    case rgba16unorm:
-    case rgba16snorm:
-    case rgba16f:
-    case r32f:
-    case rg32f:
-    case rgb32f:
-    case rgba32f: return true;
-    default: break;
-    }
-    return false;
+    gfx::host_image img(pixel_format(), _extent);
+#pragma omp parallel for schedule(static)
+    for (auto x = 0; x < _extent.width; ++x)
+        for (auto y = 0u; y < _extent.height; ++y)
+            for (auto z = 0u; z < _extent.depth; ++z) img.store({uint32_t(x), y, z}, f * load({uint32_t(x), y, z}));
+    return img;
 }
 
-bool is_unsigned(const format fmt)
+host_image& host_image::operator*=(float f)
 {
-    switch (fmt)
-    {
-    case r8u:
-    case rg8u:
-    case rgb8u: 
-    case rgba8u:
-    case r16u:
-    case rg16u:
-    case rgb16u:
-    case rgba16u:
-    case r32u: 
-    case rg32u:
-    case rgb32u:
-    case rgba32u: return true;
-    default: break;
-    }
-    return false;
-}
-bool is_signed(const format fmt)
-{
-    switch (fmt)
-    {
-    case r8i:
-    case rg8i:
-    case rgb8i:
-    case rgba8i:
-    case r16i:
-    case rg16i:
-    case rgb16i:
-    case rgba16i:
-    case r32i:
-    case rg32i:
-    case rgb32i:
-    case rgba32i: return true;
-    default: break;
-    }
-    return false;
+#pragma omp parallel for schedule(static)
+    for (auto x = 0; x < _extent.width; ++x)
+        for (auto y = 0u; y < _extent.height; ++y)
+            for (auto z = 0u; z < _extent.depth; ++z) store({uint32_t(x), y, z}, f * load({uint32_t(x), y, z}));
+    return *this;
 }
 
-bool host_image::operator==(const host_image& image) const
+#if _MSC_VER
+#define pragma __pragma
+#else
+#define pragma _Pragma
+#endif
+
+#define OP_IMPL(Op, Dst, mod)                                                                                                                     \
+    host_image host_image::operator##Op(const gfx::host_image& image) mod                                                               \
+    {                                                                                                                                     \
+        gfx::host_image img(pixel_format(), _extent);                                                                                     \
+        const auto      wrap = [&image](glm::uvec3 px) {                                                                                  \
+            return px % glm::uvec3(image.extents().width, image.extents().height, image.extents().depth);                            \
+        };                                                                                                                                \
+        pragma("omp parallel for schedule(static)") for (auto x = 0; x < _extent.width; ++x) for (auto y = 0u; y < _extent.height;          \
+                                                                                                ++y) for (auto z = 0u; z < _extent.depth; \
+                                                                                                          ++z)                            \
+            Dst##store({uint32_t(x), y, z}, load({uint32_t(x), y, z}) Op image.load(wrap({uint32_t(x), y, z})));                           \
+        return img;                                                                                                                       \
+    }
+
+OP_IMPL(+, img., const)
+OP_IMPL(+=, img., )
+
+
+host_image host_image::operator+(const gfx::host_image& image) const
+{
+    gfx::host_image img(pixel_format(), _extent);
+    const auto      wrap = [&image](glm::uvec3 px) {
+        return px % glm::uvec3(image.extents().width, image.extents().height, image.extents().depth);
+    };
+
+    _Pragma()
+#pragma omp parallel for schedule(static)
+        for (auto x = 0; x < _extent.width; ++x) for (auto y = 0u; y < _extent.height; ++y) for (auto z = 0u; z < _extent.depth; ++z)
+            img.store({uint32_t(x), y, z}, load({uint32_t(x), y, z}) + image.load(wrap({uint32_t(x), y, z})));
+    return img;
+}
+
+host_image& host_image::operator+=(const gfx::host_image& image)
+{
+    const auto wrap = [&image](glm::uvec3 px) {
+        return px % glm::uvec3(image.extents().width, image.extents().height, image.extents().depth);
+    };
+
+#pragma omp parallel for schedule(static)
+    for (auto x = 0; x < _extent.width; ++x)
+        for (auto y = 0u; y < _extent.height; ++y)
+            for (auto z = 0u; z < _extent.depth; ++z)
+                store({uint32_t(x), y, z}, load({uint32_t(x), y, z}) + image.load(wrap({uint32_t(x), y, z})));
+    return *this;
+}
+
+host_image host_image::operator-(const gfx::host_image& image) const {}
+
+host_image& host_image::operator-=(const gfx::host_image& image) {}
+
+host_image host_image::operator+(float f) const {}
+
+host_image& host_image::operator+=(float f) {}
+
+host_image host_image::operator-(float f) const {}
+
+host_image& host_image::operator-=(float f) {}
+
+bool host_image::operator==(const gfx::host_image& image) const
 {
     return _format == image._format && _extent == image._extent && storage().size() == image.storage().size()
            && memcmp(storage().data(), image.storage().data(), storage().size()) == 0;
 }
 
-bool host_image::operator!=(const host_image& image) const
+bool host_image::operator!=(const gfx::host_image& image) const
 {
     return !(*this == image);
 }
@@ -422,14 +439,14 @@ bool host_image::operator!=(const host_image& image) const
 std::function<void(const glm::vec4& v, int64_t i)> host_image::get_write_unorm_fun()
 {
     const auto pack_fun = [this](auto fun) {
-        return [ this, f = fun ](const glm::vec4& v, const int64_t i)
+        return [ this, f = fun ](const glm::vec4& v, int64_t i)
         {
             auto x = f(v);
             memcpy(&(_storage.data()[_storage_element_size * i]), &x, sizeof(x));
         };
     };
     const auto pack_funf = [this](auto fun) {
-        return [ this, f = fun ](const glm::vec4& v, const int64_t i)
+        return [ this, f = fun ](const glm::vec4& v, int64_t i)
         {
             auto x = f(v.x);
             memcpy(&(_storage.data()[_storage_element_size * i]), &x, sizeof(x));
@@ -476,8 +493,8 @@ std::function<void(const glm::vec4& v, int64_t i)> host_image::get_write_unorm_f
 void host_image::update(data_format format, const uint8_t* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const auto data_components = static_cast<size_t>(format);
-    const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {
@@ -596,8 +613,8 @@ void host_image::update(data_format format, const uint8_t* data)
 void host_image::update(data_format format, const uint16_t* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const size_t data_components = static_cast<size_t>(format);
-    const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {
@@ -716,8 +733,8 @@ void host_image::update(data_format format, const uint16_t* data)
 void host_image::update(data_format format, const uint32_t* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const size_t data_components = static_cast<size_t>(format);
-    const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {
@@ -836,8 +853,8 @@ void host_image::update(data_format format, const uint32_t* data)
 void host_image::update(data_format format, const int8_t* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const size_t data_components = static_cast<size_t>(format);
-    const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {
@@ -956,8 +973,8 @@ void host_image::update(data_format format, const int8_t* data)
 void host_image::update(data_format format, const int16_t* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const size_t data_components = static_cast<size_t>(format);
-    const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {
@@ -1076,8 +1093,8 @@ void host_image::update(data_format format, const int16_t* data)
 void host_image::update(data_format format, const int32_t* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const size_t data_components = static_cast<size_t>(format);
-    const size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {
@@ -1196,7 +1213,8 @@ void host_image::update(data_format format, const int32_t* data)
 void host_image::update(data_format format, const float* data)
 {
     using data_type        = std::decay_t<decltype(data[0])>;
-    const size_t data_components = static_cast<size_t>(format);
+    size_t data_components = static_cast<size_t>(format);
+    size_t data_size       = std::min(_storage_element_size, sizeof(data_type) * data_components);
 
     switch (_format)
     {

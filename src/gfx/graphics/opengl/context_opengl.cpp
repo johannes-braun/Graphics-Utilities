@@ -26,8 +26,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
     if (options.debug) {
         glDebugMessageCallback(
             [](GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam) {
-                if (id == 131154 || id == 131186) return;
-
+                
                 switch (severity)
                 {
                 case GL_DEBUG_SEVERITY_MEDIUM: wlog("opengl") << '#' << id << ": " << std::string_view(message, length); break;
@@ -39,7 +38,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
         uint32_t disabled[] = {131154, 131186};
-        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, std::size(disabled), std::data(disabled), false);
+        glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, static_cast<int>(std::size(disabled)), std::data(disabled), false);
     }
 }
 

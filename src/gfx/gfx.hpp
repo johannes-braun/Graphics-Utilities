@@ -12,8 +12,8 @@
 #include <gfx/imgui.hpp>
 #include <gfx/input.hpp>
 #include <gfx/log.hpp>
-#include <gfx/spline.hpp>
 #include <gfx/math.hpp>
+#include <gfx/spline.hpp>
 
 // Includes for gfx/imgui:
 #include <gfx/imgui/imconfig.h>
@@ -26,9 +26,9 @@
 #include <gfx/graphics/host_image.hpp>
 #include <gfx/graphics/image_view.hpp>
 #include <gfx/graphics/sampler.hpp>
+#include <gfx/graphics/state_info.hpp>
 #include <gfx/graphics/swapchain.hpp>
 #include <gfx/graphics/vertex_input.hpp>
-#include <gfx/graphics/state_info.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>
@@ -38,3 +38,5 @@
 
 // Includes for gfx/file:
 #include <gfx/file/file_config.hpp>
+
+#include <gfx/alias.inl>

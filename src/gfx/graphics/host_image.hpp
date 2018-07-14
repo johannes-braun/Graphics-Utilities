@@ -5,26 +5,35 @@
 #include <functional>
 #include <gfx/file.hpp>
 #include <glm/ext.hpp>
-#include <vector>
 
 namespace gfx
 {
-struct extent
+union extent
 {
     constexpr extent(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
     constexpr extent(extent extent1d, uint32_t height, uint32_t depth);
     constexpr extent(extent extent2d, uint32_t depth);
 
-    constexpr        operator glm::uvec3() const noexcept;
     constexpr size_t count() const noexcept;
 
-    constexpr extent   as_1d() const noexcept;
-    constexpr extent   as_2d() const noexcept;
-    constexpr uint32_t linear(const glm::uvec3& p) const noexcept { return width * height * p.z + width * p.y + p.x; }
+    constexpr extent     as_1d() const noexcept;
+    constexpr extent     as_2d() const noexcept;
+    constexpr uint32_t linear(const glm::uvec3& p) const noexcept;
+    constexpr glm::uvec3 subpixel(uint32_t index) const noexcept;
+    constexpr operator const glm::uvec3&() const noexcept;
+    constexpr glm::ivec3 clamp(glm::ivec3 pixel) const noexcept;
+    constexpr glm::ivec3 wrap(glm::ivec3 pixel) const noexcept;
 
-    uint32_t width  = 1;
-    uint32_t height = 1;
-    uint32_t depth  = 1;
+    bool operator==(const extent& other) const { return vec == other.vec; }
+    bool operator!=(const extent& other) const { return vec != other.vec; }
+
+    struct
+    {
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth;
+    };
+    glm::uvec3 vec;
 };
 
 enum class data_format
@@ -35,12 +44,22 @@ enum class data_format
     rgba = 4
 };
 
+
+bool is_unsigned(format fmt);
+bool is_signed(format fmt);
+bool is_unorm_compatible(format fmt);
+
 class host_image
 {
     public:
     host_image(format fmt, const extent& size);
     host_image(format fmt, const image_file& file);
     host_image(format fmt, const std::filesystem::path& file);
+
+    host_image(const host_image& o);
+    host_image& operator=(const host_image& o);
+    host_image(host_image&& o) = default;
+    host_image& operator=(host_image&& o) = default;
 
     host_image converted(format fmt) const;
     void       flip_vertically();
@@ -62,61 +81,49 @@ class host_image
     format        pixel_format() const noexcept;
 
     glm::vec4  load(const glm::uvec3& pixel) const;
+    glm::vec4  load_bilinear(const glm::vec3& pixel) const;
     glm::uvec4 loadu(const glm::uvec3& pixel) const;
     glm::ivec4 loadi(const glm::uvec3& pixel) const;
     void       store(const glm::uvec3& pixel, const glm::vec4& p);
     void       storeu(const glm::uvec3& pixel, const glm::uvec4& p);
     void       storei(const glm::uvec3& pixel, const glm::ivec4& p);
 
-	auto operator*(float f)
-	{
-        gfx::host_image img(pixel_format(), _extent);
-#pragma omp parallel for schedule(static)
-        for (auto x = 0; x < _extent.width; ++x)
-            for (auto y = 0u; y < _extent.height; ++y)
-                for (auto z = 0u; z < _extent.depth; ++z) img.store({uint32_t(x), y, z}, f * load({uint32_t(x), y, z}));
+    using available_types = std::variant<float, int32_t, uint32_t, glm::vec4, glm::ivec4, glm::uvec4, host_image>;
+    template<typename T> using enable_if_available = decltype(std::get<std::decay_t<T>>(std::declval<available_types>()));
+
+    template<typename T, typename = enable_if_available<T>>
+    host_image operator+(const T& value) const;
+    template<typename T, typename = enable_if_available<T>>
+    host_image operator-(const T& value) const;
+    template<typename T, typename = enable_if_available<T>>
+    host_image operator*(const T& value) const;
+    template<typename T, typename = enable_if_available<T>>
+    host_image operator/(const T& value) const;
+    template<typename T, typename = enable_if_available<T>>
+    host_image& operator+=(const T& value);
+    template<typename T, typename = enable_if_available<T>>
+    host_image& operator-=(const T& value);
+    template<typename T, typename = enable_if_available<T>>
+    host_image& operator*=(const T& value);
+    template<typename T, typename = enable_if_available<T>>
+    host_image& operator/=(const T& value);
+
+    bool operator==(const host_image& image) const;
+    bool operator!=(const host_image& image) const;
+
+private:
+    template<typename OpFun>
+    host_image& operator_apply(host_image& store_target, const host_image& image, OpFun&& fun) const;
+    template<typename Scalar, typename OpFun, typename = std::enable_if_t<!std::is_same_v<std::decay_t<Scalar>, host_image>>>
+    host_image& operator_apply(host_image& store_target, Scalar image, OpFun&& fun) const;
+    template<typename T, typename OpFun>
+    host_image operator_nonapply(const T& val, OpFun&& fun) const
+    {
+        host_image img(pixel_format(), _extent);
+        operator_apply(img, val, std::forward<OpFun&&>(fun));
         return img;
-	}
-
-    auto& operator*=(float f)
-    {
-#pragma omp parallel for schedule(static)
-        for (auto x = 0; x < _extent.width; ++x)
-            for (auto y = 0u; y < _extent.height; ++y)
-                for (auto z = 0u; z < _extent.depth; ++z) store({uint32_t(x), y, z}, f * load({uint32_t(x), y, z}));
-        return *this;
     }
 
-    auto operator+(const gfx::host_image& image)
-    {
-        gfx::host_image img(pixel_format(), _extent);
-        const auto wrap = [&image](glm::uvec3 px) {
-            return px % glm::uvec3(image.extents().width, image.extents().height, image.extents().depth);
-        };
-
-#pragma omp parallel for schedule(static)
-        for (auto x = 0; x < _extent.width; ++x)
-            for (auto y = 0u; y < _extent.height; ++y)
-                for (auto z = 0u; z < _extent.depth; ++z)
-                    img.store({uint32_t(x), y, z}, load({uint32_t(x), y, z}) + image.load(wrap({uint32_t(x), y, z})));
-        return img;
-    }
-
-    auto& operator+=(const gfx::host_image& image)
-    {
-        const auto wrap = [&image](glm::uvec3 px) {
-            return px % glm::uvec3(image.extents().width, image.extents().height, image.extents().depth);
-        };
-
-#pragma omp parallel for schedule(static)
-        for (auto x = 0; x < _extent.width; ++x)
-            for (auto y = 0u; y < _extent.height; ++y)
-                for (auto z = 0u; z < _extent.depth; ++z)
-                    store({uint32_t(x), y, z}, load({uint32_t(x), y, z}) + image.load(wrap({uint32_t(x), y, z})));
-        return *this;
-    }
-
-    private:
     std::function<void(const glm::vec4&, int64_t i)> get_write_unorm_fun();
 
     format                                             _format;
