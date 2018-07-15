@@ -28,7 +28,7 @@ mesh_instance mesh_holder::create_mesh(std::vector<gfx::vertex3d> vertices, std:
 
     int   vertex_range_index = -1;
     range best_vertex_range  = {static_cast<uint32_t>(vertex_buffer.capacity()), std::numeric_limits<uint32_t>::max()};
-    for(int i = 0; i < _free_vertex_ranges.size(); ++i)
+    for(int i = 0; i < static_cast<int>(_free_vertex_ranges.size()); ++i)
     {
         range&    r     = _free_vertex_ranges[i];
         const int count = int(r.end) - r.begin;
@@ -41,7 +41,7 @@ mesh_instance mesh_holder::create_mesh(std::vector<gfx::vertex3d> vertices, std:
     }
 
     int   index_range_index = -1;
-    range best_index_range  = {index_buffer.capacity(), std::numeric_limits<uint32_t>::max()};
+    range best_index_range  = {static_cast<uint32_t>(index_buffer.capacity()), std::numeric_limits<uint32_t>::max()};
     for(int i = 0; i < static_cast<int>(_free_index_ranges.size()); ++i)
     {
         range&    r     = _free_index_ranges[i];
@@ -145,7 +145,7 @@ mesh_instance mesh_holder::copy_instance(const mesh_instance& instance)
     gfx::host_buffer<mesh_instance> old(info_buffer.capacity() + 1);
     info_buffer >> old;
     auto& x          = (*std::prev(old.end()) = instance);
-    x.instance_index = info_buffer.capacity();
+    x.instance_index = static_cast<uint32_t>(info_buffer.capacity());
     info_buffer.reallocate(info_buffer.capacity() + 1);
     info_buffer << old;
     return x;
@@ -172,6 +172,6 @@ void mesh_holder::render()
     _vertex_input.bind_vertex_buffer(0, vertex_buffer, 0);
     _vertex_input.bind_index_buffer(index_buffer, index_type::uint32);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, info_buffer);
-    _vertex_input.draw_indexed_indirect(info_buffer, 0, info_buffer.capacity(), sizeof(mesh_instance));
+    _vertex_input.draw_indexed_indirect(info_buffer, 0, static_cast<uint32_t>(info_buffer.capacity()), sizeof(mesh_instance));
 }
 }

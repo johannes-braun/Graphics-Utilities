@@ -15,11 +15,15 @@
 #include <gfx/math.hpp>
 #include <gfx/spline.hpp>
 
+// Includes for gfx/ecs:
+#include <gfx/ecs/ecs.hpp>
+
 // Includes for gfx/imgui:
 #include <gfx/imgui/imconfig.h>
 #include <gfx/imgui/imgui.h>
 
 // Includes for gfx/graphics:
+#include <gfx/graphics/pipeline.hpp>
 #include <gfx/graphics/device_buffer.hpp>
 #include <gfx/graphics/device_image.hpp>
 #include <gfx/graphics/host_buffer.hpp>

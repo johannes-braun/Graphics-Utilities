@@ -71,6 +71,7 @@ void apply(const state_info& info)
         case orientation::cw:
             return GL_CW;
         }
+        return GLenum(0);
     }());
     glPolygonMode(GL_FRONT_AND_BACK, [&]() {
         switch(info.rasterizer.polygon_mode)
@@ -82,6 +83,7 @@ void apply(const state_info& info)
         case poly_mode::point:
             return GL_POINT;
         }
+        return GLenum(0);
     }());
 
     glLineWidth(info.rasterizer.line_width);
@@ -158,6 +160,7 @@ void apply(const state_info& info)
         case logic_op::op_xor:
             return GL_XOR;
         }
+        return GLenum(0);
     }());
     glBlendColor(
             info.blend.blend_constants[0], info.blend.blend_constants[1], info.blend.blend_constants[2], info.blend.blend_constants[3]);
@@ -211,6 +214,7 @@ void apply(const state_info& info)
                 case blend_factor::zero:
                     return GL_ZERO;
                 }
+                return GLenum(0);
             };
 
             const auto get_fun = [](blend_op op) {
@@ -269,6 +273,7 @@ void apply(const state_info& info)
                     elog << "Blend op not supported.";
                     return GL_FUNC_ADD;
                 }
+                return GLenum(0);
             };
 
             glBlendFuncSeparatei(i,
@@ -308,6 +313,7 @@ void apply(const state_info& info)
         case stencil_op::dec_wrap:
             return GL_DECR_WRAP;
         }
+        return GLenum(0);
     };
 
     glStencilFuncSeparate(GL_FRONT,

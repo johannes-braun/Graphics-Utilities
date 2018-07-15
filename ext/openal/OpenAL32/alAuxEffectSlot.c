@@ -155,7 +155,7 @@ AL_API ALvoid AL_APIENTRY alGenAuxiliaryEffectSlots(ALsizei n, ALuint *effectslo
         }
         aluInitEffectPanning(slot);
 
-        slot->id = (iter - VECTOR_BEGIN(context->EffectSlotList)) + 1;
+        slot->id = (ALuint)((iter - VECTOR_BEGIN(context->EffectSlotList)) + 1);
         *iter = slot;
 
         effectslots[cur] = slot->id;

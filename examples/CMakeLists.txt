@@ -15,7 +15,8 @@ function(mark_as_executable exe_name)
     target_link_libraries(${exe_name} jbraun::gfx)
     
     target_compile_options(${exe_name} PRIVATE ${compile_options})
-    
+    set_target_properties(${exe_name} PROPERTIES LINK_FLAGS_RELEASE "-subsystem:windows -entry:mainCRTStartup")
+
     add_custom_command(
         TARGET ${exe_name} 
         POST_BUILD
@@ -26,6 +27,10 @@ function(mark_as_executable exe_name)
             $<TARGET_FILE:glfw>
             $<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:glfw>
     )
+
+	if(TARGET shaders_${exe_name})
+		add_dependencies(${exe_name} shaders_${exe_name})
+	endif()
 endfunction()
 
 set(GFX_RES_VERSION ${GFX_VERSION})
@@ -44,3 +49,4 @@ mark_as_executable(06_sail_simulation)
 mark_as_executable(07_meshing)
 mark_as_executable(08_point_detection)
 mark_as_executable(09_bv_stuff)
+mark_as_executable(10_ecs)

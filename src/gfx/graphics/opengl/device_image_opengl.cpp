@@ -103,6 +103,7 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
             glTexSubImage3D(_type, level, 0, 0, 0, _extent.width, _extent.height, _extent.depth, _external_format, _external_type, nullptr);
             glBindTexture(_type, mygl::texture::zero);
         }
+        break;
     case GL_TEXTURE_2D_ARRAY:
         if(glTextureSubImage3D)
             glTextureSubImage3D(_handle, level, 0, 0, layer, _extent.width, _extent.height, 1, _external_format, _external_type, nullptr);
@@ -112,6 +113,7 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
             glTexSubImage3D(_type, level, 0, 0, layer, _extent.width, _extent.height, 1, _external_format, _external_type, nullptr);
             glBindTexture(_type, mygl::texture::zero);
         }
+        break;
     case GL_TEXTURE_1D_ARRAY:
         if(glTextureSubImage3D)
             glTextureSubImage2D(_handle, level, 0, layer, _extent.width, 1, _external_format, _external_type, nullptr);
@@ -121,6 +123,7 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
             glTexSubImage2D(_type, level, 0, layer, _extent.width, 1, _external_format, _external_type, nullptr);
             glBindTexture(_type, mygl::texture::zero);
         }
+        break;
     }
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mygl::buffer::zero);
     glFinish();
@@ -139,7 +142,7 @@ void device_image_implementation::fill_to(const host_image& image, uint32_t leve
                          _extent.depth,
                          _external_format,
                          _external_type,
-                         format_element_size(_format) * _extent.count(),
+                         static_cast<int>(format_element_size(_format) * _extent.count()),
                          nullptr);
     glBindBuffer(GL_PIXEL_PACK_BUFFER, mygl::buffer::zero);
     glFinish();

@@ -7,7 +7,10 @@
 #else
 #include <experimental/filesystem>
 #if defined(__cpp_lib_experimental_filesystem)
-namespace std { namespace filesystem = experimental::filesystem;}
+namespace std
+{
+namespace filesystem = experimental::filesystem;
+}
 #endif
 #endif
 
@@ -28,9 +31,40 @@ enum class bits
     b32 = 32,
 };
 
+enum class popup_icon
+{
+    info,
+    warning,
+    error
+};
+
+enum class msg_icon
+{
+    info,
+    warning,
+    error,
+    question
+};
+
+enum class msg_type
+{
+	ok,
+	ok_cancel,
+	yes_no,
+	yes_no_cancel
+};
+
+enum class msg_result
+{
+	ok,
+	cancel,
+	yes,
+	no
+};
+
 struct file
 {
-    constexpr static const char* local_res_directory  = "../res";
+    constexpr static const char* local_res_directory = "../res";
 
                 operator const files::path&() const noexcept;
     files::path path;
@@ -38,36 +72,27 @@ struct file
     file() = default;
     file(const files::path& path);
 
-    static std::optional<file> open_dialog(const std::string& title,
-                                           const files::path& default_path);
-    static std::optional<file> open_dialog(const std::string&              title,
-                                           const files::path&              default_path,
+    static std::optional<file> open_dialog(const std::string& title, const files::path& default_path);
+    static std::optional<file> open_dialog(const std::string& title, const files::path& default_path,
                                            const std::vector<std::string>& filters);
-    static std::optional<file> open_dialog(const std::string&              title,
-                                           const files::path&              default_path,
-                                           const std::vector<std::string>& filters,
-                                           const std::string&              filter_description);
-    static std::vector<file>   open_dialog_multi(const std::string& title,
-                                                 const files::path& default_path);
-    static std::vector<file>   open_dialog_multi(const std::string&              title,
-                                                 const files::path&              default_path,
+    static std::optional<file> open_dialog(const std::string& title, const files::path& default_path,
+                                           const std::vector<std::string>& filters, const std::string& filter_description);
+    static std::vector<file>   open_dialog_multi(const std::string& title, const files::path& default_path);
+    static std::vector<file>   open_dialog_multi(const std::string& title, const files::path& default_path,
                                                  const std::vector<std::string>& filters);
-    static std::vector<file>   open_dialog_multi(const std::string&              title,
-                                                 const files::path&              default_path,
-                                                 const std::vector<std::string>& filters,
-                                                 const std::string&              filter_description);
+    static std::vector<file>   open_dialog_multi(const std::string& title, const files::path& default_path,
+                                                 const std::vector<std::string>& filters, const std::string& filter_description);
 
-    static std::optional<file> save_dialog(const std::string& title,
-                                           const files::path& default_path);
-    static std::optional<file> save_dialog(const std::string&              title,
-                                           const files::path&              default_path,
+    static std::optional<file> save_dialog(const std::string& title, const files::path& default_path);
+    static std::optional<file> save_dialog(const std::string& title, const files::path& default_path,
                                            const std::vector<std::string>& filters);
-    static std::optional<file> save_dialog(const std::string&              title,
-                                           const files::path&              default_path,
-                                           const std::vector<std::string>& filters,
-                                           const std::string&              filter_description);
+    static std::optional<file> save_dialog(const std::string& title, const files::path& default_path,
+                                           const std::vector<std::string>& filters, const std::string& filter_description);
 
     static std::optional<files::path> folder_dialog(const std::string& title, const files::path& default_path);
+
+    static void popup(const std::string& title, const std::string& message, popup_icon icon);
+    static msg_result message(const std::string& title, const std::string& message, msg_type type, msg_icon icon, int default_button = 0);
 };
 
 struct image_info
@@ -80,16 +105,12 @@ using image_data = std::variant<std::vector<float>, std::vector<uint16_t>, std::
 struct image_file : file
 {
     static image_info info(const files::path& path) noexcept;
-    static void       save_png(const files::path& path, uint32_t width, uint32_t height,
-                               uint16_t channels, const uint8_t* data);
-    static void       save_bmp(const files::path& path, uint32_t width, uint32_t height,
-                               uint16_t channels, const uint8_t* data);
-    static void       save_tga(const files::path& path, uint32_t width, uint32_t height,
-                               uint16_t channels, const uint8_t* data);
-    static void       save_jpg(const files::path& path, uint32_t width, uint32_t height,
-                               uint16_t channels, const uint8_t* data, int quality = 95);
-    static void       save_hdr(const files::path& path, uint32_t width, uint32_t height,
-                               uint16_t channels, const float* data);
+    static void       save_png(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data);
+    static void       save_bmp(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data);
+    static void       save_tga(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data);
+    static void       save_jpg(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const uint8_t* data,
+                               int quality = 95);
+    static void       save_hdr(const files::path& path, uint32_t width, uint32_t height, uint16_t channels, const float* data);
     image_file() = default;
     image_file(const files::path& path, bits channel_bits, uint16_t channels);
     image_file(const files::path& svg, float raster_scale);
@@ -153,4 +174,4 @@ struct scene_file : file
 
     scene_file(const files::path& path);
 };
-} // namespace gfx
+}    // namespace gfx

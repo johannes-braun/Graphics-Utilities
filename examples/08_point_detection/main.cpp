@@ -3,12 +3,12 @@
 #include <regex>
 #include <unordered_set>
 
-auto gradient_image(const gfx::host_image& image, int window_size = 5)
+auto gradient_image(const gfx::himage& image, int window_size = 5)
 {
     const float sigma = 1.f;
     const glm::dvec4 lum = glm::dvec4{1, 1, 1, 1};
 
-    gfx::host_image df_img(image.pixel_format(), image.extents());
+    gfx::himage df_img(image.pixel_format(), image.extents());
     const auto      pow2 = [](auto x) { return x * x; };
 #pragma omp parallel for
     for (int p = 0; p < image.extents().count(); ++p) {
@@ -29,7 +29,7 @@ auto gradient_image(const gfx::host_image& image, int window_size = 5)
     }
 
     const auto[gauss_x, gauss_y, gauss_z] = gfx::image_filter::gauss_separable(window_size, sigma);
-    gfx::host_image temporary(image.pixel_format(), image.extents());
+    gfx::himage temporary(image.pixel_format(), image.extents());
     df_img.convolute(gauss_x, temporary);
     temporary.convolute(gauss_y, df_img);
 
@@ -113,7 +113,7 @@ int main()
             }
             input >> thresh;
 
-            gfx::host_image img(gfx::rgba32f, *img_file);
+            gfx::himage img(gfx::rgba32f, *img_file);
 
             const auto start       = std::chrono::steady_clock::now();
             auto       deriv_image = gradient_image(img, win_size);
@@ -122,9 +122,8 @@ int main()
 
             std::unordered_set<std::pair<glm::uvec2, double>> h_features;
             std::unordered_set<std::pair<glm::uvec2, double>> tk_features;
-            constexpr int                                     rd = 1;
-            for (int x = rd; x < deriv_image.extents().width - rd; ++x)
-                for (int y = rd; y < deriv_image.extents().height - rd; ++y) {
+            for (auto x = 0u; x < deriv_image.extents().width; ++x)
+                for (auto y = 0u; y < deriv_image.extents().height; ++y) {
                     const auto der  = deriv_image.load({x, y, 0});
                     const auto fxx  = der.x;
                     const auto fxy  = der.y;

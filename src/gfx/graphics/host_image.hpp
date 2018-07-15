@@ -56,7 +56,7 @@ public:
         std::get<0>(t)[{half_width, 0, 0}]                              = val;
         std::get<1>(t)[{0, half_width, 0}]                              = val;
         std::get<2>(t)[{0, 0, half_width}]                              = val;
-        for (int i = 1; i <= half_width; ++i) {
+        for (int i = 1; i <= static_cast<int>(half_width); ++i) {
             const auto g                           = glm::gauss(1.f * i, 0.f, sigma);
             std::get<0>(t)[{half_width - i, 0, 0}] = g;
             std::get<1>(t)[{0, half_width - i, 0}] = g;

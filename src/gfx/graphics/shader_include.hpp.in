@@ -1,0 +1,8 @@
+#pragma once
+
+#include <gfx/file.hpp>
+
+namespace gfx::shader_includes
+{
+    inline std::vector<std::filesystem::path> directories = {"../shaders", "@PROJECT_SOURCE_DIR@/src/shaders"};
+}

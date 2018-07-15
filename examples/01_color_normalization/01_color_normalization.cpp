@@ -99,8 +99,8 @@ int main()
     const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files");
     if (!source_data) return 0;
 
-    gfx::host_image    picture(gfx::rgb8unorm, *source_data);
-    gfx::device_image  texture(picture);
+    gfx::himage        picture(gfx::rgb8unorm, *source_data);
+    gfx::image         texture(picture);
     gfx::image_view    texture_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
     const gfx::sampler sampler;
 
@@ -109,74 +109,76 @@ int main()
     glm::vec3           average =
         glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
 
-    gfx::device_image grid(gfx::host_image(gfx::rgba8unorm, "grid.jpg"));
-    gfx::image_view   grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
+    gfx::image      grid(gfx::himage(gfx::rgba8unorm, "grid.jpg"));
+    gfx::image_view grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
 
-    gl::pipeline points_pipeline;
-    points_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/points.vert");
-    points_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/points.frag");
+    auto default_state                               = std::make_shared<gfx::state_info>();
+    default_state->depth_stencil.depth_test_enable   = true;
+    default_state->rasterizer.cull                   = gfx::cull_mode::back;
+    default_state->rasterizer.line_width             = 4.f;
+    default_state->multisample.sample_shading_enable = true;
+    default_state->multisample.samples               = gfx::sample_count::x8;
 
-    gl::pipeline center_pipeline;
-    center_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/center_point.vert");
-    center_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/center_point.frag");
+    auto points_state                             = std::make_shared<gfx::state_info>(*default_state);
+    points_state->depth_stencil.depth_test_enable = false;
 
-    gl::pipeline gizmo_pipeline;
-    gizmo_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/gizmo.vert");
-    gizmo_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/gizmo.frag");
+    auto picture_state                             = std::make_shared<gfx::state_info>(*default_state);
+    picture_state->depth_stencil.depth_test_enable = false;
 
-    gl::pipeline img_pipeline;
-    img_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("postfx/screen.vert");
-    img_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/image.frag");
+    auto cube_backfaces                   = std::make_shared<gfx::state_info>(*default_state);
+    cube_backfaces->rasterizer.front_face = gfx::orientation::cw;
 
-    gl::pipeline cube_pipeline;
-    cube_pipeline[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/cube.vert");
-    cube_pipeline[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/cube.frag");
+    auto cube_frontfaces                             = std::make_shared<gfx::state_info>(*cube_backfaces);
+    cube_frontfaces->rasterizer.front_face           = gfx::orientation::ccw;
+    cube_frontfaces->depth_stencil.depth_test_enable = false;
+    gfx::state_info::blend_attachment& color_att     = cube_frontfaces->blend.attachments.emplace_back();
+    color_att.blendEnable                            = true;
+    color_att.dstAlphaBlendFactor                    = gfx::blend_factor::one_minus_src_alpha;
+    color_att.srcAlphaBlendFactor                    = gfx::blend_factor::src_alpha;
+    color_att.alphaBlendOp                           = gfx::blend_op::op_add;
+    color_att.dstColorBlendFactor                    = gfx::blend_factor::one_minus_src_alpha;
+    color_att.srcColorBlendFactor                    = gfx::blend_factor::src_alpha;
+    color_att.colorBlendOp                           = gfx::blend_op::op_add;
 
-    gl::pipeline cube_front;
-    cube_front[GL_VERTEX_SHADER]   = std::make_shared<gl::shader>("01_color_normalization/cube.vert");
-    cube_front[GL_FRAGMENT_SHADER] = std::make_shared<gl::shader>("01_color_normalization/cube_front.frag");
+    auto points_vao = std::make_shared<gfx::vertex_input>();
+    points_vao->set_assembly(gfx::topology::point_list);
+    auto lines_vao = std::make_shared<gfx::vertex_input>();
+    lines_vao->set_assembly(gfx::topology::line_list);
+    auto tris_vao = std::make_shared<gfx::vertex_input>();
+    tris_vao->set_assembly(gfx::topology::triangle_list);
+    auto cube_vao = std::make_shared<gfx::vertex_input>();
+    cube_vao->add_attribute(0, gfx::format::rgb32f, offsetof(gfx::vertex3d, position));
+    cube_vao->add_attribute(0, gfx::format::rg32f, offsetof(gfx::vertex3d, uv));
+    cube_vao->set_binding_info(0, sizeof(gfx::vertex3d), gfx::input_rate::vertex);
 
-    gfx::device_buffer<gfx::vertex3d> vbo(gfx::buffer_usage::vertex, gfx::cube_preset::vertices);
-    gfx::device_buffer<gfx::index32>  ibo(gfx::buffer_usage::index, gfx::cube_preset::indices);
-    gfx::vertex_input                 vao;
-    vao.add_attribute(0, gfx::format::rgb32f, offsetof(gfx::vertex3d, position));
-    vao.add_attribute(0, gfx::format::rg32f, offsetof(gfx::vertex3d, uv));
-    vao.set_binding_info(0, sizeof(gfx::vertex3d), gfx::input_rate::vertex);
+    gfx::graphics_pipeline point_pipeline(points_vao, default_state);
+    point_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/points.vert.spv-opengl"));
+    point_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/points.frag.spv-opengl"));
 
-    gfx::vertex_input lines_vao;
-    lines_vao.set_assembly(gfx::topology::line_list);
-    gfx::vertex_input points_vao;
-    points_vao.set_assembly(gfx::topology::point_list);
-    gfx::vertex_input tris_vao;
-    tris_vao.set_assembly(gfx::topology::triangle_list);
+    gfx::graphics_pipeline center_pipeline(points_vao, points_state);
+    center_pipeline.attach(gfx::shader_type::vert,
+                           gfx::shader(gfx::shader_format::spirv, "01_color_normalization/center_point.vert.spv-opengl"));
+    center_pipeline.attach(gfx::shader_type::frag,
+                           gfx::shader(gfx::shader_format::spirv, "01_color_normalization/center_point.frag.spv-opengl"));
 
-    gfx::state_info default_state;
-    default_state.depth_stencil.depth_test_enable   = true;
-    default_state.rasterizer.cull                   = gfx::cull_mode::back;
-    default_state.rasterizer.line_width             = 4.f;
-    default_state.multisample.sample_shading_enable = true;
-    default_state.multisample.samples               = gfx::sample_count::x8;
+    gfx::graphics_pipeline gizmo_pipeline(lines_vao, default_state);
+    gizmo_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.vert.spv-opengl"));
+    gizmo_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.frag.spv-opengl"));
 
-    gfx::state_info points_state                 = default_state;
-    points_state.depth_stencil.depth_test_enable = false;
+    gfx::graphics_pipeline img_pipeline(tris_vao, picture_state);
+    img_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.vert.spv-opengl"));
+    img_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.frag.spv-opengl"));
 
-    gfx::state_info cube_backfaces       = default_state;
-    cube_backfaces.rasterizer.front_face = gfx::orientation::cw;
+    gfx::graphics_pipeline cube_pipeline(cube_vao, cube_backfaces);
+    cube_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/cube.vert.spv-opengl"));
+    cube_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/cube.frag.spv-opengl"));
 
-    gfx::state_info cube_frontfaces                 = cube_backfaces;
-    cube_frontfaces.rasterizer.front_face           = gfx::orientation::ccw;
-    cube_frontfaces.depth_stencil.depth_test_enable = false;
-    gfx::state_info::blend_attachment& color_att    = cube_frontfaces.blend.attachments.emplace_back();
-    color_att.blendEnable                           = true;
-    color_att.dstAlphaBlendFactor                   = gfx::blend_factor::one_minus_src_alpha;
-    color_att.srcAlphaBlendFactor                   = gfx::blend_factor::src_alpha;
-    color_att.alphaBlendOp                          = gfx::blend_op::op_add;
-    color_att.dstColorBlendFactor                   = gfx::blend_factor::one_minus_src_alpha;
-    color_att.srcColorBlendFactor                   = gfx::blend_factor::src_alpha;
-    color_att.colorBlendOp                          = gfx::blend_op::op_add;
+    gfx::graphics_pipeline cube_front(cube_vao, cube_frontfaces);
+    cube_front.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/cube.vert.spv-opengl"));
+    cube_front.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/cube_front.frag.spv-opengl"));
 
-    gfx::state_info picture_state                 = default_state;
-    picture_state.depth_stencil.depth_test_enable = false;
+    gfx::buffer<gfx::vertex3d> vbo(gfx::buffer_usage::vertex, gfx::cube_preset::vertices);
+    gfx::buffer<gfx::index32>  ibo(gfx::buffer_usage::index, gfx::cube_preset::indices);
 
     gfx::camera camera;
     camera.transform_mode.position = glm::vec3(0, 0, 5);
@@ -188,10 +190,9 @@ int main()
         glm::mat4 transform_matrix;
         glm::vec3 average;
     };
-    gfx::host_buffer<render_info> render_info_buffer(1);
+    gfx::hbuffer<render_info> render_info_buffer(1);
 
-	const auto set_viewports = [](uint32_t first, const std::vector<gfx::viewport>& vps)
-    {
+    const auto set_viewports = [](uint32_t first, const std::vector<gfx::viewport>& vps) {
         for (int i = first; i < first + vps.size(); ++i) {
             glViewportIndexedf(i, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
             glDepthRangeIndexed(i, vps[i].min_depth, vps[i].max_depth);
@@ -228,8 +229,8 @@ int main()
 
         if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0))) {
             if (const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files")) {
-                picture      = gfx::host_image(gfx::rgb8unorm, *source_data);
-                texture      = gfx::device_image(picture);
+                picture      = gfx::himage(gfx::rgb8unorm, *source_data);
+                texture      = gfx::image(picture);
                 texture_view = gfx::image_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
 
                 begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
@@ -272,43 +273,38 @@ int main()
 
         gfx::viewport main_viewport(0, 0, float(w), float(h), 0.f, 1.f);
 
-        gfx::apply(default_state);
+        point_pipeline.bind();
         set_viewports(0, {main_viewport});
-        points_pipeline.bind();
-        glBindTextureUnit(0, texture_view);
-        points_vao.draw(picture.extents().width * picture.extents().height);
+        point_pipeline.input().draw(picture.extents().width * picture.extents().height);
 
-        gfx::apply(points_state);
-        set_viewports(0, {main_viewport});
         center_pipeline.bind();
-        points_vao.draw(1);
-
-        gfx::apply(default_state);
         set_viewports(0, {main_viewport});
-        gizmo_pipeline.bind();
-        lines_vao.draw(6);
+        center_pipeline.input().draw(1);
 
+        gizmo_pipeline.bind();
+        set_viewports(0, {main_viewport});
+        gizmo_pipeline.input().draw(6);
+
+        // ----
         glBindTextureUnit(0, grid_view);
 
-        gfx::apply(cube_backfaces);
-        set_viewports(0, {main_viewport});
         cube_pipeline.bind();
-        vao.bind_vertex_buffer(0, vbo, 0);
-        vao.bind_index_buffer(ibo, gfx::index_type::uint32);
-        vao.draw_indexed(ibo.capacity());
-
-        gfx::apply(cube_frontfaces);
         set_viewports(0, {main_viewport});
-        cube_front.bind();
-        vao.draw_indexed(ibo.capacity());
+        cube_pipeline.input().bind_vertex_buffer(0, vbo, 0);
+        cube_pipeline.input().bind_index_buffer(ibo, gfx::index_type::uint32);
+        cube_pipeline.input().draw_indexed(static_cast<int>(ibo.capacity()));
 
+        cube_front.bind();
+        set_viewports(0, {main_viewport});
+        cube_front.input().draw_indexed(static_cast<int>(ibo.capacity()));
+
+        // ----
         glBindTextureUnit(0, texture_view);
 
-        gfx::apply(picture_state);
+        img_pipeline.bind();
         gfx::viewport pic_vp(0, 0, picture.extents().width * scale, picture.extents().height * scale, 0.f, 1.f);
         set_viewports(0, {pic_vp});
-        img_pipeline.bind();
-        tris_vao.draw(3);
+        img_pipeline.input().draw(3);
 
         imgui.render();
     }

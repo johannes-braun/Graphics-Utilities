@@ -43,6 +43,12 @@ if(MSVC)
             NOMINMAX)
 endif()
 
+target_compile_definitions(gfx
+	PRIVATE
+		$<$<CONFIG:debug>:GFX_DEBUG=1>
+		$<$<CONFIG:relwithdebinfo>:GFX_RELWIDTHDEBINFO=1>
+		$<$<CONFIG:release>:GFX_RELEASE=1>)
+
 target_compile_options(gfx PRIVATE ${compile_options})
 add_library(jbraun::gfx ALIAS gfx)
 
@@ -141,10 +147,17 @@ set(PUBLIC_HEADERS_FILE
 install(FILES ${PUBLIC_HEADERS_FILE} DESTINATION include/gfx/file)
 
 configure_file(opengl/shader_include.hpp.in opengl/shader_include.hpp @ONLY)
+configure_file(gfx/graphics/shader_include.hpp.in gfx/graphics/shader_include.hpp @ONLY)
+
+add_subdirectory(shaders)
 
 install(EXPORT gfxTargets
     FILE gfxTargets.cmake
     NAMESPACE jbraun::
     DESTINATION lib/cmake/gfx
 )
-install(DIRECTORY shaders DESTINATION .)
+install(DIRECTORY shaders DESTINATION . 
+	FILES_MATCHING
+		PATTERN *
+		PATTERN *.txt EXCLUDE
+		PATTERN .git* EXCLUDE)

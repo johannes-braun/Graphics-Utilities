@@ -221,12 +221,12 @@ size_t ll_ringbuffer_write(ll_ringbuffer_t *rb, const char *src, size_t cnt)
 
 void ll_ringbuffer_read_advance(ll_ringbuffer_t *rb, size_t cnt)
 {
-    ATOMIC_ADD(&rb->read_ptr, cnt, almemory_order_acq_rel);
+    ATOMIC_ADD(&rb->read_ptr, (LONG)cnt, almemory_order_acq_rel);
 }
 
 void ll_ringbuffer_write_advance(ll_ringbuffer_t *rb, size_t cnt)
 {
-    ATOMIC_ADD(&rb->write_ptr, cnt, almemory_order_acq_rel);
+    ATOMIC_ADD(&rb->write_ptr, (LONG)cnt, almemory_order_acq_rel);
 }
 
 

@@ -37,12 +37,12 @@ void vertex_input::set_assembly(topology mode, bool enable_primitive_restart)
     _implementation->set_assembly(mode, enable_primitive_restart);
 }
 
-void vertex_input::draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance)
+void vertex_input::draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance) const
 {
     _implementation->draw(vertices, instances, base_vertex, base_instance);
 }
 
-void vertex_input::draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex, uint32_t base_instance)
+void vertex_input::draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex, uint32_t base_instance) const
 {
     _implementation->draw_indexed(indices, instances, base_index, base_vertex, base_instance);
 }

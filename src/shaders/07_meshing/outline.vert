@@ -1,4 +1,4 @@
-//! #version 450 core
+#version 460 core
 
 const uint invalid_edge = ~0u;
 struct point

@@ -21,7 +21,7 @@ TEST_CASE_METHOD(context_provider_gl, "Image load/store", "[image]")
     const glm::uvec3  pixel{9, 3, 5};
     const gfx::extent size(10, 4, 7);
 
-    SECTION("Raw 32-bit float values should be equal.");
+    SECTION("Raw 32-bit float values should be equal.")
     {
         gfx::himage image(gfx::rgba32f, size);
         image.store(pixel, pixel_value);
@@ -29,7 +29,7 @@ TEST_CASE_METHOD(context_provider_gl, "Image load/store", "[image]")
         REQUIRE(image.load(pixel) == pixel_value);
     }
 
-    SECTION("Check whether 8-bit-unorms are computed correctly.");
+    SECTION("Check whether 8-bit-unorms are computed correctly.")
     {
         gfx::himage image(gfx::rgba8unorm, size);
         image.store(pixel, pixel_value);

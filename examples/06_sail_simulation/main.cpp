@@ -220,7 +220,7 @@ int main()
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, model_buffer_device);
         ship_vao.vertex_buffer(0, ship_vbo, 0, sizeof(gfx::vertex3d));
         ship_vao.element_buffer(ship_ibo);
-        ship_vao.draw(GL_TRIANGLES, ship_ibo.capacity(), GL_UNSIGNED_INT);
+        ship_vao.draw(GL_TRIANGLES, static_cast<int>(ship_ibo.capacity()), GL_UNSIGNED_INT);
 
         model_buffer[0].model_mat   = glm::mat4(ship_transform);
         model_buffer[0].normal_mat  = inverse(transpose(model_buffer[0].model_mat));
@@ -234,7 +234,7 @@ int main()
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, model_buffer_device);
         ship_vao.vertex_buffer(0, sail_vertices, 0, sizeof(gfx::vertex3d));
         ship_vao.element_buffer(sail_indices);
-        ship_vao.draw(GL_TRIANGLES, sail_indices.size(), GL_UNSIGNED_INT);
+        ship_vao.draw(GL_TRIANGLES, static_cast<int>(sail_indices.size()), GL_UNSIGNED_INT);
 
         static bool integ = false;
 
