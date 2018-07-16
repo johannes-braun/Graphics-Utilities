@@ -26,7 +26,7 @@ host_image::host_image(const host_image& o) : host_image(o.pixel_format(), o.ext
 
 host_image& host_image::operator=(const host_image& o)
 {
-    *this = std::forward<host_image&&>(host_image(o));
+    *this = std::move(host_image(o));
     return *this;
 }
 

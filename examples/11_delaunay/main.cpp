@@ -2,6 +2,108 @@
 #include <gfx/gfx.hpp>
 #include <random>
 
+struct depth_stencil
+{
+    float    depth;
+    uint32_t stencil;
+};
+using clear_value = std::variant<glm::vec4, depth_stencil>;
+
+class commands
+{
+public:
+    using cmd = std::function<void()>;
+    void bind_pipeline(gfx::graphics_pipeline& ppl)
+    {
+        _curr_pipeline = &ppl;
+        _queue.emplace_back([&] { ppl.bind(); });
+    }
+
+    template<typename T>
+    void bind_vertex_buffer(uint32_t binding, gfx::buffer<T>& buffer, ptrdiff_t offset = 0, uint32_t stride = sizeof(T))
+    {
+        _queue.emplace_back([&, binding, offset, stride] { glBindVertexBuffer(binding, buffer, offset, stride); });
+    }
+
+    template<typename T>
+    void bind_index_buffer(gfx::buffer<T>& buffer, gfx::index_type type, ptrdiff_t offset)
+    {
+        _element_offset = offset;
+        _element_type   = [&] {
+            switch (type)
+            {
+            case gfx::index_type::uint16: return GL_UNSIGNED_SHORT;
+            case gfx::index_type::uint32: return GL_UNSIGNED_INT;
+            }
+            return GLenum(0);
+        }();
+        _queue.emplace_back([&] { glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer); });
+    }
+
+    void push(std::function<void()> c) { _queue.emplace_back(c); }
+
+    void draw(size_t count, ptrdiff_t first)
+    {
+        _queue.emplace_back([&, draw_mode = current_draw_mode(), first, count] { glDrawArrays(draw_mode, first, count); });
+    }
+
+    void draw_indexed(size_t count, ptrdiff_t first)
+    {
+        _queue.emplace_back([&, draw_mode = current_draw_mode(), ty = _element_type.load(), off = _element_offset.load(), first, count] {
+            glDrawElements(draw_mode, count, ty, reinterpret_cast<const void*>(off + first /* * sizeof(Elem)*/));
+        });
+    }
+
+    void reset() { _queue.clear(); }
+
+    void execute()
+    {
+        for (auto& q : _queue) { q(); }
+    }
+
+    void begin_pass(clear_value* values, int value_count, /*tmp*/ mygl::framebuffer fbo)
+    {
+        _queue.emplace_back([val = std::vector<clear_value>(values, values + 2), fbo, value_count] {
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+            for (int i = 0; i < value_count; ++i)
+            {
+                if (auto cptr = std::get_if<glm::vec4>(&val[i]))
+                { glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, i, value_ptr(*cptr)); }
+                else if (auto dptr = std::get_if<depth_stencil>(&val[i]))
+                {
+                    glClearNamedFramebufferfi(mygl::framebuffer::zero, GL_DEPTH_STENCIL, 0, dptr->depth, dptr->stencil);
+                }
+            }
+        });
+    }
+
+private:
+    GLenum current_draw_mode()
+    {
+        switch (_curr_pipeline->input().assembly_topology())
+        {
+        case gfx::topology::point_list: return GL_POINTS;
+        case gfx::topology::line_list: return GL_LINES;
+        case gfx::topology::line_strip: return GL_LINE_STRIP;
+        case gfx::topology::triangle_list: return GL_TRIANGLES;
+        case gfx::topology::triangle_strip: return GL_TRIANGLE_STRIP;
+        case gfx::topology::triangle_fan: return GL_TRIANGLE_FAN;
+        case gfx::topology::line_list_adj: return GL_LINES_ADJACENCY;
+        case gfx::topology::line_strip_adj: return GL_LINE_STRIP_ADJACENCY;
+        case gfx::topology::triangle_list_adj: return GL_TRIANGLES_ADJACENCY;
+        case gfx::topology::triangle_strip_adj: return GL_TRIANGLE_STRIP_ADJACENCY;
+        case gfx::topology::patch_list: return GL_PATCHES;
+        default: return GLenum(0);
+        }
+    }
+
+    gfx::graphics_pipeline* _curr_pipeline;
+    std::atomic<GLenum>     _element_type;
+    std::atomic<ptrdiff_t>  _element_offset;
+    std::vector<cmd>        _queue;
+};
+
 int main()
 {
     gfx::context_options opt;
@@ -11,18 +113,21 @@ int main()
     auto context            = gfx::context::create(opt);
     context->make_current();
 
-    gfx::hbuffer<gfx::vertex3d> random_points(20);
+    gfx::hbuffer<gfx::vertex3d> random_points;
 
     constexpr float                       extent = 5.f;
     std::mt19937                          gen(3891);
     std::uniform_real_distribution<float> dist(0.f, 1.f);
-    for (auto& x : random_points) x.position = glm::vec3(dist(gen), dist(gen), dist(gen)) * extent;
 
+    for (int i = 0; i < 20; ++i) random_points.emplace_back(glm::vec3(dist(gen), dist(gen), dist(gen)) * extent);
+    /*
+        for (auto& x : random_points) x.position = glm::vec3(dist(gen), dist(gen), dist(gen)) * extent;
+    */
     gfx::buffer<gfx::vertex3d> random_points_vbo(gfx::buffer_usage::vertex, 20);
     random_points_vbo << random_points;
 
     auto state = std::make_shared<gfx::state_info>();
-    //state->rasterizer.polygon_mode = gfx::poly_mode::line;
+    // state->rasterizer.polygon_mode = gfx::poly_mode::line;
 
     auto input = std::make_shared<gfx::vertex_input>();
     input->set_assembly(gfx::topology::point_list);
@@ -70,7 +175,8 @@ int main()
     float min_dist_a  = 1000000000.f;
     float min_dist_b  = 1000000000.f;
     int   min         = -1;
-    for (int i = 0; i < verts.size(); ++i) {
+    for (int i = 0; i < verts.size(); ++i)
+    {
         if (verts[i].metadata_position == 1) continue;
 
         float md_a = distance2(verts[i].position, v.position);
@@ -78,7 +184,8 @@ int main()
         float an_a = dot(normalize(verts[i].position - v.position), normalize(next->position - v.position));
         float an_b = dot(normalize(verts[i].position - next->position), normalize(v.position - next->position));
 
-        if ((an_a + an_b) * (1 / (md_a + md_b)) > (max_angle_a + max_angle_b) * (1 / (min_dist_a + min_dist_b))) {
+        if ((an_a + an_b) * (1 / (md_a + md_b)) > (max_angle_a + max_angle_b) * (1 / (min_dist_a + min_dist_b)))
+        {
             min         = i;
             max_angle_a = an_a;
             max_angle_b = an_b;
@@ -90,24 +197,20 @@ int main()
     indices.emplace_back(min);
 
 
-	for(int t = 0, k = 0; t < 4 && k < 1500; t += 3, k++)
+    for (int t = 0, k = 0; t < 4 && k < 21; t += 3, k++)
     {
         // first triangle
         const auto& v0       = verts[indices[t]];
-        const auto& v1       = verts[indices[t+1]];
-        const auto& v2       = verts[indices[t+2]];
+        const auto& v1       = verts[indices[t + 1]];
+        const auto& v2       = verts[indices[t + 2]];
         const auto  centroid = (v0.position + v1.position + v2.position) / 3.f;
 
         float max_angle = 0.f;
-      /*  float max_angle_b = 0.f;
-        float max_angle_c = 0.f;
-        float min_dist_a  = 1000000000.f;
-        float min_dist_b  = 1000000000.f;
-        float min_dist_c  = 1000000000.f;*/
-        int   min         = -1;
-        auto  norm        = normalize(cross(v2.position - v0.position, v1.position - v0.position));
-        for (int i = 0; i < verts.size(); ++i) {
-            //if (verts[i].metadata_position == 1) continue;
+        int   min       = -1;
+        auto  norm      = normalize(cross(v2.position - v0.position, v1.position - v0.position));
+        for (int i = 0; i < verts.size(); ++i)
+        {
+            if (verts[i].metadata_position == 1) continue;
             if (dot(norm, verts[i].position - centroid) < 0) continue;
 
             float md_a = distance2(verts[i].position, v0.position);
@@ -115,68 +218,52 @@ int main()
             float md_c = distance2(verts[i].position, v2.position);
 
 
-			float ang_a = dot(normalize(verts[i].position - v0.position), normalize(verts[i].position - v1.position));
+            float ang_a = dot(normalize(verts[i].position - v0.position), normalize(verts[i].position - v1.position));
             float ang_b = dot(normalize(verts[i].position - v1.position), normalize(verts[i].position - v2.position));
             float ang_c = dot(normalize(verts[i].position - v2.position), normalize(verts[i].position - v0.position));
 
-			
-		/*	float an_a = dot(normalize(verts[i].position - v0.position), normalize(v1.position - v0.position))
-                         + dot(normalize(verts[i].position - v1.position), normalize(v0.position - v1.position));
-
-            float an_b = dot(normalize(verts[i].position - v1.position), normalize(v2.position - v1.position))
-                         + dot(normalize(verts[i].position - v2.position), normalize(v1.position - v2.position));
-
-            float an_c = dot(normalize(verts[i].position - v2.position), normalize(v0.position - v2.position))
-                         + dot(normalize(verts[i].position - v0.position), normalize(v2.position - v0.position));*/
-
-			if (glm::compMin(glm::vec3(ang_a, ang_b, ang_c)) > max_angle)
-            /*if ((an_a + an_b + an_c) * (1 / (md_a + md_b + md_c))
-                > (max_angle_a + max_angle_b + max_angle_c) * (1 / (min_dist_a + min_dist_b + min_dist_c)))*/
+            if (glm::compMin(glm::vec3(ang_a, ang_b, ang_c)) > max_angle)
             {
-                min         = i;
-                max_angle   = glm::compMin(glm::vec3(ang_a, ang_b, ang_c));
-          /*      max_angle_a = an_a;
-                max_angle_b = an_b;
-                max_angle_c = an_c;
-                min_dist_a  = md_a;
-                min_dist_b  = md_b;
-                min_dist_c  = md_c;*/
+                min       = i;
+                max_angle = glm::compMin(glm::vec3(ang_a, ang_b, ang_c));
             }
         }
         if (min == -1) continue;
         verts[min].metadata_position = 1;
-        gfx::index32 ind = min;
+        gfx::index32 ind             = min;
         indices.insert(std::end(indices),
                        {indices[t], indices[t + 1], ind, indices[t + 1], indices[t + 2], ind, indices[t + 2], indices[t + 0], ind});
 
-		if (t != 0)
-		{
+        if (t != 0)
+        {
             indices.erase(indices.begin() + t, indices.begin() + t + 3);
             t -= 3;
-		}
+        }
     }
 
+    gfx::buffer<gfx::index32> ibo(gfx::buffer_usage::index, indices);
 
-    gfx::device_buffer<gfx::index32> ibo(gfx::buffer_usage::index, indices);
+    commands cmd;
 
-    while (context->run()) {
-        const glm::vec4 clear_color{0.2f, 0.2f, 0.2f, 1.f};
-        const float     clear_depth = 0.f;
-        glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, 0, value_ptr(clear_color));
-        glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_DEPTH, 0, &clear_depth);
+    clear_value values[] {glm::vec4 {0.2f, 0.2f, 0.2f, 1.f}, depth_stencil {0.f, 0u}};
+    cmd.begin_pass(values, 2, mygl::framebuffer::zero);
 
+    cmd.bind_pipeline(points_pipeline);
+    cmd.bind_vertex_buffer(0, random_points_vbo);
+    cmd.push([&] { glBindBufferRange(GL_UNIFORM_BUFFER, 0, camera_buffer, 0, camera_buffer.size() * sizeof(gfx::camera::data)); });
+    cmd.draw(random_points.size(), 0);
+
+    cmd.bind_pipeline(tri_pipeline);
+    cmd.push([&] { glBindBufferRange(GL_UNIFORM_BUFFER, 0, camera_buffer, 0, camera_buffer.size() * sizeof(gfx::camera::data)); });
+    cmd.bind_vertex_buffer(0, random_points_vbo);
+    cmd.bind_index_buffer(ibo, gfx::index_type::uint32, 0);
+    cmd.draw_indexed(ibo.capacity(), 0);
+
+    while (context->run())
+    {
         controller.update(camera);
         camera_buffer[0] = camera.info();
 
-        points_pipeline.bind();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera_buffer);
-        points_pipeline.input().bind_vertex_buffer(0, random_points_vbo, 0);
-        points_pipeline.input().draw(random_points.size());
-
-        tri_pipeline.bind();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera_buffer);
-        tri_pipeline.input().bind_vertex_buffer(0, random_points_vbo, 0);
-        tri_pipeline.input().bind_index_buffer(ibo, gfx::index_type::uint32);
-        tri_pipeline.input().draw_indexed(ibo.capacity());
+        cmd.execute();
     }
 }

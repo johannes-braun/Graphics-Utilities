@@ -54,7 +54,7 @@ public:
 };
 
 std::unique_ptr<vertex_input_implementation> make_vertex_input_implementation();
-}
+}    // namespace detail
 
 GFX_api_cast_type(gapi::opengl, vertex_input, mygl::vertex_array);
 
@@ -67,7 +67,7 @@ public:
     vertex_input& operator=(vertex_input&&) = default;
 
     uint32_t add_attribute(uint32_t binding, gfx::format fmt, size_t offset);
-    void set_binding_info(uint32_t binding, size_t stride, input_rate rate);
+    void     set_binding_info(uint32_t binding, size_t stride, input_rate rate);
 
     template<typename T>
     void bind_vertex_buffer(uint32_t binding, const device_buffer<T>& buffer, ptrdiff_t offset = 0) const;
@@ -76,8 +76,8 @@ public:
 
     void set_assembly(topology mode, bool enable_primitive_restart = false);
 
-    [[deprecated("Should be replaced by some pipeline state system.")]] void draw(uint32_t vertices, uint32_t instances = 1,
-                                                                                  uint32_t base_vertex = 0, uint32_t base_instance = 0) const;
+    [[deprecated("Should be replaced by some pipeline state system.")]] void
+                                                                             draw(uint32_t vertices, uint32_t instances = 1, uint32_t base_vertex = 0, uint32_t base_instance = 0) const;
     [[deprecated("Should be replaced by some pipeline state system.")]] void draw_indexed(uint32_t indices, uint32_t instances = 1,
                                                                                           uint32_t base_index = 0, int32_t base_vertex = 0,
                                                                                           uint32_t base_instance = 0) const;
@@ -86,7 +86,10 @@ public:
     [[deprecated("Should be replaced by some pipeline state system.")]] void
         draw_indexed_indirect(const device_buffer<T>& buffer, size_t offset, uint32_t draw_count, uint32_t stride) const;
 
+    topology assembly_topology() const noexcept { return _topology; }
+
 private:
+    topology                                             _topology;
     std::unique_ptr<detail::vertex_input_implementation> _implementation;
 
 public:
@@ -112,4 +115,4 @@ void vertex_input::draw_indexed_indirect(const device_buffer<T>& buffer, size_t 
 }
 
 GFX_api_cast_impl(gapi::opengl, vertex_input)
-}
+}    // namespace gfx

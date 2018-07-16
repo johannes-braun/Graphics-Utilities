@@ -49,12 +49,12 @@ public:
 };
 
 std::unique_ptr<graphics_pipeline_implementation> make_graphics_pipeline_implementation();
-}
+}    // namespace detail
 
 class graphics_pipeline
 {
 public:
-    graphics_pipeline() : graphics_pipeline(vertex_input{}, state_info{}) {}
+    graphics_pipeline() : graphics_pipeline(vertex_input {}, state_info {}) {}
     graphics_pipeline(std::shared_ptr<vertex_input> input, state_info&& state)
           : graphics_pipeline(input, detail::fwd_create(std::forward<state_info&&>(state)))
     {}
@@ -83,6 +83,7 @@ public:
     void bind() { _shaders_valid = _implementation->bind(*_vertex_input, *_state, _shaders, _shaders_valid); }
 
     const vertex_input& input() const noexcept { return *_vertex_input; }
+    const state_info&   state() const noexcept { return *_state; }
 
 private:
     bool                                                         _shaders_valid = false;
@@ -97,7 +98,8 @@ class shader
 public:
     shader(shader_format fmt, const std::filesystem::path& path) : _format(fmt), _path(path)
     {
-        if (context::current()->options().graphics_api != gapi::opengl && fmt == shader_format::text) {
+        if (context::current()->options().graphics_api != gapi::opengl && fmt == shader_format::text)
+        {
             elog << "Invalid configuration: Trying to create an opengl-format shader with a non-opengl context.";
             return;
         }
@@ -105,12 +107,14 @@ public:
         bool path_valid = _path.is_absolute();
         if (!path_valid)
             for (auto&& inc : shader_includes::directories)
-                if (exists(inc / _path)) {
+                if (exists(inc / _path))
+                {
                     _path      = inc / _path;
                     path_valid = true;
                     break;
                 }
-        if (!path_valid) {
+        if (!path_valid)
+        {
             elog << "Shader not found: " << path;
             return;
         }
@@ -130,7 +134,8 @@ public:
         case shader_format::spirv:
         {
             std::ifstream in(_path, std::ios::binary | std::ios::in);
-            if (in) {
+            if (in)
+            {
                 in.seekg(0, std::ios::end);
                 auto size = in.tellg();
                 in.seekg(0, std::ios::beg);
@@ -148,6 +153,6 @@ public:
 private:
     shader_format          _format;
     std::filesystem::path  _path;
-    std::vector<std::byte> _data{};    // source string or binary; empty on failure
+    std::vector<std::byte> _data {};    // source string or binary; empty on failure
 };
-}
+}    // namespace gfx

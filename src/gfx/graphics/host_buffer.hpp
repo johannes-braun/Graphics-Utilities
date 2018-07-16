@@ -7,11 +7,11 @@
 #define IN_PARALLEL(FUN, ...) FUN(__VA_ARGS__)
 #endif
 
+#include <algorithm>
+#include <any>
+#include <gfx/api.hpp>
 #include <memory>
 #include <numeric>
-#include <any>
-#include <algorithm>
-#include <gfx/api.hpp>
 
 namespace std
 {
@@ -22,28 +22,30 @@ namespace gfx
 {
 namespace detail
 {
-    template <typename C, typename TBase>
-    using enable_if_container = std::void_t<decltype(std::data(std::declval<C>())), decltype(std::size(std::declval<C>())),
-                                            std::enable_if_t<!std::is_same_v<std::initializer_list<TBase>, std::decay_t<C>>>>;
+template<typename C, typename TBase>
+using enable_if_container = std::void_t<decltype(std::data(std::declval<C>())), decltype(std::size(std::declval<C>())),
+                                        std::enable_if_t<!std::is_same_v<std::initializer_list<TBase>, std::decay_t<C>>>>;
 
-    class host_buffer_implementation
-    {
-    public:
-        using size_type                       = uint64_t;
-        using difference_type                 = int64_t;
-        virtual ~host_buffer_implementation() = default;
+class host_buffer_implementation
+{
+public:
+    using size_type                       = uint64_t;
+    using difference_type                 = int64_t;
+    virtual ~host_buffer_implementation() = default;
 
-        virtual std::byte* grow(const std::byte* old_data, size_type old_size, size_type new_capacity) = 0;
-        virtual std::any   api_handle() = 0;
-    };
-    std::unique_ptr<host_buffer_implementation> make_host_buffer_implementation();
-} // namespace detail
+    virtual std::byte* grow(const std::byte* old_data, size_type old_size, size_type new_capacity) = 0;
+    virtual std::any   api_handle()                                                                = 0;
+};
+std::unique_ptr<host_buffer_implementation> make_host_buffer_implementation();
+}    // namespace detail
 
 GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)
 
-// buffer for host memory (mapped/contiguous)
-template <typename T> class device_buffer;
-template <typename T> class host_buffer
+    // buffer for host memory (mapped/contiguous)
+    template<typename T>
+    class device_buffer;
+template<typename T>
+class host_buffer
 {
 public:
     friend class device_buffer<T>;
@@ -64,11 +66,18 @@ public:
     using const_reverse_iterator = const_pointer;
 
     host_buffer();
-    template <bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>> host_buffer(size_type elements);
+    template<bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>>
+    host_buffer(size_type elements);
     host_buffer(size_type elements, const_reference base);
-    template <typename Iter> host_buffer(Iter begin, Iter end);
+    template<typename Iter>
+    host_buffer(Iter begin, Iter end);
     host_buffer(const std::initializer_list<T>& elements);
-    template <typename Container, typename = detail::enable_if_container<Container, T>> host_buffer(const Container& elements);
+    template<typename Container, typename = detail::enable_if_container<Container, T>>
+    host_buffer(const Container& elements);
+    ~host_buffer()
+    {
+        for (auto& elem : *this) { elem.~value_type(); }
+    }
 
     reference       at(size_type index);
     const_reference at(size_type index) const;
@@ -76,6 +85,7 @@ public:
     const_reference operator[](size_type index) const;
 
     size_type     size() const noexcept;
+    size_type     capacity() const noexcept { return _capacity; }
     bool          empty() const noexcept;
     pointer       data() noexcept;
     const_pointer data() const noexcept;
@@ -98,24 +108,65 @@ public:
     const_iterator find(const_reference object) const noexcept;
     bool           contains(const_reference object) const noexcept;
 
-    template <bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>> void resize(size_type elements);
+    template<bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>>
+    void resize(size_type elements);
     void resize(size_type elements, const_reference base);
+    void reserve(size_type size)
+    {
+        if (_capacity < size)
+        {
+            _data     = type_ptr(_implementation->grow(byte_ptr(_data), _capacity * type_size, size * type_size));
+            _capacity = size;
+        }
+    }
+
+    void shrink_to_fit()
+    {
+        if (_capacity != _size)
+        {
+            // grow a.k.a. shrink
+            _data     = type_ptr(_implementation->grow(byte_ptr(_data), _capacity * type_size, _size * type_size));
+            _capacity = _size;
+        }
+    }
+
+    void push_back(value_type&& value)
+    {
+        if (_size < _capacity)
+        {
+            _data[_size++] = std::forward<value_type&&>(value);
+            return;
+        }
+
+        reserve(std::max(_capacity * 2, 1ull));
+        _data[__size++] = std::forward<value_type&&>(value);
+        return;
+    }
+
+    template<typename... Args, typename = decltype(value_type(std::declval<Args>()...))>
+    T& emplace_back(Args&&... args)
+    {
+        if (_size < _capacity) return *new (&_data[_size++]) value_type(std::forward<Args&&>(args)...);
+
+        reserve(std::max(_capacity * 2, 1ull));
+        return *new (&_data[_size++]) value_type(std::forward<Args&&>(args)...);
+    }
 
     GFX_api_cast_op(gapi::opengl, host_buffer)
 
-private:
-    static const std::byte* byte_ptr(const_pointer ptr);
-    static std::byte*       byte_ptr(pointer ptr);
-    static const_pointer    type_ptr(const std::byte* ptr);
-    static pointer          type_ptr(std::byte* ptr);
+        private : static const std::byte* byte_ptr(const_pointer ptr);
+    static std::byte*    byte_ptr(pointer ptr);
+    static const_pointer type_ptr(const std::byte* ptr);
+    static pointer       type_ptr(std::byte* ptr);
 
     std::unique_ptr<implementation> _implementation = nullptr;
     size_type                       _size           = 0;
+    size_type                       _capacity       = 0;
     pointer                         _data           = nullptr;
 };
 
 GFX_api_cast_template_impl(gapi::opengl, host_buffer)
 
-} // namespace gfx
+}    // namespace gfx
 
 #include "host_buffer.inl"
