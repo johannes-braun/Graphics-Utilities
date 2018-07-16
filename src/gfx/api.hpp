@@ -64,11 +64,13 @@ inline typename api_cast_t<GAPI, T>::type                                       
 
 #define GFX_api_cast_op(GAPI, T)                                                                                                           \
     friend struct api_cast_t<GAPI, T>;                                                                                                     \
-    operator typename api_cast_t<GAPI, T>::type() const { return api_cast<GAPI>(*this); }
+    operator typename api_cast_t<GAPI, T>::type() const { return api_cast<GAPI>(*this); } \
+    std::any api_handle() const { return _implementation->api_handle(); }
 #else
 #define GFX_api_cast_template_type(GAPI, T, RET)
-#define GFX_api_cast_type(GAPI, T, RET)
-#define GFX_api_cast_template_impl(GAPI, T)
-#define GFX_api_cast_impl(GAPI, T)
-#define GFX_api_cast_op(GAPI, T)
+#define GFX_api_cast_type(GAPI, T, RET) 
+#define GFX_api_cast_template_impl(GAPI, T) 
+#define GFX_api_cast_impl(GAPI, T) 
+#define GFX_api_cast_op(GAPI, T) \
+    std::any api_handle() const { return _implementation->api_handle(); }
 #endif

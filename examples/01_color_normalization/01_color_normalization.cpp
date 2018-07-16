@@ -147,6 +147,7 @@ int main()
     auto tris_vao = std::make_shared<gfx::vertex_input>();
     tris_vao->set_assembly(gfx::topology::triangle_list);
     auto cube_vao = std::make_shared<gfx::vertex_input>();
+    cube_vao->set_assembly(gfx::topology::triangle_list);
     cube_vao->add_attribute(0, gfx::format::rgb32f, offsetof(gfx::vertex3d, position));
     cube_vao->add_attribute(0, gfx::format::rg32f, offsetof(gfx::vertex3d, uv));
     cube_vao->set_binding_info(0, sizeof(gfx::vertex3d), gfx::input_rate::vertex);
@@ -166,8 +167,8 @@ int main()
     gizmo_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.frag.spv-opengl"));
 
     gfx::graphics_pipeline img_pipeline(tris_vao, picture_state);
-    img_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.vert.spv-opengl"));
-    img_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/gizmo.frag.spv-opengl"));
+    img_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::text, "postfx/screen.vert"));
+    img_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/image.frag.spv-opengl"));
 
     gfx::graphics_pipeline cube_pipeline(cube_vao, cube_backfaces);
     cube_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "01_color_normalization/cube.vert.spv-opengl"));
@@ -192,12 +193,15 @@ int main()
     };
     gfx::hbuffer<render_info> render_info_buffer(1);
 
-    const auto set_viewports = [](uint32_t first, const std::vector<gfx::viewport>& vps) {
-        for (int i = first; i < first + vps.size(); ++i) {
-            glViewportIndexedf(i, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
-            glDepthRangeIndexed(i, vps[i].min_depth, vps[i].max_depth);
-        }
-    };
+    gfx::descriptor_set main_desc;
+    main_desc.set(gfx::descriptor_type::uniform_buffer, 0, render_info_buffer);
+    main_desc.set(gfx::descriptor_type::sampled_texture, 0, texture_view, sampler);
+
+    gfx::descriptor_set grid_desc;
+    grid_desc.set(gfx::descriptor_type::uniform_buffer, 0, render_info_buffer);
+    grid_desc.set(gfx::descriptor_type::sampled_texture, 0, grid_view, sampler);
+    
+    gfx::commands cmd;
 
     while (context->run()) {
         imgui.new_frame();
@@ -260,51 +264,44 @@ int main()
         render_info_buffer[0].transform_matrix = hat_en ? patmat : glm::mat4(1.f);
         render_info_buffer[0].average          = average;
 
-        // set 0 (layout 0)
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, render_info_buffer);
-
-        // set 1 (layout 1)
-        glBindSampler(0, sampler);
-        glBindTextureUnit(0, texture_view);
-
-        // set 2 (layout 1)
-        // glBindSampler(0, sampler);
-        // glBindTextureUnit(0, grid_view);
-
         gfx::viewport main_viewport(0, 0, float(w), float(h), 0.f, 1.f);
 
-        point_pipeline.bind();
-        set_viewports(0, {main_viewport});
-        point_pipeline.input().draw(picture.extents().width * picture.extents().height);
+        cmd.reset();
+        gfx::clear_value values[]{glm::vec4{0.2f, 0.2f, 0.2f, 1.f}, gfx::depth_stencil{0.f, 0u}};
+        cmd.begin_pass(values, 2, mygl::framebuffer::zero);
 
-        center_pipeline.bind();
-        set_viewports(0, {main_viewport});
-        center_pipeline.input().draw(1);
+        cmd.bind_descriptors(&main_desc, 1);
 
-        gizmo_pipeline.bind();
-        set_viewports(0, {main_viewport});
-        gizmo_pipeline.input().draw(6);
+        cmd.bind_pipeline(point_pipeline);
+        cmd.set_viewports(&main_viewport, 1, 0);
+        cmd.draw(picture.extents().width * picture.extents().height);
 
-        // ----
-        glBindTextureUnit(0, grid_view);
+        cmd.bind_pipeline(center_pipeline);
+        cmd.set_viewports(&main_viewport, 1, 0);
+        cmd.draw(1);
 
-        cube_pipeline.bind();
-        set_viewports(0, {main_viewport});
-        cube_pipeline.input().bind_vertex_buffer(0, vbo, 0);
-        cube_pipeline.input().bind_index_buffer(ibo, gfx::index_type::uint32);
-        cube_pipeline.input().draw_indexed(static_cast<int>(ibo.capacity()));
+        cmd.bind_pipeline(gizmo_pipeline);
+        cmd.set_viewports(&main_viewport, 1, 0);
+        cmd.draw(6);
 
-        cube_front.bind();
-        set_viewports(0, {main_viewport});
-        cube_front.input().draw_indexed(static_cast<int>(ibo.capacity()));
+        cmd.bind_descriptors(&grid_desc, 1);
 
-        // ----
-        glBindTextureUnit(0, texture_view);
+        cmd.bind_pipeline(cube_pipeline);
+        cmd.bind_vertex_buffer(0, vbo);
+        cmd.bind_index_buffer(ibo, gfx::index_type::uint32);
+        cmd.draw_indexed(ibo.capacity());
 
-        img_pipeline.bind();
+        cmd.bind_pipeline(cube_front);
+        cmd.draw_indexed(ibo.capacity());
+
+        cmd.bind_descriptors(&main_desc, 1);
+
         gfx::viewport pic_vp(0, 0, picture.extents().width * scale, picture.extents().height * scale, 0.f, 1.f);
-        set_viewports(0, {pic_vp});
-        img_pipeline.input().draw(3);
+        cmd.bind_pipeline(img_pipeline);
+        cmd.set_viewports(&pic_vp, 1, 0);
+        cmd.draw(3);
+
+        cmd.execute();
 
         imgui.render();
     }

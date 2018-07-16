@@ -39,11 +39,12 @@ public:
 std::unique_ptr<host_buffer_implementation> make_host_buffer_implementation();
 }    // namespace detail
 
-GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)
+GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer) //
 
     // buffer for host memory (mapped/contiguous)
-    template<typename T>
-    class device_buffer;
+template<typename T>
+class device_buffer;
+
 template<typename T>
 class host_buffer
 {
@@ -76,7 +77,9 @@ public:
     host_buffer(const Container& elements);
     ~host_buffer()
     {
-        for (auto& elem : *this) { elem.~value_type(); }
+        for (auto& elem : *this) {
+            elem.~value_type();
+        }
     }
 
     reference       at(size_type index);
@@ -113,8 +116,7 @@ public:
     void resize(size_type elements, const_reference base);
     void reserve(size_type size)
     {
-        if (_capacity < size)
-        {
+        if (_capacity < size) {
             _data     = type_ptr(_implementation->grow(byte_ptr(_data), _capacity * type_size, size * type_size));
             _capacity = size;
         }
@@ -122,8 +124,7 @@ public:
 
     void shrink_to_fit()
     {
-        if (_capacity != _size)
-        {
+        if (_capacity != _size) {
             // grow a.k.a. shrink
             _data     = type_ptr(_implementation->grow(byte_ptr(_data), _capacity * type_size, _size * type_size));
             _capacity = _size;
@@ -132,15 +133,13 @@ public:
 
     void push_back(value_type&& value)
     {
-        if (_size < _capacity)
-        {
+        if (_size < _capacity) {
             _data[_size++] = std::forward<value_type&&>(value);
             return;
         }
 
         reserve(std::max(_capacity * 2, 1ull));
-        _data[__size++] = std::forward<value_type&&>(value);
-        return;
+        _data[_size++] = std::forward<value_type&&>(value);
     }
 
     template<typename... Args, typename = decltype(value_type(std::declval<Args>()...))>
@@ -152,12 +151,13 @@ public:
         return *new (&_data[_size++]) value_type(std::forward<Args&&>(args)...);
     }
 
-    GFX_api_cast_op(gapi::opengl, host_buffer)
+    GFX_api_cast_op(gapi::opengl, host_buffer) //
 
-        private : static const std::byte* byte_ptr(const_pointer ptr);
-    static std::byte*    byte_ptr(pointer ptr);
-    static const_pointer type_ptr(const std::byte* ptr);
-    static pointer       type_ptr(std::byte* ptr);
+private:
+    static const std::byte* byte_ptr(const_pointer ptr);
+    static std::byte*       byte_ptr(pointer ptr);
+    static const_pointer    type_ptr(const std::byte* ptr);
+    static pointer          type_ptr(std::byte* ptr);
 
     std::unique_ptr<implementation> _implementation = nullptr;
     size_type                       _size           = 0;
@@ -165,7 +165,7 @@ public:
     pointer                         _data           = nullptr;
 };
 
-GFX_api_cast_template_impl(gapi::opengl, host_buffer)
+GFX_api_cast_template_impl(gapi::opengl, host_buffer) //
 
 }    // namespace gfx
 
