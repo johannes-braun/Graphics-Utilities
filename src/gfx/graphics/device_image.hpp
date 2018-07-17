@@ -1,6 +1,7 @@
 #pragma once
 
 #include "host_image.hpp"
+#include "implementation.hpp"
 #include <gfx/api.hpp>
 
 namespace gfx
@@ -9,18 +10,19 @@ enum class sample_count;
 
 namespace detail
 {
-    class device_image_implementation
-    {
-    public:
-        virtual ~device_image_implementation() = default;
-        virtual void initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels, sample_count samples) = 0;
-        virtual void fill_from(const host_image& image, uint32_t level, uint32_t layer)                                              = 0;
-        virtual void fill_to(const host_image& image, uint32_t level, uint32_t layer)                                                = 0;
-        virtual std::any api_handle()                                                                                                = 0;
-        virtual void     generate_mipmaps()                                                                                          = 0;
-    };
-    std::unique_ptr<device_image_implementation> make_device_image_implementation();
-} // namespace detail
+class device_image_implementation
+{
+public:
+    static std::unique_ptr<device_image_implementation> make();
+
+    virtual ~device_image_implementation() = default;
+    virtual void     initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels, sample_count samples) = 0;
+    virtual void     fill_from(const host_image& image, uint32_t level, uint32_t layer)                                              = 0;
+    virtual void     fill_to(const host_image& image, uint32_t level, uint32_t layer)                                                = 0;
+    virtual std::any api_handle()                                                                                                    = 0;
+    virtual void     generate_mipmaps()                                                                                              = 0;
+};
+}    // namespace detail
 
 enum class img_type
 {
@@ -31,7 +33,7 @@ enum class img_type
 
 GFX_api_cast_type(gapi::opengl, device_image, mygl::texture);
 
-class device_image
+class device_image: public detail::base::implements<detail::device_image_implementation>
 {
 public:
     constexpr static uint32_t max_levels = ~0u;
@@ -67,7 +69,6 @@ public:
     GFX_api_cast_op(gapi::opengl, device_image);
 
 private:
-    std::unique_ptr<detail::device_image_implementation> _implementation;
     uint32_t                                             _layer_dimensions;
     format                                               _format;
     extent                                               _extent;
@@ -76,4 +77,4 @@ private:
 };
 
 GFX_api_cast_impl(gapi::opengl, device_image)
-} // namespace gfx
+}    // namespace gfx

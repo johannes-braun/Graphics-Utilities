@@ -142,6 +142,11 @@ void opengl::commands_implementation::set_viewports(gfx::viewport* vps, int coun
     }
 }
 
+std::any opengl::commands_implementation::api_handle()
+{
+    return {}; // none
+}
+
 GLenum opengl::commands_implementation::current_draw_mode() const
 {
     if (!_curr_pipeline) return GLenum(0);

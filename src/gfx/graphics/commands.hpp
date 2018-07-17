@@ -1,6 +1,7 @@
 #pragma once
 
 #include "descriptor.hpp"
+#include "implementation.hpp"
 #include "pipeline.hpp"
 
 namespace gfx
@@ -17,6 +18,8 @@ namespace detail
 class commands_implementation
 {
 public:
+    static std::unique_ptr<commands_implementation> make();
+
     virtual ~commands_implementation()                                                                              = default;
     virtual void bind_graphics_pipeline(graphics_pipeline& pipeline)                                                = 0;
     virtual void bind_vertex_buffer(uint32_t binding, std::any buffer_handle, ptrdiff_t offset, uint32_t stride)    = 0;
@@ -30,29 +33,30 @@ public:
     // TODO(s):
     virtual void bind_descriptors(descriptor_set* sets, int count)                             = 0;
     virtual void begin_pass(clear_value* values, int value_count, /*tmp*/ std::any fbo_handle) = 0;
-    virtual void set_viewports(gfx::viewport* vps, int count, int first)                                  = 0;
+    virtual void set_viewports(gfx::viewport* vps, int count, int first)                       = 0;
+
+    virtual std::any api_handle() = 0;
 };
-std::unique_ptr<commands_implementation> make_commands_implementation();
 
 template<typename T>
-struct is_buffer : std::false_type {};
+struct is_buffer : std::false_type
+{};
 
 template<typename T>
-struct is_buffer<host_buffer<T>> : std::true_type {};
+struct is_buffer<host_buffer<T>> : std::true_type
+{};
 
 template<typename T>
-struct is_buffer<device_buffer<T>> : std::true_type {};
+struct is_buffer<device_buffer<T>> : std::true_type
+{};
 
 template<typename T>
 using enable_if_buffer_t = std::enable_if_t<is_buffer<std::decay_t<T>>::value>;
-}
+}    // namespace detail
 
-class commands
+class commands : public detail::base::implements<detail::commands_implementation>
 {
 public:
-    commands() : _implementation(detail::make_commands_implementation()) {}
-
-	
     template<typename Buffer, typename = detail::enable_if_buffer_t<Buffer>>
     void bind_vertex_buffer(uint32_t binding, Buffer& buffer, ptrdiff_t offset = 0, uint32_t stride = sizeof(typename Buffer::value_type));
 
@@ -71,20 +75,17 @@ public:
     void set_viewports(gfx::viewport* vps, int count, int first);
     void bind_descriptors(descriptor_set* sets, int count) const;    // etc...
     void begin_pass(clear_value* clear_values, int value_count, /*tmp*/ std::any fbo) const;
-
-private:
-    std::unique_ptr<detail::commands_implementation> _implementation;
 };
 
 template<typename Buffer, typename>
 void commands::bind_vertex_buffer(uint32_t binding, Buffer& buffer, ptrdiff_t offset, uint32_t stride)
 {
-    _implementation->bind_vertex_buffer(binding, buffer.api_handle(), offset, stride);
+    implementation()->bind_vertex_buffer(binding, buffer.api_handle(), offset, stride);
 }
 
 template<typename Buffer, typename>
 void commands::bind_index_buffer(Buffer& buffer, index_type type, ptrdiff_t offset)
 {
-    _implementation->bind_index_buffer(buffer.api_handle(), type, offset);
+    implementation()->bind_index_buffer(buffer.api_handle(), type, offset);
 }
-}
+}    // namespace gfx

@@ -41,10 +41,12 @@ namespace detail
 class vertex_input_implementation
 {
 public:
+    static std::unique_ptr<vertex_input_implementation> make();
+
+    virtual std::any api_handle()                                                                              = 0;
     virtual ~vertex_input_implementation()                                                                     = default;
     virtual uint32_t add_attribute(uint32_t binding, gfx::format fmt, size_t offset)                           = 0;
     virtual void     set_binding_info(uint32_t binding, size_t stride, input_rate rate)                        = 0;
-    virtual std::any api_handle()                                                                              = 0;
     virtual void     bind_vertex_buffer(uint32_t binding, const std::any& buffer_handle, ptrdiff_t offset)     = 0;
     virtual void     bind_index_buffer(const std::any& buffer_handle, index_type type, ptrdiff_t offset)       = 0;
     virtual void     set_assembly(topology mode, bool enable_primitive_restart = true)                         = 0;
@@ -52,17 +54,15 @@ public:
     virtual void draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex, uint32_t base_instance) = 0;
     virtual void draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count, uint32_t stride)            = 0;
 };
-
-std::unique_ptr<vertex_input_implementation> make_vertex_input_implementation();
 }    // namespace detail
 
 GFX_api_cast_type(gapi::opengl, vertex_input, mygl::vertex_array);
 
 // TODO: for VK: combine to provider for VkPipelineVertexInputStateCreateInfo and VkPipelineInputAssemblyStateCreateInfo + draw
-class vertex_input
+class vertex_input : public detail::base::implements<detail::vertex_input_implementation>
 {
 public:
-    vertex_input();
+    explicit vertex_input(topology mode = topology::triangle_list, bool enable_primitive_restart = false);
     vertex_input(vertex_input&&) = default;
     vertex_input& operator=(vertex_input&&) = default;
 
@@ -90,7 +90,6 @@ public:
 
 private:
     topology                                             _topology;
-    std::unique_ptr<detail::vertex_input_implementation> _implementation;
 
 public:
     GFX_api_cast_op(gapi::opengl, vertex_input);

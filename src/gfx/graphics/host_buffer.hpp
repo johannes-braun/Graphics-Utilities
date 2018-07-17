@@ -1,17 +1,13 @@
 #pragma once
 
-#if __has_include(<execution>)
 #include <execution>
-#define IN_PARALLEL(FUN, ...) FUN(std::execution::par_unseq, __VA_ARGS__)
-#else
-#define IN_PARALLEL(FUN, ...) FUN(__VA_ARGS__)
-#endif
-
 #include <algorithm>
 #include <any>
 #include <gfx/api.hpp>
+#include <gfx/type.hpp>
 #include <memory>
 #include <numeric>
+#include "implementation.hpp"
 
 namespace std
 {
@@ -20,8 +16,7 @@ enum class byte : uint8_t;
 
 namespace gfx
 {
-namespace detail
-{
+namespace detail{
 template<typename C, typename TBase>
 using enable_if_container = std::void_t<decltype(std::data(std::declval<C>())), decltype(std::size(std::declval<C>())),
                                         std::enable_if_t<!std::is_same_v<std::initializer_list<TBase>, std::decay_t<C>>>>;
@@ -29,6 +24,8 @@ using enable_if_container = std::void_t<decltype(std::data(std::declval<C>())), 
 class host_buffer_implementation
 {
 public:
+    static std::unique_ptr<host_buffer_implementation> make();
+
     using size_type                       = uint64_t;
     using difference_type                 = int64_t;
     virtual ~host_buffer_implementation() = default;
@@ -36,38 +33,36 @@ public:
     virtual std::byte* grow(const std::byte* old_data, size_type old_size, size_type new_capacity) = 0;
     virtual std::any   api_handle()                                                                = 0;
 };
-std::unique_ptr<host_buffer_implementation> make_host_buffer_implementation();
 }    // namespace detail
 
-GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer) //
+GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)    //
+
+    template<typename T>
+    class device_buffer;
 
     // buffer for host memory (mapped/contiguous)
 template<typename T>
-class device_buffer;
-
-template<typename T>
-class host_buffer
+class host_buffer : public detail::base::implements<detail::host_buffer_implementation>
 {
 public:
     friend class device_buffer<T>;
     using iterator_category                    = std::random_access_iterator_tag;
-    using size_type                            = uint64_t;
+    using size_type                            = int64_t;
     using difference_type                      = int64_t;
     using value_type                           = T;
     using pointer                              = value_type*;
     using const_pointer                        = const value_type*;
     using reference                            = value_type&;
     using const_reference                      = const value_type&;
-    using implementation                       = detail::host_buffer_implementation;
     constexpr const static size_type type_size = sizeof(value_type);
 
-    using iterator               = pointer;
-    using const_iterator         = const_pointer;
-    using reverse_iterator       = pointer;
-    using const_reverse_iterator = const_pointer;
+    using iterator               = typename span<T>::iterator;
+    using const_iterator         = typename span<T>::const_iterator;
+    using reverse_iterator       = typename span<T>::reverse_iterator;
+    using const_reverse_iterator = typename span<T>::const_reverse_iterator;
 
     host_buffer();
-    template<bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>>
+    template<typename = std::enable_if_t<std::is_default_constructible_v<value_type>>>
     host_buffer(size_type elements);
     host_buffer(size_type elements, const_reference base);
     template<typename Iter>
@@ -77,12 +72,10 @@ public:
     host_buffer(const Container& elements);
     ~host_buffer()
     {
-        for (auto& elem : *this) {
-            elem.~value_type();
-        }
+        for (auto& elem : *this) { elem.~value_type(); }
     }
 
-	host_buffer(host_buffer&&) = default;
+    host_buffer(host_buffer&&) = default;
     host_buffer& operator=(host_buffer&&) = default;
 
     reference       at(size_type index);
@@ -91,84 +84,53 @@ public:
     const_reference operator[](size_type index) const;
 
     size_type     size() const noexcept;
-    size_type     capacity() const noexcept { return _capacity; }
+    size_type capacity() const noexcept;
     bool          empty() const noexcept;
     pointer       data() noexcept;
     const_pointer data() const noexcept;
 
-    iterator               begin() noexcept { return _data; }
-    iterator               end() noexcept { return _data + _size; }
-    const_iterator         begin() const noexcept { return _data; }
-    const_iterator         end() const noexcept { return _data + _size; }
-    const_iterator         cbegin() const noexcept { return _data; }
-    const_iterator         cend() const noexcept { return _data + _size; }
-    reverse_iterator       rbegin() noexcept { return _data; }
-    reverse_iterator       rend() noexcept { return _data + _size; }
-    const_reverse_iterator rbegin() const noexcept { return _data; }
-    const_reverse_iterator rend() const noexcept { return _data + _size; }
-    const_reverse_iterator crbegin() const noexcept { return _data; }
-    const_reverse_iterator crend() const noexcept { return _data + _size; }
+    iterator               begin() noexcept;
+    iterator               end() noexcept;
+    const_iterator         begin() const noexcept;
+    const_iterator         end() const noexcept;
+    const_iterator         cbegin() const noexcept;
+    const_iterator         cend() const noexcept;
+    reverse_iterator       rbegin() noexcept;
+    reverse_iterator       rend() noexcept;
+    const_reverse_iterator rbegin() const noexcept;
+    const_reverse_iterator rend() const noexcept;
+    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crend() const noexcept;
 
     // Utility functions
     iterator       find(const_reference object) noexcept;
     const_iterator find(const_reference object) const noexcept;
     bool           contains(const_reference object) const noexcept;
 
-    template<bool E = std::is_default_constructible_v<value_type>, typename = std::enable_if_t<E>>
+    template<typename = std::enable_if_t<std::is_default_constructible_v<value_type>>>
     void resize(size_type elements);
     void resize(size_type elements, const_reference base);
-    void reserve(size_type size)
-    {
-        if (_capacity < size) {
-            _data     = type_ptr(_implementation->grow(byte_ptr(_data), _capacity * type_size, size * type_size));
-            _capacity = size;
-        }
-    }
+    void reserve(size_type size);
 
-    void shrink_to_fit()
-    {
-        if (_capacity != _size) {
-            // grow a.k.a. shrink
-            _data     = type_ptr(_implementation->grow(byte_ptr(_data), _capacity * type_size, _size * type_size));
-            _capacity = _size;
-        }
-    }
+    void shrink_to_fit();
 
-    void push_back(value_type&& value)
-    {
-        if (_size < _capacity) {
-            _data[_size++] = std::forward<value_type&&>(value);
-            return;
-        }
-
-        reserve(std::max(_capacity * 2, 1ull));
-        _data[_size++] = std::forward<value_type&&>(value);
-    }
+    void push_back(value_type&& value);
 
     template<typename... Args, typename = decltype(value_type(std::declval<Args>()...))>
-    T& emplace_back(Args&&... args)
-    {
-        if (_size < _capacity) return *new (&_data[_size++]) value_type(std::forward<Args&&>(args)...);
+    T& emplace_back(Args&&... args);
 
-        reserve(std::max(_capacity * 2, 1ull));
-        return *new (&_data[_size++]) value_type(std::forward<Args&&>(args)...);
-    }
+    GFX_api_cast_op(gapi::opengl, host_buffer)    //
 
-    GFX_api_cast_op(gapi::opengl, host_buffer) //
+        private : static const std::byte* byte_ptr(const_pointer ptr);
+    static std::byte*    byte_ptr(pointer ptr);
+    static const_pointer type_ptr(const std::byte* ptr);
+    static pointer       type_ptr(std::byte* ptr);
 
-private:
-    static const std::byte* byte_ptr(const_pointer ptr);
-    static std::byte*       byte_ptr(pointer ptr);
-    static const_pointer    type_ptr(const std::byte* ptr);
-    static pointer          type_ptr(std::byte* ptr);
-
-    std::unique_ptr<implementation> _implementation = nullptr;
-    size_type                       _size           = 0;
     size_type                       _capacity       = 0;
-    pointer                         _data           = nullptr;
+    span<T>                         _data_span;
 };
 
-GFX_api_cast_template_impl(gapi::opengl, host_buffer) //
+GFX_api_cast_template_impl(gapi::opengl, host_buffer)    //
 
 }    // namespace gfx
 

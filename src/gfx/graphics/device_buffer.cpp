@@ -6,7 +6,7 @@
 
 namespace gfx
 {
-std::unique_ptr<detail::device_buffer_implementation> detail::make_device_buffer_implementation()
+std::unique_ptr<detail::device_buffer_implementation> detail::device_buffer_implementation::make()
 {
     switch(context::current()->options().graphics_api)
     {

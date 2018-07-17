@@ -4,7 +4,7 @@
 
 namespace gfx
 {
-std::unique_ptr<detail::vertex_input_implementation> detail::make_vertex_input_implementation()
+std::unique_ptr<detail::vertex_input_implementation> detail::vertex_input_implementation::make()
 {
     switch (context::current()->options().graphics_api)
     {
@@ -15,7 +15,10 @@ std::unique_ptr<detail::vertex_input_implementation> detail::make_vertex_input_i
     return nullptr;
 }
 
-vertex_input::vertex_input() : _implementation(detail::make_vertex_input_implementation()) {}
+vertex_input::vertex_input(topology mode, bool enable_primitive_restart)
+{
+    set_assembly(mode, enable_primitive_restart);
+}
 
 uint32_t vertex_input::add_attribute(uint32_t binding, gfx::format fmt, size_t offset)
 {

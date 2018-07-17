@@ -56,7 +56,8 @@ public:
         std::get<0>(t)[{half_width, 0, 0}]                              = val;
         std::get<1>(t)[{0, half_width, 0}]                              = val;
         std::get<2>(t)[{0, 0, half_width}]                              = val;
-        for (int i = 1; i <= static_cast<int>(half_width); ++i) {
+        for (int i = 1; i <= static_cast<int>(half_width); ++i)
+        {
             const auto g                           = glm::gauss(1.f * i, 0.f, sigma);
             std::get<0>(t)[{half_width - i, 0, 0}] = g;
             std::get<1>(t)[{0, half_width - i, 0}] = g;
@@ -65,7 +66,7 @@ public:
             std::get<1>(t)[{0, half_width + i, 0}] = g;
             std::get<2>(t)[{0, 0, half_width + i}] = g;
         }
-		return t;
+        return t;
     }
     image_filter(extent extents) : _extents(extents), _data(extents.count(), 0.f)
     {
@@ -96,7 +97,7 @@ public:
     host_image(format fmt, const std::filesystem::path& file);
 
     host_image(const host_image& o);
-    host_image& operator=(const host_image& o);
+    host_image& operator       =(const host_image& o);
     host_image(host_image&& o) = default;
     host_image& operator=(host_image&& o) = default;
 
@@ -119,7 +120,13 @@ public:
     uint32_t      max_levels() const noexcept;
     format        pixel_format() const noexcept;
 
-    glm::vec4  load(const glm::uvec3& pixel) const;
+    template<typename Fun, typename = decltype(std::declval<Fun>()(std::declval<glm::uvec3>()))>
+    void each_pixel(Fun&& f) const
+    {
+        for (auto i = 0u; i < _extent.count(); ++i) f(_extent.subpixel(i));
+    }
+
+        glm::vec4 load(const glm::uvec3& pixel) const;
     glm::vec4  load_bilinear(const glm::vec3& pixel) const;
     glm::uvec4 loadu(const glm::uvec3& pixel) const;
     glm::ivec4 loadi(const glm::uvec3& pixel) const;

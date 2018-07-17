@@ -1,6 +1,7 @@
 #pragma once
 
 #include "host_buffer.hpp"
+#include "implementation.hpp"
 #include <any>
 #include <cinttypes>
 #include <gfx/api.hpp>
@@ -30,6 +31,8 @@ namespace detail
     class device_buffer_implementation
     {
     public:
+        static std::unique_ptr<device_buffer_implementation> make();
+
         using size_type       = uint64_t;
         using difference_type = int64_t;
 
@@ -42,18 +45,17 @@ namespace detail
         virtual void     update(difference_type offset, size_type size, const std::byte* data) = 0;
         virtual std::any api_handle()                                                          = 0;
     };
-
-    std::unique_ptr<device_buffer_implementation> make_device_buffer_implementation();
 } // namespace detail
 
 GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer);
 
 class vertex_input;
-template <typename T> class device_buffer
+template<typename T>
+class device_buffer : public detail::base::implements<detail::device_buffer_implementation>
 {
 public:
     friend class vertex_input;
-    using size_type                            = uint64_t;
+    using size_type                            = int64_t;
     using difference_type                      = int64_t;
     using value_type                           = T;
     using pointer                              = value_type*;
@@ -93,7 +95,6 @@ public:
     GFX_api_cast_op(gapi::opengl, device_buffer);
 
 private:
-    std::unique_ptr<detail::device_buffer_implementation> _implementation;
     size_type                                             _size = 0;
     buffer_usage_flags                                    _usage_flags;
 };

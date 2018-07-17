@@ -125,8 +125,15 @@ public:
         return true;
     }
 
+    std::any api_handle() override;
+
 private:
     std::vector<shd> shds;
     mygl::pipeline   _handle = mygl::pipeline::zero;
 };
+
+inline std::any graphics_pipeline_implementation::api_handle()
+{
+    return _handle;
+}
 }

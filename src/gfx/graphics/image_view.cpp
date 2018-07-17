@@ -4,7 +4,7 @@
 
 namespace gfx
 {
-std::unique_ptr<detail::image_view_implementation> detail::make_image_view_implementation()
+std::unique_ptr<detail::image_view_implementation> detail::image_view_implementation::make()
 {
     switch(context::current()->options().graphics_api)
     {
@@ -15,5 +15,11 @@ std::unique_ptr<detail::image_view_implementation> detail::make_image_view_imple
         break;
     }
     return nullptr;
+}
+
+image_view::image_view(imgv_type type, format         format, const device_image& image, uint32_t base_mip, uint32_t mip_count,
+                       uint32_t  base_layer, uint32_t layer_count)
+{
+    implementation()->initialize(type, format, image, base_mip, mip_count, base_layer, layer_count);
 }
 }

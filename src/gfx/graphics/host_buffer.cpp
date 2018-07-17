@@ -6,7 +6,7 @@
 
 namespace gfx
 {
-std::unique_ptr<detail::host_buffer_implementation> detail::make_host_buffer_implementation()
+std::unique_ptr<detail::host_buffer_implementation> detail::host_buffer_implementation::make()
 {
     switch(context::current()->options().graphics_api)
     {

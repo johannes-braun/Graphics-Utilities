@@ -39,12 +39,14 @@ struct surrounding
     surrounding operator++()
     {
         const int he_a_op = _str->half_edges.at(_index).opposite;
-        if (he_a_op == ~0u) {
+        if (he_a_op == ~0u)
+        {
             _index = ~0u;
             return *this;
         }
         _index = _str->next_index(he_a_op);
-        if (_index == _start_index || _index == ~0u) {
+        if (_index == _start_index || _index == ~0u)
+        {
             _index = ~0u;
             return *this;
         }
@@ -71,11 +73,12 @@ int main()
     context->make_current();
     gfx::imgui imgui;
 
-    gfx::scene_file                                    scene("bunny.dae");
-    half_edge_structure                                structure(scene.meshes[0].indices);
+    gfx::scene_file                             scene("bunny.dae");
+    half_edge_structure                         structure(scene.meshes[0].indices);
     gfx::buffer<half_edge_structure::half_edge> half_edge_buffer(gfx::buffer_usage::storage, structure.half_edges);
 
-    for (int i = 0; i < scene.meshes[0].vertices.size(); ++i) {
+    for (int i = 0; i < scene.meshes[0].vertices.size(); ++i)
+    {
         const int he_start                    = structure.vertices.at(i).halfedge;
         int       he_a                        = he_start;
         scene.meshes[0].vertices.at(i).normal = {0, 0, 0};
@@ -133,11 +136,11 @@ int main()
         glm::mat4 proj;
     };
     gfx::hbuffer<camera_data> camera_buffer(1);
-    gfx::camera                   camera;
-    gfx::camera_controller        controller;
+    gfx::camera               camera;
+    gfx::camera_controller    controller;
 
     gfx::image color_attachment(gfx::img_type::image2d, gfx::rgba16f, {1280, 720, 1}, gfx::sample_count::x8);
-    gfx::image        depth_attachment(gfx::img_type::image2d, gfx::d32f, {1280, 720, 1}, gfx::sample_count::x8);
+    gfx::image depth_attachment(gfx::img_type::image2d, gfx::d32f, {1280, 720, 1}, gfx::sample_count::x8);
     gfx::image resolve_attachment(gfx::img_type::image2d, gfx::rgba16f, {1280, 720, 1}, 1);
 
     gl::framebuffer render_fbo;
@@ -147,41 +150,46 @@ int main()
     gl::framebuffer resolve_fbo;
     glNamedFramebufferTexture(resolve_fbo, GL_COLOR_ATTACHMENT0, resolve_attachment, 0);
 
-    gfx::hbuffer<glm::vec3>   point_buffer(50000);
-    gfx::buffer<glm::vec3> point_buffer_device(gfx::buffer_usage::storage, 50000);
-    gfx::keyboard_button          plus(GLFW_KEY_KP_ADD);
-    gfx::keyboard_button          minus(GLFW_KEY_KP_SUBTRACT);
-    std::vector<glm::vec3>        points;
+    gfx::hbuffer<glm::vec3> point_buffer(50000);
+    gfx::buffer<glm::vec3>  point_buffer_device(gfx::buffer_usage::storage, 50000);
+    gfx::keyboard_button    plus(GLFW_KEY_KP_ADD);
+    gfx::keyboard_button    minus(GLFW_KEY_KP_SUBTRACT);
+    std::vector<glm::vec3>  points;
 
-    while (context->run()) {
+    gfx::descriptor_set main_desc;
+    main_desc.set(gfx::descriptor_type::storage_buffer, 0, half_edge_buffer);
+    main_desc.set(gfx::descriptor_type::storage_buffer, 1, mesh_vertices);
+    main_desc.set(gfx::descriptor_type::uniform_buffer, 0, camera_buffer);
+
+    gfx::commands cmd;
+
+    while (context->run())
+    {
         imgui.new_frame();
         render_fbo.set_drawbuffer(GL_COLOR_ATTACHMENT0);
         render_fbo.bind();
         render_fbo.clear(0, {0.1f, 0.1f, 0.1f, 1.f});
         render_fbo.clear(0.f, 0);
 
-
         controller.update(camera);
         camera_buffer[0].view = glm::inverse(camera.transform_mode.matrix());
         camera_buffer[0].proj = camera.projection_mode.matrix();
 
-        mesh_pipeline.bind();
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, half_edge_buffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, mesh_vertices);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera_buffer);
-        mesh_pipeline.input().draw(static_cast<uint32_t>(structure.half_edges.size()));
-
-        outline_pipeline.bind();
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, half_edge_buffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, mesh_vertices);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, camera_buffer);
-        outline_pipeline.input().draw(static_cast<uint32_t>(structure.half_edges.size()));
+        cmd.reset();
+        gfx::clear_value clear[]{glm::vec4{0.1f, 0.1f, 0.1f, 1.f}, gfx::depth_stencil{0.f, 0}};
+        cmd.begin_pass(clear, 2, mygl::framebuffer(render_fbo));
+        cmd.bind_descriptors(&main_desc, 1);
+        cmd.bind_pipeline(mesh_pipeline);
+        cmd.draw(structure.half_edges.size());
+        cmd.bind_pipeline(outline_pipeline);
+        cmd.draw(structure.half_edges.size());
 
         ImGui::Begin("Settings");
         static int radius = 24;
         plus.update(context->window());
         minus.update(context->window());
-        if (plus.state() == gfx::button_state::press || minus.state() == gfx::button_state::press) {
+        if (plus.state() == gfx::button_state::press || minus.state() == gfx::button_state::press)
+        {
             if (plus.state() == gfx::button_state::press)
                 ++radius;
             else
@@ -189,12 +197,15 @@ int main()
 
             std::unordered_set<uint32_t>  vertices{1};
             std::unordered_set<glm::vec3> surrounding_points;
-            for (int i = 0; i < radius; ++i) {
+            for (int i = 0; i < radius; ++i)
+            {
                 std::unordered_set<uint32_t> tmp{};
                 for (const auto& padois : vertices)
-                    for (const auto& s : surrounding(structure, padois)) {
+                    for (const auto& s : surrounding(structure, padois))
+                    {
                         const auto bla = scene.meshes[0].vertices.at(structure.next_of(s).vertex).position;
-                        if (surrounding_points.count(bla) == 0) {
+                        if (surrounding_points.count(bla) == 0)
+                        {
                             surrounding_points.emplace(bla);
                             tmp.emplace(structure.next_index(s));
                         }
@@ -208,10 +219,12 @@ int main()
         ImGui::DragInt("Radius", &radius, 0.1f, 0, 1000);
         ImGui::End();
 
-        points_pipeline.bind();
         point_buffer_device.fill_from(point_buffer, 0, 0, points.size());
-        points_pipeline.input().bind_vertex_buffer(0, point_buffer_device, 0);
-        points_pipeline.input().draw(static_cast<uint32_t>(points.size()));
+
+        cmd.bind_pipeline(points_pipeline);
+        cmd.bind_vertex_buffer(0, point_buffer_device);
+        cmd.draw(points.size());
+        cmd.execute();
 
         // RESOLVE --------------------------------
         render_fbo.set_readbuffer(GL_COLOR_ATTACHMENT0);
@@ -233,16 +246,20 @@ half_edge_structure::half_edge_structure(const std::vector<gfx::index32>& indice
     vertices.resize(max_index);
     half_edges.resize(indices.size());
 
-    for (int i = 0; i < indices.size(); ++i) {
+    for (int i = 0; i < indices.size(); ++i)
+    {
         half_edges[i].vertex          = indices[i];
         vertices[indices[i]].halfedge = i;
         vertex_to_halfedge[indices[i]].push_back(i);
     }
 
 #pragma omp parallel for schedule(dynamic)
-    for (int begin = 0; begin < half_edges.size(); ++begin) {
-        for (uint32_t end : vertex_to_halfedge[indices[next_index(begin)]]) {
-            if (half_edges[next_index(end)].vertex == half_edges[begin].vertex) {
+    for (int begin = 0; begin < half_edges.size(); ++begin)
+    {
+        for (uint32_t end : vertex_to_halfedge[indices[next_index(begin)]])
+        {
+            if (half_edges[next_index(end)].vertex == half_edges[begin].vertex)
+            {
                 half_edges[begin].opposite = end;
                 break;
             }

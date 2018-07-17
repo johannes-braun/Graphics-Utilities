@@ -6,7 +6,7 @@
 
 namespace gfx
 {
-std::unique_ptr<detail::swapchain_implementation> detail::make_swapchain_implementation()
+std::unique_ptr<detail::swapchain_implementation> detail::swapchain_implementation::make()
 {
     switch(context::current()->options().graphics_api)
     {
@@ -20,11 +20,15 @@ std::unique_ptr<detail::swapchain_implementation> detail::make_swapchain_impleme
     return nullptr;
 }
 
-swapchain::swapchain() { _implementation = detail::make_swapchain_implementation(); }
+uint32_t swapchain::current_image() const noexcept { return implementation()->current_image(); }
 
-uint32_t swapchain::current_image() const noexcept { return _implementation->current_image(); }
+void swapchain::present()
+{
+    implementation()->present();
+}
 
-void swapchain::present() { _implementation->present(); }
-
-void swapchain::resize(uint32_t width, uint32_t height) { _implementation->resize(width, height); }
+void swapchain::resize(uint32_t width, uint32_t height)
+{
+    implementation()->resize(width, height);
+}
 } // namespace gfx

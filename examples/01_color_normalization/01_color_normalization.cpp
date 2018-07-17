@@ -1,11 +1,6 @@
-#include <Eigen/Eigenvalues>
 #define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
 #include <gfx/math.hpp>
-#include <numeric>
-#include <opengl/opengl.hpp>
-
-#include <gfx/graphics/opengl/state_info.hpp>
 
 struct axis_transformation
 {
@@ -16,31 +11,36 @@ struct axis_transformation
     glm::mat4 eigen_pomierski;
 };
 
-axis_transformation principal_axis_transformation(glm::u8vec3* pixels, const size_t count)
+axis_transformation principal_axis_transformation(const gfx::himage& image)
 {
-    const double     color_to_float      = 1.0 / 255.0;
-    const glm::dvec3 main_axis_rgb       = glm::normalize(glm::dvec3(1.0));
+    const glm::dvec3 main_axis_rgb       = normalize(glm::dvec3(1.0));
     const glm::dvec3 main_axis_pomierski = glm::dvec3(0, 0, 1);
     const glm::dmat3 pomierski{0.5, -0.875, 1.5, -1.0, 0, 1.5, 0.5, 0.875, 1.5};
     const glm::dmat3 pomierski_inverse = inverse(pomierski);
 
-    const glm::dvec3 average_rgb =
-        std::accumulate(pixels, pixels + count, glm::dvec3(0.0),
-                        [color_to_float](const glm::dvec3& lhs, const glm::u8vec3& rhs) { return lhs + glm::dvec3(rhs) * color_to_float; })
-        / static_cast<double>(count);
+    const glm::dvec3 average_rgb = [&] {
+        glm::dvec4 color{0, 0, 0, 0};
+        image.each_pixel([&](const glm::uvec3& v) { color += image.load(v); });
+        return glm::dvec3(color / static_cast<double>(image.extents().count()));
+    }();
+
     const glm::dvec3 average_pomierski = pomierski * average_rgb;
 
-    const glm::dmat4 translate_rgb            = glm::translate(-average_rgb);
-    const glm::dmat4 translate_back_rgb       = glm::translate(main_axis_rgb * length(average_rgb));
-    const glm::dmat4 translate_pomierski      = glm::translate(-average_pomierski);
-    const glm::dmat4 translate_back_pomierski = glm::translate(main_axis_pomierski * length(average_pomierski));
+    const glm::dmat4 translate_rgb            = translate(-average_rgb);
+    const glm::dmat4 translate_back_rgb       = translate(main_axis_rgb * length(average_rgb));
+    const glm::dmat4 translate_pomierski      = translate(-average_pomierski);
+    const glm::dmat4 translate_back_pomierski = translate(main_axis_pomierski * length(average_pomierski));
 
-    const glm::dmat3 covariance_rgb = std::accumulate(pixels, pixels + count, glm::dmat3(0.0),
-                                                      [color_to_float, average_rgb](const glm::dmat3& lhs, const glm::u8vec3& rhs) {
-                                                          const glm::dvec3 error = glm::dvec3(rhs) * color_to_float - average_rgb;
-                                                          return lhs + outerProduct(error, error);
-                                                      })
-                                      / static_cast<double>(count);
+    const glm::dmat3 covariance_rgb = [&] {
+        glm::dmat3 matrix(0.0);
+        for (int i = 0; i < image.extents().count(); ++i)
+        {
+            const glm::dvec3 error = glm::dvec3(image.load(image.extents().subpixel(i))) - average_rgb;
+            matrix += outerProduct(error, error);
+        }
+        return matrix / static_cast<double>(image.extents().count());
+    }();
+
     const glm::dmat3 covariance_pomierski = pomierski * covariance_rgb * transpose(pomierski);
 
     const auto eigen_rgb       = gfx::eig(covariance_rgb);
@@ -104,13 +104,15 @@ int main()
     gfx::image_view    texture_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
     const gfx::sampler sampler;
 
-    glm::u8vec3*        begin = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
-    axis_transformation trafo = principal_axis_transformation(begin, picture.extents().count());
-    glm::vec3           average =
-        glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0))) / (picture.extents().count() * 255.f);
+    axis_transformation trafo   = principal_axis_transformation(picture);
+    glm::vec3           average = [&] {
+        glm::dvec4 color{0, 0, 0, 0};
+        picture.each_pixel([&](const glm::uvec3& v) { color += picture.load(v); });
+        return glm::dvec3(color / static_cast<double>(picture.extents().count()));
+    }();
 
-    gfx::image      grid(gfx::himage(gfx::rgba8unorm, "grid.jpg"));
-    gfx::image_view grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
+    gfx::image            grid(gfx::himage(gfx::rgba8unorm, "grid.jpg"));
+    const gfx::image_view grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
 
     auto default_state                               = std::make_shared<gfx::state_info>();
     default_state->depth_stencil.depth_test_enable   = true;
@@ -119,10 +121,10 @@ int main()
     default_state->multisample.sample_shading_enable = true;
     default_state->multisample.samples               = gfx::sample_count::x8;
 
-    auto points_state                             = std::make_shared<gfx::state_info>(*default_state);
+    const auto points_state                       = std::make_shared<gfx::state_info>(*default_state);
     points_state->depth_stencil.depth_test_enable = false;
 
-    auto picture_state                             = std::make_shared<gfx::state_info>(*default_state);
+    const auto picture_state                       = std::make_shared<gfx::state_info>(*default_state);
     picture_state->depth_stencil.depth_test_enable = false;
 
     auto cube_backfaces                   = std::make_shared<gfx::state_info>(*default_state);
@@ -203,7 +205,8 @@ int main()
 
     gfx::commands cmd;
 
-    while (context->run()) {
+    while (context->run())
+    {
         imgui.new_frame();
 
         ImGui::Begin("Primary Axis Transformation");
@@ -211,7 +214,8 @@ int main()
         ImGui::Checkbox("Enable Transformation", &hat_en);
 
         glm::mat4 patmat = glm::mat4(1.f);
-        if (hat_en) {
+        if (hat_en)
+        {
             static int mode = 0;
             ImGui::Combo("Mode", &mode, " Basic (RGB) \0 Eigen (RGB) \0 Basic (POM) \0 Eigen (POM) \0");
 
@@ -228,21 +232,26 @@ int main()
         static float scale = 1.f;
         ImGui::DragFloat("Preview Scale", &scale, 0.01f, 0.f, 100.f);
 
-        if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0))) {
-            if (const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files")) {
-                picture      = gfx::himage(gfx::rgb8unorm, *source_data);
+        if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
+        {
+            if (const auto new_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files"))
+            {
+                picture      = gfx::himage(gfx::rgb8unorm, *new_data);
                 texture      = gfx::image(picture);
                 texture_view = gfx::image_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
                 main_desc.set(gfx::descriptor_type::sampled_texture, 0, texture_view, sampler);
 
-                begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
-                trafo   = principal_axis_transformation(begin, picture.extents().count());
-                average = glm::vec3(std::accumulate(begin, begin + picture.extents().count(), glm::u8vec3(0)))
-                          / (picture.extents().count() * 255.f);
+                trafo   = principal_axis_transformation(picture);
+                average = [&] {
+                    glm::dvec4 color{0, 0, 0, 0};
+                    picture.each_pixel([&](const glm::uvec3& v) { color += picture.load(v); });
+                    return glm::dvec3(color / static_cast<double>(picture.extents().count()));
+                }();
             }
         }
         ImGui::SameLine();
-        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
+        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+        {
             glm::u8vec3*             data_cast = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
             std::vector<glm::u8vec3> new_img(picture.extents().count());
             std::transform(data_cast, data_cast + picture.extents().count(), new_img.begin(), [&patmat](const glm::u8vec3& vec) {
@@ -258,7 +267,7 @@ int main()
         glfwGetFramebufferSize(context->window(), &w, &h);
         controller.update(camera);
 
-        render_info_buffer[0].vp               = camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix());
+        render_info_buffer[0].vp               = camera.projection_mode.matrix() * inverse(camera.transform_mode.matrix());
         render_info_buffer[0].transform_matrix = hat_en ? patmat : glm::mat4(1.f);
         render_info_buffer[0].average          = average;
 
@@ -269,7 +278,7 @@ int main()
         cmd.begin_pass(values, 2, mygl::framebuffer::zero);
 
         cmd.bind_descriptors(&main_desc, 1);
-        
+
         cmd.bind_pipeline(point_pipeline);
         cmd.set_viewports(&main_viewport, 1, 0);
         cmd.draw(picture.extents().width * picture.extents().height);

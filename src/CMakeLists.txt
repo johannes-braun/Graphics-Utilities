@@ -156,6 +156,7 @@ install(EXPORT gfxTargets
     NAMESPACE jbraun::
     DESTINATION lib/cmake/gfx
 )
+
 install(DIRECTORY shaders DESTINATION . 
 	FILES_MATCHING
 		PATTERN *

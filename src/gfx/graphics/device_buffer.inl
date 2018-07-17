@@ -4,16 +4,16 @@ namespace gfx
 {
 template <typename T>
 device_buffer<T>::device_buffer(const buffer_usage_flags usage)
-        : _implementation(detail::make_device_buffer_implementation()), _usage_flags(usage)
+        : _usage_flags(usage)
 {
-    _implementation->update_flags(usage);
+    implementation()->update_flags(usage);
 }
 
 template <typename T>
 device_buffer<T>::device_buffer(const buffer_usage_flags usage, const size_type elements)
         : device_buffer(usage)
 {
-    _implementation->allocate(elements * type_size);
+    implementation()->allocate(elements * type_size);
     _size = elements;
 }
 
@@ -31,7 +31,7 @@ device_buffer<T>::device_buffer(const size_type elements)
 
 template <typename T> void device_buffer<T>::reallocate(const size_type elements)
 {
-    _implementation->allocate(elements * type_size);
+    implementation()->allocate(elements * type_size);
     _size = elements;
 }
 
@@ -62,7 +62,7 @@ template <typename T> void device_buffer<T>::update(const T* data, size_type cou
 {
     if(start + count > _size)
         throw std::out_of_range("Destination out of range.");
-    _implementation->update(start * type_size, count * type_size, reinterpret_cast<const std::byte*>(data));
+    implementation()->update(start * type_size, count * type_size, reinterpret_cast<const std::byte*>(data));
 }
 
 template <typename T> void device_buffer<T>::update(const std::initializer_list<T>& elements, const difference_type start) const
@@ -86,7 +86,7 @@ void device_buffer<T>::fill_from(const host_buffer<T>& buffer, const difference_
     if(src_offset + count > buffer.size())
         throw std::out_of_range("Source out of range.");
 
-    _implementation->copy(&*buffer._implementation, &*_implementation, src_offset * type_size, start * type_size, count * type_size);
+    implementation()->copy(&*buffer.implementation(), &*implementation(), src_offset * type_size, start * type_size, count * type_size);
 }
 
 //template <typename T>
@@ -94,9 +94,9 @@ void device_buffer<T>::fill_from(const host_buffer<T>& buffer, const difference_
 //H device_buffer<T>::api_handle() const
 //{
 //    if constexpr(std::is_same_v<H, std::any>)
-//        return _implementation->api_handle();
+//        return implementation()->api_handle();
 //    else
-//        return std::any_cast<H>(_implementation->api_handle());
+//        return std::any_cast<H>(implementation()->api_handle());
 //}
 template <typename T> host_buffer<T> device_buffer<T>::to_host() const 
 { 
@@ -114,7 +114,7 @@ void device_buffer<T>::fill_from(const device_buffer& buffer, const difference_t
     if(src_offset + count > buffer.capacity())
         throw std::out_of_range("Source out of range.");
 
-    _implementation->copy(&*buffer._implementation, &*_implementation, src_offset * type_size, start * type_size, count * type_size);
+    implementation()->copy(&*buffer.implementation(), &*implementation(), src_offset * type_size, start * type_size, count * type_size);
 }
 
 template <typename T>
@@ -126,7 +126,7 @@ void device_buffer<T>::copy_to(const host_buffer<T>& buffer, const difference_ty
     if(src_offset + count > buffer.size())
         throw std::out_of_range("Source out of range.");
 
-    _implementation->copy(&*_implementation, &*buffer._implementation, src_offset * type_size, dst_offset * type_size, count * type_size);
+    implementation()->copy(&*implementation(), &*buffer.implementation(), src_offset * type_size, dst_offset * type_size, count * type_size);
 }
 
 template <typename T>
@@ -138,6 +138,6 @@ void device_buffer<T>::copy_to(const device_buffer& buffer, const difference_typ
     if(src_offset + count > buffer.capacity())
         throw std::out_of_range("Source out of range.");
 
-    _implementation->copy(&*_implementation, &*buffer._implementation, src_offset * type_size, dst_offset * type_size, count * type_size);
+    implementation()->copy(&*implementation(), &*buffer.implementation(), src_offset * type_size, dst_offset * type_size, count * type_size);
 }
 }

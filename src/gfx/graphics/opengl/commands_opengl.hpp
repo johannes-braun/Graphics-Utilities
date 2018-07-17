@@ -19,6 +19,7 @@ namespace gfx::opengl
         void bind_descriptors(descriptor_set* sets, int count) override;
         void begin_pass(clear_value* values, int value_count, std::any fbo_handle) override;
         void set_viewports(gfx::viewport* vps, int count, int first) override;
+        std::any api_handle() override;
 
     private:
         GLenum                  current_draw_mode() const;

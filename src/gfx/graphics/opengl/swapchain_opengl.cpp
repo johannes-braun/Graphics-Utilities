@@ -26,4 +26,9 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
 {
     glViewport(0, 0, width, height);
 }
+
+std::any swapchain_implementation::api_handle()
+{
+    return {};
+}
 }

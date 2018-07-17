@@ -13,6 +13,7 @@ public:
     uint32_t current_image() const noexcept override;
     void     present()                     override;
     void     resize(uint32_t width, uint32_t height) override;
+    std::any api_handle() override;
 
 private:
     std::weak_ptr<context> _context;

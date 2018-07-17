@@ -4,6 +4,9 @@
 #include "interface/imgui_handler.hpp"
 
 #include "imgui/imgui.h"
+#include <memory>
+#include <GLFW/glfw3.h>
+#include <array>
 
 namespace gfx
 {
