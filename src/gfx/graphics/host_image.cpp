@@ -26,7 +26,12 @@ host_image::host_image(const host_image& o) : host_image(o.pixel_format(), o.ext
 
 host_image& host_image::operator=(const host_image& o)
 {
-    *this = std::move(host_image(o));
+    _format = o._format;
+    _extent = o._extent;
+    _storage_element_size = format_element_size(_format);
+    _storage.resize(_storage_element_size * _extent.count());
+    _write_unorm = get_write_unorm_fun();
+    memcpy(storage().data(), o.storage().data(), o.storage().size());
     return *this;
 }
 

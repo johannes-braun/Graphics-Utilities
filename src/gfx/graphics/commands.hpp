@@ -33,6 +33,18 @@ public:
     virtual void set_viewports(gfx::viewport* vps, int count, int first)                                  = 0;
 };
 std::unique_ptr<commands_implementation> make_commands_implementation();
+
+template<typename T>
+struct is_buffer : std::false_type {};
+
+template<typename T>
+struct is_buffer<host_buffer<T>> : std::true_type {};
+
+template<typename T>
+struct is_buffer<device_buffer<T>> : std::true_type {};
+
+template<typename T>
+using enable_if_buffer_t = std::enable_if_t<is_buffer<std::decay_t<T>>::value>;
 }
 
 class commands
@@ -40,12 +52,12 @@ class commands
 public:
     commands() : _implementation(detail::make_commands_implementation()) {}
 
+	
+    template<typename Buffer, typename = detail::enable_if_buffer_t<Buffer>>
+    void bind_vertex_buffer(uint32_t binding, Buffer& buffer, ptrdiff_t offset = 0, uint32_t stride = sizeof(typename Buffer::value_type));
 
-    template<typename T>
-    void bind_vertex_buffer(uint32_t binding, device_buffer<T>& buffer, ptrdiff_t offset = 0, uint32_t stride = sizeof(T));
-
-    template<typename T>
-    void bind_index_buffer(device_buffer<T>& buffer, index_type type, ptrdiff_t offset = 0);
+    template<typename Buffer, typename = detail::enable_if_buffer_t<Buffer>>
+    void bind_index_buffer(Buffer& buffer, index_type type, ptrdiff_t offset = 0);
 
     void bind_pipeline(graphics_pipeline& ppl) const;
     void draw(size_t vertex_count, size_t instance_count = 1, ptrdiff_t first_vertex = 0, ptrdiff_t first_instance = 0) const;
@@ -64,14 +76,14 @@ private:
     std::unique_ptr<detail::commands_implementation> _implementation;
 };
 
-template<typename T>
-void commands::bind_vertex_buffer(uint32_t binding, device_buffer<T>& buffer, ptrdiff_t offset, uint32_t stride)
+template<typename Buffer, typename>
+void commands::bind_vertex_buffer(uint32_t binding, Buffer& buffer, ptrdiff_t offset, uint32_t stride)
 {
     _implementation->bind_vertex_buffer(binding, buffer.api_handle(), offset, stride);
 }
 
-template<typename T>
-void commands::bind_index_buffer(device_buffer<T>& buffer, index_type type, ptrdiff_t offset)
+template<typename Buffer, typename>
+void commands::bind_index_buffer(Buffer& buffer, index_type type, ptrdiff_t offset)
 {
     _implementation->bind_index_buffer(buffer.api_handle(), type, offset);
 }

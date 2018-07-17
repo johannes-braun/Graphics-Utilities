@@ -21,12 +21,11 @@ layout(binding=0, std140) uniform Data
     uintptr_t bvh;
     uintptr_t vbo;
     uintptr_t ibo;
-    uintptr_t grid_line_space;
     float seed;
     int frames;
 };
 
-layout(binding = 0, rgba16f) uniform image2D img;
+layout(binding = 0, rgba32f) uniform image2D img;
 layout(binding = 0)			 uniform samplerCube cubemap;
 
 struct vertex {
@@ -68,31 +67,8 @@ struct light_path
     vec4 color;
 };
 
-struct ls_result
-{
-    vec2 bary;
-    int triangle;
-    float distance;
-};
-
-ls_result resolve_line_space(vec3 orig, vec3 dir, uintptr_t gls, uintptr_t vers, uintptr_t indices, float maxdist)
-{
-    ls_result result;
-    
-    line hit_line = get_line_grid(grid_line_space, orig, dir, maxdist);
-    triangle* tri = (((triangle*)indices) + hit_line.triangle);
-    result.triangle = hit_line.triangle;
-
-    if (result.triangle == -1)
-        return result;
-
-    vertex* vertices = (vertex*)vers;
-    intersect_triangle_plane(orig, dir, vertices[tri->a].position.xyz, vertices[tri->b].position.xyz, vertices[tri->c].position.xyz, result.distance, result.bary);
-    return result;
-}
-
-const int bounce_count = 5;
-const int lpcount = 1;
+const int bounce_count = 7;
+const int lpcount = 5;
 light_path lighting[lpcount];
 
 void main()
@@ -110,10 +86,10 @@ void main()
     vec2 uv = ((pixel + random_sample) * inv_size - 0.5f) * 2.f;
     vec3 direction = normalize((camera_matrix * vec4(uv, 0, 1)).xyz);
     vec3 origin = camera_position.xyz;
-    
+
     bvh_state_set_mode(bvh_mode_nearest);
     bvh_result current_result = bvh_hit(origin.xyz, direction.xyz, bvh, ibo, vbo, 10000000000.f);
-
+	
     const vec4 last_color = imageLoad(img, pixel);
     vec4 color = vec4(0);
     if(current_result.hits)

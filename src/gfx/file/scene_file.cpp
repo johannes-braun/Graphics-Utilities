@@ -81,12 +81,12 @@ scene_file::scene_file(const files::path& path) : file(path)
                               to_vec3(ai_mesh->mNormals[i]));
         }
 
-        const auto                ai_material = scene->mMaterials[ai_mesh->mMaterialIndex];
+       /* const auto                ai_material = scene->mMaterials[ai_mesh->mMaterialIndex];
         aiString                  name;
-        [[maybe_unused]] aiReturn r = ai_material->Get(AI_MATKEY_NAME, name);
+        [[maybe_unused]] aiReturn r = ai_material->Get(AI_MATKEY_NAME, name);*/
 
         current_mesh.material_index = ai_mesh->mMaterialIndex;
-        current_mesh.material_ptr   = &(materials.at(ai_mesh->mMaterialIndex));
+        //current_mesh.material_ptr   = &(materials.at(ai_mesh->mMaterialIndex));
         meshes.emplace_back(current_mesh);
     }
 

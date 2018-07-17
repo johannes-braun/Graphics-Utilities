@@ -174,7 +174,7 @@ void main()
 		mat_color = texture(sampler2D(instances[draw_id].diffuse_texture), uv).rgb;
 		
 	if(is_texture(instances[draw_id].bump_texture))
-		normal = from_bump(position, normal, uv, view_dir, sampler2D(instances[draw_id].bump_texture), 0.02f);
+		normal = from_bump(position, normal, uv, view_dir, sampler2D(instances[draw_id].bump_texture), 0.01f);
 		
     for(int i=0; i<lights.length(); ++i)
     {

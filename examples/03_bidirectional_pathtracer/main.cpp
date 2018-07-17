@@ -46,7 +46,7 @@ int main()
 
     gl::query timer(GL_TIME_ELAPSED);
 
-    gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba16f, {1280, 720}, 1);
+    gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba32f, {1280, 720}, 1);
     gl::framebuffer   framebuffer;
     glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, render_target, 0, 0);
 
@@ -85,6 +85,9 @@ int main()
     while(context->run())
     {
         imgui.new_frame();
+
+		glClear(GL_COLOR_BUFFER_BIT);
+		
         controller.update(camera);
 
         timer.start();
@@ -94,7 +97,7 @@ int main()
         data_buffer[0].seed            = dist(gen);
         glBindSampler(0, sampler);
         glBindTextureUnit(0, cubemap_view);
-        glBindImageTexture(0, render_target, 0, false, 0, GL_READ_WRITE, GL_RGBA16F);
+        glBindImageTexture(0, render_target, 0, true, 0, GL_READ_WRITE, GL_RGBA32F);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer);
         tracer->dispatch(1280, 720);
 

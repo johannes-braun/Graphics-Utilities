@@ -82,6 +82,9 @@ public:
         }
     }
 
+	host_buffer(host_buffer&&) = default;
+    host_buffer& operator=(host_buffer&&) = default;
+
     reference       at(size_type index);
     const_reference at(size_type index) const;
     reference       operator[](size_type index);

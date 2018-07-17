@@ -200,14 +200,11 @@ int main()
     gfx::descriptor_set grid_desc;
     grid_desc.set(gfx::descriptor_type::uniform_buffer, 0, render_info_buffer);
     grid_desc.set(gfx::descriptor_type::sampled_texture, 0, grid_view, sampler);
-    
+
     gfx::commands cmd;
 
     while (context->run()) {
         imgui.new_frame();
-
-        gl::framebuffer::zero().clear(0, {0.1f, 0.1f, 0.1f, 1.f});
-        gl::framebuffer::zero().clear(0.f, 0);
 
         ImGui::Begin("Primary Axis Transformation");
         static bool hat_en = true;
@@ -236,6 +233,7 @@ int main()
                 picture      = gfx::himage(gfx::rgb8unorm, *source_data);
                 texture      = gfx::image(picture);
                 texture_view = gfx::image_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
+                main_desc.set(gfx::descriptor_type::sampled_texture, 0, texture_view, sampler);
 
                 begin   = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
                 trafo   = principal_axis_transformation(begin, picture.extents().count());
@@ -271,7 +269,7 @@ int main()
         cmd.begin_pass(values, 2, mygl::framebuffer::zero);
 
         cmd.bind_descriptors(&main_desc, 1);
-
+        
         cmd.bind_pipeline(point_pipeline);
         cmd.set_viewports(&main_viewport, 1, 0);
         cmd.draw(picture.extents().width * picture.extents().height);

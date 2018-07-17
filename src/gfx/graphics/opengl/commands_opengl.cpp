@@ -1,3 +1,4 @@
+#include "state_info.hpp"
 #include "commands_opengl.hpp"
 
 namespace gfx
@@ -57,6 +58,9 @@ void opengl::commands_implementation::execute()
         q();
     }
     _curr_pipeline = nullptr;
+
+    static state_info default_state;
+    apply(default_state);
 }
 
 void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int count)

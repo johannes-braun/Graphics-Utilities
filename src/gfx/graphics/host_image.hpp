@@ -96,7 +96,7 @@ public:
     host_image(format fmt, const std::filesystem::path& file);
 
     host_image(const host_image& o);
-    host_image& operator       =(const host_image& o);
+    host_image& operator=(const host_image& o);
     host_image(host_image&& o) = default;
     host_image& operator=(host_image&& o) = default;
 
