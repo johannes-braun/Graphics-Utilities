@@ -121,12 +121,11 @@ void opengl::commands_implementation::begin_pass(clear_value* values, int value_
             glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
             for (int i = 0; i < value_count; ++i) {
-                if (auto cptr = std::get_if<glm::vec4>(&val[i])) {
-                    glClearNamedFramebufferfv(mygl::framebuffer::zero, GL_COLOR, i, value_ptr(*cptr));
+                if (auto cptr = std::get_if<glm::vec4>(&val[i])) { glClearNamedFramebufferfv(fbo, GL_COLOR, i, value_ptr(*cptr));
                 }
                 else if (auto dptr = std::get_if<depth_stencil>(&val[i]))
                 {
-                    glClearNamedFramebufferfi(mygl::framebuffer::zero, GL_DEPTH_STENCIL, 0, dptr->depth, dptr->stencil);
+                    glClearNamedFramebufferfi(fbo, GL_DEPTH_STENCIL, 0, dptr->depth, dptr->stencil);
                 }
             }
         });

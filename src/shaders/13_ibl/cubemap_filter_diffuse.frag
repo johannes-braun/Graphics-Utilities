@@ -22,34 +22,37 @@ vec2 random_hammersley_2d(float current, float inverse_sample_count)
     return result;
 }
 
-vec3 sample_uniform_hemisphere(vec2 uv)
+vec3 sample_cosine_hemisphere(vec2 uv)
 {
-	float phi = uv.y * TAU;
-	float cosTheta = abs(2 * uv.x - 1);
-	float sinTheta = sqrt(max(0, 1 - cosTheta * cosTheta));
-	return vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
-}
+	// (Uniformly) sample a point on the unit disk
+    float r = sqrt(uv.x);
+    float theta = TAU * uv.y;
+    float x = r * cos(theta);
+    float y = r * sin(theta);
 
-
-vec3 local_to_world(const in vec3 vector, const in vec3 normal) {
-    // Find an axis that is not parallel to normal
-    vec3 u = normalize(cross(normal, (abs(normal.x) <= 0.01f) ? vec3(1, 0, 0) : vec3(0, 1, 0)));
-    return normalize(mat3(u, cross(normal, u), normal) * vector);
+    // Project point up to the unit sphere
+    float z = float(sqrt(max(0.f, 1 - x * x - y * y)));
+    return vec3(x, y, z);
 }
 
 void main()
 {
 	color = vec4(0);
 	vec3 direction = normalize(dir);
+	
+    vec3 u = normalize(cross(direction, (abs(direction.x) <= 0.6f) ? vec3(1, 0, 0) : vec3(0, 1, 0)));
+    mat3 to_world = mat3(u, cross(direction, u), direction);
 
-	const int count = 256;
+	const int count = 2048;
+	const int ham_samples = count;
 	for(int i=0; i < count; ++i)
 	{
-		const vec2 rnd	= random_hammersley_2d(float(i), 1.f/count);
-		const vec3 hemi = sample_uniform_hemisphere(rnd);
-		const vec3 ltw	= local_to_world(hemi, direction);
+		const vec2 rnd	= random_hammersley_2d(float(i), 1.f/ham_samples);
+		const vec3 hemi = normalize(sample_cosine_hemisphere(rnd));
+		const vec3 ltw	= to_world * hemi;
 		
-		color += 3.14159265359 * textureLod(cubemap, ltw, 0);
+		color += textureLod(cubemap, ltw, 3);
 	}
+
 	color /= count;
 }
