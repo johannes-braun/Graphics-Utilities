@@ -20,6 +20,7 @@ vec2 random_hammersley_2d(float current, float inverse_sample_count)
 uint random_wang_hash(uint a)
 {
 	a = (a ^ 61) ^ (a >> 16);
+
 	a = a + (a << 3);
 	a = a ^ (a >> 4);
 	a = a * 0x27d4eb2d;
