@@ -1,6 +1,54 @@
 #define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
 
+struct material
+{
+    static constexpr glm::vec3 make_f0(glm::vec3 n, glm::vec3 k)
+    {
+        const glm::vec3 k2(k.x * k.x, k.y * k.y, k.z * k.z);
+        const glm::vec3 omn(1.f - n.x, 1.f - n.y, 1.f - n.z);
+        const glm::vec3 opn(1.f + n.x, 1.f + n.y, 1.f + n.z);
+
+        return glm::vec3((omn.x * omn.x + k2.x) / (opn.x * opn.x + k2.x), (omn.y * omn.y + k2.y) / (opn.y * opn.y + k2.y),
+                         (omn.z * omn.z + k2.z) / (opn.z * opn.z + k2.z));
+    }
+
+    constexpr glm::uint pack(glm::vec4 const& v)
+    {
+        glm::uint result = 0;
+        result |= glm::uint(std::min(255.f, std::max(v.x * 255.f, 0.f))) << 0;
+        result |= glm::uint(std::min(255.f, std::max(v.y * 255.f, 0.f))) << 8;
+        result |= glm::uint(std::min(255.f, std::max(v.z * 255.f, 0.f))) << 16;
+        result |= glm::uint(std::min(255.f, std::max(v.w * 255.f, 0.f))) << 24;
+        return result;
+    }
+
+	material() = default;
+
+     material(glm::vec3 color, glm::vec3 f0, float tr, float rough) : packed_logf0_roughness(0), packed_albedo_transparency(0)
+    {
+        set_albedo_transparency(color, tr);
+        set_f0_roughness(f0, rough);
+    }
+
+     void set_albedo_transparency(const glm::vec3& color, float t) { packed_albedo_transparency = pack(glm::vec4(color, t)); }
+     void set_f0_roughness(const glm::vec3& val, float r)
+    {
+        packed_logf0_roughness = pack(glm::vec4(glm::vec3(std::log(val.x + 1), std::log(val.y + 1), std::log(val.z + 1)), r));
+    }
+
+    glm::vec3 albedo() const noexcept { return glm::unpackUnorm4x8(packed_albedo_transparency); }
+    glm::vec3 f0() const noexcept
+    {
+        return glm::pow(glm::vec3(glm::e<float>()), glm::vec3(glm::unpackUnorm4x8(packed_logf0_roughness))) - 1.f;
+    }
+    float transparency() const noexcept { return glm::unpackUnorm4x8(packed_albedo_transparency).a; }
+    float roughness() const noexcept { return glm::unpackUnorm4x8(packed_logf0_roughness).a; }
+
+    uint32_t packed_logf0_roughness;
+    uint32_t packed_albedo_transparency;
+};
+
 int main()
 {
     gfx::context_options opt;
@@ -45,8 +93,7 @@ int main()
     gfx::graphics_pipeline specular_pipeline{gfx::vertex_input(gfx::topology::point_list), gfx::state_info()};
     specular_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::text, "13_ibl/cubemap_filter.vert"));
     specular_pipeline.attach(gfx::shader_type::geom, gfx::shader(gfx::shader_format::text, "13_ibl/cubemap_filter.geom"));
-    specular_pipeline.attach(gfx::shader_type::frag,
-                             gfx::shader(gfx::shader_format::text, "13_ibl/cubemap_filter_specular.frag"));
+    specular_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::text, "13_ibl/cubemap_filter_specular.frag"));
 
     gfx::descriptor_set filter_set;
     filter_set.set(gfx::descriptor_type::sampled_texture, 0, base_cubemap_view, sampler);
@@ -65,8 +112,7 @@ int main()
     gfx::hbuffer<float> roughness(1);
     filter_set.set(gfx::descriptor_type::uniform_buffer, 0, roughness);
 
-    for (int l = 0; l < 10; ++l)
-    {
+    for (int l = 0; l < 10; ++l) {
         glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, specular_cubemap, l);
         roughness[0] = l / (9.f);
         gfx::viewport viewport(0, 0, 1024 >> l, 1024 >> l, 0.01f, 100.f);
@@ -106,6 +152,20 @@ int main()
 
     gfx::buffer<gfx::vertex3d> mesh_vertex_buffer(gfx::buffer_usage::vertex, scene.meshes[0].vertices);
     gfx::buffer<gfx::index32>  mesh_index_buffer(gfx::buffer_usage::index, scene.meshes[0].indices);
+    gfx::hbuffer<material>     mesh_material_buffer_local;
+    gfx::buffer<material>      mesh_material_buffer(gfx::buffer_usage::storage, 1);
+
+	const material gold(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(0.24197f, 0.42108f, 1.3737f), glm::vec3(2.9152f, 2.3459f, 1.7704f)),
+                        0.f, 0.f);
+    const material copper(glm::vec3{0, 0, 0},
+                        material::make_f0(glm::vec3(0.40835f, 0.67693f, 0.24197f), glm::vec3(3.0988f, 2.6248f, 2.2921f)), 0.f, 0.f);
+    const material cobalt(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(2.1609f, 2.0524f, 1.7365f), glm::vec3(4.0371f, 3.8242f, 3.2745f)),
+                        0.f, 0.f);
+    const material palladium(glm::vec3{0, 0, 0},
+                             material::make_f0(glm::vec3(1.7160f, 1.6412f, 1.4080f), glm::vec3(4.1177f, 3.8455f, 3.2540f)), 0.f, 0.f);
+    const material cellulose(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(1.4696f, 1.4720f, 1.4796f), glm::vec3(0.f)), 0.f, 0.f);
+
+    mesh_material_buffer_local.emplace_back(copper).set_f0_roughness(copper.f0(), 0.12f);
 
     const auto mesh_vertex_input = std::make_shared<gfx::vertex_input>();
     mesh_vertex_input->add_attribute(0, gfx::rgb32f, offsetof(gfx::vertex3d, position));
@@ -134,6 +194,7 @@ int main()
 
     gfx::descriptor_set mesh_cam_descriptor;
     mesh_cam_descriptor.set(gfx::descriptor_type::uniform_buffer, 0, camera_buffer);
+    mesh_cam_descriptor.set(gfx::descriptor_type::storage_buffer, 0, mesh_material_buffer);
     mesh_cam_descriptor.set(gfx::descriptor_type::sampled_texture, 0, filtered_cubemap_view, sampler);
     mesh_cam_descriptor.set(gfx::descriptor_type::sampled_texture, 1, specular_cubemap_view, sampler);
     mesh_cam_descriptor.set(gfx::descriptor_type::sampled_texture, 2, brdf_lut_view, sampler);
@@ -175,10 +236,10 @@ int main()
     cmd.bind_index_buffer(mesh_index_buffer, gfx::index_type::uint32);
     cmd.draw_indexed(mesh_index_buffer.capacity());
 
-    while (context->run())
-    {
+    while (context->run()) {
         controller.update(camera);
         camera_buffer[0] = camera.info();
+        mesh_material_buffer << mesh_material_buffer_local;
 
         cmd.execute();
 
