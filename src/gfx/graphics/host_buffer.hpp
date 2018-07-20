@@ -30,7 +30,15 @@ public:
     using difference_type                 = int64_t;
     virtual ~host_buffer_implementation() = default;
 
-    virtual std::byte* grow(const std::byte* old_data, size_type old_size, size_type new_capacity) = 0;
+	struct allocation
+	{
+		void* data;
+		std::any handle;
+	};
+
+	virtual allocation allocate(size_type size) = 0;
+	virtual void deallocate(const allocation& alloc) = 0;
+
     virtual std::any   api_handle()                                                                = 0;
 };
 }    // namespace detail
@@ -72,6 +80,7 @@ public:
     host_buffer(const Container& elements);
     ~host_buffer()
     {
+		implementation()->deallocate(_allocation);
         for (auto& elem : *this) { elem.~value_type(); }
     }
 
@@ -126,6 +135,7 @@ public:
     static const_pointer type_ptr(const std::byte* ptr);
     static pointer       type_ptr(std::byte* ptr);
 
+	detail::host_buffer_implementation::allocation _allocation ={ nullptr, {} };
     size_type                       _capacity       = 0;
     span<T>                         _data_span;
 };

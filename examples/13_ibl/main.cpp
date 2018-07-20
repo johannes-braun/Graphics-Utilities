@@ -165,7 +165,7 @@ int main()
                              material::make_f0(glm::vec3(1.7160f, 1.6412f, 1.4080f), glm::vec3(4.1177f, 3.8455f, 3.2540f)), 0.f, 0.f);
     const material cellulose(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(1.4696f, 1.4720f, 1.4796f), glm::vec3(0.f)), 0.f, 0.f);
 
-    mesh_material_buffer_local.emplace_back(copper).set_f0_roughness(copper.f0(), 0.12f);
+    mesh_material_buffer_local.emplace_back(gold).set_f0_roughness(gold.f0(), 0.22f);
 
     const auto mesh_vertex_input = std::make_shared<gfx::vertex_input>();
     mesh_vertex_input->add_attribute(0, gfx::rgb32f, offsetof(gfx::vertex3d, position));

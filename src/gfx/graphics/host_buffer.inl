@@ -15,8 +15,20 @@ template <typename T> void host_buffer<T>::resize(size_type elements, const_refe
             std::for_each(_data_span.begin() + elements, _data_span.end(), [](value_type& it) { it.~value_type(); });
         }
 
-        _data_span = {type_ptr(implementation()->grow(byte_ptr(_data_span.data()), _data_span.size() * type_size, elements * type_size)), elements };
-        if (last_size < elements) std::generate(_data_span.begin() + last_size, _data_span.end(), [&]() { return base; });
+		auto new_alloc = implementation()->allocate(elements * type_size);
+		pointer ptr = static_cast<pointer>(new_alloc.data);
+
+		for (size_type i = 0; i < elements; ++i)
+		{
+			if (i < _data_span.size())
+				ptr[i] = std::move(_data_span[i]);
+			else
+				ptr[i] = base;
+		}
+		implementation()->deallocate(_allocation);
+		_allocation = new_alloc;
+        _data_span = { ptr, elements };
+		_capacity = elements;
     }
 }
 
@@ -24,10 +36,16 @@ template<typename T>
 void host_buffer<T>::reserve(size_type size)
 {
     if (_capacity < size) {
-        _data_span = {
-            type_ptr(implementation()->grow(byte_ptr(_data_span.data()), _capacity * type_size, size * type_size)),
-            _data_span.size()
-        };
+		auto new_alloc = implementation()->allocate(size * type_size);
+		pointer ptr = static_cast<pointer>(new_alloc.data);
+
+		for (size_type i = 0; i < _data_span.size(); ++i)
+		{
+			ptr[i] = std::move(_data_span[i]);
+		}
+		implementation()->deallocate(_allocation);
+		_allocation = new_alloc;
+		_data_span = { ptr, _data_span.size() };
         _capacity = size;
     }
 }
@@ -47,7 +65,7 @@ host_buffer<T>::host_buffer(const size_type elements)
 
 template <typename T>
 host_buffer<T>::host_buffer(const size_type elements, const_reference base)
-      : _data_span(type_ptr(implementation()->grow(nullptr, 0, elements * type_size)), elements)
+      : _allocation(implementation()->allocate(elements * type_size)), _data_span(static_cast<pointer>(_allocation.data), elements)
 {
     std::generate(std::execution::par_unseq, begin(), end(), [&]() { return base; });
 }
@@ -57,7 +75,8 @@ template <typename Iter>
 host_buffer<T>::host_buffer(Iter begin, Iter end)
 {
     const auto dist = std::distance(begin, end);
-    _data_span      = {type_ptr(implementation()->grow(nullptr, 0, dist * type_size)), dist};
+	_allocation = implementation()->allocate(dist * type_size);
+    _data_span      = {static_cast<pointer>(_allocation.data), dist};
     std::copy(begin, end, _data_span.begin());
 }
 
@@ -201,12 +220,7 @@ template<typename T>
 void host_buffer<T>::shrink_to_fit()
 {
     if (_capacity != _data_span.size()) {
-        // grow a.k.a. shrink
-        _data_span = {
-            type_ptr(implementation()->grow(byte_ptr(_data_span.data()), _capacity * type_size, _data_span.size() * type_size)),
-            _data_span.size()
-        };
-        _capacity = _data_span.size();
+		resize(_data_span.size());
     }
 }
 

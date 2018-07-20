@@ -12,7 +12,10 @@ public:
 
     host_buffer_implementation();
     ~host_buffer_implementation();
-    std::byte*   grow(const std::byte* old_data, size_type old_size, size_type new_capacity) override;
+	
+	allocation allocate(size_type size) override;
+	void deallocate(const allocation& alloc) override;
+
     std::any api_handle() override;
 
 private:
