@@ -68,7 +68,7 @@ struct light_path
 };
 
 const int bounce_count = 7;
-const int lpcount = 5;
+const int lpcount = 1;
 light_path lighting[lpcount];
 
 void main()
@@ -209,9 +209,9 @@ void main()
                         const vec3 pos_difference = lighting[p].position.xyz - position.xyz;
                         const vec3 pos_difference_n = normalize(pos_difference);
                         light_color += lighting[p].color.rgb * vec3(
-                            clamp(dot(pos_difference_n, normalize(normal.xyz)), 0.f, 4) *
-                            clamp(dot(-pos_difference_n, normalize(lighting[p].normal.xyz)), 0.f, 4) *
-                            clamp(1.f / max(dot(pos_difference, pos_difference), 0.1), 0, 4));
+                            clamp(dot(pos_difference_n, normalize(normal.xyz)), 0.f, 20000) *
+                            clamp(dot(-pos_difference_n, normalize(lighting[p].normal.xyz)), 0.f, 20000) *
+                            clamp(1.f / max(dot(pos_difference, pos_difference), 0.1), 0, 20000));
                     }
                 }
 
@@ -260,13 +260,13 @@ void main()
             }
             else
             {
-                color += vec4(radiance * environment(cubemap, direction, 1.1f, 3), 1);
+                color += vec4(radiance * environment(cubemap, direction, 40, 3), 1);
                 break;
             }
         }
     }
     else
-        color = vec4(environment(cubemap, direction, 2.f, 0), 0);
+        color = vec4(environment(cubemap, direction, 40, 0), 0);
 
     imageStore(img, pixel, mix(last_color, color, 1.f / frames));
 }

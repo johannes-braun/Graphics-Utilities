@@ -165,7 +165,9 @@ int main()
                              material::make_f0(glm::vec3(1.7160f, 1.6412f, 1.4080f), glm::vec3(4.1177f, 3.8455f, 3.2540f)), 0.f, 0.f);
     const material cellulose(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(1.4696f, 1.4720f, 1.4796f), glm::vec3(0.f)), 0.f, 0.f);
 
-    mesh_material_buffer_local.emplace_back(gold).set_f0_roughness(gold.f0(), 0.22f);
+	auto& mat = mesh_material_buffer_local.emplace_back(cellulose);
+	mat.set_f0_roughness(cellulose.f0(), 0.2f);
+	mat.set_albedo_transparency({ 0.3f, 0.18f, 0.12f }, 0.f);
 
     const auto mesh_vertex_input = std::make_shared<gfx::vertex_input>();
     mesh_vertex_input->add_attribute(0, gfx::rgb32f, offsetof(gfx::vertex3d, position));
@@ -192,8 +194,16 @@ int main()
     gfx::camera_controller          controller;
     gfx::hbuffer<gfx::camera::data> camera_buffer{camera.info()};
 
+	struct lighting
+	{
+		float gamma;
+		float exposure;
+	};
+	gfx::hbuffer<lighting> lighting_buffer{ {2.2f, 1.f} };
+
     gfx::descriptor_set mesh_cam_descriptor;
     mesh_cam_descriptor.set(gfx::descriptor_type::uniform_buffer, 0, camera_buffer);
+    mesh_cam_descriptor.set(gfx::descriptor_type::uniform_buffer, 1, lighting_buffer);
     mesh_cam_descriptor.set(gfx::descriptor_type::storage_buffer, 0, mesh_material_buffer);
     mesh_cam_descriptor.set(gfx::descriptor_type::sampled_texture, 0, filtered_cubemap_view, sampler);
     mesh_cam_descriptor.set(gfx::descriptor_type::sampled_texture, 1, specular_cubemap_view, sampler);
@@ -201,6 +211,7 @@ int main()
 
     gfx::descriptor_set cubemap_set;
     cubemap_set.set(gfx::descriptor_type::uniform_buffer, 0, camera_buffer);
+    cubemap_set.set(gfx::descriptor_type::uniform_buffer, 1, lighting_buffer);
     cubemap_set.set(gfx::descriptor_type::sampled_texture, 0, base_cubemap_view, sampler);
 
     // TODO: Framebuffers
@@ -236,7 +247,32 @@ int main()
     cmd.bind_index_buffer(mesh_index_buffer, gfx::index_type::uint32);
     cmd.draw_indexed(mesh_index_buffer.capacity());
 
+	gfx::imgui imgui;
+
     while (context->run()) {
+		imgui.new_frame();
+
+		static glm::vec3 ior_n(0.24197f, 0.42108f, 1.3737f);
+		static glm::vec3 ior_k(2.9152f, 2.3459f, 1.7704f);
+		glm::vec3 albedo = mat.albedo();
+		glm::vec3 f0 = mat.f0();
+		float t = mat.transparency();
+		float r = mat.roughness();
+
+		ImGui::Begin("Settings");
+		ImGui::ColorEdit3("Albedo", glm::value_ptr(albedo));
+		ImGui::ColorEdit3("IOR (n)", glm::value_ptr(ior_n), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+		ImGui::ColorEdit3("IOR (k)", glm::value_ptr(ior_k), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+		ImGui::DragFloat("Transparency", &t, 0.01f, 0.f, 1.f);
+		ImGui::DragFloat("Roughness", &r, 0.01f, 0.f, 1.f);
+		ImGui::Separator();
+		ImGui::DragFloat("Gamma", &lighting_buffer[0].gamma, 0.01f, 0.f, 100.f);
+		ImGui::DragFloat("Exposure", &lighting_buffer[0].exposure, 0.01f, 0.f, 100.f);
+		ImGui::End();
+
+		mat.set_albedo_transparency(albedo, t);
+		mat.set_f0_roughness(material::make_f0(ior_n, ior_k), r);
+
         controller.update(camera);
         camera_buffer[0] = camera.info();
         mesh_material_buffer << mesh_material_buffer_local;
@@ -245,5 +281,8 @@ int main()
 
         glBlitNamedFramebuffer(msaa_fbo, resolve_fbo, 0, 0, 1280, 720, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT, GL_LINEAR);
         glBlitNamedFramebuffer(resolve_fbo, mygl::framebuffer::zero, 0, 0, 1280, 720, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
+		imgui.render();
     }
 }

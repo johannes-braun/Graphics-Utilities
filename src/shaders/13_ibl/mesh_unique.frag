@@ -11,6 +11,12 @@ layout(binding = 0) uniform Camera
 	vec3 position;
 } camera;
 
+layout(binding = 1) uniform Lighting
+{
+	float gamma;
+	float exposure;
+} lighting;
+
 layout(binding = 0) restrict readonly buffer Materials
 {
 	struct {
@@ -64,5 +70,18 @@ void main()
 	vec2 envBRDF  = texture(brdf_lut, vec2(ndotv, roughness)).rg;
 	vec3 specular = prefilteredColor * (fnl * envBRDF.x + envBRDF.y);
 
-	color = vec4(kD * diffuse + specular, 1.f);
+	vec3 ior = vec3(1.6, 1.5, 1.4);
+
+	vec3 refract_r = refract(view, normal, 1.f / ior.x);
+	vec3 refract_g = refract(view, normal, 1.f / ior.y);
+	vec3 refract_b = refract(view, normal, 1.f / ior.z);
+
+	vec3 refr_color;
+	refr_color.r = textureLod(specular_cubemap, refract_r, roughness * MAX_REFLECTION_LOD).r;
+	refr_color.g = textureLod(specular_cubemap, refract_g, roughness * MAX_REFLECTION_LOD).g;
+	refr_color.b = textureLod(specular_cubemap, refract_b, roughness * MAX_REFLECTION_LOD).b;
+
+	color = vec4(kD * mix(diffuse, refr_color, transparency) + specular, 1.f);
+	color = 1.f - exp(-color * lighting.exposure);
+	color = pow(color, vec4(1.f / lighting.gamma));
 }
