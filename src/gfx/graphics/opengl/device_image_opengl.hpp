@@ -9,6 +9,7 @@ namespace gfx::opengl
 class device_image_implementation : public detail::device_image_implementation
 {
 public:
+	~device_image_implementation();
     void     initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels, sample_count samples) override;
     void     fill_from(const host_image& image, uint32_t level, uint32_t layer) override;
     void     fill_to(const host_image& image, uint32_t level, uint32_t layer) override;

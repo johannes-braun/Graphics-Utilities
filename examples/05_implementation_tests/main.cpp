@@ -39,14 +39,5 @@ int main()
     sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
     sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
     sampler.set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
-
-    mygl::buffer  mgl_buffer  = dst;
-    mygl::texture mgl_texture = file_texture;
-    mygl::sampler mgl_sampler = sampler;
-
-    while(context->run())
-    {
-        glFinish();
-        glFinish();
-    }
+       
 }

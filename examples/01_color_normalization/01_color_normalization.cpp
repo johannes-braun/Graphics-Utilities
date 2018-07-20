@@ -2,6 +2,8 @@
 #include <gfx/gfx.hpp>
 #include <gfx/math.hpp>
 
+#include <runnable.hpp>
+
 struct axis_transformation
 {
     glm::mat4 basic_rgb;
@@ -72,7 +74,7 @@ axis_transformation principal_axis_transformation(const gfx::himage& image)
         return toMat4(angleAxis(abs(angle), (angle > 0) ? cross(axis, main_axis) : cross(-axis, main_axis)));
     };
 
-    axis_transformation result;
+    axis_transformation result{};
     result.basic_rgb       = translate_back_rgb * make_rotation(axis_basic_rgb, main_axis_rgb) * translate_rgb;
     result.eigen_rgb       = translate_back_rgb * make_rotation(axis_eigen_rgb, main_axis_rgb) * translate_rgb;
     result.basic_pomierski = glm::dmat4(pomierski_inverse) * translate_back_pomierski
@@ -85,19 +87,23 @@ axis_transformation principal_axis_transformation(const gfx::himage& image)
 
 int main()
 {
-    gfx::context_options options;
-    options.window_title        = "[01] Color Normalization";
-    options.window_width        = 1280;
-    options.window_height       = 720;
-    options.framebuffer_samples = 8;
-    options.debug               = true;
-    auto context                = gfx::context::create(options);
-    context->make_current();
+	runnable r;
+	r.run();
+}
 
-    gfx::imgui imgui;
+void runnable::init(gfx::context_options& options)
+{
+	options.window_title        = "[01] Color Normalization";
+	options.window_width        = 1280;
+	options.window_height       = 720;
+	options.framebuffer_samples = 8;
+	options.debug               = true;
+}
 
+void runnable::run()
+{
     const auto source_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files");
-    if (!source_data) return 0;
+    if (!source_data) return;
 
     gfx::himage        picture(gfx::rgb8unorm, *source_data);
     gfx::image         texture(picture);
@@ -183,10 +189,6 @@ int main()
     gfx::buffer<gfx::vertex3d> vbo(gfx::buffer_usage::vertex, gfx::cube_preset::vertices);
     gfx::buffer<gfx::index32>  ibo(gfx::buffer_usage::index, gfx::cube_preset::indices);
 
-    gfx::camera camera;
-    camera.transform_mode.position = glm::vec3(0, 0, 5);
-    gfx::camera_controller controller;
-
     struct render_info
     {
         glm::mat4 vp;
@@ -205,10 +207,8 @@ int main()
 
     gfx::commands cmd;
 
-    while (context->run())
+    while (frame())
     {
-        imgui.new_frame();
-
         ImGui::Begin("Primary Axis Transformation");
         static bool hat_en = true;
         ImGui::Checkbox("Enable Transformation", &hat_en);
@@ -275,7 +275,7 @@ int main()
 
         cmd.reset();
         gfx::clear_value values[]{glm::vec4{0.2f, 0.2f, 0.2f, 1.f}, gfx::depth_stencil{0.f, 0u}};
-        cmd.begin_pass(values, 2, mygl::framebuffer::zero);
+        cmd.begin_pass(*main_framebuffer);
 
         cmd.bind_descriptors(&main_desc, 1);
 
@@ -307,9 +307,8 @@ int main()
         cmd.bind_pipeline(img_pipeline);
         cmd.set_viewports(&pic_vp, 1, 0);
         cmd.draw(3);
+		cmd.end_pass();
 
         cmd.execute();
-
-        imgui.render();
     }
 }

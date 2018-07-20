@@ -3,16 +3,10 @@
 #include "descriptor.hpp"
 #include "implementation.hpp"
 #include "pipeline.hpp"
+#include "framebuffer.hpp"
 
 namespace gfx
 {
-struct depth_stencil
-{
-    float    depth;
-    uint32_t stencil;
-};
-using clear_value = std::variant<glm::vec4, depth_stencil>;
-
 namespace detail
 {
 class commands_implementation
@@ -28,11 +22,12 @@ public:
     virtual void draw_indexed(size_t index_count, size_t instance_count, ptrdiff_t first_index, ptrdiff_t first_vertex,
                               ptrdiff_t first_instance)                                                             = 0;
     virtual void reset()                                                                                            = 0;
-    virtual void execute()                                                                                          = 0;
+    virtual void execute(bool block)                                                                                          = 0;
 
     // TODO(s):
     virtual void bind_descriptors(descriptor_set* sets, int count)                             = 0;
-    virtual void begin_pass(clear_value* values, int value_count, /*tmp*/ std::any fbo_handle) = 0;
+    virtual void begin_pass(framebuffer& fbo_handle) = 0;
+	virtual void end_pass() = 0;
     virtual void set_viewports(gfx::viewport* vps, int count, int first)                       = 0;
 
     virtual std::any api_handle() = 0;
@@ -69,12 +64,13 @@ public:
                       ptrdiff_t first_instance = 0) const;
 
     void reset() const;
-    void execute() const;
+    void execute(bool block = false) const;
 
     // TODO:
     void set_viewports(gfx::viewport* vps, int count, int first);
     void bind_descriptors(descriptor_set* sets, int count) const;    // etc...
-    void begin_pass(clear_value* clear_values, int value_count, /*tmp*/ std::any fbo) const;
+    void begin_pass(framebuffer& fbo) const;
+	void end_pass() const;
 };
 
 template<typename Buffer, typename>

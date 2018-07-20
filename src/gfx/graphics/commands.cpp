@@ -41,9 +41,9 @@ void commands::reset() const
     implementation()->reset();
 }
 
-void commands::execute() const
+void commands::execute(bool block) const
 {
-    implementation()->execute();
+    implementation()->execute(block);
 }
 
 void commands::set_viewports(gfx::viewport* vps, int count, int first)
@@ -51,8 +51,13 @@ void commands::set_viewports(gfx::viewport* vps, int count, int first)
     implementation()->set_viewports(vps, count, first);
 }
 
-void commands::begin_pass(clear_value* clear_values, int value_count, std::any fbo) const
+void commands::begin_pass(framebuffer& fbo) const
 {
-    implementation()->begin_pass(clear_values, value_count, fbo);
+    implementation()->begin_pass(fbo);
+}
+
+void commands::end_pass() const
+{
+	implementation()->end_pass();
 }
 }

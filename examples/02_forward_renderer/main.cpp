@@ -11,17 +11,6 @@
 #include <random>
 #include <vector>
 
-std::unique_ptr<gl::framebuffer> main_framebuffer;
-
-void build_framebuffer(int width, int height)
-{
-    main_framebuffer = std::make_unique<gl::framebuffer>();
-    main_framebuffer->at(GL_COLOR_ATTACHMENT0) =
-        std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, width, height, gl::samples::x8, GL_RGBA16F);
-    main_framebuffer->at(GL_DEPTH_ATTACHMENT) =
-        std::make_shared<gl::texture>(GL_TEXTURE_2D_MULTISAMPLE, width, height, gl::samples::x8, GL_DEPTH32F_STENCIL8, 1);
-}
-
 int main()
 {
     gfx::context_options options;
@@ -108,11 +97,11 @@ int main()
             float metal                 = dist(gen);
             instance.packed_rough_metal = glm::packUnorm2x16(glm::vec2(roughness, metal));
             if (diffuse_textures[mesh.material_index]) {
-                instance.diffuse_texture = glGetTextureSamplerHandleARB(*diffuse_textures[mesh.material_index], sampler);
+                instance.diffuse_texture = glGetTextureSamplerHandleARB(handle_cast<mygl::texture>(*diffuse_textures[mesh.material_index]),handle_cast<mygl::sampler>(sampler));
                 if (!glIsTextureHandleResidentARB(instance.diffuse_texture)) glMakeTextureHandleResidentARB(instance.diffuse_texture);
             }
             if (bump_textures[mesh.material_index]) {
-                instance.bump_texture = glGetTextureSamplerHandleARB(*bump_textures[mesh.material_index], sampler);
+                instance.bump_texture = glGetTextureSamplerHandleARB(handle_cast<mygl::texture>(*bump_textures[mesh.material_index]), handle_cast<mygl::sampler>(sampler));
                 if (!glIsTextureHandleResidentARB(instance.bump_texture)) glMakeTextureHandleResidentARB(instance.bump_texture);
             }
             meshes.update_mesh(instance);
@@ -143,8 +132,6 @@ int main()
 
     gfx::host_buffer<gfx::light::info> light_buffer(lights.size());
     gfx::host_buffer<float>            time_buffer({static_cast<float>(glfwGetTime())});
-
-    build_framebuffer(1280, 720);
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -208,9 +195,9 @@ int main()
 
         queries["scene"].queries["culling"].start();
         gl::framebuffer::zero().bind();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, matrix_buffer);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(matrix_buffer));
         if (enabled_lights != 0)
-            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, light_buffer, 0, enabled_lights * sizeof(gfx::light::info));
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, handle_cast<mygl::buffer>(light_buffer), 0, enabled_lights * sizeof(gfx::light::info));
         else
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mygl::buffer::zero);
         large_meshes.cull();

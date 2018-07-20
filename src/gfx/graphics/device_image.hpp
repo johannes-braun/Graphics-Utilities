@@ -65,6 +65,7 @@ public:
     const format&   pixel_format() const noexcept;
     const extent&   extents() const noexcept;
     const uint32_t& levels() const noexcept;
+	const sample_count& samples() const noexcept { return _samples; }
 
     GFX_api_cast_op(gapi::opengl, device_image);
 

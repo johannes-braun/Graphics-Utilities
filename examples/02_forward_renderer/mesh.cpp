@@ -163,7 +163,7 @@ void mesh_holder::free_instance(const mesh_instance& instance)
 void mesh_holder::cull() const
 {
     static gl::compute_pipeline cull_frustum(std::make_shared<gl::shader>("02_forward_renderer/cull_frustum.comp"));
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, info_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, handle_cast<mygl::buffer>(info_buffer));
     cull_frustum.dispatch(static_cast<uint32_t>(info_buffer.capacity()));
 }
 
@@ -171,7 +171,7 @@ void mesh_holder::render()
 {
     _vertex_input.bind_vertex_buffer(0, vertex_buffer, 0);
     _vertex_input.bind_index_buffer(index_buffer, index_type::uint32);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, info_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, handle_cast<mygl::buffer>(info_buffer));
     _vertex_input.draw_indexed_indirect(info_buffer, 0, static_cast<uint32_t>(info_buffer.capacity()), sizeof(mesh_instance));
 }
 }

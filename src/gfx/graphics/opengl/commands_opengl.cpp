@@ -1,5 +1,5 @@
-#include "state_info.hpp"
 #include "commands_opengl.hpp"
+#include "state_info.hpp"
 
 namespace gfx
 {
@@ -52,7 +52,7 @@ void opengl::commands_implementation::reset()
     _curr_pipeline = nullptr;
 }
 
-void opengl::commands_implementation::execute()
+void opengl::commands_implementation::execute(bool block)
 {
     for (auto& q : _queue) {
         q();
@@ -61,6 +61,8 @@ void opengl::commands_implementation::execute()
 
     static state_info default_state;
     apply(default_state);
+    glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
+	if (block) glFinish();
 }
 
 void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int count)
@@ -114,21 +116,31 @@ void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int
     }
 }
 
-void opengl::commands_implementation::begin_pass(clear_value* values, int value_count, std::any fbo_handle)
+void opengl::commands_implementation::begin_pass(framebuffer& fbo_handle)
 {
-    _queue.emplace_back(
-        [ val = std::vector<clear_value>(values, values + 2), fbo = std::any_cast<mygl::framebuffer>(fbo_handle), value_count ] {
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	_curr_framebuffer = &fbo_handle;
+    _queue.emplace_back([ fbo = _curr_framebuffer ] {
+        fbo->begin();
 
-            for (int i = 0; i < value_count; ++i) {
-                if (auto cptr = std::get_if<glm::vec4>(&val[i])) { glClearNamedFramebufferfv(fbo, GL_COLOR, i, value_ptr(*cptr));
-                }
-                else if (auto dptr = std::get_if<depth_stencil>(&val[i]))
-                {
-                    glClearNamedFramebufferfi(fbo, GL_DEPTH_STENCIL, 0, dptr->depth, dptr->stencil);
-                }
+        for (int i = 0; i < fbo->color_clear_values().size(); ++i) {
+            if(const auto cv = fbo->color_clear_values()[i])
+            {
+                glClearNamedFramebufferfv(handle_cast<mygl::framebuffer>(*fbo), GL_COLOR, i, value_ptr(std::get<glm::vec4>(*cv)));
             }
-        });
+        }
+		if (const auto dv = fbo->depth_clear_value())
+		{
+			const auto& dvv = std::get<depth_stencil>(*dv);
+			glClearNamedFramebufferfi(handle_cast<mygl::framebuffer>(*fbo), GL_DEPTH_STENCIL, 0, dvv.depth, dvv.stencil);
+		}
+    });
+}
+
+void opengl::commands_implementation::end_pass()
+{
+	_queue.emplace_back([fbo = _curr_framebuffer]{
+		fbo->end();
+	});
 }
 
 void opengl::commands_implementation::set_viewports(gfx::viewport* vps, int count, int first)
@@ -143,7 +155,7 @@ void opengl::commands_implementation::set_viewports(gfx::viewport* vps, int coun
 
 std::any opengl::commands_implementation::api_handle()
 {
-    return {}; // none
+    return {};    // none
 }
 
 GLenum opengl::commands_implementation::current_draw_mode() const

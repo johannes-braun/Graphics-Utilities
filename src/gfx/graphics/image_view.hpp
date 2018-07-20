@@ -38,6 +38,7 @@ public:
 
     image_view(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer,
                uint32_t  layer_count);
+	image_view(imgv_type type, const device_image& image);
 
 GFX_api_cast_op(gapi::opengl, image_view)
 

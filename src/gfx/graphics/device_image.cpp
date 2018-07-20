@@ -59,7 +59,7 @@ device_image::device_image(img_type type, format format, const extent& size, uin
 }
 
 device_image::device_image(img_type type, format format, const extent& size, sample_count samples)
-      : _layer_dimensions(static_cast<uint32_t>(type)), _format(format), _extent(size), _levels(0), _samples(samples)
+      : _layer_dimensions(static_cast<uint32_t>(type)), _format(format), _extent(size), _levels(1), _samples(samples)
 {
     _implementation->initialize(_layer_dimensions, format, size, _levels, _samples);
 }

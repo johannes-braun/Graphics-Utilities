@@ -67,9 +67,9 @@ int main()
                 camera.projection_mode.matrix() * glm::inverse(camera.transform_mode.matrix()) * glm::scale(glm::vec3(scale));
 
         pp.bind();
-        glBindTextureUnit(0, texture_view);
-        glBindSampler(0, sampler);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer);
+        glBindTextureUnit(0, handle_cast<mygl::texture>(texture_view));
+        glBindSampler(0, handle_cast<mygl::sampler>(sampler));
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(uniform_buffer));
         input.draw((texture.extents().width - 1) * (texture.extents().height - 1));
 
         imgui.render();

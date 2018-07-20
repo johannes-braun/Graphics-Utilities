@@ -32,6 +32,12 @@ class graphics_pipeline_implementation : public detail::graphics_pipeline_implem
     };
 
 public:
+    ~graphics_pipeline_implementation()
+    {
+		if (glIsProgramPipeline(_handle))
+			glDeleteProgramPipelines(1, &_handle);
+    }
+
     bool bind(vertex_input& input, state_info& info, const std::vector<std::pair<shader_type, std::shared_ptr<shader>>>& shaders,
               bool shaders_valid) override
     {
@@ -119,7 +125,7 @@ public:
 			}
         }
 
-        glBindVertexArray(input);
+        glBindVertexArray(handle_cast<mygl::vertex_array>(input));
         gfx::apply(info);
         glBindProgramPipeline(_handle);
         return true;

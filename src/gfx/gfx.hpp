@@ -35,6 +35,7 @@
 #include <gfx/graphics/vertex_input.hpp>
 #include <gfx/graphics/descriptor.hpp>
 #include <gfx/graphics/commands.hpp>
+#include <gfx/graphics/framebuffer.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>

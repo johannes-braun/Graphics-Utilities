@@ -216,10 +216,10 @@ int main()
         model_buffer_device << model_buffer;
 
         ship_pipeline.bind();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer_device);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 1, model_buffer_device);
-        ship_vao.vertex_buffer(0, ship_vbo, 0, sizeof(gfx::vertex3d));
-        ship_vao.element_buffer(ship_ibo);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(data_buffer_device));
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, handle_cast<mygl::buffer>(model_buffer_device));
+        ship_vao.vertex_buffer(0, handle_cast<mygl::buffer>(ship_vbo), 0, sizeof(gfx::vertex3d));
+        ship_vao.element_buffer(handle_cast<mygl::buffer>(ship_ibo));
         ship_vao.draw(GL_TRIANGLES, static_cast<int>(ship_ibo.capacity()), GL_UNSIGNED_INT);
 
         model_buffer[0].model_mat   = glm::mat4(ship_transform);
@@ -230,8 +230,8 @@ int main()
         model_buffer_device << model_buffer;
 
         ship_pipeline.bind();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer_device);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 1, model_buffer_device);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(data_buffer_device));
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, handle_cast<mygl::buffer>(model_buffer_device));
         ship_vao.vertex_buffer(0, sail_vertices, 0, sizeof(gfx::vertex3d));
         ship_vao.element_buffer(sail_indices);
         ship_vao.draw(GL_TRIANGLES, static_cast<int>(sail_indices.size()), GL_UNSIGNED_INT);

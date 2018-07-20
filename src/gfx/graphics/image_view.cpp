@@ -22,4 +22,10 @@ image_view::image_view(imgv_type type, format         format, const device_image
 {
     implementation()->initialize(type, format, image, base_mip, mip_count, base_layer, layer_count);
 }
+
+image_view::image_view(imgv_type type, const device_image& image)
+	: image_view(type, image.pixel_format(), image, 0, image.levels(), 0, image.dimensions() < 3 ? image.extents().vec[image.dimensions()] : 1)
+{
+	
+}
 }

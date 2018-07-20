@@ -15,15 +15,17 @@ namespace gfx::opengl
         void draw_indexed(size_t index_count, size_t instance_count, ptrdiff_t first_index, ptrdiff_t first_vertex,
             ptrdiff_t first_instance) override;
         void reset() override;
-        void execute() override;
+        void execute(bool block) override;
         void bind_descriptors(descriptor_set* sets, int count) override;
-        void begin_pass(clear_value* values, int value_count, std::any fbo_handle) override;
+        void begin_pass(framebuffer& fbo_handle) override;
+		void end_pass() override;
         void set_viewports(gfx::viewport* vps, int count, int first) override;
         std::any api_handle() override;
 
     private:
         GLenum                  current_draw_mode() const;
 
+		framebuffer* _curr_framebuffer = nullptr;
         graphics_pipeline* _curr_pipeline = nullptr;
         std::atomic<GLenum>     _element_type  = GLenum(0);
         std::atomic<size_t>     _element_type_size  = 1;

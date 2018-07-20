@@ -144,11 +144,11 @@ int main()
     gfx::image resolve_attachment(gfx::img_type::image2d, gfx::rgba16f, {1280, 720, 1}, 1);
 
     gl::framebuffer render_fbo;
-    glNamedFramebufferTexture(render_fbo, GL_COLOR_ATTACHMENT0, color_attachment, 0);
-    glNamedFramebufferTexture(render_fbo, GL_DEPTH_ATTACHMENT, depth_attachment, 0);
+    glNamedFramebufferTexture(render_fbo, GL_COLOR_ATTACHMENT0, handle_cast<mygl::texture>(color_attachment), 0);
+    glNamedFramebufferTexture(render_fbo, GL_DEPTH_ATTACHMENT, handle_cast<mygl::texture>(depth_attachment), 0);
 
     gl::framebuffer resolve_fbo;
-    glNamedFramebufferTexture(resolve_fbo, GL_COLOR_ATTACHMENT0, resolve_attachment, 0);
+    glNamedFramebufferTexture(resolve_fbo, GL_COLOR_ATTACHMENT0, handle_cast<mygl::texture>(resolve_attachment), 0);
 
     gfx::hbuffer<glm::vec3> point_buffer(50000);
     gfx::buffer<glm::vec3>  point_buffer_device(gfx::buffer_usage::storage, 50000);

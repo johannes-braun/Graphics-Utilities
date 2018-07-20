@@ -48,7 +48,7 @@ int main()
 
     gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba32f, {1280, 720}, 1);
     gl::framebuffer   framebuffer;
-    glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, render_target, 0, 0);
+    glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, handle_cast<mygl::texture>(render_target), 0, 0);
 
     gfx::camera                           camera;
     gfx::camera_controller                controller;
@@ -72,8 +72,8 @@ int main()
 
     const auto get_handle = [](const auto& buf) -> uint64_t {
         uint64_t hnd;
-        glGetNamedBufferParameterui64vNV(buf, GL_BUFFER_GPU_ADDRESS_NV, &hnd);
-        glMakeNamedBufferResidentNV(buf, GL_READ_WRITE);
+        glGetNamedBufferParameterui64vNV(handle_cast<mygl::buffer>(buf), GL_BUFFER_GPU_ADDRESS_NV, &hnd);
+        glMakeNamedBufferResidentNV(handle_cast<mygl::buffer>(buf), GL_READ_WRITE);
         return hnd;
     };
 
@@ -95,10 +95,10 @@ int main()
                 inverse(camera.projection_mode.matrix() * glm::mat4(glm::mat3(inverse(camera.transform_mode.matrix()))));
         data_buffer[0].camera_position = glm::vec4(camera.transform_mode.position, 1.f);
         data_buffer[0].seed            = dist(gen);
-        glBindSampler(0, sampler);
-        glBindTextureUnit(0, cubemap_view);
-        glBindImageTexture(0, render_target, 0, true, 0, GL_READ_WRITE, GL_RGBA32F);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, data_buffer);
+        glBindSampler(0, handle_cast<mygl::sampler>(sampler));
+        glBindTextureUnit(0, handle_cast<mygl::texture>(cubemap_view));
+        glBindImageTexture(0, handle_cast<mygl::texture>(render_target), 0, true, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(data_buffer));
         tracer->dispatch(1280, 720);
 
         framebuffer.blit(nullptr, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT);

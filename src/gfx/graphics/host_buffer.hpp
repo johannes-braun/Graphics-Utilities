@@ -1,13 +1,13 @@
 #pragma once
 
-#include <execution>
+#include "implementation.hpp"
 #include <algorithm>
 #include <any>
+#include <execution>
 #include <gfx/api.hpp>
 #include <gfx/type.hpp>
 #include <memory>
 #include <numeric>
-#include "implementation.hpp"
 
 namespace std
 {
@@ -16,7 +16,8 @@ enum class byte : uint8_t;
 
 namespace gfx
 {
-namespace detail{
+namespace detail
+{
 template<typename C, typename TBase>
 using enable_if_container = std::void_t<decltype(std::data(std::declval<C>())), decltype(std::size(std::declval<C>())),
                                         std::enable_if_t<!std::is_same_v<std::initializer_list<TBase>, std::decay_t<C>>>>;
@@ -30,16 +31,16 @@ public:
     using difference_type                 = int64_t;
     virtual ~host_buffer_implementation() = default;
 
-	struct allocation
-	{
-		void* data;
-		std::any handle;
-	};
+    struct allocation
+    {
+        void*    data;
+        std::any handle;
+    };
 
-	virtual allocation allocate(size_type size) = 0;
-	virtual void deallocate(const allocation& alloc) = 0;
+    virtual allocation allocate(size_type size)            = 0;
+    virtual void       deallocate(const allocation& alloc) = 0;
 
-    virtual std::any   api_handle()                                                                = 0;
+    virtual std::any api_handle() = 0;
 };
 }    // namespace detail
 
@@ -48,7 +49,7 @@ GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)    //
     template<typename T>
     class device_buffer;
 
-    // buffer for host memory (mapped/contiguous)
+// buffer for host memory (mapped/contiguous)
 template<typename T>
 class host_buffer : public detail::base::implements<detail::host_buffer_implementation>
 {
@@ -80,8 +81,10 @@ public:
     host_buffer(const Container& elements);
     ~host_buffer()
     {
-		implementation()->deallocate(_allocation);
-        for (auto& elem : *this) { elem.~value_type(); }
+        implementation()->deallocate(_allocation);
+        for (auto& elem : *this) {
+            elem.~value_type();
+        }
     }
 
     host_buffer(host_buffer&&) = default;
@@ -93,7 +96,7 @@ public:
     const_reference operator[](size_type index) const;
 
     size_type     size() const noexcept;
-    size_type capacity() const noexcept;
+    size_type     capacity() const noexcept;
     bool          empty() const noexcept;
     pointer       data() noexcept;
     const_pointer data() const noexcept;
@@ -135,9 +138,9 @@ public:
     static const_pointer type_ptr(const std::byte* ptr);
     static pointer       type_ptr(std::byte* ptr);
 
-	detail::host_buffer_implementation::allocation _allocation ={ nullptr, {} };
-    size_type                       _capacity       = 0;
-    span<T>                         _data_span;
+    detail::host_buffer_implementation::allocation _allocation = {nullptr, {}};
+    size_type                                      _capacity   = 0;
+    span<T>                                        _data_span;
 };
 
 GFX_api_cast_template_impl(gapi::opengl, host_buffer)    //
