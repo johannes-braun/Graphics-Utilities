@@ -50,6 +50,16 @@ struct material
     uint32_t packed_albedo_transparency;
 };
 
+const material gold(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(0.24197f, 0.42108f, 1.3737f), glm::vec3(2.9152f, 2.3459f, 1.7704f)),
+	0.f, 0.f);
+const material copper(glm::vec3{0, 0, 0},
+	material::make_f0(glm::vec3(0.40835f, 0.67693f, 0.24197f), glm::vec3(3.0988f, 2.6248f, 2.2921f)), 0.f, 0.f);
+const material cobalt(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(2.1609f, 2.0524f, 1.7365f), glm::vec3(4.0371f, 3.8242f, 3.2745f)),
+	0.f, 0.f);
+const material palladium(glm::vec3{0, 0, 0},
+	material::make_f0(glm::vec3(1.7160f, 1.6412f, 1.4080f), glm::vec3(4.1177f, 3.8455f, 3.2540f)), 0.f, 0.f);
+const material cellulose(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(1.4696f, 1.4720f, 1.4796f), glm::vec3(0.f)), 0.f, 0.f);
+
 int main()
 {
     runnable r;
@@ -58,7 +68,6 @@ int main()
 
 void runnable::init(gfx::context_options& options)
 {
-	glfwWindowHint(GLFW_DOUBLEBUFFER, false);
     options.window_title        = "[13] Image Based Lighting";
     options.debug               = true;
     options.framebuffer_samples = 8;
@@ -105,9 +114,7 @@ void runnable::run()
     filter_set.set(gfx::descriptor_type::sampled_texture, 0, base_cubemap_view, sampler);
     gfx::commands cmd;
 
-    gfx::clear_value clear_values[]{glm::vec4(1, 1, 1, 1), gfx::depth_stencil{0.f, 0}};
     gfx::viewport    filter_viewport(0, 0, sampling_size, sampling_size, 0.01f, 100.f);
-
     cmd.begin_pass(fbo);
     cmd.bind_descriptors(&filter_set, 1);
     cmd.bind_pipeline(filter_pipeline);
@@ -119,12 +126,13 @@ void runnable::run()
     gfx::hbuffer<float> roughness(1);
     filter_set.set(gfx::descriptor_type::uniform_buffer, 0, roughness);
 
-    for (int l = 0; l < 10; ++l) {
-        gfx::image_view  cmv(gfx::imgv_type::image_cube, specular_cubemap.pixel_format(), specular_cubemap, l, 1, 0, 6);
+	gfx::fence spec_fence;
+    for (int l = 0; l < specular_cubemap.levels(); ++l) {
+        gfx::image_view  cmv(gfx::imgv_type::image_cube, specular_cubemap.level(l), 1, 6);
         gfx::framebuffer cfbo(1024 >> l, 1024 >> l);
         cfbo.attach(gfx::attachment::color, 0, cmv);
 
-        roughness[0] = l / (9.f);
+		roughness[0] = l / (9.f);
         gfx::viewport viewport(0, 0, 1024 >> l, 1024 >> l, 0.01f, 100.f);
         cmd.begin_pass(cfbo);
         cmd.bind_descriptors(&filter_set, 1);
@@ -132,7 +140,9 @@ void runnable::run()
         cmd.set_viewports(&viewport, 1, 0);
         cmd.draw(6, 1);
         cmd.end_pass();
-        cmd.execute(true);
+        cmd.execute(spec_fence);
+
+		spec_fence.wait();
     }
 
     // --------------------------------------------------------------------------------------------------------------------
@@ -140,7 +150,7 @@ void runnable::run()
     // --------------------------------------------------------------------------------------------------------------------
 
     gfx::image      brdf_lut(gfx::img_type::image2d, gfx::rg16f, gfx::extent(512, 512, 1), 1);
-    gfx::image_view brdf_lut_view(gfx::imgv_type::image_2d, brdf_lut);
+    gfx::image_view brdf_lut_view(gfx::imgv_type::image2d, brdf_lut);
 
     gfx::framebuffer lut_framebuffer(512, 512);
     lut_framebuffer.attach(gfx::attachment::color, 0, brdf_lut_view);
@@ -164,16 +174,6 @@ void runnable::run()
     gfx::buffer<gfx::index32>  mesh_index_buffer(gfx::buffer_usage::index, scene.meshes[0].indices);
     gfx::hbuffer<material>     mesh_material_buffer_local;
     gfx::buffer<material>      mesh_material_buffer(gfx::buffer_usage::storage, 1);
-
-    const material gold(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(0.24197f, 0.42108f, 1.3737f), glm::vec3(2.9152f, 2.3459f, 1.7704f)),
-                        0.f, 0.f);
-    const material copper(glm::vec3{0, 0, 0},
-                          material::make_f0(glm::vec3(0.40835f, 0.67693f, 0.24197f), glm::vec3(3.0988f, 2.6248f, 2.2921f)), 0.f, 0.f);
-    const material cobalt(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(2.1609f, 2.0524f, 1.7365f), glm::vec3(4.0371f, 3.8242f, 3.2745f)),
-                          0.f, 0.f);
-    const material palladium(glm::vec3{0, 0, 0},
-                             material::make_f0(glm::vec3(1.7160f, 1.6412f, 1.4080f), glm::vec3(4.1177f, 3.8455f, 3.2540f)), 0.f, 0.f);
-    const material cellulose(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(1.4696f, 1.4720f, 1.4796f), glm::vec3(0.f)), 0.f, 0.f);
 
     auto& mat = mesh_material_buffer_local.emplace_back(cellulose);
     mat.set_f0_roughness(cellulose.f0(), 0.2f);

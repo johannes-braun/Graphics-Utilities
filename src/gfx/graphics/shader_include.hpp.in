@@ -2,7 +2,10 @@
 
 #include <gfx/file.hpp>
 
-namespace gfx::shader_includes
-{
+namespace gfx {
+inline namespace v1 {
+namespace shader_includes {
     inline std::vector<std::filesystem::path> directories = {"../shaders", "@PROJECT_SOURCE_DIR@/src/shaders"};
-}
+} // namespace shader_includes
+} // namespace v1
+} // namespace gfx

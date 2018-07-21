@@ -2,8 +2,8 @@
 #include "opengl/descriptor_opengl.hpp"
 #include <gfx/context.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 std::unique_ptr<detail::descriptor_set_implementation> detail::descriptor_set_implementation::make()
 {
     switch (context::current()->options().graphics_api)
@@ -16,10 +16,7 @@ std::unique_ptr<detail::descriptor_set_implementation> detail::descriptor_set_im
     return nullptr;
 }
 
-descriptor_set::descriptor_set()
-    : _bindings(4)
-{
-}
+descriptor_set::descriptor_set() : _bindings(4) {}
 
 void descriptor_set::set(descriptor_type type, uint32_t binding, const image_view& view, const sampler& sampler)
 {
@@ -39,4 +36,5 @@ std::any& descriptor_set::get_at_or_create(descriptor_type t, uint32_t binding)
     if (it == vec.end() || it->first != binding) it = vec.insert(it == vec.end() ? it : std::next(it), std::make_pair(binding, std::any()));
     return it->second;
 }
-}
+}    // namespace v1
+}    // namespace gfx

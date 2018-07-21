@@ -12,8 +12,8 @@
 
 #include <glsp/glsp.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class shader_type
 {
     vert,
@@ -32,8 +32,7 @@ enum class shader_format
 
 class shader;
 
-namespace detail
-{
+namespace detail {
 template<typename T>
 std::shared_ptr<std::decay_t<T>> fwd_create(T&& t)
 {
@@ -53,7 +52,7 @@ public:
 };
 }    // namespace detail
 
-class graphics_pipeline : public detail::base::implements<detail::graphics_pipeline_implementation>
+class graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
 {
 public:
     graphics_pipeline();
@@ -68,7 +67,7 @@ public:
     void bind();
 
     const vertex_input& input() const noexcept;
-    const state_info& state() const noexcept;
+    const state_info&   state() const noexcept;
 
 private:
     bool                                                         _shaders_valid = false;
@@ -83,11 +82,12 @@ public:
     shader(shader_format fmt, const std::filesystem::path& path);
 
     const std::vector<std::byte>& data() const noexcept;
-    shader_format format() const noexcept;
+    shader_format                 format() const noexcept;
 
 private:
     shader_format          _format;
     std::filesystem::path  _path;
-    std::vector<std::byte> _data {};    // source string or binary; empty on failure
+    std::vector<std::byte> _data{};    // source string or binary; empty on failure
 };
+}    // namespace v1
 }    // namespace gfx

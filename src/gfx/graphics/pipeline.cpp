@@ -1,8 +1,8 @@
 #include "opengl/pipeline_opengl.hpp"
 #include "pipeline.hpp"
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 std::unique_ptr<detail::graphics_pipeline_implementation> detail::graphics_pipeline_implementation::make()
 {
     switch (context::current()->options().graphics_api)
@@ -14,32 +14,23 @@ std::unique_ptr<detail::graphics_pipeline_implementation> detail::graphics_pipel
     return nullptr;
 }
 
-graphics_pipeline::graphics_pipeline()
-    : graphics_pipeline(vertex_input{}, state_info{})
-{
-}
+graphics_pipeline::graphics_pipeline() : graphics_pipeline(vertex_input{}, state_info{}) {}
 
 graphics_pipeline::graphics_pipeline(std::shared_ptr<vertex_input> input, state_info&& state)
-    : graphics_pipeline(input, detail::fwd_create(std::forward<state_info&&>(state)))
-{
-}
+      : graphics_pipeline(input, detail::fwd_create(std::forward<state_info&&>(state)))
+{}
 
 graphics_pipeline::graphics_pipeline(vertex_input&& input, state_info&& state)
-    : graphics_pipeline(detail::fwd_create(std::forward<vertex_input&&>(input)),
-                        detail::fwd_create(std::forward<state_info&&>(state)))
-{
-}
+      : graphics_pipeline(detail::fwd_create(std::forward<vertex_input&&>(input)), detail::fwd_create(std::forward<state_info&&>(state)))
+{}
 
 graphics_pipeline::graphics_pipeline(vertex_input&& input, std::shared_ptr<state_info> state)
-    : graphics_pipeline(detail::fwd_create(std::forward<vertex_input&&>(input)), state)
-{
-}
+      : graphics_pipeline(detail::fwd_create(std::forward<vertex_input&&>(input)), state)
+{}
 
 graphics_pipeline::graphics_pipeline(std::shared_ptr<vertex_input> input, std::shared_ptr<state_info> state)
-    : _vertex_input(input)
-    , _state(state)
-{
-}
+      : _vertex_input(input), _state(state)
+{}
 
 void graphics_pipeline::attach(shader_type t, shader&& s)
 {
@@ -68,9 +59,7 @@ const state_info& graphics_pipeline::state() const noexcept
     return *_state;
 }
 
-shader::shader(shader_format fmt, const std::filesystem::path& path)
-    : _format(fmt)
-    , _path(path)
+shader::shader(shader_format fmt, const std::filesystem::path& path) : _format(fmt), _path(path)
 {
     if (context::current()->options().graphics_api != gapi::opengl && fmt == shader_format::text) {
         elog << "Invalid configuration: Trying to create an opengl-format shader with a non-opengl context.";
@@ -90,17 +79,20 @@ shader::shader(shader_format fmt, const std::filesystem::path& path)
         return;
     }
 
-    switch (_format) {
-    case shader_format::text: {
+    switch (_format)
+    {
+    case shader_format::text:
+    {
         std::vector<glsp::files::path> includes;
-        for (const auto&               p : shader_includes::directories) includes.push_back(p.string());
-        const auto                     ppf = glsp::preprocess_file(_path.string(), includes);
+        for (const auto& p : shader_includes::directories) includes.push_back(p.string());
+        const auto ppf = glsp::preprocess_file(_path.string(), includes);
         _data.resize(ppf.contents.size() + 1);
         memcpy(_data.data(), ppf.contents.data(), ppf.contents.size() * sizeof(char));
         _data.back() = std::byte(0);
     }
     break;
-    case shader_format::spirv: {
+    case shader_format::spirv:
+    {
         std::ifstream in(_path, std::ios::binary | std::ios::in);
         if (in) {
             in.seekg(0, std::ios::end);
@@ -123,4 +115,6 @@ shader_format shader::format() const noexcept
 {
     return _format;
 }
-}
+
+}    // namespace v1
+}    // namespace gfx

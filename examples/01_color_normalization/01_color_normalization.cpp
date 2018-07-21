@@ -107,7 +107,7 @@ void runnable::run()
 
     gfx::himage        picture(gfx::rgb8unorm, *source_data);
     gfx::image         texture(picture);
-    gfx::image_view    texture_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
+    gfx::image_view    texture_view(gfx::imgv_type::image2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
     const gfx::sampler sampler;
 
     axis_transformation trafo   = principal_axis_transformation(picture);
@@ -118,7 +118,7 @@ void runnable::run()
     }();
 
     gfx::image            grid(gfx::himage(gfx::rgba8unorm, "grid.jpg"));
-    const gfx::image_view grid_view(gfx::imgv_type::image_2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
+    const gfx::image_view grid_view(gfx::imgv_type::image2d, grid.pixel_format(), grid, 0, grid.levels(), 0, 1);
 
     auto default_state                               = std::make_shared<gfx::state_info>();
     default_state->depth_stencil.depth_test_enable   = true;
@@ -238,7 +238,7 @@ void runnable::run()
             {
                 picture      = gfx::himage(gfx::rgb8unorm, *new_data);
                 texture      = gfx::image(picture);
-                texture_view = gfx::image_view(gfx::imgv_type::image_2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
+                texture_view = gfx::image_view(gfx::imgv_type::image2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
                 main_desc.set(gfx::descriptor_type::sampled_texture, 0, texture_view, sampler);
 
                 trafo   = principal_axis_transformation(picture);
@@ -275,7 +275,7 @@ void runnable::run()
 
         cmd.reset();
         gfx::clear_value values[]{glm::vec4{0.2f, 0.2f, 0.2f, 1.f}, gfx::depth_stencil{0.f, 0u}};
-        cmd.begin_pass(*main_framebuffer);
+        cmd.begin_pass(main_framebuffer());
 
         cmd.bind_descriptors(&main_desc, 1);
 

@@ -4,12 +4,11 @@
 #include "implementation.hpp"
 #include <gfx/api.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class sample_count;
 
-namespace detail
-{
+namespace detail {
 class device_image_implementation
 {
 public:
@@ -33,7 +32,7 @@ enum class img_type
 
 GFX_api_cast_type(gapi::opengl, device_image, mygl::texture);
 
-class device_image: public detail::base::implements<detail::device_image_implementation>
+class device_image : public impl::implements<detail::device_image_implementation>
 {
 public:
     constexpr static uint32_t max_levels = ~0u;
@@ -41,6 +40,8 @@ public:
     class img_reference
     {
     public:
+		friend class image_view;
+
         void operator<<(const host_image& image) const;
         void operator>>(const host_image& image) const;
 
@@ -61,21 +62,22 @@ public:
     img_reference sub_image(uint32_t level, uint32_t layer);
     void          generate_mipmaps();
 
-    const uint32_t& dimensions() const noexcept;
-    const format&   pixel_format() const noexcept;
-    const extent&   extents() const noexcept;
-    const uint32_t& levels() const noexcept;
-	const sample_count& samples() const noexcept { return _samples; }
+    const uint32_t&     dimensions() const noexcept;
+    const format&       pixel_format() const noexcept;
+    const extent&       extents() const noexcept;
+    const uint32_t&     levels() const noexcept;
+    const sample_count& samples() const noexcept { return _samples; }
 
     GFX_api_cast_op(gapi::opengl, device_image);
 
 private:
-    uint32_t                                             _layer_dimensions;
-    format                                               _format;
-    extent                                               _extent;
-    uint32_t                                             _levels;
-    sample_count                                         _samples;
+    uint32_t     _layer_dimensions;
+    format       _format;
+    extent       _extent;
+    uint32_t     _levels;
+    sample_count _samples;
 };
 
 GFX_api_cast_impl(gapi::opengl, device_image)
+}    // namespace v1
 }    // namespace gfx

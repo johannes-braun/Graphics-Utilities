@@ -1,7 +1,7 @@
 #pragma once
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum format
 {
     // unorm
@@ -80,4 +80,5 @@ enum format
 };
 
 size_t format_element_size(format fmt);
-}
+}    // namespace v1
+}    // namespace gfx

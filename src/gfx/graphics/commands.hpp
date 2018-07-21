@@ -1,14 +1,14 @@
 #pragma once
 
 #include "descriptor.hpp"
+#include "framebuffer.hpp"
 #include "implementation.hpp"
 #include "pipeline.hpp"
-#include "framebuffer.hpp"
+#include "fence.hpp"
 
-namespace gfx
-{
-namespace detail
-{
+namespace gfx {
+inline namespace v1 {
+namespace detail {
 class commands_implementation
 {
 public:
@@ -22,34 +22,37 @@ public:
     virtual void draw_indexed(size_t index_count, size_t instance_count, ptrdiff_t first_index, ptrdiff_t first_vertex,
                               ptrdiff_t first_instance)                                                             = 0;
     virtual void reset()                                                                                            = 0;
-    virtual void execute(bool block)                                                                                          = 0;
+    virtual void execute(fence* f)                                                                                = 0;
 
     // TODO(s):
-    virtual void bind_descriptors(descriptor_set* sets, int count)                             = 0;
-    virtual void begin_pass(framebuffer& fbo_handle) = 0;
-	virtual void end_pass() = 0;
-    virtual void set_viewports(gfx::viewport* vps, int count, int first)                       = 0;
+    virtual void bind_descriptors(descriptor_set* sets, int count)       = 0;
+    virtual void begin_pass(framebuffer& fbo_handle)                     = 0;
+    virtual void end_pass()                                              = 0;
+    virtual void set_viewports(gfx::viewport* vps, int count, int first) = 0;
 
     virtual std::any api_handle() = 0;
 };
 
 template<typename T>
 struct is_buffer : std::false_type
-{};
+{
+};
 
 template<typename T>
 struct is_buffer<host_buffer<T>> : std::true_type
-{};
+{
+};
 
 template<typename T>
 struct is_buffer<device_buffer<T>> : std::true_type
-{};
+{
+};
 
 template<typename T>
 using enable_if_buffer_t = std::enable_if_t<is_buffer<std::decay_t<T>>::value>;
 }    // namespace detail
 
-class commands : public detail::base::implements<detail::commands_implementation>
+class commands : public impl::implements<detail::commands_implementation>
 {
 public:
     template<typename Buffer, typename = detail::enable_if_buffer_t<Buffer>>
@@ -64,13 +67,14 @@ public:
                       ptrdiff_t first_instance = 0) const;
 
     void reset() const;
-    void execute(bool block = false) const;
+    void execute() const;
+	void execute(fence& f) const;
 
     // TODO:
     void set_viewports(gfx::viewport* vps, int count, int first);
     void bind_descriptors(descriptor_set* sets, int count) const;    // etc...
     void begin_pass(framebuffer& fbo) const;
-	void end_pass() const;
+    void end_pass() const;
 };
 
 template<typename Buffer, typename>
@@ -84,4 +88,5 @@ void commands::bind_index_buffer(Buffer& buffer, index_type type, ptrdiff_t offs
 {
     implementation()->bind_index_buffer(buffer.api_handle(), type, offset);
 }
+}    // namespace v1
 }    // namespace gfx

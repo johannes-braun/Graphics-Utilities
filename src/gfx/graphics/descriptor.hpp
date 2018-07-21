@@ -1,15 +1,15 @@
 #pragma once
 
-#include "implementation.hpp"
 #include "device_buffer.hpp"
 #include "device_image.hpp"
 #include "image_view.hpp"
+#include "implementation.hpp"
 #include "sampler.hpp"
 #include <any>
 #include <vector>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class descriptor_type
 {
     uniform_buffer,
@@ -18,8 +18,7 @@ enum class descriptor_type
     image
 };
 
-namespace detail
-{
+namespace detail {
 class descriptor_set_implementation
 {
 public:
@@ -32,7 +31,7 @@ public:
 }    // namespace detail
 
 class commands;
-class descriptor_set : public detail::base::implements<detail::descriptor_set_implementation>
+class descriptor_set : public impl::implements<detail::descriptor_set_implementation>
 {
 public:
     friend class commands;
@@ -56,6 +55,7 @@ private:
 
     std::vector<std::vector<std::pair<uint32_t, std::any>>> _bindings;
 };
+}    // namespace v1
 }    // namespace gfx
 
 #include "descriptor.inl"

@@ -4,8 +4,9 @@
 #include "image_view_opengl.hpp"
 #include "state_info.hpp"
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 image_view_implementation::~image_view_implementation()
 {
     if (glIsTexture(_handle)) glDeleteTextures(1, &_handle);
@@ -19,12 +20,12 @@ void image_view_implementation::initialize(imgv_type type, format format, const 
     GLenum target = GLenum(0);
     switch (type)
     {
-    case imgv_type::image_1d: target = GL_TEXTURE_1D; break;
-    case imgv_type::image_2d: target = image.samples() == sample_count::x1 ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE; break;
-    case imgv_type::image_3d: target = GL_TEXTURE_3D; break;
+    case imgv_type::image1d: target = GL_TEXTURE_1D; break;
+    case imgv_type::image2d: target = image.samples() == sample_count::x1 ? GL_TEXTURE_2D : GL_TEXTURE_2D_MULTISAMPLE; break;
+    case imgv_type::image3d: target = GL_TEXTURE_3D; break;
     case imgv_type::image_cube: target = GL_TEXTURE_CUBE_MAP; break;
-    case imgv_type::image_1d_array: target = GL_TEXTURE_1D_ARRAY; break;
-    case imgv_type::image_2d_array:
+    case imgv_type::image1d_array: target = GL_TEXTURE_1D_ARRAY; break;
+    case imgv_type::image2d_array:
         target = image.samples() == sample_count::x1 ? GL_TEXTURE_2D_ARRAY : GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
         break;
     case imgv_type::image_cube_array: target = GL_TEXTURE_CUBE_MAP_ARRAY; break;
@@ -40,4 +41,6 @@ std::any image_view_implementation::api_handle()
 {
     return _handle;
 }
-}
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

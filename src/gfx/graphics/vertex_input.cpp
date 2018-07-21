@@ -1,9 +1,9 @@
-#include "vertex_input.hpp"
 #include "opengl/vertex_input_opengl.hpp"
+#include "vertex_input.hpp"
 #include <gfx/context.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 std::unique_ptr<detail::vertex_input_implementation> detail::vertex_input_implementation::make()
 {
     switch (context::current()->options().graphics_api)
@@ -46,4 +46,5 @@ void vertex_input::draw_indexed(uint32_t indices, uint32_t instances, uint32_t b
 {
     _implementation->draw_indexed(indices, instances, base_index, base_vertex, base_instance);
 }
+}    // namespace v1
 }    // namespace gfx

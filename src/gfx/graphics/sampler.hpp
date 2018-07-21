@@ -7,8 +7,8 @@
 #include <memory>
 #include <unordered_map>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class filter_mode
 {
     mag,
@@ -56,8 +56,7 @@ enum class lod
     max
 };
 
-namespace detail
-{
+namespace detail {
 class sampler_implementation
 {
 public:
@@ -77,7 +76,7 @@ public:
 
 GFX_api_cast_type(gapi::opengl, sampler, mygl::sampler)
 
-    class sampler : public detail::base::implements<detail::sampler_implementation>
+    class sampler : public impl::implements<detail::sampler_implementation>
 {
 public:
     sampler();
@@ -92,12 +91,12 @@ public:
 
     GFX_api_cast_op(gapi::opengl, sampler)
 
-        private : 
+        private :
 
-    std::unordered_map<filter_mode, filter> _filters;
-    std::unordered_map<wrap, wrap_mode>     _wraps;
-    border_color                            _border_color = border_color::float_transparent_black;
-    std::unordered_map<lod, float>          _lod;
+        std::unordered_map<filter_mode, filter> _filters;
+    std::unordered_map<wrap, wrap_mode> _wraps;
+    border_color                        _border_color = border_color::float_transparent_black;
+    std::unordered_map<lod, float>      _lod;
 
     bool       _enable_anisotropy = false;
     float      _anisotropy_value  = 0.f;
@@ -107,4 +106,5 @@ public:
 
 GFX_api_cast_impl(gapi::opengl, sampler)
 
+}    // namespace v1
 }    // namespace gfx

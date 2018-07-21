@@ -2,10 +2,9 @@
 #include <gfx/context.hpp>
 //#include "context_vulkan.hpp"
 
-namespace gfx
-{
-namespace detail
-{
+namespace gfx {
+inline namespace v1 {
+namespace detail {
 std::unique_ptr<context_implementation> make_context_implementation(const gapi api)
 {
     switch (api)
@@ -23,7 +22,7 @@ auto& current_contexts()
     static std::unordered_map<std::thread::id, std::shared_ptr<context>> contexts;
     return contexts;
 }
-}
+}    // namespace detail
 
 std::shared_ptr<context> context::create(const context_options& options)
 {
@@ -50,8 +49,7 @@ void context::make_current()
     make_current(shared_from_this());
     _implementation->make_current(_window);
 
-	if (_options.use_window && !_swapchain)
-		_swapchain.emplace();
+    if (_options.use_window && !_swapchain) _swapchain.emplace();
 }
 
 GLFWwindow* context::window() const noexcept
@@ -72,12 +70,12 @@ bool context::run()
 {
     if (!_options.use_window) return _should_close;
 
-	static bool do_present = false;
+    static bool do_present = false;
 
     make_current();
 
     if (do_present && _swapchain) _swapchain->present();
-	do_present = true;
+    do_present    = true;
     _should_close = glfwWindowShouldClose(_window);
     glfwPollEvents();
 
@@ -129,4 +127,5 @@ context::context(const context_options& options) : _options(options)
     callbacks::init(_window);
     glfwSwapInterval(0);
 }
-}
+}    // namespace v1
+}    // namespace gfx

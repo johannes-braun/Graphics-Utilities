@@ -2,8 +2,9 @@
 #include <glm/ext.hpp>
 #include <mygl/mygl.hpp>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 sampler_implementation::sampler_implementation()
 {
     glCreateSamplers(1, &_handle);
@@ -139,4 +140,6 @@ void sampler_implementation::set_compare(bool enable, compare_op op)
     default: break;
     }
 }
-}    // namespace gfx::opengl
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

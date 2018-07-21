@@ -1,17 +1,16 @@
 #include "formats.hpp"
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 size_t format_element_size(format fmt)
 {
-    switch(fmt)
+    switch (fmt)
     {
     case r8unorm:
     case r8snorm:
     case r8u:
     case r8i:
-    case s8ui:
-        return 1;
+    case s8ui: return 1;
     case rg8unorm:
     case rg8snorm:
     case rg8u:
@@ -22,13 +21,11 @@ size_t format_element_size(format fmt)
     case r16i:
     case r16f:
     case r5g6b5unorm:
-    case d16unorm:
-        return 2;
+    case d16unorm: return 2;
     case rgb8unorm:
     case rgb8snorm:
     case rgb8u:
-    case rgb8i:
-        return 3;
+    case rgb8i: return 3;
     case rgba8unorm:
     case rgba8snorm:
     case rgba8u:
@@ -48,14 +45,12 @@ size_t format_element_size(format fmt)
     case rgb9e5:
     case d24unorm:
     case d32f:
-    case d24unorms8ui:
-        return 4;
+    case d24unorms8ui: return 4;
     case rgb16unorm:
     case rgb16snorm:
     case rgb16u:
     case rgb16i:
-    case rgb16f:
-        return 6;
+    case rgb16f: return 6;
     case rgba16unorm:
     case rgba16snorm:
     case rgba16u:
@@ -64,17 +59,15 @@ size_t format_element_size(format fmt)
     case rg32u:
     case rg32i:
     case rg32f:
-    case d32fs8ui:
-        return 8;
+    case d32fs8ui: return 8;
     case rgb32u:
     case rgb32i:
-    case rgb32f:
-        return 12;
+    case rgb32f: return 12;
     case rgba32u:
     case rgba32i:
-    case rgba32f:
-        return 16;
+    case rgba32f: return 16;
     }
     return 1;
 }
-}
+}    // namespace v1
+}    // namespace gfx

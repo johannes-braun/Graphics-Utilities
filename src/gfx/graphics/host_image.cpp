@@ -1,7 +1,7 @@
 #include "host_image.hpp"
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 host_image::host_image(const format fmt, const extent& size)
       : _format(fmt)
       , _extent(size)
@@ -26,8 +26,8 @@ host_image::host_image(const host_image& o) : host_image(o.pixel_format(), o.ext
 
 host_image& host_image::operator=(const host_image& o)
 {
-    _format = o._format;
-    _extent = o._extent;
+    _format               = o._format;
+    _extent               = o._extent;
     _storage_element_size = format_element_size(_format);
     _storage.resize(_storage_element_size * _extent.count());
     _write_unorm = get_write_unorm_fun();
@@ -415,7 +415,7 @@ bool is_signed(const format fmt)
 
 void host_image::convolute(const image_filter& f)
 {
-    gfx::host_image       tmp(pixel_format(), extents());
+    gfx::host_image tmp(pixel_format(), extents());
     convolute(f, tmp);
     memcpy(storage().data(), tmp.storage().data(), storage().size());
 }
@@ -424,7 +424,7 @@ void host_image::convolute(const image_filter& f, host_image& into) const
 {
     assert(is_unorm_compatible(_format));
 
-    const auto      half_size = f.extents().vec / 2u;
+    const auto half_size = f.extents().vec / 2u;
 
 #pragma omp parallel for
     for (int p = 0; p < extents().count(); ++p) {
@@ -1309,4 +1309,5 @@ host_buffer<std::byte>& host_image::storage() noexcept
 {
     return _storage;
 }
+}    // namespace v1
 }    // namespace gfx

@@ -2,8 +2,9 @@
 #include <gfx/graphics/host_buffer.hpp>
 #include <mygl/mygl.hpp>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 class host_buffer_implementation : public detail::host_buffer_implementation
 {
 public:
@@ -12,13 +13,15 @@ public:
 
     host_buffer_implementation();
     ~host_buffer_implementation();
-	
-	allocation allocate(size_type size) override;
-	void deallocate(const allocation& alloc) override;
+
+    allocation allocate(size_type size) override;
+    void       deallocate(const allocation& alloc) override;
 
     std::any api_handle() override;
 
 private:
     mygl::buffer _handle;
 };
-} // namespace gfx
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

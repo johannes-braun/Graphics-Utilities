@@ -6,8 +6,8 @@
 // TODO
 #include <mygl/mygl.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class attachment
 {
     color,
@@ -40,10 +40,8 @@ public:
 
     ~framebuffer()
     {
-        if(glIsFramebuffer(_msaa_fbo))
-            glDeleteFramebuffers(1, &_msaa_fbo);
-        if(glIsFramebuffer(_resolve_fbo))
-            glDeleteFramebuffers(1, &_resolve_fbo);
+        if (glIsFramebuffer(_msaa_fbo)) glDeleteFramebuffers(1, &_msaa_fbo);
+        if (glIsFramebuffer(_resolve_fbo)) glDeleteFramebuffers(1, &_resolve_fbo);
     }
 
     void attach(attachment att, uint32_t index, const image_view& img_view, std::optional<clear_value> clear = {})
@@ -105,22 +103,23 @@ public:
     void end()
     {
         glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
-		_resolved = 0;
+        _resolved = 0;
         for (auto i = 0u; i < _enabled_drawbuffers.size(); ++i) {
             const auto drawbuffer = GL_COLOR_ATTACHMENT0 + GLenum(i);
 
             if (_enabled_drawbuffers[i].enable_resolve) {
-				++_resolved;
+                ++_resolved;
                 glNamedFramebufferReadBuffer(_msaa_fbo, drawbuffer);
                 glNamedFramebufferDrawBuffer(_resolve_fbo, drawbuffer);
-                glBlitNamedFramebuffer(_msaa_fbo, _resolve_fbo, 0, 0, _width, _height, 0, 0, _width, _height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+                glBlitNamedFramebuffer(_msaa_fbo, _resolve_fbo, 0, 0, _width, _height, 0, 0, _width, _height, GL_COLOR_BUFFER_BIT,
+                                       GL_LINEAR);
             }
         }
     }
 
     std::any                                       api_handle() const { return _msaa_fbo; }
     mygl::framebuffer                              resolver() const { return _resolved > 0 ? _resolve_fbo : _msaa_fbo; }
-	const std::vector<std::optional<clear_value>>& color_clear_values() const noexcept { return _color_clear_values; };
+    const std::vector<std::optional<clear_value>>& color_clear_values() const noexcept { return _color_clear_values; };
     const std::optional<clear_value>&              depth_clear_value() const noexcept { return _depth_clear_value; };
 
 private:
@@ -130,8 +129,9 @@ private:
     mygl::framebuffer                       _resolve_fbo;
     std::vector<GLenum>                     _drawbuffers;
     std::vector<draw_buffer_settings>       _enabled_drawbuffers;
-	uint32_t _resolved;
+    uint32_t                                _resolved;
     std::vector<std::optional<clear_value>> _color_clear_values;
     std::optional<clear_value>              _depth_clear_value;
 };
-}
+}    // namespace v1
+}    // namespace gfx

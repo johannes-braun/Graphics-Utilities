@@ -9,15 +9,13 @@
 #include <memory>
 #include <numeric>
 
-namespace std
-{
+namespace std {
 enum class byte : uint8_t;
 }
 
-namespace gfx
-{
-namespace detail
-{
+namespace gfx {
+inline namespace v1 {
+namespace detail {
 template<typename C, typename TBase>
 using enable_if_container = std::void_t<decltype(std::data(std::declval<C>())), decltype(std::size(std::declval<C>())),
                                         std::enable_if_t<!std::is_same_v<std::initializer_list<TBase>, std::decay_t<C>>>>;
@@ -51,7 +49,7 @@ GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)    //
 
 // buffer for host memory (mapped/contiguous)
 template<typename T>
-class host_buffer : public detail::base::implements<detail::host_buffer_implementation>
+class host_buffer : public impl::implements<detail::host_buffer_implementation>
 {
 public:
     friend class device_buffer<T>;
@@ -145,6 +143,7 @@ public:
 
 GFX_api_cast_template_impl(gapi::opengl, host_buffer)    //
 
+}    // namespace v1
 }    // namespace gfx
 
 #include "host_buffer.inl"

@@ -7,8 +7,8 @@
 #include <gfx/api.hpp>
 #include <memory>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class index_type
 {
     uint16 = 2,
@@ -36,8 +36,7 @@ enum class topology
     patch_list
 };
 
-namespace detail
-{
+namespace detail {
 class vertex_input_implementation
 {
 public:
@@ -59,7 +58,7 @@ public:
 GFX_api_cast_type(gapi::opengl, vertex_input, mygl::vertex_array);
 
 // TODO: for VK: combine to provider for VkPipelineVertexInputStateCreateInfo and VkPipelineInputAssemblyStateCreateInfo + draw
-class vertex_input : public detail::base::implements<detail::vertex_input_implementation>
+class vertex_input : public impl::implements<detail::vertex_input_implementation>
 {
 public:
     explicit vertex_input(topology mode = topology::triangle_list, bool enable_primitive_restart = false);
@@ -89,7 +88,7 @@ public:
     topology assembly_topology() const noexcept { return _topology; }
 
 private:
-    topology                                             _topology;
+    topology _topology;
 
 public:
     GFX_api_cast_op(gapi::opengl, vertex_input);
@@ -114,4 +113,5 @@ void vertex_input::draw_indexed_indirect(const device_buffer<T>& buffer, size_t 
 }
 
 GFX_api_cast_impl(gapi::opengl, vertex_input)
+}    // namespace v1
 }    // namespace gfx

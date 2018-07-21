@@ -7,11 +7,14 @@
 #include <gfx/api.hpp>
 #include <gfx/flags.hpp>
 #include <memory>
+#include "fence.hpp"
 
-namespace gfx
-{
-template <typename T> class device_buffer;
-template <typename T> class host_buffer;
+namespace gfx {
+inline namespace v1 {
+template<typename T>
+class device_buffer;
+template<typename T>
+class host_buffer;
 
 enum class buffer_usage : uint32_t
 {
@@ -24,34 +27,36 @@ enum class buffer_usage : uint32_t
     all = ~0u
 };
 using buffer_usage_flags = gfx::flags<uint32_t, buffer_usage>;
-static buffer_usage_flags operator|(buffer_usage x, buffer_usage y) { return buffer_usage_flags(x) | y; }
-
-namespace detail
+static buffer_usage_flags operator|(buffer_usage x, buffer_usage y)
 {
-    class device_buffer_implementation
-    {
-    public:
-        static std::unique_ptr<device_buffer_implementation> make();
+    return buffer_usage_flags(x) | y;
+}
 
-        using size_type       = uint64_t;
-        using difference_type = int64_t;
+namespace detail {
+class device_buffer_implementation
+{
+public:
+    static std::unique_ptr<device_buffer_implementation> make();
 
-        virtual ~device_buffer_implementation() = default;
+    using size_type       = uint64_t;
+    using difference_type = int64_t;
 
-        virtual void     update_flags(buffer_usage_flags usage)                                = 0;
-        virtual void     allocate(size_type size)                                              = 0;
-        virtual void     copy(const std::any& source, const std::any& target, difference_type src_offset, difference_type dst_offset,
-                              size_type size)                                                  = 0;
-        virtual void     update(difference_type offset, size_type size, const std::byte* data) = 0;
-        virtual std::any api_handle()                                                          = 0;
-    };
-} // namespace detail
+    virtual ~device_buffer_implementation() = default;
+
+    virtual void     update_flags(buffer_usage_flags usage)                                = 0;
+    virtual void     allocate(size_type size)                                              = 0;
+    virtual void     copy(const std::any& source, const std::any& target, difference_type src_offset, difference_type dst_offset,
+                          size_type size, fence* f)                                                  = 0;
+    virtual void     update(difference_type offset, size_type size, const std::byte* data) = 0;
+    virtual std::any api_handle()                                                          = 0;
+};
+}    // namespace detail
 
 GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer);
 
 class vertex_input;
 template<typename T>
-class device_buffer : public detail::base::implements<detail::device_buffer_implementation>
+class device_buffer : public impl::implements<detail::device_buffer_implementation>
 {
 public:
     friend class vertex_input;
@@ -81,26 +86,142 @@ public:
 
     void update(const T* data, size_type count, difference_type start = 0) const;
     void update(const std::initializer_list<T>& elements, difference_type start = 0) const;
-    template <typename Container, typename = detail::enable_if_container<Container, T>>
+    template<typename Container, typename = detail::enable_if_container<Container, T>>
     void update(const Container& elements, difference_type start = 0) const;
-
-    void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start, size_type count);
-    void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start, size_type count);
-
-    void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count) const;
-    void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count) const;
 
     host_buffer<T> to_host() const;
 
     GFX_api_cast_op(gapi::opengl, device_buffer);
 
+//TODO: protected:
+	void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start, size_type count, fence* f = nullptr);
+	void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start, size_type count, fence* f = nullptr);
+
+	void copy_to(const host_buffer<T>& buffer, difference_type src_offset, difference_type dst_offset, size_type count, fence* f = nullptr) const;
+	void copy_to(const device_buffer& buffer, difference_type src_offset, difference_type dst_offset, size_type count, fence* f = nullptr) const;
+
 private:
-    size_type                                             _size = 0;
-    buffer_usage_flags                                    _usage_flags;
+    size_type          _size = 0;
+    buffer_usage_flags _usage_flags;
 };
 
 GFX_api_cast_template_impl(gapi::opengl, device_buffer);
 
-} // namespace gfx
+
+
+
+
+
+enum class buf_copy_behavior
+{
+	resize_if_larger,
+	resize_always,
+	throw_if_larger,
+};
+
+template<typename From, typename To>
+constexpr static bool are_copyable = false;
+template<typename T>
+constexpr static bool are_copyable<host_buffer<T>, device_buffer<T>> = true;
+template<typename T>
+constexpr static bool are_copyable<device_buffer<T>, device_buffer<T>> = true;
+template<typename T>
+constexpr static bool are_copyable<device_buffer<T>, host_buffer<T>> = true;
+
+template<typename Buf>
+constexpr static bool is_host_buffer = false;
+template<typename T>
+constexpr static bool is_host_buffer<host_buffer<T>> = true;
+template<typename Buf>
+constexpr static bool is_device_buffer = false;
+template<typename T>
+constexpr static bool is_device_buffer<device_buffer<T>> = true;
+
+
+template<typename From, typename To>
+using enable_if_copiable = std::enable_if_t<are_copyable<From, To>>;
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr)
+{
+	constexpr static const char* invalid_argument_message = "Selected copy range does not fit into destination buffer.";
+
+    if constexpr (is_host_buffer<BufSrc> && is_device_buffer<BufDst>)
+	{
+		switch(behavior)
+		{
+		case buf_copy_behavior::resize_if_larger: 
+			if (dst.capacity() + dst_offset < src.size() + src_offset)
+				dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::resize_always: 
+			dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::throw_if_larger:
+			if (dst.capacity() + dst_offset < src.size() + src_offset)
+				throw std::invalid_argument(invalid_argument_message);
+			break;
+		}
+		dst.fill_from(src, src_offset, dst_offset, count, f);
+	}
+	else if constexpr (is_device_buffer<BufSrc> && is_device_buffer<BufDst>)
+	{
+		switch(behavior)
+		{
+		case buf_copy_behavior::resize_if_larger: 
+			if (dst.capacity() + dst_offset < src.capacity() + src_offset)
+				dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::resize_always: 
+			dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::throw_if_larger:
+			if (dst.capacity() + dst_offset < src.capacity() + src_offset)
+				throw std::invalid_argument(invalid_argument_message);
+			break;
+		}
+		src.copy_to(dst, src_offset, dst_offset, count, f);
+	}
+	else if constexpr (is_device_buffer<BufSrc> && is_host_buffer<BufDst>)
+	{
+		switch(behavior)
+		{
+		case buf_copy_behavior::resize_if_larger: 
+			if (dst.size() + dst_offset < src.capacity() + src_offset)
+				dst.resize(count + dst_offset);
+			break;
+		case buf_copy_behavior::resize_always: 
+			dst.resize(count + dst_offset);
+			break;
+		case buf_copy_behavior::throw_if_larger:
+			if (dst.size() + dst_offset < src.capacity() + src_offset)
+				throw std::invalid_argument(invalid_argument_message);
+			break;
+		}
+		src.copy_to(dst, src_offset, dst_offset, count, f);
+	}
+}
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr)
+{
+	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, src_offset, dst_offset, f);
+}
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr)
+{
+	buf_copy(behavior, dst, src, count, 0, 0, f);
+}
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr)
+{
+	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, f);
+}
+
+
+
+}    // namespace v1
+}    // namespace gfx
 
 #include "device_buffer.inl"

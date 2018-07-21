@@ -1,12 +1,13 @@
 #pragma once
-#include <memory>
 #include <any>
 #include <cassert>
+#include <memory>
 
-namespace gfx::detail
-{
-namespace base
-{
+namespace gfx {
+inline namespace v1 {
+namespace impl {
+
+
 template<typename Implementation>
 class implements
 {
@@ -25,5 +26,8 @@ protected:
     // TODO private:
     std::unique_ptr<implementation_type> _implementation;
 };
-}    // namespace base
-}
+
+
+}    // namespace impl
+}    // namespace v1
+}    // namespace gfx

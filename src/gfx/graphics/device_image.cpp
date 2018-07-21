@@ -3,8 +3,8 @@
 #include "state_info.hpp"
 #include <gfx/context.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 std::unique_ptr<detail::device_image_implementation> detail::device_image_implementation::make()
 {
     switch (context::current()->options().graphics_api)
@@ -87,4 +87,5 @@ device_image::img_reference device_image::sub_image(uint32_t level, uint32_t lay
 {
     return img_reference(level, layer, *this);
 }
+}    // namespace v1
 }    // namespace gfx

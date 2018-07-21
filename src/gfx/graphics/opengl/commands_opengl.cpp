@@ -1,5 +1,6 @@
 #include "commands_opengl.hpp"
 #include "state_info.hpp"
+#include "fence_opengl.hpp"
 
 namespace gfx
 {
@@ -52,7 +53,7 @@ void opengl::commands_implementation::reset()
     _curr_pipeline = nullptr;
 }
 
-void opengl::commands_implementation::execute(bool block)
+void opengl::commands_implementation::execute(fence* f)
 {
     for (auto& q : _queue) {
         q();
@@ -62,7 +63,8 @@ void opengl::commands_implementation::execute(bool block)
     static state_info default_state;
     apply(default_state);
     glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
-	if (block) glFinish();
+	push_fence(f);
+	glFlush();
 }
 
 void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int count)

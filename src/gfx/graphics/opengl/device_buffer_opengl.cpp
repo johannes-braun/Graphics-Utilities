@@ -1,30 +1,41 @@
 #include "device_buffer_opengl.hpp"
 #include "host_buffer_opengl.hpp"
 #include <stdexcept>
+#include "fence_opengl.hpp"
 
-namespace gfx::opengl
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
+device_buffer_implementation::device_buffer_implementation()
 {
-device_buffer_implementation::device_buffer_implementation() { glCreateBuffers(1, &_handle); }
+    glCreateBuffers(1, &_handle);
+}
 
 device_buffer_implementation::~device_buffer_implementation()
 {
-    if(_handle != mygl::buffer::zero)
-        glDeleteBuffers(1, &_handle);
+    if (_handle != mygl::buffer::zero) glDeleteBuffers(1, &_handle);
 }
 
-void device_buffer_implementation::update_flags(const buffer_usage_flags usage) { _usage = usage; }
+void device_buffer_implementation::update_flags(const buffer_usage_flags usage)
+{
+    _usage = usage;
+}
 
-mygl::buffer device_buffer_implementation::handle() const noexcept { return _handle; }
+mygl::buffer device_buffer_implementation::handle() const noexcept
+{
+    return _handle;
+}
 
-std::any device_buffer_implementation::api_handle() { return _handle; }
+std::any device_buffer_implementation::api_handle()
+{
+    return _handle;
+}
 
 void device_buffer_implementation::allocate(const size_type size)
 {
-    if(_handle != mygl::buffer::zero)
-        glDeleteBuffers(1, &_handle);
+    if (_handle != mygl::buffer::zero) glDeleteBuffers(1, &_handle);
 
-    if(glCreateBuffers)
-    {
+    if (glCreateBuffers) {
         glCreateBuffers(1, &_handle);
         glNamedBufferStorage(_handle, size, nullptr, flags);
     }
@@ -38,16 +49,15 @@ void device_buffer_implementation::allocate(const size_type size)
 }
 
 void device_buffer_implementation::copy(const std::any& source, const std::any& target, const difference_type src_offset,
-                                        const difference_type dst_offset, const size_type size)
+                                        const difference_type dst_offset, const size_type size, fence* f)
 {
     const auto get_handle = [](const std::any& impl, bool& mapped) {
-        if(impl.type() == typeid(detail::host_buffer_implementation*))
-        {
+        if (impl.type() == typeid(detail::host_buffer_implementation*)) {
             mapped = true;
             return std::any_cast<mygl::buffer>(
-                    static_cast<host_buffer_implementation*>(std::any_cast<detail::host_buffer_implementation*>(impl))->api_handle());
+                static_cast<host_buffer_implementation*>(std::any_cast<detail::host_buffer_implementation*>(impl))->api_handle());
         }
-        else if(impl.type() == typeid(detail::device_buffer_implementation*))
+        else if (impl.type() == typeid(detail::device_buffer_implementation*))
         {
             mapped = false;
             return static_cast<device_buffer_implementation*>(std::any_cast<detail::device_buffer_implementation*>(impl))->handle();
@@ -60,7 +70,7 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
     const mygl::buffer src_handle = get_handle(source, src_mapped);
     const mygl::buffer dst_handle = get_handle(target, dst_mapped);
 
-    if(glCopyNamedBufferSubData)
+    if (glCopyNamedBufferSubData)
         glCopyNamedBufferSubData(src_handle, dst_handle, src_offset, dst_offset, size);
     else
     {
@@ -70,12 +80,13 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
         glBindBuffer(GL_COPY_READ_BUFFER, mygl::buffer::zero);
         glBindBuffer(GL_COPY_WRITE_BUFFER, mygl::buffer::zero);
     }
-    glFinish();
+	push_fence(f);
+	glFlush();
 }
 
 void device_buffer_implementation::update(difference_type offset, size_type size, const std::byte* data)
 {
-    if(glNamedBufferSubData)
+    if (glNamedBufferSubData)
         glNamedBufferSubData(_handle, offset, size, data);
     else
     {
@@ -84,4 +95,6 @@ void device_buffer_implementation::update(difference_type offset, size_type size
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, mygl::buffer::zero);
     }
 }
-} // namespace gfx::opengl
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

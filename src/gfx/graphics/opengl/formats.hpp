@@ -4,8 +4,9 @@
 #include <mygl/mygl.hpp>
 #include <tuple>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 struct format_info
 {
     GLenum internal_format;
@@ -15,4 +16,6 @@ struct format_info
 };
 
 format_info format_from(format format);
-}
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

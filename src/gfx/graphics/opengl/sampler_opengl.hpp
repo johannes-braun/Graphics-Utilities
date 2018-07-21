@@ -3,8 +3,9 @@
 #include "../sampler.hpp"
 #include <mygl/mygl.hpp>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 class sampler_implementation : public detail::sampler_implementation
 {
 public:
@@ -21,7 +22,9 @@ public:
 
 private:
     mygl::sampler _handle        = mygl::sampler::zero;
-    filter        _min_filter = filter::nearest;
+    filter        _min_filter    = filter::nearest;
     filter        _mipmap_filter = filter::nearest;
 };
-} // namespace gfx::opengl
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

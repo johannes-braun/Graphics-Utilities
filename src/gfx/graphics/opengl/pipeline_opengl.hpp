@@ -4,8 +4,9 @@
 #include <gfx/graphics/pipeline.hpp>
 #include <mygl/mygl.hpp>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 inline GLbitfield stage_bitfield(GLenum st) noexcept
 {
     switch (st)
@@ -34,8 +35,7 @@ class graphics_pipeline_implementation : public detail::graphics_pipeline_implem
 public:
     ~graphics_pipeline_implementation()
     {
-		if (glIsProgramPipeline(_handle))
-			glDeleteProgramPipelines(1, &_handle);
+        if (glIsProgramPipeline(_handle)) glDeleteProgramPipelines(1, &_handle);
     }
 
     bool bind(vertex_input& input, state_info& info, const std::vector<std::pair<shader_type, std::shared_ptr<shader>>>& shaders,
@@ -79,12 +79,12 @@ public:
                     glUseProgramStages(_handle, stage_bitfield(ty), temp.s);
                     return temp;
                 }
-				else if (s.format() == shader_format::spirv)
-				{
+                else if (s.format() == shader_format::spirv)
+                {
                     mygl::shader cs = glCreateShader(ty);
                     glShaderBinary(1, &cs, GL_SHADER_BINARY_FORMAT_SPIR_V, s.data().data(), static_cast<int>(s.data().size()));
                     glSpecializeShader(cs, "main", 0, nullptr, nullptr);
-					shd prog{ glCreateProgram() };
+                    shd prog{glCreateProgram()};
                     glProgramParameteri(prog.s, GL_PROGRAM_SEPARABLE, true);
                     glAttachShader(prog.s, cs);
                     glLinkProgram(prog.s);
@@ -103,7 +103,7 @@ public:
                     }
                     glUseProgramStages(_handle, stage_bitfield(ty), prog.s);
                     return prog;
-				}
+                }
                 return shd{mygl::shader_program::zero};
             };
 
@@ -113,20 +113,19 @@ public:
 
             glValidateProgramPipeline(_handle);
 
-			int success = 0;
+            int success = 0;
             glGetProgramPipelineiv(_handle, GL_VALIDATE_STATUS, &success);
-            if (!success)
-			{
+            if (!success) {
                 int log_length;
                 glGetProgramPipelineiv(_handle, GL_INFO_LOG_LENGTH, &log_length);
                 std::string log(log_length, ' ');
                 glGetProgramPipelineInfoLog(_handle, log_length, &log_length, log.data());
                 elog("shader") << log;
-			}
+            }
         }
 
         glBindVertexArray(handle_cast<mygl::vertex_array>(input));
-        gfx::apply(info);
+        apply(info);
         glBindProgramPipeline(_handle);
         return true;
     }
@@ -142,4 +141,6 @@ inline std::any graphics_pipeline_implementation::api_handle()
 {
     return _handle;
 }
-}
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

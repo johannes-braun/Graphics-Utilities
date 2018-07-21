@@ -4,8 +4,9 @@
 #include <mygl/mygl.hpp>
 #include <string_view>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 void context_implementation::initialize(GLFWwindow* window, const context_options& options)
 {
     make_current(window);
@@ -26,7 +27,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
     if (options.debug) {
         glDebugMessageCallback(
             [](GLenum source, GLenum type, unsigned int id, GLenum severity, int length, const char* message, const void* userParam) {
-                
+
                 switch (severity)
                 {
                 case GL_DEBUG_SEVERITY_MEDIUM: wlog("opengl") << '#' << id << ": " << std::string_view(message, length); break;
@@ -38,7 +39,8 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, false);
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_LOW, 0, nullptr, false);
         uint32_t disabled[] = {131154, 131186};
-        glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, static_cast<int>(std::size(disabled)), std::data(disabled), false);
+        glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, static_cast<int>(std::size(disabled)),
+                              std::data(disabled), false);
     }
 }
 
@@ -46,4 +48,6 @@ void context_implementation::make_current(GLFWwindow* window)
 {
     glfwMakeContextCurrent(window);
 }
-}    // namespace gfx::opengl
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

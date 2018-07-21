@@ -8,6 +8,7 @@ class runnable
 public:
 	runnable()
 	{
+		glfwWindowHint(GLFW_DOUBLEBUFFER, false);
 		init(_opt);
 		context = gfx::context::create(_opt);
 		context->make_current();
@@ -64,7 +65,7 @@ private:
 				_fbs.back()->attach(gfx::attachment::color, 0, context->swapchain()->image_views()[i], glm::vec4(0.2f, 0.2f, 0.2f, 1.f));
 
 				_fb_attachments.emplace_back(std::make_unique<gfx::image>(gfx::img_type::image2d, gfx::d32f, gfx::extent(width, height, 1), gfx::sample_count(_opt.framebuffer_samples)));
-				_fb_attachment_views.emplace_back(std::make_unique<gfx::image_view>(gfx::imgv_type::image_2d, *_fb_attachments.back()));
+				_fb_attachment_views.emplace_back(std::make_unique<gfx::image_view>(gfx::imgv_type::image2d, *_fb_attachments.back()));
 				_fbs.back()->attach(gfx::attachment::depth_stencil, 0, *_fb_attachment_views.back(), gfx::depth_stencil{ 0.f, 0 });
 			}
 		}
@@ -75,13 +76,13 @@ private:
 				_fbs.emplace_back(std::make_unique<gfx::framebuffer>(width, height));
 
 				_fb_attachments.emplace_back(std::make_unique<gfx::image>(gfx::img_type::image2d, gfx::rgba16f, gfx::extent(width, height, 1), gfx::sample_count(_opt.framebuffer_samples)));
-                _fb_attachment_views.emplace_back(std::make_unique<gfx::image_view>(gfx::imgv_type::image_2d, *_fb_attachments.back()));
+                _fb_attachment_views.emplace_back(std::make_unique<gfx::image_view>(gfx::imgv_type::image2d, *_fb_attachments.back()));
 				_fbs.back()->attach(gfx::attachment::color, 0, *_fb_attachment_views.back(), glm::vec4(0.2f, 0.2f, 0.2f, 1.f));
 				
                 _fbs.back()->attach(gfx::attachment::resolve, 0, context->swapchain()->image_views()[i]);
 
 				_fb_attachments.emplace_back(std::make_unique<gfx::image>(gfx::img_type::image2d, gfx::d32f, gfx::extent(width, height, 1), gfx::sample_count(_opt.framebuffer_samples)));
-				_fb_attachment_views.emplace_back(std::make_unique<gfx::image_view>(gfx::imgv_type::image_2d, *_fb_attachments.back()));
+				_fb_attachment_views.emplace_back(std::make_unique<gfx::image_view>(gfx::imgv_type::image2d, *_fb_attachments.back()));
 				_fbs.back()->attach(gfx::attachment::depth_stencil, 0, *_fb_attachment_views.back(), gfx::depth_stencil{0.f, 0});
 			}
 		}

@@ -4,8 +4,9 @@
 #include <mygl/mygl.hpp>
 #include <unordered_map>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 class vertex_input_implementation : public detail::vertex_input_implementation
 {
 public:
@@ -21,6 +22,7 @@ public:
     void draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance) override;
     void draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex, uint32_t base_instance) override;
     void draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count, uint32_t stride) override;
+
 private:
     mygl::vertex_array                   _handle;
     uint32_t                             _current_attrib = 0;
@@ -32,4 +34,6 @@ private:
     GLenum _draw_mode                = GL_TRIANGLES;
     bool   _enable_primitive_restart = false;
 };
-}
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

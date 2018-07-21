@@ -1,7 +1,7 @@
 #pragma once
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 constexpr extent::extent(const uint32_t width, const uint32_t height, const uint32_t depth) : width(width), height(height), depth(depth) {}
 constexpr extent::extent(const extent extent2d, const uint32_t depth) : width(extent2d.width), height(extent2d.height), depth(depth) {}
 constexpr extent::extent(const extent extent1d, const uint32_t height, const uint32_t depth)
@@ -139,4 +139,5 @@ host_image& host_image::operator/=(const T& value)
     return operator_apply(*this, value, op_div);
 }
 #pragma warning(pop)
-}
+}    // namespace v1
+}    // namespace gfx

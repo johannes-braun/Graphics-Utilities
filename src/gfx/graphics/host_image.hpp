@@ -6,8 +6,8 @@
 #include <gfx/file.hpp>
 #include <glm/ext.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 union extent
 {
     constexpr extent(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
@@ -56,8 +56,7 @@ public:
         std::get<0>(t)[{half_width, 0, 0}]                              = val;
         std::get<1>(t)[{0, half_width, 0}]                              = val;
         std::get<2>(t)[{0, 0, half_width}]                              = val;
-        for (int i = 1; i <= static_cast<int>(half_width); ++i)
-        {
+        for (int i = 1; i <= static_cast<int>(half_width); ++i) {
             const auto g                           = glm::gauss(1.f * i, 0.f, sigma);
             std::get<0>(t)[{half_width - i, 0, 0}] = g;
             std::get<1>(t)[{0, half_width - i, 0}] = g;
@@ -126,7 +125,7 @@ public:
         for (auto i = 0u; i < _extent.count(); ++i) f(_extent.subpixel(i));
     }
 
-        glm::vec4 load(const glm::uvec3& pixel) const;
+    glm::vec4  load(const glm::uvec3& pixel) const;
     glm::vec4  load_bilinear(const glm::vec3& pixel) const;
     glm::uvec4 loadu(const glm::uvec3& pixel) const;
     glm::ivec4 loadi(const glm::uvec3& pixel) const;
@@ -182,6 +181,7 @@ private:
     host_buffer<std::byte>                             _storage;
     std::function<void(const glm::vec4& v, int64_t i)> _write_unorm;
 };
+}    // namespace v1
 }    // namespace gfx
 
 #include "host_image.inl"

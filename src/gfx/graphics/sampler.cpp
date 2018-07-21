@@ -2,8 +2,8 @@
 #include <gfx/context.hpp>
 #include <gfx/graphics/opengl/sampler_opengl.hpp>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 std::unique_ptr<detail::sampler_implementation> detail::sampler_implementation::make()
 {
     switch (context::current()->options().graphics_api)
@@ -54,4 +54,6 @@ void sampler::set_compare(bool enable, compare_op op)
 {
     implementation()->set_compare(enable, op);
 }
+
+}    // namespace v1
 }    // namespace gfx

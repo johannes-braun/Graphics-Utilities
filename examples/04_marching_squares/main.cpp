@@ -17,7 +17,7 @@ int main()
     gfx::imgui imgui;
 
     gfx::device_image texture(gfx::host_image(gfx::rgba8unorm, "Lena.png"));
-    gfx::image_view   texture_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+    gfx::image_view   texture_view(gfx::imgv_type::image2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
     gfx::sampler      sampler;
 
     struct data
@@ -58,7 +58,7 @@ int main()
             if(auto file = gfx::file::open_dialog("Load Image", "./", {"*.png", "*.jpg", "*.bmp"}))
             {
                 texture      = gfx::host_image(gfx::rgba8unorm, *file);
-                texture_view = gfx::image_view(gfx::imgv_type::image_2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
+                texture_view = gfx::image_view(gfx::imgv_type::image2d, gfx::rgba8unorm, texture, 0, 10, 0, 1);
             }
         }
         ImGui::End();

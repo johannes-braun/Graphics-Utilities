@@ -91,7 +91,7 @@ int main()
     indices.emplace_back(min);
 
     gfx::image img(gfx::host_image(gfx::rgba8unorm, "grid.jpg"));
-    gfx::image_view img_view(gfx::imgv_type::image_2d, img.pixel_format(), img, 0, img.levels(), 0, 1);
+    gfx::image_view img_view(gfx::imgv_type::image2d, img.pixel_format(), img, 0, img.levels(), 0, 1);
     gfx::sampler    smp;
 
     for (int t = 0, k = 0; t < 4 && k < 21; t += 3, k++) {

@@ -2,12 +2,15 @@
 
 #include <gfx/context.hpp>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 class context_implementation : public detail::context_implementation
 {
 public:
     void initialize(GLFWwindow* window, const context_options& options) override;
     void make_current(GLFWwindow* window) override;
 };
-} // namespace gfx::opengl
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

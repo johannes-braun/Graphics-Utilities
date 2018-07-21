@@ -5,8 +5,9 @@
 #include <any>
 #include <mygl/mygl.hpp>
 
-namespace gfx::opengl
-{
+namespace gfx {
+inline namespace v1 {
+namespace opengl {
 std::any device_image_implementation::api_handle()
 {
     return _handle;
@@ -145,4 +146,6 @@ void device_image_implementation::fill_to(const host_image& image, uint32_t leve
     glBindBuffer(GL_PIXEL_PACK_BUFFER, mygl::buffer::zero);
     glFinish();
 }
-}
+}    // namespace opengl
+}    // namespace v1
+}    // namespace gfx

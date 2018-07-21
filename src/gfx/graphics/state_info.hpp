@@ -5,8 +5,8 @@
 #include <cinttypes>
 #include <vector>
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 enum class compare_op
 {
     never,
@@ -178,15 +178,7 @@ inline color_component_flags operator|(color_components a, color_components b)
 struct viewport
 {
     viewport() = default;
-    viewport(float x, float y, float w, float h, float n, float f)
-            : x(x)
-            , y(y)
-            , width(w)
-            , height(h)
-            , min_depth(n)
-            , max_depth(f)
-    {
-    }
+    viewport(float x, float y, float w, float h, float n, float f) : x(x), y(y), width(w), height(h), min_depth(n), max_depth(f) {}
 
     float x;
     float y;
@@ -204,10 +196,10 @@ struct state_info
 
     struct stencil_state
     {
-        stencil_op failOp = stencil_op::zero;
-        stencil_op passOp = stencil_op::zero;
+        stencil_op failOp      = stencil_op::zero;
+        stencil_op passOp      = stencil_op::zero;
         stencil_op depthFailOp = stencil_op::zero;
-        compare_op compareOp = compare_op::never;
+        compare_op compareOp   = compare_op::never;
         uint32_t   compareMask = 0;
         uint32_t   writeMask   = 0;
         uint32_t   reference   = 0;
@@ -249,7 +241,7 @@ struct state_info
         sample_count samples                  = sample_count::x1;
         bool32       sample_shading_enable    = false;
         float        min_sample_shading       = 0.f;
-        uint32_t*    sample_masks             = nullptr; // ptr?
+        uint32_t*    sample_masks             = nullptr;    // ptr?
         bool32       alpha_to_coverage_enable = false;
         bool32       alpha_to_one_enable      = false;
     } multisample;
@@ -285,4 +277,5 @@ struct state_info
         std::vector<scissor>  scissors;
     } viewport;
 };
-}
+}    // namespace v1
+}    // namespace gfx

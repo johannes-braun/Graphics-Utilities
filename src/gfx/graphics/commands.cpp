@@ -1,8 +1,8 @@
 #include "commands.hpp"
 #include "opengl/commands_opengl.hpp"
 
-namespace gfx
-{
+namespace gfx {
+inline namespace v1 {
 std::unique_ptr<detail::commands_implementation> detail::commands_implementation::make()
 {
     switch (context::current()->options().graphics_api)
@@ -25,7 +25,7 @@ void commands::draw(size_t vertex_count, size_t instance_count, ptrdiff_t first_
     implementation()->draw(vertex_count, instance_count, first_vertex, first_instance);
 }
 
-void commands::draw_indexed(size_t    index_count, size_t instance_count, ptrdiff_t first_index, ptrdiff_t first_vertex,
+void commands::draw_indexed(size_t index_count, size_t instance_count, ptrdiff_t first_index, ptrdiff_t first_vertex,
                             ptrdiff_t first_instance) const
 {
     implementation()->draw_indexed(index_count, instance_count, first_index, first_vertex, first_instance);
@@ -41,9 +41,14 @@ void commands::reset() const
     implementation()->reset();
 }
 
-void commands::execute(bool block) const
+void commands::execute() const
 {
-    implementation()->execute(block);
+    implementation()->execute(nullptr);
+}
+
+void commands::execute(fence& f) const
+{
+    implementation()->execute(&f);
 }
 
 void commands::set_viewports(gfx::viewport* vps, int count, int first)
@@ -58,6 +63,7 @@ void commands::begin_pass(framebuffer& fbo) const
 
 void commands::end_pass() const
 {
-	implementation()->end_pass();
+    implementation()->end_pass();
 }
-}
+}    // namespace v1
+}    // namespace gfx
