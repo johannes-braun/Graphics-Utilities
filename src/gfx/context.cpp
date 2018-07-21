@@ -49,6 +49,9 @@ void context::make_current()
 {
     make_current(shared_from_this());
     _implementation->make_current(_window);
+
+	if (_options.use_window && !_swapchain)
+		_swapchain.emplace();
 }
 
 GLFWwindow* context::window() const noexcept
@@ -69,10 +72,12 @@ bool context::run()
 {
     if (!_options.use_window) return _should_close;
 
+	static bool do_present = false;
+
     make_current();
 
-    if (_swapchain) _swapchain->present();
-    if (!_swapchain && _options.use_window) _swapchain.emplace();
+    if (do_present && _swapchain) _swapchain->present();
+	do_present = true;
     _should_close = glfwWindowShouldClose(_window);
     glfwPollEvents();
 

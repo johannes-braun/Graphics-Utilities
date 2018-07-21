@@ -58,6 +58,7 @@ int main()
 
 void runnable::init(gfx::context_options& options)
 {
+	glfwWindowHint(GLFW_DOUBLEBUFFER, false);
     options.window_title        = "[13] Image Based Lighting";
     options.debug               = true;
     options.framebuffer_samples = 8;
@@ -228,6 +229,8 @@ void runnable::run()
         float            r      = mat.roughness();
 
         ImGui::Begin("Settings");
+		ImGui::Value("Delta", static_cast<float>(context->delta() * 1000.f));
+		ImGui::Separator();
         ImGui::ColorEdit3("Albedo", glm::value_ptr(albedo));
         ImGui::ColorEdit3("IOR (n)", glm::value_ptr(ior_n), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
         ImGui::ColorEdit3("IOR (k)", glm::value_ptr(ior_k), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
@@ -244,7 +247,7 @@ void runnable::run()
         mesh_material_buffer << mesh_material_buffer_local;
 
         cmd.reset();
-        cmd.begin_pass(*main_framebuffer);
+        cmd.begin_pass(main_framebuffer());
         cmd.bind_descriptors(&cubemap_set, 1);
         cmd.set_viewports(&main_viewport, 1, 0);
         cmd.bind_pipeline(cubemap_pipeline);

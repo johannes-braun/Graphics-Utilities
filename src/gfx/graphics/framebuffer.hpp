@@ -40,8 +40,10 @@ public:
 
     ~framebuffer()
     {
-        glDeleteFramebuffers(1, &_msaa_fbo);
-        glDeleteFramebuffers(1, &_resolve_fbo);
+        if(glIsFramebuffer(_msaa_fbo))
+            glDeleteFramebuffers(1, &_msaa_fbo);
+        if(glIsFramebuffer(_resolve_fbo))
+            glDeleteFramebuffers(1, &_resolve_fbo);
     }
 
     void attach(attachment att, uint32_t index, const image_view& img_view, std::optional<clear_value> clear = {})
