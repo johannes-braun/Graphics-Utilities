@@ -3,8 +3,8 @@
 #include <memory>
 #include <opengl/opengl.hpp>
 #include <random>
+#include "gfx/res.hpp"
 
-std::unique_ptr<gl::compute_pipeline> tracer;
 
 struct tracer_data
 {
@@ -20,17 +20,22 @@ struct tracer_data
 
 int main()
 {
+	gfx::ressources res;
+
     gfx::context_options options;
     options.window_title  = "[03] Bidirectional Pathtracer";
     options.window_height = 720;
     options.window_width  = 1280;
+	options.framebuffer_samples = 1;
     options.debug         = true;
     auto context          = gfx::context::create(options);
     context->make_current();
-    tracer = std::make_unique<gl::compute_pipeline>(std::make_shared<gl::shader>("03_bidirectional_pathtracer/trace.comp"));
+
+	gfx::compute_pipeline trace_pipeline(gfx::shader(gfx::shader_format::text, "03_bidirectional_pathtracer/trace.comp"));
+
     gfx::imgui imgui;
 
-    gfx::scene_file        file("bunny.dae");
+    gfx::scene_file&        file = res.scenes["bunny.dae"];
     gfx::scene_file::mesh& mesh = *(file.meshes.begin());
 
     gfx::host_buffer<gfx::vertex3d> vertices = mesh.vertices;
@@ -47,33 +52,25 @@ int main()
     gl::query timer(GL_TIME_ELAPSED);
 
     gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba32f, {1280, 720}, 1);
+    gfx::image_view render_target_view(gfx::imgv_type::image2d, render_target);
     gl::framebuffer   framebuffer;
-    glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, handle_cast<mygl::texture>(render_target), 0, 0);
+    glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, gfx::handle_cast<mygl::texture>(render_target), 0, 0);
 
     gfx::camera                           camera;
     gfx::camera_controller                controller;
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    const auto        cubemap_format = gfx::r11g11b10f;
-    const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
-    gfx::device_image cubemap_texture(gfx::img_type::image2d, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
-    cubemap_texture.layer(0) << gfx::host_image(cubemap_format, "hdri/hdr/posx.hdr");
-    cubemap_texture.layer(1) << gfx::host_image(cubemap_format, "hdri/hdr/negx.hdr");
-    cubemap_texture.layer(2) << gfx::host_image(cubemap_format, "hdri/hdr/posy.hdr");
-    cubemap_texture.layer(3) << gfx::host_image(cubemap_format, "hdri/hdr/negy.hdr");
-    cubemap_texture.layer(4) << gfx::host_image(cubemap_format, "hdri/hdr/posz.hdr");
-    cubemap_texture.layer(5) << gfx::host_image(cubemap_format, "hdri/hdr/negz.hdr");
-    gfx::image_view cubemap_view(gfx::imgv_type::image_cube, cubemap_format, cubemap_texture, 0, cubemap_texture.levels(), 0, 6);
-
+	gfx::device_image& cubemap_texture = res.cubemaps_hdr["hdri/hdr"];
+    gfx::image_view cubemap_view(gfx::imgv_type::image_cube, cubemap_texture);
     gfx::sampler sampler;
 
     gfx::host_buffer<tracer_data> data_buffer(1);
 
     const auto get_handle = [](const auto& buf) -> uint64_t {
         uint64_t hnd;
-        glGetNamedBufferParameterui64vNV(handle_cast<mygl::buffer>(buf), GL_BUFFER_GPU_ADDRESS_NV, &hnd);
-        glMakeNamedBufferResidentNV(handle_cast<mygl::buffer>(buf), GL_READ_WRITE);
+        glGetNamedBufferParameterui64vNV(gfx::handle_cast<mygl::buffer>(buf), GL_BUFFER_GPU_ADDRESS_NV, &hnd);
+        glMakeNamedBufferResidentNV(gfx::handle_cast<mygl::buffer>(buf), GL_READ_WRITE);
         return hnd;
     };
 
@@ -82,27 +79,47 @@ int main()
     data_buffer[0].bvh    = get_handle(bvh);
     data_buffer[0].frames = 10;
 
+	gfx::framebuffer fb1(1280, 720);
+	fb1.attach(gfx::attachment::color, 0, render_target_view);
+
+	std::vector<gfx::framebuffer> fbos;
+    for (const auto& i : context->swapchain()->image_views()) {
+		fbos.emplace_back(1280, 720);
+		fbos.back().attach(gfx::attachment::color, 0, i);
+    }
+
+	gfx::descriptor_set trace_descriptor;
+	trace_descriptor.set(gfx::descriptor_type::sampled_texture, 0, cubemap_view, sampler);
+	trace_descriptor.set(gfx::descriptor_type::storage_image, 0, render_target_view);
+	trace_descriptor.set(gfx::descriptor_type::uniform_buffer, 0, data_buffer);
+
+	gfx::commands cmd;
+
     while(context->run())
     {
         imgui.new_frame();
 
-		glClear(GL_COLOR_BUFFER_BIT);
-		
         controller.update(camera);
 
-        timer.start();
         data_buffer[0].camera_matrix =
                 inverse(camera.projection_mode.matrix() * glm::mat4(glm::mat3(inverse(camera.transform_mode.matrix()))));
         data_buffer[0].camera_position = glm::vec4(camera.transform_mode.position, 1.f);
         data_buffer[0].seed            = dist(gen);
-        glBindSampler(0, handle_cast<mygl::sampler>(sampler));
-        glBindTextureUnit(0, handle_cast<mygl::texture>(cubemap_view));
-        glBindImageTexture(0, handle_cast<mygl::texture>(render_target), 0, true, 0, GL_READ_WRITE, GL_RGBA32F);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(data_buffer));
-        tracer->dispatch(1280, 720);
 
-        framebuffer.blit(nullptr, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT);
+		timer.start();
+		cmd.reset();
+		cmd.bind_pipeline(trace_pipeline);
+		cmd.bind_descriptors(&trace_descriptor, 1);
+		cmd.dispatch_compute((1280 + 15) / 16, (720 + 7) / 8);
+		cmd.execute();
         timer.finish();
+
+		const auto fbh2 = gfx::handle_cast<mygl::framebuffer>(fbos[context->swapchain()->current_image()]);
+		const auto fbh1 = gfx::handle_cast<mygl::framebuffer>(fb1);
+		glNamedFramebufferReadBuffer(fbh1, GL_COLOR_ATTACHMENT0);
+		glNamedFramebufferDrawBuffer(fbh2, GL_COLOR_ATTACHMENT0);
+		glBlitNamedFramebuffer(fbh1, fbh2, 0, 0, 1280, 720, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbh2);
 
         ImGui::Begin("Settings");
         ImGui::Value("Time", float(timer.get<uint64_t>() / 1'000'000.0));
@@ -113,14 +130,12 @@ int main()
             data_buffer[0].frames++;
         ImGui::DragInt("Int. Samples", &data_buffer[0].frames, 0.1f, 1, 10000);
 
-        if(ImGui::Button("Reload"))
-            tracer->reload();
         if(ImGui::Button("Load"))
         {
             if(const auto item =
                        gfx::file::open_dialog("Open Mesh", "../", {"*.dae", "*.fbx", "*.obj", "*.stl", "*.ply", "*.blend"}, "Meshes"))
             {
-                gfx::scene_file            file(item.value());
+				gfx::scene_file&        file = res.scenes[item.value().path.string()];
                 std::vector<uint32_t>      indices;
                 std::vector<gfx::vertex3d> vertices;
                 size_t                     begin = 0;

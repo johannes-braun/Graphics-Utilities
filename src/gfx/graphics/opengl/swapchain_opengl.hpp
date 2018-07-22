@@ -18,6 +18,7 @@ public:
     void                           resize(uint32_t width, uint32_t height) override;
     std::any                       api_handle() override;
     const std::vector<image_view>& image_views() const override;
+    const std::vector<image>& images() const override;
 
 private:
     std::vector<image>       _images;

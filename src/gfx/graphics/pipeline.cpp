@@ -14,6 +14,17 @@ std::unique_ptr<detail::graphics_pipeline_implementation> detail::graphics_pipel
     return nullptr;
 }
 
+std::unique_ptr<detail::compute_pipeline_implementation> detail::compute_pipeline_implementation::make()
+{
+	switch (context::current()->options().graphics_api)
+	{
+	case gapi::opengl: return std::make_unique<opengl::compute_pipeline_implementation>();
+	case gapi::vulkan:
+	default: break;
+	}
+	return nullptr;
+}
+
 graphics_pipeline::graphics_pipeline() : graphics_pipeline(vertex_input{}, state_info{}) {}
 
 graphics_pipeline::graphics_pipeline(std::shared_ptr<vertex_input> input, state_info&& state)
@@ -57,6 +68,18 @@ const vertex_input& graphics_pipeline::input() const noexcept
 const state_info& graphics_pipeline::state() const noexcept
 {
     return *_state;
+}
+
+compute_pipeline::compute_pipeline(shader&& input)
+    : _shader(std::make_shared<shader>(std::forward<shader>(input)))
+{
+	implementation()->build(*_shader);
+}
+
+compute_pipeline::compute_pipeline(const std::shared_ptr<shader>& input)
+	: _shader(input)
+{
+	implementation()->build(*_shader);
 }
 
 shader::shader(shader_format fmt, const std::filesystem::path& path) : _format(fmt), _path(path)

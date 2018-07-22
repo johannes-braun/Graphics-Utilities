@@ -24,6 +24,12 @@ void descriptor_set::set(descriptor_type type, uint32_t binding, const image_vie
     implementation()->update(type, binding, {view.api_handle(), sampler.api_handle()});
 }
 
+void descriptor_set::set(descriptor_type type, uint32_t binding, const image_view& view)
+{
+	get_at_or_create(type, binding) = view.api_handle();
+	implementation()->update(type, binding, {view.api_handle()});
+}
+
 std::any& descriptor_set::get_at_or_create(descriptor_type t, uint32_t binding)
 {
     auto& vec = _bindings[static_cast<int>(t)];

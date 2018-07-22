@@ -1,5 +1,6 @@
 #define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
+#include <gfx/res.hpp>
 #include <runnable.hpp>
 
 struct material
@@ -75,15 +76,8 @@ void runnable::init(gfx::context_options& options)
 
 void runnable::run()
 {
-    gfx::image                  base_cubemap(gfx::img_type::image2d, gfx::rgba16f, gfx::extent(1024, 1024, 6), 10);
-    const std::filesystem::path folder = "arboretum";
-    base_cubemap.layer(0) << gfx::himage(base_cubemap.pixel_format(), folder / "hdr/posx.hdr");
-    base_cubemap.layer(1) << gfx::himage(base_cubemap.pixel_format(), folder / "hdr/negx.hdr");
-    base_cubemap.layer(2) << gfx::himage(base_cubemap.pixel_format(), folder / "hdr/posy.hdr");
-    base_cubemap.layer(3) << gfx::himage(base_cubemap.pixel_format(), folder / "hdr/negy.hdr");
-    base_cubemap.layer(4) << gfx::himage(base_cubemap.pixel_format(), folder / "hdr/posz.hdr");
-    base_cubemap.layer(5) << gfx::himage(base_cubemap.pixel_format(), folder / "hdr/negz.hdr");
-    base_cubemap.generate_mipmaps();
+	gfx::ressources res;
+	gfx::image& base_cubemap = res.cubemaps_hdr["arboretum/hdr"];
     gfx::image_view base_cubemap_view(gfx::imgv_type::image_cube, base_cubemap);
     gfx::sampler    sampler;
 
@@ -168,7 +162,7 @@ void runnable::run()
     cmd.end_pass();
     cmd.execute();
 
-    gfx::scene_file scene("bunny.dae");
+    gfx::scene_file& scene = res.scenes["bunny.dae"];
 
     gfx::buffer<gfx::vertex3d> mesh_vertex_buffer(gfx::buffer_usage::vertex, scene.meshes[0].vertices);
     gfx::buffer<gfx::index32>  mesh_index_buffer(gfx::buffer_usage::index, scene.meshes[0].indices);

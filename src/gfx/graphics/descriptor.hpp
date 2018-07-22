@@ -15,7 +15,7 @@ enum class descriptor_type
     uniform_buffer,
     storage_buffer,
     sampled_texture,
-    image
+	storage_image,
 };
 
 namespace detail {
@@ -43,6 +43,7 @@ public:
     void set(descriptor_type type, uint32_t binding, const host_buffer<T>& buffer);
 
     void set(descriptor_type type, uint32_t binding, const image_view& view, const sampler& sampler);
+	void set(descriptor_type type, uint32_t binding, const image_view& view);
 
     size_t                                            type_count() const noexcept { return _bindings.size(); }
     const std::vector<std::pair<uint32_t, std::any>>& bindings(descriptor_type type) const noexcept

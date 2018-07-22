@@ -24,7 +24,6 @@ class fence : public impl::implements<detail::fence_implementation>
 {
 public:
 	void wait(std::chrono::nanoseconds timeout = std::chrono::nanoseconds(std::numeric_limits<long long>::max())) const { implementation()->wait(timeout); }
-	std::any api_handle() const { return implementation()->api_handle(); }
 };
 }    // namespace v1
 }    // namespace gfx

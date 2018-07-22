@@ -46,7 +46,7 @@ protected:
 	void end_frame()
 	{
         //  tmp
-		glBindFramebuffer(GL_FRAMEBUFFER, handle_cast<mygl::framebuffer>(main_framebuffer()));
+		glBindFramebuffer(GL_FRAMEBUFFER, gfx::handle_cast<mygl::framebuffer>(main_framebuffer()));
 		imgui->render();
 	}
 

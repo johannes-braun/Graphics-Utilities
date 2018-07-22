@@ -1,5 +1,6 @@
-//! #version 450 core
+#version 450 core
 //! #extension GL_ARB_shading_language_include : enable
+#extension GL_NV_shader_buffer_load : require
 
 #include <ext/bvh.glh>
 #include <ext/random.glh>
@@ -11,7 +12,7 @@
 #define INV_PI 0.31830988618
 #define TAU 6.282185317
 
-layout(local_size_x = 8, local_size_y = 8) in;
+layout(local_size_x = 16, local_size_y = 8) in;
 
 layout(binding=0, std140) uniform Data
 {
@@ -67,9 +68,12 @@ struct light_path
     vec4 color;
 };
 
-const int bounce_count = 7;
-const int lpcount = 1;
+const int bounce_count = 5;
+#define lpcount 0
+
+#if lpcount
 light_path lighting[lpcount];
+#endif
 
 void main()
 {
@@ -131,6 +135,7 @@ void main()
                 vec3 ldir = (sample_uniform_sphere(random_sample) * 0.0001f + position) - lamp_position;
                 vec3 lcol = lamp_color;
                 float dist = 0;
+#if lpcount
                 for(int p = 0; p < lpcount; ++p)
                 {
                     ldir = normalize(ldir);
@@ -188,6 +193,7 @@ void main()
                         }
                     }
                 }
+#endif
 
 
                 vec3 light_color = vec3(0);
@@ -201,7 +207,9 @@ void main()
                     {
                         light_color = dot(normal, to_lamp) * lamp_color / (dist * dist);
                     }
-                    for(int p = 0; p < lpcount; ++p)
+										
+#if lpcount
+					for(int p = 0; p < lpcount; ++p)
                     {
                         if(lighting[p].normal.w == -1)
                             break;
@@ -213,6 +221,7 @@ void main()
                             clamp(dot(-pos_difference_n, normalize(lighting[p].normal.xyz)), 0.f, 20000) *
                             clamp(1.f / max(dot(pos_difference, pos_difference), 0.1), 0, 20000));
                     }
+#endif
                 }
 
                 const vec3 facet_normal = bsdf_local_to_world(

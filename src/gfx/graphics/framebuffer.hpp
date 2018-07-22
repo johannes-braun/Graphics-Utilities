@@ -44,6 +44,38 @@ public:
         if (glIsFramebuffer(_resolve_fbo)) glDeleteFramebuffers(1, &_resolve_fbo);
     }
 
+	framebuffer(framebuffer&& fbo)
+		: _width               (fbo._width),
+		_height              (fbo._height),
+		_msaa_fbo            (fbo._msaa_fbo),
+		_resolve_fbo         (fbo._resolve_fbo),
+		_drawbuffers         (std::move(fbo._drawbuffers)),
+		_enabled_drawbuffers (std::move(fbo._enabled_drawbuffers)),
+		_resolved            (fbo._resolved),
+		_color_clear_values  (std::move(fbo._color_clear_values)),
+		_depth_clear_value   (fbo._depth_clear_value)
+	{
+		fbo._msaa_fbo = mygl::framebuffer::zero;
+		fbo._resolve_fbo = mygl::framebuffer::zero;
+	}
+
+    framebuffer& operator=(framebuffer&& fbo)
+    {
+        _width               = fbo._width;
+        _height              = fbo._height;
+        _msaa_fbo            = fbo._msaa_fbo;
+        _resolve_fbo         = fbo._resolve_fbo;
+        _drawbuffers         = std::move(fbo._drawbuffers);
+        _enabled_drawbuffers = std::move(fbo._enabled_drawbuffers);
+        _resolved            = fbo._resolved;
+        _color_clear_values  = std::move(fbo._color_clear_values);
+        _depth_clear_value   = fbo._depth_clear_value;
+
+		fbo._msaa_fbo = mygl::framebuffer::zero;
+		fbo._resolve_fbo = mygl::framebuffer::zero;
+        return *this;
+    }
+
     void attach(attachment att, uint32_t index, const image_view& img_view, std::optional<clear_value> clear = {})
     {
         switch (att)

@@ -97,11 +97,11 @@ int main()
             float metal                 = dist(gen);
             instance.packed_rough_metal = glm::packUnorm2x16(glm::vec2(roughness, metal));
             if (diffuse_textures[mesh.material_index]) {
-                instance.diffuse_texture = glGetTextureSamplerHandleARB(handle_cast<mygl::texture>(*diffuse_textures[mesh.material_index]),handle_cast<mygl::sampler>(sampler));
+                instance.diffuse_texture = glGetTextureSamplerHandleARB(gfx::handle_cast<mygl::texture>(*diffuse_textures[mesh.material_index]),gfx::handle_cast<mygl::sampler>(sampler));
                 if (!glIsTextureHandleResidentARB(instance.diffuse_texture)) glMakeTextureHandleResidentARB(instance.diffuse_texture);
             }
             if (bump_textures[mesh.material_index]) {
-                instance.bump_texture = glGetTextureSamplerHandleARB(handle_cast<mygl::texture>(*bump_textures[mesh.material_index]), handle_cast<mygl::sampler>(sampler));
+                instance.bump_texture = glGetTextureSamplerHandleARB(gfx::handle_cast<mygl::texture>(*bump_textures[mesh.material_index]), gfx::handle_cast<mygl::sampler>(sampler));
                 if (!glIsTextureHandleResidentARB(instance.bump_texture)) glMakeTextureHandleResidentARB(instance.bump_texture);
             }
             meshes.update_mesh(instance);
@@ -195,9 +195,9 @@ int main()
 
         queries["scene"].queries["culling"].start();
         gl::framebuffer::zero().bind();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, handle_cast<mygl::buffer>(matrix_buffer));
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, gfx::handle_cast<mygl::buffer>(matrix_buffer));
         if (enabled_lights != 0)
-            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, handle_cast<mygl::buffer>(light_buffer), 0, enabled_lights * sizeof(gfx::light::info));
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, gfx::handle_cast<mygl::buffer>(light_buffer), 0, enabled_lights * sizeof(gfx::light::info));
         else
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mygl::buffer::zero);
         large_meshes.cull();

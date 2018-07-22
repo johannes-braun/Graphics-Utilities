@@ -16,6 +16,7 @@ public:
 
     virtual ~commands_implementation()                                                                              = default;
     virtual void bind_graphics_pipeline(graphics_pipeline& pipeline)                                                = 0;
+	virtual void bind_compute_pipeline(compute_pipeline& pipeline)                                                = 0;
     virtual void bind_vertex_buffer(uint32_t binding, std::any buffer_handle, ptrdiff_t offset, uint32_t stride)    = 0;
     virtual void bind_index_buffer(std::any buffer_handle, index_type type, ptrdiff_t offset)                       = 0;
     virtual void draw(size_t vertex_count, size_t instance_count, ptrdiff_t first_vertex, ptrdiff_t first_instance) = 0;
@@ -23,6 +24,7 @@ public:
                               ptrdiff_t first_instance)                                                             = 0;
     virtual void reset()                                                                                            = 0;
     virtual void execute(fence* f)                                                                                = 0;
+	virtual void dispatch_compute(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z) = 0;
 
     // TODO(s):
     virtual void bind_descriptors(descriptor_set* sets, int count)       = 0;
@@ -62,16 +64,19 @@ public:
     void bind_index_buffer(Buffer& buffer, index_type type, ptrdiff_t offset = 0);
 
     void bind_pipeline(graphics_pipeline& ppl) const;
+    void bind_pipeline(compute_pipeline& ppl) const;
     void draw(size_t vertex_count, size_t instance_count = 1, ptrdiff_t first_vertex = 0, ptrdiff_t first_instance = 0) const;
     void draw_indexed(size_t index_count, size_t instance_count = 1, ptrdiff_t first_index = 0, ptrdiff_t first_vertex = 0,
                       ptrdiff_t first_instance = 0) const;
+
+	void dispatch_compute(uint32_t groups_x, uint32_t groups_y = 1, uint32_t groups_z = 1) const;
 
     void reset() const;
     void execute() const;
 	void execute(fence& f) const;
 
     // TODO:
-    void set_viewports(gfx::viewport* vps, int count, int first);
+    void set_viewports(gfx::viewport* vps, int count, int first) const;
     void bind_descriptors(descriptor_set* sets, int count) const;    // etc...
     void begin_pass(framebuffer& fbo) const;
     void end_pass() const;

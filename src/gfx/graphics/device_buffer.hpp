@@ -52,7 +52,45 @@ public:
 };
 }    // namespace detail
 
-GFX_api_cast_template_type(gapi::opengl, device_buffer, mygl::buffer);
+enum class buf_copy_behavior
+{
+	resize_if_larger,
+	resize_always,
+	throw_if_larger,
+};
+
+template<typename From, typename To>
+constexpr static bool are_copyable = false;
+template<typename T>
+constexpr static bool are_copyable<host_buffer<T>, device_buffer<T>> = true;
+template<typename T>
+constexpr static bool are_copyable<device_buffer<T>, device_buffer<T>> = true;
+template<typename T>
+constexpr static bool are_copyable<device_buffer<T>, host_buffer<T>> = true;
+
+template<typename Buf>
+constexpr static bool is_host_buffer = false;
+template<typename T>
+constexpr static bool is_host_buffer<host_buffer<T>> = true;
+template<typename Buf>
+constexpr static bool is_device_buffer = false;
+template<typename T>
+constexpr static bool is_device_buffer<device_buffer<T>> = true;
+
+template<typename From, typename To>
+using enable_if_copiable = std::enable_if_t<are_copyable<From, To>>;
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr);
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr);
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr);
+
+template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr);
 
 class vertex_input;
 template<typename T>
@@ -91,9 +129,10 @@ public:
 
     host_buffer<T> to_host() const;
 
-    GFX_api_cast_op(gapi::opengl, device_buffer);
+protected:
+	template<typename BufDst, typename BufSrc, typename>
+	friend void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f);
 
-//TODO: protected:
 	void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start, size_type count, fence* f = nullptr);
 	void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start, size_type count, fence* f = nullptr);
 
@@ -105,44 +144,8 @@ private:
     buffer_usage_flags _usage_flags;
 };
 
-GFX_api_cast_template_impl(gapi::opengl, device_buffer);
-
-
-
-
-
-
-enum class buf_copy_behavior
-{
-	resize_if_larger,
-	resize_always,
-	throw_if_larger,
-};
-
-template<typename From, typename To>
-constexpr static bool are_copyable = false;
-template<typename T>
-constexpr static bool are_copyable<host_buffer<T>, device_buffer<T>> = true;
-template<typename T>
-constexpr static bool are_copyable<device_buffer<T>, device_buffer<T>> = true;
-template<typename T>
-constexpr static bool are_copyable<device_buffer<T>, host_buffer<T>> = true;
-
-template<typename Buf>
-constexpr static bool is_host_buffer = false;
-template<typename T>
-constexpr static bool is_host_buffer<host_buffer<T>> = true;
-template<typename Buf>
-constexpr static bool is_device_buffer = false;
-template<typename T>
-constexpr static bool is_device_buffer<device_buffer<T>> = true;
-
-
-template<typename From, typename To>
-using enable_if_copiable = std::enable_if_t<are_copyable<From, To>>;
-
-template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr)
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
 {
 	constexpr static const char* invalid_argument_message = "Selected copy range does not fit into destination buffer.";
 
@@ -202,19 +205,19 @@ void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count
 	}
 }
 
-template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr)
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
 {
 	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, src_offset, dst_offset, f);
 }
-template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr)
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f)
 {
 	buf_copy(behavior, dst, src, count, 0, 0, f);
 }
 
-template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr)
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f)
 {
 	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, f);
 }

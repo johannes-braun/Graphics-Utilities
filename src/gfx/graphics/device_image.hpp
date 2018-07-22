@@ -3,9 +3,11 @@
 #include "host_image.hpp"
 #include "implementation.hpp"
 #include <gfx/api.hpp>
+#include "sampler.hpp"
 
 namespace gfx {
 inline namespace v1 {
+class device_image;
 enum class sample_count;
 
 namespace detail {
@@ -29,8 +31,6 @@ enum class img_type
     image2d = 2,
     image3d = 3
 };
-
-GFX_api_cast_type(gapi::opengl, device_image, mygl::texture);
 
 class device_image : public impl::implements<detail::device_image_implementation>
 {
@@ -56,6 +56,9 @@ public:
     device_image(img_type type, format format, const extent& size, uint32_t levels);
     device_image(img_type type, format format, const extent& size, sample_count samples);
     device_image(const host_image& image, uint32_t levels = max_levels);
+
+	device_image(device_image&&) = default;
+
     img_reference operator[](uint32_t layer);
     img_reference level(uint32_t level);
     img_reference layer(uint32_t layer);
@@ -68,8 +71,6 @@ public:
     const uint32_t&     levels() const noexcept;
     const sample_count& samples() const noexcept { return _samples; }
 
-    GFX_api_cast_op(gapi::opengl, device_image);
-
 private:
     uint32_t     _layer_dimensions;
     format       _format;
@@ -77,7 +78,5 @@ private:
     uint32_t     _levels;
     sample_count _samples;
 };
-
-GFX_api_cast_impl(gapi::opengl, device_image)
 }    // namespace v1
 }    // namespace gfx

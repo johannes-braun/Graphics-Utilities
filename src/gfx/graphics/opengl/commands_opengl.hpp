@@ -10,6 +10,7 @@ class commands_implementation : public detail::commands_implementation
 public:
     using cmd = std::function<void()>;
     void     bind_graphics_pipeline(graphics_pipeline& pipeline) override;
+	void bind_compute_pipeline(compute_pipeline& pipeline) override;
     void     bind_vertex_buffer(uint32_t binding, std::any buffer_handle, ptrdiff_t offset, uint32_t stride) override;
     void     bind_index_buffer(std::any buffer_handle, index_type type, ptrdiff_t offset) override;
     void     draw(size_t vertex_count, size_t instance_count, ptrdiff_t first_vertex, ptrdiff_t first_instance) override;
@@ -22,10 +23,12 @@ public:
     void     end_pass() override;
     void     set_viewports(gfx::viewport* vps, int count, int first) override;
     std::any api_handle() override;
+	void dispatch_compute(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z) override;
 
 private:
     GLenum current_draw_mode() const;
 
+	bool _has_state = false;
     framebuffer*           _curr_framebuffer  = nullptr;
     graphics_pipeline*     _curr_pipeline     = nullptr;
     std::atomic<GLenum>    _element_type      = GLenum(0);

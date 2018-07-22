@@ -58,6 +58,11 @@ const std::vector<image_view>& swapchain_implementation::image_views() const
 {
     return _image_views;
 }
+
+const std::vector<image>& swapchain_implementation::images() const
+{
+	return _images;
+}
 }    // namespace opengl
 }    // namespace v1
 }    // namespace gfx

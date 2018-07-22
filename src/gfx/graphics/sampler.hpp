@@ -74,9 +74,7 @@ public:
 };
 }    // namespace detail
 
-GFX_api_cast_type(gapi::opengl, sampler, mygl::sampler)
-
-    class sampler : public impl::implements<detail::sampler_implementation>
+class sampler : public impl::implements<detail::sampler_implementation>
 {
 public:
     sampler();
@@ -89,22 +87,16 @@ public:
     void set_anisotropy(bool enable, float value);
     void set_compare(bool enable, compare_op op = compare_op::never);
 
-    GFX_api_cast_op(gapi::opengl, sampler)
-
-        private :
-
-        std::unordered_map<filter_mode, filter> _filters;
-    std::unordered_map<wrap, wrap_mode> _wraps;
-    border_color                        _border_color = border_color::float_transparent_black;
-    std::unordered_map<lod, float>      _lod;
+private:
+    std::unordered_map<filter_mode, filter> _filters;
+    std::unordered_map<wrap, wrap_mode>     _wraps;
+    border_color                            _border_color = border_color::float_transparent_black;
+    std::unordered_map<lod, float>          _lod;
 
     bool       _enable_anisotropy = false;
     float      _anisotropy_value  = 0.f;
     bool       _enable_compare    = false;
     compare_op _compare_op        = compare_op::never;
 };
-
-GFX_api_cast_impl(gapi::opengl, sampler)
-
 }    // namespace v1
 }    // namespace gfx

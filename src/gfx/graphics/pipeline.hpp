@@ -50,6 +50,17 @@ public:
 
     virtual std::any api_handle() = 0;
 };
+
+class compute_pipeline_implementation
+{
+public:
+	static std::unique_ptr<compute_pipeline_implementation> make();
+
+	virtual ~compute_pipeline_implementation() = default;
+	virtual bool build(shader& shaders)       = 0;
+
+	virtual std::any api_handle() = 0;
+};
 }    // namespace detail
 
 class graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
@@ -74,6 +85,16 @@ private:
     std::shared_ptr<vertex_input>                                _vertex_input  = nullptr;
     std::shared_ptr<state_info>                                  _state         = nullptr;
     std::vector<std::pair<shader_type, std::shared_ptr<shader>>> _shaders;
+};
+
+class compute_pipeline : public impl::implements<detail::compute_pipeline_implementation>
+{
+public:
+    compute_pipeline(shader&& input);
+	compute_pipeline(const std::shared_ptr<shader>& input);
+
+private:
+	std::shared_ptr<shader> _shader;
 };
 
 class shader

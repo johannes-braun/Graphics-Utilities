@@ -55,8 +55,6 @@ public:
 };
 }    // namespace detail
 
-GFX_api_cast_type(gapi::opengl, vertex_input, mygl::vertex_array);
-
 // TODO: for VK: combine to provider for VkPipelineVertexInputStateCreateInfo and VkPipelineInputAssemblyStateCreateInfo + draw
 class vertex_input : public impl::implements<detail::vertex_input_implementation>
 {
@@ -89,9 +87,6 @@ public:
 
 private:
     topology _topology;
-
-public:
-    GFX_api_cast_op(gapi::opengl, vertex_input);
 };
 
 template<typename T>
@@ -112,6 +107,5 @@ void vertex_input::draw_indexed_indirect(const device_buffer<T>& buffer, size_t 
     _implementation->draw_indexed_indirect(buffer._implementation->api_handle(), offset, draw_count, stride);
 }
 
-GFX_api_cast_impl(gapi::opengl, vertex_input)
 }    // namespace v1
 }    // namespace gfx

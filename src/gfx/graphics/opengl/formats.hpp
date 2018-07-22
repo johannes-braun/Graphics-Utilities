@@ -13,6 +13,7 @@ struct format_info
     GLenum external_format;
     GLenum external_type;
     bool   normalized;
+	GLenum buffer_bit;
 };
 
 format_info format_from(format format);

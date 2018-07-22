@@ -2,17 +2,17 @@
 
 #include "geometry.hpp"
 
-#if __has_include(<filesystem>)
+//#if __has_include(<filesystem>)
 #include <filesystem>
-#else
-#include <experimental/filesystem>
-#if defined(__cpp_lib_experimental_filesystem)
-namespace std
-{
-namespace filesystem = experimental::filesystem;
-}
-#endif
-#endif
+//#else
+//#include <experimental/filesystem>
+//#if defined(__cpp_lib_experimental_filesystem)
+//namespace std
+//{
+//namespace filesystem = experimental::filesystem;
+//}
+//#endif
+//#endif
 
 #include <map>
 #include <optional>

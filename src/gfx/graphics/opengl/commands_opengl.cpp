@@ -1,13 +1,20 @@
 #include "commands_opengl.hpp"
-#include "state_info.hpp"
 #include "fence_opengl.hpp"
+#include "state_info.hpp"
 
-namespace gfx
-{
+namespace gfx {
 void opengl::commands_implementation::bind_graphics_pipeline(graphics_pipeline& pipeline)
 {
+	_has_state = true;
     _curr_pipeline = &pipeline;
     _queue.emplace_back([&] { pipeline.bind(); });
+}
+
+void opengl::commands_implementation::bind_compute_pipeline(compute_pipeline& pipeline)
+{
+	_has_state = false;
+	_curr_pipeline = nullptr;
+	_queue.emplace_back([hnd = handle_cast<mygl::pipeline>(pipeline)]{ glBindProgramPipeline(hnd); });
 }
 
 void opengl::commands_implementation::bind_vertex_buffer(uint32_t binding, std::any buffer_handle, ptrdiff_t offset, uint32_t stride)
@@ -49,6 +56,7 @@ void opengl::commands_implementation::draw_indexed(size_t index_count, size_t in
 
 void opengl::commands_implementation::reset()
 {
+	_has_state  = false;
     _queue.clear();
     _curr_pipeline = nullptr;
 }
@@ -61,10 +69,11 @@ void opengl::commands_implementation::execute(fence* f)
     _curr_pipeline = nullptr;
 
     static state_info default_state;
-    apply(default_state);
+    if(_has_state)
+        apply(default_state);
     glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
-	push_fence(f);
-	glFlush();
+    push_fence(f);
+    glFlush();
 }
 
 void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int count)
@@ -112,6 +121,17 @@ void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int
                 }
             }
             break;
+            case descriptor_type::storage_image:
+            {
+                for (auto & [ binding, object ] : set.bindings(descriptor_type(i))) {
+                    // TODO
+                    if (object.has_value() && object.type() == typeid(mygl::texture))
+                        _queue.emplace_back([ =, obj = std::any_cast<mygl::texture>(object) ] { 
+						    glBindImageTextures(binding, 1, &obj);
+                        });
+                }
+            }
+            break;
             default:;
             }
         }
@@ -120,29 +140,25 @@ void opengl::commands_implementation::bind_descriptors(descriptor_set* sets, int
 
 void opengl::commands_implementation::begin_pass(framebuffer& fbo_handle)
 {
-	_curr_framebuffer = &fbo_handle;
-    _queue.emplace_back([ fbo = _curr_framebuffer ] {
+    _curr_framebuffer = &fbo_handle;
+    _queue.emplace_back([fbo = _curr_framebuffer] {
         fbo->begin();
 
         for (int i = 0; i < fbo->color_clear_values().size(); ++i) {
-            if(const auto cv = fbo->color_clear_values()[i])
-            {
+            if (const auto cv = fbo->color_clear_values()[i]) {
                 glClearNamedFramebufferfv(handle_cast<mygl::framebuffer>(*fbo), GL_COLOR, i, value_ptr(std::get<glm::vec4>(*cv)));
             }
         }
-		if (const auto dv = fbo->depth_clear_value())
-		{
-			const auto& dvv = std::get<depth_stencil>(*dv);
-			glClearNamedFramebufferfi(handle_cast<mygl::framebuffer>(*fbo), GL_DEPTH_STENCIL, 0, dvv.depth, dvv.stencil);
-		}
+        if (const auto dv = fbo->depth_clear_value()) {
+            const auto& dvv = std::get<depth_stencil>(*dv);
+            glClearNamedFramebufferfi(handle_cast<mygl::framebuffer>(*fbo), GL_DEPTH_STENCIL, 0, dvv.depth, dvv.stencil);
+        }
     });
 }
 
 void opengl::commands_implementation::end_pass()
 {
-	_queue.emplace_back([fbo = _curr_framebuffer]{
-		fbo->end();
-	});
+    _queue.emplace_back([fbo = _curr_framebuffer] { fbo->end(); });
 }
 
 void opengl::commands_implementation::set_viewports(gfx::viewport* vps, int count, int first)
@@ -158,6 +174,11 @@ void opengl::commands_implementation::set_viewports(gfx::viewport* vps, int coun
 std::any opengl::commands_implementation::api_handle()
 {
     return {};    // none
+}
+
+void opengl::commands_implementation::dispatch_compute(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z)
+{
+	_queue.emplace_back([=] { glDispatchCompute(groups_x, groups_y, groups_z); });
 }
 
 GLenum opengl::commands_implementation::current_draw_mode() const
@@ -179,4 +200,4 @@ GLenum opengl::commands_implementation::current_draw_mode() const
     default: return GLenum(0);
     }
 }
-}
+}    // namespace gfx

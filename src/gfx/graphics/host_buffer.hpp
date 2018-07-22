@@ -42,10 +42,8 @@ public:
 };
 }    // namespace detail
 
-GFX_api_cast_template_type(gapi::opengl, host_buffer, mygl::buffer)    //
-
-    template<typename T>
-    class device_buffer;
+template<typename T>
+class device_buffer;
 
 // buffer for host memory (mapped/contiguous)
 template<typename T>
@@ -129,9 +127,8 @@ public:
     template<typename... Args, typename = decltype(value_type(std::declval<Args>()...))>
     T& emplace_back(Args&&... args);
 
-    GFX_api_cast_op(gapi::opengl, host_buffer)    //
-
-        private : static const std::byte* byte_ptr(const_pointer ptr);
+private: 
+    static const std::byte* byte_ptr(const_pointer ptr);
     static std::byte*    byte_ptr(pointer ptr);
     static const_pointer type_ptr(const std::byte* ptr);
     static pointer       type_ptr(std::byte* ptr);
@@ -140,8 +137,6 @@ public:
     size_type                                      _capacity   = 0;
     span<T>                                        _data_span;
 };
-
-GFX_api_cast_template_impl(gapi::opengl, host_buffer)    //
 
 }    // namespace v1
 }    // namespace gfx
