@@ -218,7 +218,6 @@ void runnable::run()
         static glm::vec3 ior_n(0.24197f, 0.42108f, 1.3737f);
         static glm::vec3 ior_k(2.9152f, 2.3459f, 1.7704f);
         glm::vec3        albedo = mat.albedo();
-        glm::vec3        f0     = mat.f0();
         float            t      = mat.transparency();
         float            r      = mat.roughness();
 
