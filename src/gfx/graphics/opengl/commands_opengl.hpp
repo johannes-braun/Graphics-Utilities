@@ -5,6 +5,7 @@
 namespace gfx {
 inline namespace v1 {
 namespace opengl {
+class framebuffer_implementation;
 class commands_implementation : public detail::commands_implementation
 {
 public:

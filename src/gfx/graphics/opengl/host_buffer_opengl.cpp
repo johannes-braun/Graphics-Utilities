@@ -31,9 +31,9 @@ void host_buffer_implementation::deallocate(const allocation& alloc)
     }
 }
 
-std::any host_buffer_implementation::api_handle()
+handle host_buffer_implementation::api_handle()
 {
-    return _handle;
+    return _handle.get();
 }
 }    // namespace opengl
 }    // namespace v1

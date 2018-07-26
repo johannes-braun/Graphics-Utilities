@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../fence.hpp"
+#include "../general/handle.hpp"
 #include <mygl/mygl.hpp>
 
 namespace gfx {
@@ -32,12 +33,12 @@ public:
 			glDeleteSync(_sync);
 		}
     }
-    std::any api_handle() override { return &_sync; }
+	handle api_handle() override { return &(_sync.get()); }
 
     void push() { _sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, GLbitfield(0)); }
 
 private:
-    GLsync _sync = nullptr;
+    movable_handle<GLsync> _sync = nullptr;
 };
 }    // namespace opengl
 }    // namespace v1

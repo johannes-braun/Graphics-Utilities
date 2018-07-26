@@ -58,6 +58,9 @@ public:
     device_image(const host_image& image, uint32_t levels = max_levels);
 
 	device_image(device_image&&) = default;
+	device_image& operator=(device_image&&) = default;
+	device_image(const device_image&) = default;
+	device_image& operator=(const device_image&) = default;
 
     img_reference operator[](uint32_t layer);
     img_reference level(uint32_t level);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../general/handle.hpp"
 #include "../sampler.hpp"
 #include <mygl/mygl.hpp>
 
@@ -21,9 +22,9 @@ public:
     std::any api_handle() override;
 
 private:
-    mygl::sampler _handle        = mygl::sampler::zero;
-    filter        _min_filter    = filter::nearest;
-    filter        _mipmap_filter = filter::nearest;
+    movable_handle<mygl::sampler> _handle        = mygl::sampler::zero;
+    filter                        _min_filter    = filter::nearest;
+    filter                        _mipmap_filter = filter::nearest;
 };
 }    // namespace opengl
 }    // namespace v1

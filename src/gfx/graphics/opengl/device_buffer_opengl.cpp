@@ -13,7 +13,7 @@ device_buffer_implementation::device_buffer_implementation()
 
 device_buffer_implementation::~device_buffer_implementation()
 {
-    if (_handle != mygl::buffer::zero) glDeleteBuffers(1, &_handle);
+    if (glIsBuffer(mygl::buffer::zero)) glDeleteBuffers(1, &_handle);
 }
 
 void device_buffer_implementation::update_flags(const buffer_usage_flags usage)
@@ -23,17 +23,17 @@ void device_buffer_implementation::update_flags(const buffer_usage_flags usage)
 
 mygl::buffer device_buffer_implementation::handle() const noexcept
 {
-    return _handle;
+    return _handle.get();
 }
 
-std::any device_buffer_implementation::api_handle()
+handle device_buffer_implementation::api_handle()
 {
-    return _handle;
+    return _handle.get();
 }
 
 void device_buffer_implementation::allocate(const size_type size)
 {
-    if (_handle != mygl::buffer::zero) glDeleteBuffers(1, &_handle);
+    if (glIsBuffer(_handle)) glDeleteBuffers(1, &_handle);
 
     if (glCreateBuffers) {
         glCreateBuffers(1, &_handle);

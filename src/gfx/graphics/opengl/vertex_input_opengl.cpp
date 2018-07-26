@@ -12,7 +12,7 @@ vertex_input_implementation::vertex_input_implementation()
 
 vertex_input_implementation::~vertex_input_implementation()
 {
-    if (_handle != mygl::vertex_array::zero) glDeleteVertexArrays(1, &_handle);
+    if (glIsVertexArray(_handle)) glDeleteVertexArrays(1, &_handle);
 }
 
 uint32_t vertex_input_implementation::add_attribute(uint32_t binding, gfx::format fmt, size_t offset)
@@ -46,7 +46,7 @@ void vertex_input_implementation::set_binding_info(uint32_t binding, size_t stri
 
 std::any vertex_input_implementation::api_handle()
 {
-    return _handle;
+    return _handle.get();
 }
 
 void vertex_input_implementation::bind_vertex_buffer(uint32_t binding, const std::any& buffer_handle, ptrdiff_t offset)

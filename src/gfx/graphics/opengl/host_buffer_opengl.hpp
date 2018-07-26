@@ -1,5 +1,6 @@
 #pragma once
 #include <gfx/graphics/host_buffer.hpp>
+#include "../general/handle.hpp"
 #include <mygl/mygl.hpp>
 
 namespace gfx {
@@ -17,10 +18,10 @@ public:
     allocation allocate(size_type size) override;
     void       deallocate(const allocation& alloc) override;
 
-    std::any api_handle() override;
+	handle api_handle() override;
 
 private:
-    mygl::buffer _handle;
+    movable_handle<mygl::buffer> _handle;
 };
 }    // namespace opengl
 }    // namespace v1

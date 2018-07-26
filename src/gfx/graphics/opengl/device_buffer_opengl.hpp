@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gfx/graphics/device_buffer.hpp>
+#include "../general/handle.hpp"
 #include <mygl/mygl.hpp>
 
 namespace gfx {
@@ -20,11 +21,11 @@ public:
               size_type size, fence* f) override;
     void update(difference_type offset, size_type size, const std::byte* data) override;
 
-    std::any     api_handle() override;
+    handle     api_handle() override;
     mygl::buffer handle() const noexcept;
 
 private:
-    mygl::buffer       _handle;
+    movable_handle<mygl::buffer>       _handle;
     buffer_usage_flags _usage;
 };
 }    // namespace opengl

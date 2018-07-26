@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../general/handle.hpp"
 #include "../vertex_input.hpp"
 #include <mygl/mygl.hpp>
 #include <unordered_map>
@@ -24,7 +25,7 @@ public:
     void draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count, uint32_t stride) override;
 
 private:
-    mygl::vertex_array                   _handle;
+    movable_handle<mygl::vertex_array>   _handle;
     uint32_t                             _current_attrib = 0;
     std::unordered_map<uint32_t, size_t> _binding_strides;
     ptrdiff_t                            _index_buffer_offset;

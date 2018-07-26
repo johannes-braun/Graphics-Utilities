@@ -18,7 +18,7 @@ sampler_implementation::~sampler_implementation()
 
 std::any sampler_implementation::api_handle()
 {
-    return _handle;
+    return _handle.get();
 }
 
 void sampler_implementation::set_filter(filter_mode mode, filter filter)

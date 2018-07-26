@@ -31,6 +31,11 @@ public:
 class image_view : public impl::implements<detail::image_view_implementation>
 {
 public:
+	image_view(image_view&&) = default;
+	image_view& operator=(image_view&&) = default;
+	image_view(const image_view&) = default;
+	image_view& operator=(const image_view&) = default;
+
     image_view(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer,
                uint32_t layer_count);
     image_view(imgv_type type, const device_image& image);

@@ -109,7 +109,7 @@ int main()
 		timer.start();
 		cmd.reset();
 		cmd.bind_pipeline(trace_pipeline);
-		cmd.bind_descriptors(&trace_descriptor, 1);
+		cmd.bind_descriptors({ &trace_descriptor, 1 });
 		cmd.dispatch_compute((1280 + 15) / 16, (720 + 7) / 8);
 		cmd.execute();
         timer.finish();

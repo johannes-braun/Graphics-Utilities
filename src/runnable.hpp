@@ -3,6 +3,8 @@
 #define GFX_EXPOSE_APIS
 #include "gfx/gfx.hpp"
 
+#include <gfx/graphics/opengl/framebuffer_opengl.hpp>
+
 class runnable
 {
 public:
@@ -46,8 +48,10 @@ protected:
 	void end_frame()
 	{
         //  tmp
-		glBindFramebuffer(GL_FRAMEBUFFER, gfx::handle_cast<mygl::framebuffer>(main_framebuffer()));
+		auto* impl = static_cast<gfx::opengl::framebuffer_implementation*>(&*main_framebuffer().implementation());
+		impl->begin();
 		imgui->render();
+		impl->end();
 	}
 
 private:

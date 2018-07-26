@@ -85,12 +85,6 @@ axis_transformation principal_axis_transformation(const gfx::himage& image)
     return result;
 }
 
-int main()
-{
-	runnable r;
-	r.run();
-}
-
 void runnable::init(gfx::context_options& options)
 {
 	options.window_title        = "[01] Color Normalization";
@@ -277,21 +271,21 @@ void runnable::run()
         gfx::clear_value values[]{glm::vec4{0.2f, 0.2f, 0.2f, 1.f}, gfx::depth_stencil{0.f, 0u}};
         cmd.begin_pass(main_framebuffer());
 
-        cmd.bind_descriptors(&main_desc, 1);
+		cmd.bind_descriptors({ &main_desc, 1 });
 
         cmd.bind_pipeline(point_pipeline);
-        cmd.set_viewports(&main_viewport, 1, 0);
+		cmd.set_viewports({ &main_viewport, 1 }, 0);
         cmd.draw(picture.extents().width * picture.extents().height);
 
         cmd.bind_pipeline(center_pipeline);
-        cmd.set_viewports(&main_viewport, 1, 0);
+		cmd.set_viewports({ &main_viewport, 1 }, 0);
         cmd.draw(1);
 
         cmd.bind_pipeline(gizmo_pipeline);
-        cmd.set_viewports(&main_viewport, 1, 0);
+		cmd.set_viewports({ &main_viewport, 1 }, 0);
         cmd.draw(6);
 
-        cmd.bind_descriptors(&grid_desc, 1);
+		cmd.bind_descriptors({ &grid_desc, 1 });
 
         cmd.bind_pipeline(cube_pipeline);
         cmd.bind_vertex_buffer(0, vbo);
@@ -301,11 +295,11 @@ void runnable::run()
         cmd.bind_pipeline(cube_front);
         cmd.draw_indexed(ibo.capacity());
 
-        cmd.bind_descriptors(&main_desc, 1);
+		cmd.bind_descriptors({ &main_desc, 1 });
 
         gfx::viewport pic_vp(0, 0, picture.extents().width * scale, picture.extents().height * scale, 0.f, 1.f);
         cmd.bind_pipeline(img_pipeline);
-        cmd.set_viewports(&pic_vp, 1, 0);
+		cmd.set_viewports({ &pic_vp, 1 }, 0);
         cmd.draw(3);
 		cmd.end_pass();
 

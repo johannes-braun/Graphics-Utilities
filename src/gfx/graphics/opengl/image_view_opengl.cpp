@@ -37,9 +37,9 @@ void image_view_implementation::initialize(imgv_type type, format format, const 
                   layer_count);
 }
 
-std::any image_view_implementation::api_handle()
+handle image_view_implementation::api_handle()
 {
-    return _handle;
+    return _handle.get();
 }
 }    // namespace opengl
 }    // namespace v1

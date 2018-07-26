@@ -6,6 +6,7 @@ void runnable::init(gfx::context_options& options)
 {
     options.window_title = "[14] Cubemapper";
     options.debug        = true;
+	options.framebuffer_samples = 8;
 }
 
 void runnable::run()
@@ -20,6 +21,8 @@ void runnable::run()
 
     const auto cubemap_render_state                        = std::make_shared<gfx::state_info>();
     cubemap_render_state->depth_stencil.depth_write_enable = false;
+	cubemap_render_state->multisample.sample_shading_enable = true;
+	cubemap_render_state->multisample.samples = gfx::sample_count::x8;
     gfx::graphics_pipeline pipeline(gfx::vertex_input{}, cubemap_render_state);
     pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::text, "14_cubemapper/skybox.vert"));
     pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::text, "14_cubemapper/skybox.frag"));
@@ -38,10 +41,11 @@ void runnable::run()
 
         cmd.reset();
         cmd.begin_pass(main_framebuffer());
-        cmd.bind_descriptors(&descriptor, 1);
-        cmd.set_viewports(&main_viewport, 1, 0);
+		cmd.bind_descriptors({ &descriptor, 1 });
         cmd.bind_pipeline(pipeline);
+		cmd.set_viewports({ &main_viewport, 1 }, 0);
         cmd.draw(3);
+		cmd.end_pass();
         cmd.execute();
     }
 }

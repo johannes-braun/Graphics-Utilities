@@ -104,9 +104,9 @@ void runnable::run()
 
     gfx::viewport    filter_viewport(0, 0, sampling_size, sampling_size, 0.01f, 100.f);
     cmd.begin_pass(fbo);
-    cmd.bind_descriptors(&filter_set, 1);
+	cmd.bind_descriptors({ &filter_set, 1 });
     cmd.bind_pipeline(filter_pipeline);
-    cmd.set_viewports(&filter_viewport, 1, 0);
+	cmd.set_viewports({ &filter_viewport, 1 }, 0);
     cmd.draw(6, 1);
     cmd.end_pass();
     cmd.execute();
@@ -123,9 +123,9 @@ void runnable::run()
 		roughness[0] = l / (9.f);
         gfx::viewport viewport(0, 0, 1024 >> l, 1024 >> l, 0.01f, 100.f);
         cmd.begin_pass(cfbo);
-        cmd.bind_descriptors(&filter_set, 1);
+		cmd.bind_descriptors({ &filter_set, 1 });
         cmd.bind_pipeline(specular_pipeline);
-        cmd.set_viewports(&viewport, 1, 0);
+		cmd.set_viewports({ &viewport, 1 }, 0);
         cmd.draw(6, 1);
         cmd.end_pass();
         cmd.execute(spec_fence);
@@ -151,7 +151,7 @@ void runnable::run()
     cmd.reset();
     cmd.begin_pass(lut_framebuffer);
     cmd.bind_pipeline(lut_pipeline);
-    cmd.set_viewports(&lut_viewport, 1, 0);
+	cmd.set_viewports({ &lut_viewport, 1 }, 0);
     cmd.draw(3);
     cmd.end_pass();
     cmd.execute();
@@ -235,14 +235,14 @@ void runnable::run()
 
         cmd.reset();
         cmd.begin_pass(main_framebuffer());
-        cmd.bind_descriptors(&cubemap_set, 1);
-        cmd.set_viewports(&main_viewport, 1, 0);
+		cmd.bind_descriptors({ &cubemap_set, 1 });
+		cmd.set_viewports({ &main_viewport, 1 }, 0);
         cmd.bind_pipeline(cubemap_pipeline);
         cmd.draw(3);
 
-        cmd.bind_descriptors(&mesh_cam_descriptor, 1);
+        cmd.bind_descriptors({&mesh_cam_descriptor, 1});
         cmd.bind_pipeline(mesh_pipeline);
-        cmd.set_viewports(&main_viewport, 1, 0);
+		cmd.set_viewports({ &main_viewport, 1 }, 0);
         cmd.bind_vertex_buffer(0, mesh_vertex_buffer);
         cmd.bind_index_buffer(mesh_index_buffer, gfx::index_type::uint32);
         cmd.draw_indexed(mesh_index_buffer.capacity());

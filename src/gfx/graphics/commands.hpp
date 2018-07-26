@@ -57,6 +57,17 @@ using enable_if_buffer_t = std::enable_if_t<is_buffer<std::decay_t<T>>::value>;
 class commands : public impl::implements<detail::commands_implementation>
 {
 public:
+    enum class state_flag
+	{
+        empty = 0,
+        has_graphics_pipeline = 1 << 0,
+        has_compute_pipeline = 1 << 1,
+        has_vertex_buffer = 1 << 2,
+        has_index_buffer = 1 << 3,
+        in_pass = 1 << 4,
+	};
+	using state_flags = flags<std::underlying_type_t<state_flag>, state_flag>;
+    
     template<typename Buffer, typename = detail::enable_if_buffer_t<Buffer>>
     void bind_vertex_buffer(uint32_t binding, Buffer& buffer, ptrdiff_t offset = 0, uint32_t stride = sizeof(typename Buffer::value_type));
 
@@ -76,22 +87,27 @@ public:
 	void execute(fence& f) const;
 
     // TODO:
-    void set_viewports(gfx::viewport* vps, int count, int first) const;
-    void bind_descriptors(descriptor_set* sets, int count) const;    // etc...
+    void set_viewports(span<viewport> viewports, int first) const;
+    void bind_descriptors(span<descriptor_set> sets) const;    // etc...
     void begin_pass(framebuffer& fbo) const;
     void end_pass() const;
+
+private:
+	mutable state_flags _state = state_flag::empty;
 };
 
 template<typename Buffer, typename>
 void commands::bind_vertex_buffer(uint32_t binding, Buffer& buffer, ptrdiff_t offset, uint32_t stride)
 {
     implementation()->bind_vertex_buffer(binding, buffer.api_handle(), offset, stride);
+	_state |= state_flag::has_vertex_buffer;
 }
 
 template<typename Buffer, typename>
 void commands::bind_index_buffer(Buffer& buffer, index_type type, ptrdiff_t offset)
 {
     implementation()->bind_index_buffer(buffer.api_handle(), type, offset);
+	_state |= state_flag::has_index_buffer;
 }
 }    // namespace v1
 }    // namespace gfx
