@@ -61,12 +61,6 @@ const material palladium(glm::vec3{0, 0, 0},
 	material::make_f0(glm::vec3(1.7160f, 1.6412f, 1.4080f), glm::vec3(4.1177f, 3.8455f, 3.2540f)), 0.f, 0.f);
 const material cellulose(glm::vec3{0, 0, 0}, material::make_f0(glm::vec3(1.4696f, 1.4720f, 1.4796f), glm::vec3(0.f)), 0.f, 0.f);
 
-int main()
-{
-    runnable r;
-    r.run();
-}
-
 void runnable::init(gfx::context_options& options)
 {
     options.window_title        = "[13] Image Based Lighting";

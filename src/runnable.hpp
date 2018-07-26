@@ -101,3 +101,10 @@ private:
 	std::vector<std::unique_ptr<gfx::framebuffer>> _fbs;
 	gfx::context_options                          _opt;
 };
+
+#ifndef GFX_RUNNABLE_DISABLE_MAIN
+int main()
+{
+	runnable().run();
+}
+#endif

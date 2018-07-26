@@ -21,6 +21,36 @@ struct depth_stencil
 };
 using clear_value = std::variant<glm::vec4, depth_stencil>;
 
+template<typename T>
+struct mov_handle
+{
+	mov_handle() : _hnd(T::zero) {}
+    mov_handle(T h) : _hnd(h) {}
+    mov_handle(const mov_handle&) = default;
+    mov_handle& operator=(const mov_handle&) = default;
+
+    mov_handle(mov_handle&& o)
+    {
+        _hnd   = o._hnd;
+        o._hnd = T::zero;
+    }
+    mov_handle& operator=(mov_handle&& o)
+    {
+        _hnd   = o._hnd;
+        o._hnd = T::zero;
+        return *this;
+    }
+             operator T&() { return _hnd; }
+             operator const T&() const { return _hnd; }
+    T*       operator&() { return &_hnd; }
+    const T* operator&() const { return &_hnd; }
+
+	operator std::any() const { return _hnd; }
+
+private:
+    T _hnd;
+};
+
 class commands;
 class framebuffer
 {
@@ -44,37 +74,8 @@ public:
         if (glIsFramebuffer(_resolve_fbo)) glDeleteFramebuffers(1, &_resolve_fbo);
     }
 
-	framebuffer(framebuffer&& fbo)
-		: _width               (fbo._width),
-		_height              (fbo._height),
-		_msaa_fbo            (fbo._msaa_fbo),
-		_resolve_fbo         (fbo._resolve_fbo),
-		_drawbuffers         (std::move(fbo._drawbuffers)),
-		_enabled_drawbuffers (std::move(fbo._enabled_drawbuffers)),
-		_resolved            (fbo._resolved),
-		_color_clear_values  (std::move(fbo._color_clear_values)),
-		_depth_clear_value   (fbo._depth_clear_value)
-	{
-		fbo._msaa_fbo = mygl::framebuffer::zero;
-		fbo._resolve_fbo = mygl::framebuffer::zero;
-	}
-
-    framebuffer& operator=(framebuffer&& fbo)
-    {
-        _width               = fbo._width;
-        _height              = fbo._height;
-        _msaa_fbo            = fbo._msaa_fbo;
-        _resolve_fbo         = fbo._resolve_fbo;
-        _drawbuffers         = std::move(fbo._drawbuffers);
-        _enabled_drawbuffers = std::move(fbo._enabled_drawbuffers);
-        _resolved            = fbo._resolved;
-        _color_clear_values  = std::move(fbo._color_clear_values);
-        _depth_clear_value   = fbo._depth_clear_value;
-
-		fbo._msaa_fbo = mygl::framebuffer::zero;
-		fbo._resolve_fbo = mygl::framebuffer::zero;
-        return *this;
-    }
+    framebuffer(framebuffer&& fbo) = default;
+    framebuffer& operator=(framebuffer&& fbo) = default;
 
     void attach(attachment att, uint32_t index, const image_view& img_view, std::optional<clear_value> clear = {})
     {
@@ -157,8 +158,8 @@ public:
 private:
     uint32_t                                _width;
     uint32_t                                _height;
-    mygl::framebuffer                       _msaa_fbo;
-    mygl::framebuffer                       _resolve_fbo;
+    mov_handle<mygl::framebuffer>           _msaa_fbo;
+    mov_handle<mygl::framebuffer>           _resolve_fbo;
     std::vector<GLenum>                     _drawbuffers;
     std::vector<draw_buffer_settings>       _enabled_drawbuffers;
     uint32_t                                _resolved;

@@ -46,4 +46,5 @@
 // Includes for gfx/file:
 #include <gfx/file/file_config.hpp>
 
+// Include the type aliases last
 #include <gfx/alias.inl>
