@@ -43,7 +43,6 @@ struct triangle {
     uint b;
     uint c;
 };
-
 const float random_primes[6] = { 69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f };
 void init_random(ivec2 pixel, float seed)
 {

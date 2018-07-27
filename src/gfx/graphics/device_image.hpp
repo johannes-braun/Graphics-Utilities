@@ -32,6 +32,8 @@ enum class img_type
     image3d = 3
 };
 
+class image_view;
+enum class imgv_type;
 class device_image : public impl::implements<detail::device_image_implementation>
 {
 public:
@@ -44,6 +46,8 @@ public:
 
         void operator<<(const host_image& image) const;
         void operator>>(const host_image& image) const;
+
+		image_view view(imgv_type type);
 
     private:
         friend class device_image;
@@ -65,6 +69,7 @@ public:
     img_reference operator[](uint32_t layer);
     img_reference level(uint32_t level);
     img_reference layer(uint32_t layer);
+	image_view view(imgv_type type);
     img_reference sub_image(uint32_t level, uint32_t layer);
     void          generate_mipmaps();
 

@@ -2,6 +2,7 @@
 #include "opengl/device_image_opengl.hpp"
 #include "state_info.hpp"
 #include <gfx/context.hpp>
+#include "image_view.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -87,5 +88,16 @@ device_image::img_reference device_image::sub_image(uint32_t level, uint32_t lay
 {
     return img_reference(level, layer, *this);
 }
+
+image_view device_image::view(imgv_type type)
+{
+	return image_view(type, *this);
+}
+
+image_view device_image::img_reference::view(imgv_type type)
+{
+	return image_view(type, *this);
+}
+
 }    // namespace v1
 }    // namespace gfx
