@@ -85,6 +85,7 @@ namespace gfx
 
         const std::vector<byte>& pack(size_t vertex_stride, size_t vertex_offset, size_t index_stride, size_t index_offset);
         const std::vector<byte>& get_packed() const noexcept;
+		const std::vector<node>& nodes() const noexcept { return _nodes; }
 
         bounds get_bounds() const;
 

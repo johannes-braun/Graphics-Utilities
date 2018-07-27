@@ -73,19 +73,24 @@ namespace gfx
 
     constexpr bool transform::operator==(const transform& other) const noexcept
     {
+        const auto eps_eq = [](auto x, auto y)
+        {
+			const auto abs = [](auto x) { return x < 0 ? -x : x; };
+			return abs(x - y) < 1e-4f;
+		};
         return
-            position.x == other.position.x &&
-            position.y == other.position.y &&
-            position.z == other.position.z &&
+            eps_eq(position.x, other.position.x) &&
+            eps_eq(position.y, other.position.y) &&
+            eps_eq(position.z, other.position.z) &&
 
-            scale.x == other.scale.x &&
-            scale.y == other.scale.y &&
-            scale.z == other.scale.z &&
+            eps_eq(scale.x, other.scale.x) &&
+            eps_eq(scale.y, other.scale.y) &&
+            eps_eq(scale.z, other.scale.z) &&
 
-            rotation.w == other.rotation.w &&
-            rotation.x == other.rotation.x &&
-            rotation.y == other.rotation.y &&
-            rotation.z == other.rotation.z;
+            eps_eq(rotation.w, other.rotation.w) &&
+            eps_eq(rotation.x, other.rotation.x) &&
+            eps_eq(rotation.y, other.rotation.y) &&
+            eps_eq(rotation.z, other.rotation.z);
     }
 
     constexpr bool transform::operator!=(const transform& other) const noexcept { return !operator==(other); }
