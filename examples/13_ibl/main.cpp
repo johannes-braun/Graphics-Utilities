@@ -157,9 +157,11 @@ void runnable::run()
     cmd.execute();
 
     gfx::scene_file& scene = res.scenes["bunny.dae"];
+	gfx::mesh3d mesh = scene.mesh;
+	mesh.collapse();
 
-    gfx::buffer<gfx::vertex3d> mesh_vertex_buffer(gfx::buffer_usage::vertex, scene.meshes[0].vertices);
-    gfx::buffer<gfx::index32>  mesh_index_buffer(gfx::buffer_usage::index, scene.meshes[0].indices);
+    gfx::buffer<gfx::vertex3d> mesh_vertex_buffer(gfx::buffer_usage::vertex, mesh.vertices);
+    gfx::buffer<gfx::index32>  mesh_index_buffer(gfx::buffer_usage::index, mesh.indices);
     gfx::hbuffer<material>     mesh_material_buffer_local;
     gfx::buffer<material>      mesh_material_buffer(gfx::buffer_usage::storage, 1);
 

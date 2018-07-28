@@ -105,12 +105,13 @@ void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_co
     vec3 msnormal = bsdf_local_to_world(sample_cosine_hemisphere(random_value), normal);
     direction     = msnormal;
     origin        = position + direction * 1e-3f;
+    bounce_color *= abs(dot(direction, normal)) * vec4(0.8f, 0.4f, 0.2f, 1);
 #else
     vec3 msnormal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), normal);
     direction     = reflect(direction.xyz, msnormal);
-    origin += position + direction * 1e-3f;
-#endif
+    origin        = position;
     bounce_color *= vec4(0.8f, 0.4f, 0.2f, 1);
+#endif
 }
 
 
@@ -120,9 +121,9 @@ void main()
     ivec2 img_size = ivec2(imageSize(accumulation_cache));
     if (any(greaterThanEqual(pixel, img_size))) return;
 
-    init_random(pixel, int(reset + 200 * time));
+    init_random(ivec2(0, 0) + pixel, int(reset + 200 * time));
     vec2 random_value =
-        random_hammersley_2d(int(pixel.y * img_size.x + pixel.x + next_random() * img_size.x * img_size.y) % (img_size.x * img_size.y),
+        random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (img_size.x * img_size.y),
                              1.f / (img_size.x * img_size.y));
     vec3 precalc_direction = vec3(inverse_view_proj * vec4((((pixel + random_value) / vec2(img_size)) * 2 - 1), 0.f, 1.f));
 
@@ -139,7 +140,7 @@ void main()
     {
         if (c_counters.x == 0)
         {
-            random_value      = random_hammersley_2d(int(pixel.y * img_size.x + pixel.x + next_random() * img_size.x * img_size.y)
+            random_value      = random_hammersley_2d(int(next_random() * img_size.x * img_size.y)
                                                     % (img_size.x * img_size.y),
                                                 1.f / (img_size.x * img_size.y));
             precalc_direction = vec3(inverse_view_proj * vec4((((pixel + random_value) / vec2(img_size)) * 2 - 1), 0.f, 1.f));
@@ -161,10 +162,14 @@ void main()
             vec2 uv = hit.near_barycentric.x * model_vertices[v0].uv + hit.near_barycentric.y * model_vertices[v1].uv
                       + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
 
-            shade_retrace(c_origin.xyz, c_direction.xyz, c_bounce, pos, norm, uv, random_value);
+            vec3 orig = c_origin.xyz;
+            vec3 dir  = c_direction.xyz;
+            shade_retrace(orig, dir, c_bounce, pos, norm, uv, random_value);
+            c_origin    = vec4(orig + dir * 1e-3f, 1);
+            c_direction = vec4(dir, 0);
 
             float den = ++c_counters.x;
-            if (den > 8)
+            if (den > 4)
             {
                 c_counters.y;
                 c_accumulation += clamp(c_bounce, 0, 10);
@@ -175,8 +180,11 @@ void main()
         }
         else
         {
+			#define sample_env() texture(cubemap, c_direction.xyz)
+			//#define sample_env() vec4(0.2f)
+
             ++c_counters.y;
-            c_accumulation += clamp(c_bounce * texture(cubemap, c_direction.xyz), 0, 10);
+            c_accumulation += clamp(c_bounce * sample_env(), 0, 10);
             c_bounce        = vec4(0);
             c_counters.x    = 0;
             c_display_color = (c_accumulation + c_bounce / (c_counters.x + 1)) / (c_counters.y + 1);

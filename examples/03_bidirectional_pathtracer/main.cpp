@@ -36,7 +36,8 @@ int main()
     gfx::imgui imgui;
 
     gfx::scene_file&        file = res.scenes["bunny.dae"];
-    gfx::scene_file::mesh& mesh = *(file.meshes.begin());
+	gfx::mesh3d mesh = file.mesh;
+	mesh.collapse();
 
     gfx::host_buffer<gfx::vertex3d> vertices = mesh.vertices;
     gfx::host_buffer<gfx::index32>  indices  = mesh.indices;
@@ -136,39 +137,14 @@ int main()
                        gfx::file::open_dialog("Open Mesh", "../", {"*.dae", "*.fbx", "*.obj", "*.stl", "*.ply", "*.blend"}, "Meshes"))
             {
 				gfx::scene_file&        file = res.scenes[item.value().path.string()];
-                std::vector<uint32_t>      indices;
-                std::vector<gfx::vertex3d> vertices;
-                size_t                     begin = 0;
-                int                        mid   = 0;
-                for(const auto& mesh : file.meshes)
-                {
-                    vertices.reserve(vertices.size() + mesh.vertices.size());
-                    const glm::mat4 model_matrix  = static_cast<glm::mat4>(mesh.transform);
-                    const glm::mat4 normal_matrix = transpose(inverse(model_matrix));
-                    for(auto vertex : mesh.vertices)
-                    {
-                        vertex.position = glm::vec3(model_matrix * glm::vec4(vertex.position, 1));
-                        vertex.normal   = glm::vec3(normal_matrix * glm::vec4(vertex.normal, 0));
-                        if(mid >= 1)
-                            vertex.metadata_position = 1;
-                        vertices.emplace_back(std::move(vertex));
-                    }
-                    ++mid;
-                    indices.reserve(indices.size() + mesh.indices.size());
-                    for(auto index : mesh.indices)
-                        indices.emplace_back(uint32_t(index + begin));
-                    begin += mesh.vertices.size();
-                }
+				file.mesh.collapse();
 
-                gfx::host_buffer<gfx::vertex3d> xvertices = vertices;
-                gfx::host_buffer<gfx::index32>  xindices  = indices;
-
-                gen_bvh.sort(xindices.begin(), xindices.end(), [&](uint32_t index) { return xvertices[index].position; });
+                gen_bvh.sort(file.mesh.indices.begin(), file.mesh.indices.end(), [&](uint32_t index) { return file.mesh.vertices[index].position; });
                 gfx::host_buffer<uint8_t> xpacked_bvh =
                         gen_bvh.pack(sizeof(gfx::vertex3d), offsetof(gfx::vertex3d, position), sizeof(uint32_t), 0);
 
-                vbo = gfx::device_buffer<gfx::vertex3d>(gfx::buffer_usage::storage, xvertices);
-                ibo = gfx::device_buffer<gfx::index32>(gfx::buffer_usage::storage, xindices);
+                vbo = gfx::device_buffer<gfx::vertex3d>(gfx::buffer_usage::storage, file.mesh.vertices);
+                ibo = gfx::device_buffer<gfx::index32>(gfx::buffer_usage::storage, file.mesh.indices);
                 bvh = gfx::device_buffer<uint8_t>(gfx::buffer_usage::storage, xpacked_bvh);
 
                 data_buffer[0].vbo = get_handle(vbo);

@@ -92,6 +92,7 @@ private:
 		}
 	}
 
+	gfx::ressources res;
 	std::shared_ptr<gfx::context>                    context;
 	std::unique_ptr<gfx::imgui>                      imgui;
 	gfx::framebuffer&                main_framebuffer() { return *_fbs[context->swapchain()->current_image()]; }

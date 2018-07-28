@@ -14,7 +14,7 @@ void handle_node(scene_file& file, aiNode* node, const aiScene* scene, const glm
     const glm::mat4 node_trafo = transform * transpose(reinterpret_cast<glm::mat4&>(node->mTransformation));
 
     for (uint32_t i = 0; i < node->mNumMeshes; ++i)
-    { file.meshes.at(node->mMeshes[i]).transform = static_cast<gfx::transform>(node_trafo); }
+    { file.mesh.geometries.at(node->mMeshes[i]).transformation = static_cast<gfx::transform>(node_trafo); }
 
     for (uint32_t i = 0; i < node->mNumChildren; ++i)
     { handle_node(file, node->mChildren[i], scene, node_trafo); } 
@@ -65,12 +65,11 @@ scene_file::scene_file(const files::path& path) : file(path)
         load_if(current_material.texture_diffuse, AI_MATKEY_TEXTURE_DIFFUSE(0));
         load_if(current_material.texture_bump, AI_MATKEY_TEXTURE_HEIGHT(0));
     }
-
     const auto to_vec3 = [](const aiVector3D& vec) { return glm::vec3(vec.x, vec.y, vec.z); };
     for (int m = 0; m < static_cast<int>(scene->mNumMeshes); ++m)
     {
         const auto ai_mesh = scene->mMeshes[m];
-        mesh       current_mesh;
+        mesh3d       current_mesh;
         current_mesh.indices.resize(ai_mesh->mNumFaces * 3);
 #pragma omp parallel for schedule(static)
         for (auto i = 0; i < static_cast<int>(ai_mesh->mNumFaces); ++i)
@@ -91,8 +90,11 @@ scene_file::scene_file(const files::path& path) : file(path)
                               to_vec3(ai_mesh->mNormals[i]));
         }
 
-        current_mesh.material_index = ai_mesh->mMaterialIndex;
-        meshes.emplace_back(current_mesh);
+		auto& geo = current_mesh.geometries.emplace_back();
+		geo.index_count = current_mesh.indices.size();
+		geo.vertex_count = current_mesh.vertices.size();
+		mesh += current_mesh;
+        mesh_material_indices[&mesh.geometries.back()] = ai_mesh->mMaterialIndex;
     }
 
     handle_node(*this, scene->mRootNode, scene, glm::mat4(1.f));

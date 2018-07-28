@@ -7,9 +7,9 @@
 //#else
 //#include <experimental/filesystem>
 //#if defined(__cpp_lib_experimental_filesystem)
-//namespace std
+// namespace std
 //{
-//namespace filesystem = experimental::filesystem;
+// namespace filesystem = experimental::filesystem;
 //}
 //#endif
 //#endif
@@ -20,8 +20,7 @@
 #include <variant>
 #include <vector>
 
-namespace gfx
-{
+namespace gfx {
 namespace files = std::filesystem;
 
 enum class bits
@@ -48,18 +47,18 @@ enum class msg_icon
 
 enum class msg_type
 {
-	ok,
-	ok_cancel,
-	yes_no,
-	yes_no_cancel
+    ok,
+    ok_cancel,
+    yes_no,
+    yes_no_cancel
 };
 
 enum class msg_result
 {
-	ok,
-	cancel,
-	yes,
-	no
+    ok,
+    cancel,
+    yes,
+    no
 };
 
 struct file
@@ -91,7 +90,7 @@ struct file
 
     static std::optional<files::path> folder_dialog(const std::string& title, const files::path& default_path);
 
-    static void popup(const std::string& title, const std::string& message, popup_icon icon);
+    static void       popup(const std::string& title, const std::string& message, popup_icon icon);
     static msg_result message(const std::string& title, const std::string& message, msg_type type, msg_icon icon, int default_button = 0);
 };
 
@@ -159,7 +158,7 @@ struct scene_file : file
         gfx::image_file texture_bump;
     };
 
-    struct mesh
+    /*struct mesh
     {
         std::string                name;
         const material*            material_ptr;
@@ -170,7 +169,12 @@ struct scene_file : file
     };
 
     std::vector<mesh>     meshes;
-    std::vector<material> materials;
+    std::vector<material> materials;*/
+
+
+    mesh3d                                    mesh;
+    std::vector<material>                     materials;
+    std::unordered_map<submesh3d*, u32> mesh_material_indices;
 
     scene_file(const files::path& path);
 };
