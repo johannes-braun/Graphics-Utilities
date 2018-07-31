@@ -101,7 +101,9 @@ void commands_implementation::bind_descriptors(descriptor_set* sets, int count)
                 for (auto & [ binding, object ] : set.bindings(descriptor_type(i))) {
                     if (object.has_value() && object.type() == typeid(mygl::buffer))
                         _queue.emplace_back(
-                            [ =, obj = std::any_cast<mygl::buffer>(object) ] { glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, obj); });
+                            [ =, obj = std::any_cast<mygl::buffer>(object) ] { 
+								glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, obj); 
+							});
                 }
             }
             break;

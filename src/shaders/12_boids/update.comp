@@ -1,0 +1,96 @@
+#version 460 core
+
+layout(local_size_x = 128) in;
+
+struct boid
+{
+	vec2 position;
+	vec2 velocity;
+	vec4 color;
+};
+
+layout(binding=0) readonly buffer SourceBoids
+{
+	boid src_boids[];
+};
+
+layout(binding=1) writeonly buffer DestinationBoids
+{
+	boid dst_boids[];
+};
+
+layout(binding = 0) uniform Mouse
+{
+	struct {
+		vec2 position;
+	} mouse;
+};
+
+void main()
+{
+	const int len = int(src_boids.length());
+	const int id  = int(gl_GlobalInvocationID.x);
+	if(id >= len) return;
+
+	boid item = src_boids[id];
+
+	const float dt = 0.001f;
+	const float radius = 0.06f;
+	const float sep = 0.024f;
+	const float ff = 1.f;
+	
+	item.position += dt * item.velocity;
+
+	vec2 dsts = vec2(0);
+	vec2 cdir = item.position;
+	int ncount = 1;
+	vec2 odir = vec2(0);
+	vec2 vgen = item.velocity;
+	int ocount = 0;
+	vec2 cdiff = vec2(0);
+	for(int i=0; i <= src_boids.length(); ++i)
+	{
+		if(i == id)
+			continue;
+			
+		vec2 p = i == src_boids.length() ? mouse.position : src_boids[i].position;
+		vec2 v = i == src_boids.length() ? vec2(0) : src_boids[i].velocity;
+	    vec2 dir = p - item.position;
+		float len = length(dir);
+
+		if(len < radius)
+		{
+			++ ncount;
+			cdir += (dir);
+			vgen += v;
+
+//			if(i < src_boids.length())
+//				cdiff -= 9.f*max(length(src_boids[i].color - item.color) - 0.7f, 0) * normalize(dir);
+//
+			if(len < sep)
+			{
+				odir += normalize(dir);
+				++ocount;
+			}
+		}
+	}
+
+	dsts = ff * (cdir/ncount);
+	if(ocount > 0)
+		dsts -= 5*ff * (odir/ocount);
+
+	item.velocity = 0.999f*item.velocity + dt * (dsts + (vgen/ncount - item.velocity) + cdiff/ncount - (item.position - mouse.position) / max(pow(length((item.position - mouse.position)), 1.5), 0.15f));
+
+	if(item.position.x > 1 || item.position.x < -1)
+	{
+		item.velocity.x *= -1;
+		item.position.x = round(item.position.x);
+	}
+	if(item.position.y > 1 || item.position.y < -1)
+	{
+		item.velocity.y *= -1;
+		item.position.y = round(item.position.y);
+	}
+
+	dst_boids[id] = item;
+}

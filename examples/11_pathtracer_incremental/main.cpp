@@ -33,16 +33,15 @@ void runnable::run()
     const auto origin_cache_view       = origin_cache.view(gfx::imgv_type::image2d);
     const auto counter_cache_view      = counter_cache.view(gfx::imgv_type::image2d);
 
-    gfx::image&     cubemap      = res.cubemaps_hdr["ninomaru_teien/hdr"];
+    gfx::image&     cubemap      = res.cubemaps_hdr["arboretum/hdr"];
 	const gfx::image_view cubemap_view = cubemap.view(gfx::imgv_type::image_cube);
 	const gfx::sampler    sampler;
 
     gfx::compute_pipeline trace_pipeline(gfx::shader(gfx::shader_format::text, "11_pathtracer_incremental/trace.comp"));
 
-    gfx::scene_file& scene1      = res.scenes["corners.dae"];
-	gfx::scene_file& scene2      = res.scenes["cubus.dae"];
-	gfx::scene_file& scene3      = res.scenes["isosphere.dae"];
-    gfx::mesh3d      scene_mesh = scene1.mesh + scene2.mesh + scene3.mesh;
+    gfx::scene_file& scene1      = res.scenes["bunny.dae"];
+	gfx::scene_file& scene2      = res.scenes["monkey.dae"];
+	gfx::mesh3d      scene_mesh = scene1.mesh + scene2.mesh;
     scene_mesh.collapse();
 
     gfx::bvh<3> bvh(gfx::shape::triangle);

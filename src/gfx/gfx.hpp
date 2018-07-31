@@ -14,6 +14,7 @@
 #include <gfx/log.hpp>
 #include <gfx/math.hpp>
 #include <gfx/spline.hpp>
+#include <gfx/res.hpp>
 
 // Includes for gfx/ecs:
 #include <gfx/ecs/ecs.hpp>
