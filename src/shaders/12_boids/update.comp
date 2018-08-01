@@ -34,9 +34,9 @@ void main()
 
 	boid item = src_boids[id];
 
-	const float dt = 0.001f;
+	const float dt = 0.0017f;
 	const float radius = 0.06f;
-	const float sep = 0.024f;
+	const float sep = 0.020f;
 	const float ff = 1.f;
 	
 	item.position += dt * item.velocity;
@@ -61,12 +61,9 @@ void main()
 		if(len < radius)
 		{
 			++ ncount;
-			cdir += (dir);
+			cdir += 8.5f*(dir);
 			vgen += v;
 
-//			if(i < src_boids.length())
-//				cdiff -= 9.f*max(length(src_boids[i].color - item.color) - 0.7f, 0) * normalize(dir);
-//
 			if(len < sep)
 			{
 				odir += normalize(dir);
@@ -79,7 +76,7 @@ void main()
 	if(ocount > 0)
 		dsts -= 5*ff * (odir/ocount);
 
-	item.velocity = 0.999f*item.velocity + dt * (dsts + (vgen/ncount - item.velocity) + cdiff/ncount - (item.position - mouse.position) / max(pow(length((item.position - mouse.position)), 1.5), 0.15f));
+	item.velocity = clamp(0.99999f*item.velocity + dt * (dsts + (vgen/ncount - item.velocity) + cdiff/ncount - (item.position - mouse.position) / max(pow(length((item.position - mouse.position)), 1.5), 0.15f)), -0.8, 0.8);
 
 	if(item.position.x > 1 || item.position.x < -1)
 	{

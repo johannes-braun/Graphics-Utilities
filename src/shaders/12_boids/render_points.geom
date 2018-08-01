@@ -26,7 +26,7 @@ void main()
 	out_color = color[0];
 
 	vec2 is = vec2(textureSize(img, 0));
-	const vec2 s = 0.03f * vec2(1, is.y / is.x);
+	const vec2 s = 0.024f * vec2(1, is.y / is.x);
 
 	int imin = vel[0].x < 0 ? 0 : 1;
 	int imax = vel[0].x < 0 ? 1 : 0;

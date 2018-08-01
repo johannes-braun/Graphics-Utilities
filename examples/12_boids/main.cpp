@@ -27,15 +27,17 @@ void runnable::run()
 	std::mt19937 gen;
 	std::uniform_real_distribution<float> dist(-1.f, 1.f);
 
-	gfx::hbuffer<boid> boids(500);
-	std::generate(boids.begin(), boids.end(), [&]() {
+	gfx::hbuffer<boid> boids(800);
+	const auto genboid = [&]() {
 		boid b;
 		b.position ={ dist(gen), dist(gen) };
 		b.velocity ={ 0, 0 };
 		b.color ={ dist(gen), dist(gen), dist(gen), dist(gen) };
 		b.color = (b.color + 1.f) * 0.5f;
+		b.color = glm::vec4((glm::u8vec4(b.color * 255.f) / uint8_t(200)) * uint8_t(200)) / 255.f;
 		return b;
-	});
+	};
+	std::generate(boids.begin(), boids.end(), genboid);
 
 	std::vector<gfx::buffer<boid>> ping_pong_boids;
 	ping_pong_boids.emplace_back(gfx::buffer_usage::storage, boids);
@@ -80,10 +82,39 @@ void runnable::run()
 
 	gfx::commands cmd;
 
+	int f = 0;
 	while (frame())
 	{
+		if (ImGui::BeginMainMenuBar())
+		{
+			if (ImGui::BeginMenu("File"))
+			{
+				bool u = false;
+				ImGui::MenuItem("Open", "Ctrl+O", &u);
+				ImGui::MenuItem("Save", "Ctrl+S", &u);
+				ImGui::Separator();
+				ImGui::MenuItem("Close", "", &u);
+				ImGui::MenuItem("Exit", "", &u);
+				ImGui::EndMenu();
+			}
+			ImGui::EndMainMenuBar();
+		}
+
 		ImGui::Begin("Settings");
 		ImGui::Value("Current set", current_set);
+
+		++f;
+		if (false && f%10000 == 0)
+		{
+			gfx::buf_copy(boids, ping_pong_boids[(current_set + 1) % 2], boids.size());
+			boids.push_back(genboid());
+			gfx::buf_copy(ping_pong_boids[0], boids, boids.size());
+			gfx::buf_copy(ping_pong_boids[1], boids, boids.size());
+			sets[0].set(gfx::descriptor_type::storage_buffer, 0, ping_pong_boids[0]);
+			sets[0].set(gfx::descriptor_type::storage_buffer, 1, ping_pong_boids[1]);
+			sets[1].set(gfx::descriptor_type::storage_buffer, 0, ping_pong_boids[1]);
+			sets[1].set(gfx::descriptor_type::storage_buffer, 1, ping_pong_boids[0]);
+		}
 		ImGui::End();
 
 		double x =0, y =0;

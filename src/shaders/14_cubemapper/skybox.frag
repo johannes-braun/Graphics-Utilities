@@ -1,9 +1,17 @@
 #version 460 core
 
 layout(location = 0) in vec3 uv;
+layout(location = 1) in vec3 campos;
 layout(location = 0) out vec4 color;
 
 float cnoise(vec3 P);
+
+layout(binding = 0) uniform Camera
+{
+	mat4 view;
+	mat4 proj;
+	vec3 position;
+} camera;
 
 layout(binding = 1) uniform Time
 {
@@ -34,7 +42,7 @@ void main()
 	result = mix(result, vec3(8.f), smoothstep(0.985f, 1.08f, angle));
 
 	vec3 tc = normalize(uv);
-	tc.y *=4.f;
+	tc.y *= 4.f;
 
 	float cn1 = cnoise(1.4f*normalize(tc));
 	float cn10 = cnoise(5.f*normalize(tc));
@@ -73,7 +81,7 @@ vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
 
 float cnoise(vec3 P){
-	P += vec3(0, 0, 0.1f*time);
+	P += vec3(0.1f*time + campos.x * 0.01f, 0, 0.1f*time + campos.z * 0.01f);
 
   vec3 Pi0 = floor(P); // Integer part for indexing
   vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1

@@ -9,13 +9,16 @@ layout(binding = 0) uniform Camera
 {
 	mat4 view;
 	mat4 proj;
+	vec3 position;
 } camera;
 
 const float z = 0.0f;
 layout(location = 0) out vec3 uv;
+layout(location = 1) out vec3 campos;
 
 void main()
 {
 	gl_Position = vec4(mix(-1, 3, gl_VertexID & 0x1), mix(-1, 3, (gl_VertexID >> 1) & 0x1), z, 1.f);
 	uv = (mat4(mat3(inverse(camera.view))) * inverse(camera.proj) * gl_Position).xyz;
+	campos = camera.position;
 }

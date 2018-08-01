@@ -54,8 +54,6 @@ int main()
 
     gfx::device_image render_target(gfx::img_type::image2d, gfx::rgba32f, {1280, 720}, 1);
     gfx::image_view render_target_view(gfx::imgv_type::image2d, render_target);
-    gl::framebuffer   framebuffer;
-    glNamedFramebufferTextureLayer(framebuffer, GL_COLOR_ATTACHMENT0, gfx::handle_cast<mygl::texture>(render_target), 0, 0);
 
     gfx::camera                           camera;
     gfx::camera_controller                controller;

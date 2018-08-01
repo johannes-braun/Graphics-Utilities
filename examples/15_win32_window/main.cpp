@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <functional>
+#include <gfx/type.hpp>
 #include <string>
 
 namespace gfx {
@@ -55,25 +56,24 @@ bool checkbox(HMENU menu, UINT menu_item)
 }
 
 class menu;
+using ccallback = std::function<void(u32)>;
 using callback  = std::function<void()>;
 using bcallback = std::function<void(bool)>;
 class menu_bar
 {
 public:
-    menu_bar(HWND window) : _window(window), _menu(CreateMenu()) { SetMenu(window, _menu); }
-    menu_bar& item(const menu& submenu);
+    menu_bar(HWND window) : _window(window), _menu(CreateMenu()) {
+		SetMenu(window, _menu);
+ }
+    menu_bar& add_item(const menu& submenu);
 
-    void poll(uint32_t msg, uint64_t data)
-    {
-        if (msg == WM_COMMAND) {
-            if (const auto it = _callbacks.find(uint32_t(data)); it != _callbacks.end())
-                it->second();
-            else if (const auto it = _bcallbacks.find(uint32_t(data)); it != _bcallbacks.end())
-                it->second(win32::checkbox(_menu, it->first));
-        }
-    }
+    void poll(uint32_t msg, uint64_t data);
+
+    void set_callback(ccallback callback) { _command_callback = callback; }
 
 private:
+    std::vector<menu>                       _submenus;
+    ccallback                               _command_callback;
     HWND                                    _window;
     HMENU                                   _menu;
     std::unordered_map<uint32_t, callback>  _callbacks;
@@ -89,23 +89,21 @@ public:
     menu& popup(const menu& submenu)
     {
         AppendMenu(_menu, MF_STRING | MF_POPUP, reinterpret_cast<UINT>(submenu._menu), submenu._name.c_str());
-
-        for (const auto cb : submenu._callbacks) _callbacks[cb.first] = cb.second;
-        for (const auto cb : submenu._bcallbacks) _bcallbacks[cb.first] = cb.second;
+        _submenus.push_back(submenu);
         return *this;
     }
-    menu& button(const std::string& name, callback cb)
+    menu& button(const std::string& name, callback cb = [] {})
     {
         auto h        = h32(name);
         _callbacks[h] = cb;
-        AppendMenu(_menu, MF_STRING, h, name.c_str());
+        AppendMenu(_menu, MF_STRING, h, strip(name).c_str());
         return *this;
     }
-    menu& checkbox(const std::string& name, bool checked, bcallback bcb)
+    menu& checkbox(const std::string& name, bool checked, bcallback bcb = [](bool) {})
     {
         auto h         = h32(name);
         _bcallbacks[h] = bcb;
-        AppendMenu(_menu, MF_STRING | (checked ? MF_CHECKED : 0), h, name.c_str());
+        AppendMenu(_menu, MF_STRING | (checked ? MF_CHECKED : 0), h, strip(name).c_str());
         return *this;
     }
     menu& separator()
@@ -113,56 +111,88 @@ public:
         AppendMenu(_menu, MF_SEPARATOR, 0, "");
         return *this;
     }
+    void poll(uint32_t msg, uint64_t data)
+    {
+        if (msg == WM_COMMAND) {
+            if (const auto it = _callbacks.find(uint32_t(data)); it != _callbacks.end())
+                it->second();
+            else if (const auto it = _bcallbacks.find(uint32_t(data)); it != _bcallbacks.end())
+                it->second(win32::checkbox(_menu, it->first));
+            for (auto& m : _submenus) m.poll(msg, data);
+        }
+    }
 
 private:
+    static std::string strip(std::string str)
+    {
+        for (auto i = str.begin(); i != str.end() - 2; ++i) {
+            if (*i == '#' && *(i + 1) == '#') return std::string(str.begin(), i);
+        }
+        return str;
+    }
     static uint32_t h32(const std::string& s)
     {
         auto h = std::hash<std::string>()(s);
         return static_cast<uint32_t>(h ^ (h >> 32ull));
     }
-    HMENU                                     _menu;
-    std::unordered_map<std::string, uint32_t> _ids;
-    std::unordered_map<uint32_t, callback>    _callbacks;
-    std::unordered_map<uint32_t, bcallback>   _bcallbacks;
-    std::string                               _name;
+    HMENU                                   _menu;
+    std::unordered_map<uint32_t, callback>  _callbacks;
+    std::unordered_map<uint32_t, bcallback> _bcallbacks;
+    std::string                             _name;
+    std::vector<menu>                       _submenus;
 };
 
-menu_bar& menu_bar::item(const menu& submenu)
+void menu_bar::poll(uint32_t msg, uint64_t data)
+{
+    if (msg == WM_COMMAND) {
+        if (const auto it = _callbacks.find(uint32_t(data)); it != _callbacks.end())
+            it->second();
+        else if (const auto it = _bcallbacks.find(uint32_t(data)); it != _bcallbacks.end())
+            it->second(win32::checkbox(_menu, it->first));
+        if (_command_callback) _command_callback(uint32_t(data));
+        for (auto& m : _submenus) m.poll(msg, data);
+    }
+}
+
+menu_bar& menu_bar::add_item(const menu& submenu)
 {
     AppendMenu(_menu, MF_STRING | MF_POPUP, reinterpret_cast<UINT>(submenu._menu), submenu._name.c_str());
     SetMenu(_window, _menu);
-    for (const auto cb : submenu._callbacks) _callbacks[cb.first] = cb.second;
-    for (const auto cb : submenu._bcallbacks) _bcallbacks[cb.first] = cb.second;
+    _submenus.push_back(submenu);
     return *this;
 }
 
 std::shared_ptr<gfx::win32::menu_bar> main_menu;
 LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
 {
-    constexpr UINT item_console = 0;
-    constexpr UINT item_exit    = 1;
-
     switch (message)
     {
     case WM_CREATE:
     {
         main_menu = std::make_shared<menu_bar>(window);
         main_menu
-            ->item(gfx::win32::menu("File")
-                       .button("Open...", [] {})
-                       .button("Save...", [] {})
-                       .separator()
-                       .button("Close", [] { exit(1); })
-                       .button("Exit", [] { exit(0); }))
-            .item(gfx::win32::menu("Edit")
-                      .button("Copy", [] {})
-                      .button("Paste", [] {})
-                      .separator()
-                      .popup(gfx::win32::menu("Tools")
-                                 .checkbox("Show Console", true, [](bool b) { ShowWindow(GetConsoleWindow(), b); })
-                                 .button("Exit", [] {})
-                                 .button("Advanced", [] {}))
-                      .button("Properties", [] {}));
+            ->add_item(gfx::win32::menu("File")
+                           .button("Open...", [] {})
+                           .button("Save...", [] {})
+                           .separator()
+                           .button("Close", [] { exit(1); })
+                           .button("Exit##file", [] { exit(0); }))
+            .add_item(gfx::win32::menu("Edit")
+                          .button("Copy", [] {})
+                          .button("Paste", [] {})
+                          .separator()
+                          .popup(gfx::win32::menu("Tools")
+                                     .checkbox("Show Console", false, [](bool b) { ShowWindow(GetConsoleWindow(), b); })
+                                     .button("Exit##tools", [] {})
+                                     .button("Advanced", [] {}))
+                          .button("Properties", [] {}));
+
+		int aElements[2] = {COLOR_WINDOW, COLOR_ACTIVECAPTION};
+		DWORD aNewColors[2] ={
+			RGB(255, 255, 255),
+			RGB(255, 255, 255)
+		};
+		SetSysColors(2, aElements, aNewColors);
     }
     break;
         break;
