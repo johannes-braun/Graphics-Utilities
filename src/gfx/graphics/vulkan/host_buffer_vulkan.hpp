@@ -19,7 +19,9 @@ public:
     void       deallocate(const allocation& alloc) override;
     std::any   api_handle() override;
 
+    ~host_buffer_implementation() override;
 private:
+	movable_handle<uint32_t> _alloc_dealloc = 0;
     VkBuffer     _last_buffer = nullptr;
     VmaAllocator _allocator   = nullptr;
     VkDevice     _device      = nullptr;

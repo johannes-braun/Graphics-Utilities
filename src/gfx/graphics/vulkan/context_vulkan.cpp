@@ -22,7 +22,9 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
 {
     init_instance(options);
     if (options.debug) init_debug_callback();
-    glfwCreateWindowSurface(_instance, window, nullptr, &_surface);
+
+    if(options.use_window)
+        glfwCreateWindowSurface(_instance, window, nullptr, &_surface);
 
     u32 gpu_count = 0;
     vkEnumeratePhysicalDevices(_instance, &gpu_count, nullptr);
@@ -66,7 +68,10 @@ void context_implementation::init_instance(const context_options& opt)
     const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&count);
 
     std::vector<const char*> extensions = {std::begin(instance_extensions), std::end(instance_extensions)};
-    extensions.insert(extensions.end(), glfw_extensions, glfw_extensions + count);
+	if (_surface)
+	{
+		extensions.insert(extensions.end(), glfw_extensions, glfw_extensions + count);
+	}
 
     instance_info.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
     instance_info.ppEnabledExtensionNames = extensions.data();
@@ -120,6 +125,7 @@ void context_implementation::init_devices()
     std::vector<VkQueueFamilyProperties> queue_family_properties(count);
     vkGetPhysicalDeviceQueueFamilyProperties(_gpu, &count, queue_family_properties.data());
 
+	queues.families[fam::present] = 0;
     for (uint32_t family = 0; family < queue_family_properties.size(); ++family) {
         if ((queue_family_properties[family].queueFlags & VK_QUEUE_GRAPHICS_BIT) == VK_QUEUE_GRAPHICS_BIT)
             queues.families[fam::graphics] = family;
@@ -128,9 +134,12 @@ void context_implementation::init_devices()
         if ((queue_family_properties[family].queueFlags & VK_QUEUE_TRANSFER_BIT) == VK_QUEUE_TRANSFER_BIT)
             queues.families[fam::transfer] = family;
 
-        VkBool32 supports = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(_gpu, family, _surface, &supports);
-        if (glfwGetPhysicalDevicePresentationSupport(_instance, _gpu, family) && supports) queues.families[fam::present] = family;
+		if (_surface)
+		{
+			VkBool32 supports = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(_gpu, family, _surface, &supports);
+			if (glfwGetPhysicalDevicePresentationSupport(_instance, _gpu, family) && supports) queues.families[fam::present] = family;
+		}
     }
     queues.priorities[fam::graphics] = 1.f;
     queues.priorities[fam::compute]  = 1.f;

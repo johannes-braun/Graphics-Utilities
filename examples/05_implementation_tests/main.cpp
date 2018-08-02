@@ -6,13 +6,14 @@ int main()
     gfx::context_options opt;
     opt.graphics_api = gfx::gapi::vulkan;
     opt.debug        = true;
-    opt.window_title = "odijs";
+	opt.use_window = false;
 
     auto context = gfx::context::create(opt);
     context->make_current();
 
     //// Buffer
-    gfx::hbuffer<float> src = gfx::hbuffer<float>{1.f, 23.f, 29.f};
+	gfx::hbuffer<float> x{1.f, 23.f, 29.f};
+    gfx::hbuffer<float> src = std::move(x);
     gfx::buffer<float>  dst(gfx::buffer_usage::storage, {2.f, 1.f, 0.5f, 10.f, 1.f, 9.f});
     dst << src;
 

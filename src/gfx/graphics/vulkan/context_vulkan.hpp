@@ -53,10 +53,10 @@ private:
     movable_handle<VkInstance>               _instance;
     movable_handle<VkDebugReportCallbackEXT> _debug_callback;
     movable_handle<VkSurfaceKHR>             _surface;
-    std::array<uint32_t, 4>                  _queue_families{};
-    std::array<uint32_t, 4>                  _queue_indices{};
-    std::array<VkQueue, 4>                   _queues{};
-    std::array<VkCommandPool, 4>             _command_pools{};
+    std::array<uint32_t, 4>                  _queue_families{0};
+    std::array<uint32_t, 4>                  _queue_indices{0};
+    std::array<VkQueue, 4>                   _queues{0};
+    std::array<VkCommandPool, 4>             _command_pools{0};
     movable_handle<VkDevice>                 _device;
     VkPhysicalDevice                         _gpu = nullptr;
     movable_handle<VmaAllocator>             _allocator;

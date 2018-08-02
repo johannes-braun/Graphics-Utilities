@@ -7,6 +7,7 @@ inline namespace v1 {
 namespace vulkan {
 host_buffer_implementation::allocation host_buffer_implementation::allocate(size_type size)
 {
+	++_alloc_dealloc;
     VkBufferCreateInfo create_info{0};
     create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     auto& ctx         = context::current();
@@ -49,6 +50,7 @@ host_buffer_implementation::allocation host_buffer_implementation::allocate(size
 void host_buffer_implementation::deallocate(const allocation& alloc)
 {
 	if (alloc.handle.has_value()) {
+		--_alloc_dealloc;
         auto&&[buffer, last_alloc] = std::any_cast<std::pair<VkBuffer, VmaAllocation>>(alloc.handle);
 		vmaFreeMemory(_allocator, last_alloc);
 		vkDestroyBuffer(_device, buffer, nullptr);
@@ -58,6 +60,11 @@ void host_buffer_implementation::deallocate(const allocation& alloc)
 std::any host_buffer_implementation::api_handle()
 {
     return _last_buffer;
+}
+
+    host_buffer_implementation::~host_buffer_implementation()
+{
+		assert(_alloc_dealloc == 0);
 }
 }    // namespace vulkan
 }    // namespace v1
