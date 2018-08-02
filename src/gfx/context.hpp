@@ -66,13 +66,13 @@ private:
     context(const context_options& options);
     static inline std::shared_ptr<context> _null_context = nullptr;
 
+    std::unique_ptr<detail::context_implementation> _implementation;
     context_options                                 _options;
     std::optional<gfx::swapchain>                   _swapchain;
     std::atomic_bool                                _should_close = false;
     double                                          _last_time;
     double                                          _delta = 0;
     GLFWwindow*                                     _window;
-    std::unique_ptr<detail::context_implementation> _implementation;
 };
 
 }    // namespace v1

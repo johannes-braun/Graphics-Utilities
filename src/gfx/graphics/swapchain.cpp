@@ -2,7 +2,7 @@
 #include <gfx/graphics/swapchain.hpp>
 
 #include "opengl/swapchain_opengl.hpp"
-//#include "swapchain_vulkan.hpp"
+#include "vulkan/swapchain_vulkan.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -11,8 +11,7 @@ std::unique_ptr<detail::swapchain_implementation> detail::swapchain_implementati
     switch (context::current()->options().graphics_api)
     {
     case gapi::opengl: return std::make_unique<opengl::swapchain_implementation>();
-    case gapi::vulkan:
-        // return std::make_unique<vulkan::swapchain_implementation>();
+    case gapi::vulkan: return std::make_unique<vulkan::swapchain_implementation>();
     default: break;
     }
     return nullptr;

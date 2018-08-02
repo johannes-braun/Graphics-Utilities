@@ -4,40 +4,42 @@
 int main()
 {
     gfx::context_options opt;
+    opt.graphics_api = gfx::gapi::vulkan;
     opt.debug        = true;
     opt.window_title = "odijs";
 
-    // OpenGL 4.3 test
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-
-    auto context     = gfx::context::create(opt);
+    auto context = gfx::context::create(opt);
     context->make_current();
 
-    // Buffer
-    gfx::host_buffer<float>   src{1.f, 23.f, 29.f};
-    gfx::device_buffer<float> dst(gfx::buffer_usage::storage, src.size());
+    //// Buffer
+    gfx::hbuffer<float> src = gfx::hbuffer<float>{1.f, 23.f, 29.f};
+    gfx::buffer<float>  dst(gfx::buffer_usage::storage, {2.f, 1.f, 0.5f, 10.f, 1.f, 9.f});
     dst << src;
 
-    // Images
-    const auto        cubemap_format = gfx::r11g11b10f;
-    const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
-    gfx::device_image file_texture(gfx::img_type::image2d, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
-    file_texture.layer(0) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3));
-    file_texture.layer(1) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3));
-    file_texture.layer(2) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posy.hdr", gfx::bits::b32, 3));
-    file_texture.layer(3) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negy.hdr", gfx::bits::b32, 3));
-    file_texture.layer(4) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posz.hdr", gfx::bits::b32, 3));
-    file_texture.layer(5) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negz.hdr", gfx::bits::b32, 3));
+    gfx::buf_copy(src, dst, dst.capacity());
 
-    // Samplers
-    gfx::sampler sampler;
-    sampler.set_anisotropy(true, 16.f);
-    sampler.set_filter(gfx::filter_mode::min, gfx::filter::linear);
-    sampler.set_filter(gfx::filter_mode::mag, gfx::filter::linear);
-    sampler.set_filter(gfx::filter_mode::mipmap, gfx::filter::linear);
-    sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
-    sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
-    sampler.set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
-       
+    for (auto f : src) gfx::ilog << f;
+
+    std::cin.ignore();
+
+    //// Images
+    // const auto        cubemap_format = gfx::r11g11b10f;
+    // const auto        info           = gfx::image_file::info("hdri/hdr/posx.hdr");
+    // gfx::device_image file_texture(gfx::img_type::image2d, cubemap_format, gfx::extent(info.width, info.height, 6), 1);
+    // file_texture.layer(0) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posx.hdr", gfx::bits::b32, 3));
+    // file_texture.layer(1) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negx.hdr", gfx::bits::b32, 3));
+    // file_texture.layer(2) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posy.hdr", gfx::bits::b32, 3));
+    // file_texture.layer(3) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negy.hdr", gfx::bits::b32, 3));
+    // file_texture.layer(4) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/posz.hdr", gfx::bits::b32, 3));
+    // file_texture.layer(5) << gfx::host_image(cubemap_format, gfx::image_file("hdri/hdr/negz.hdr", gfx::bits::b32, 3));
+
+    //// Samplers
+    // gfx::sampler sampler;
+    // sampler.set_anisotropy(true, 16.f);
+    // sampler.set_filter(gfx::filter_mode::min, gfx::filter::linear);
+    // sampler.set_filter(gfx::filter_mode::mag, gfx::filter::linear);
+    // sampler.set_filter(gfx::filter_mode::mipmap, gfx::filter::linear);
+    // sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
+    // sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
+    // sampler.set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
 }

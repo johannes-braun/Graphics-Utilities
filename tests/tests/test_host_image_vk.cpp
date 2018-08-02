@@ -7,7 +7,7 @@ struct context_provider
     context_provider()
     {
         gfx::context_options opt;
-        opt.graphics_api = gfx::gapi::opengl;
+        opt.graphics_api = gfx::gapi::vulkan;
         opt.use_window   = false;
         context          = gfx::context::create(opt);
         context->make_current();

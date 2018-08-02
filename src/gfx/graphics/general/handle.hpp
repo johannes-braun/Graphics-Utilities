@@ -9,7 +9,7 @@ struct movable_handle
 {
     constexpr static T null_handle = T(0);
 
-	movable_handle() noexcept : _hnd(T::zero) {}
+	movable_handle() noexcept : _hnd(null_handle) {}
 	movable_handle(T h) noexcept : _hnd(h) {}
 	movable_handle(const movable_handle&) noexcept = default;
 	movable_handle& operator=(const movable_handle&) noexcept = default;

@@ -1,4 +1,5 @@
 #include "graphics/opengl/context_opengl.hpp"
+#include "graphics/vulkan/context_vulkan.hpp"
 #include <gfx/context.hpp>
 //#include "context_vulkan.hpp"
 
@@ -10,8 +11,7 @@ std::unique_ptr<context_implementation> make_context_implementation(const gapi a
     switch (api)
     {
     case gapi::opengl: return std::make_unique<opengl::context_implementation>();
-    case gapi::vulkan:
-        // return std::make_unique<vulkan::context_implementation>();
+    case gapi::vulkan: return std::make_unique<vulkan::context_implementation>();
     default: break;
     }
     return nullptr;
@@ -125,7 +125,8 @@ context::context(const context_options& options) : _options(options)
     _implementation = detail::make_context_implementation(_options.graphics_api);
     _implementation->initialize(_window, _options);
     callbacks::init(_window);
-    glfwSwapInterval(0);
+    if(options.graphics_api == gapi::opengl)
+        glfwSwapInterval(0);
 }
 }    // namespace v1
 }    // namespace gfx

@@ -1,1 +1,2 @@
 create_test(test_host_image)
+create_test(test_host_image_vk)

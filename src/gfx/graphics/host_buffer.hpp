@@ -77,10 +77,13 @@ public:
     host_buffer(const Container& elements);
     ~host_buffer()
     {
-        implementation()->deallocate(_allocation);
-        for (auto& elem : *this) {
-            elem.~value_type();
-        }
+		if (implementation())
+		{
+			implementation()->deallocate(_allocation);
+			for (auto& elem : *this) {
+				elem.~value_type();
+			}
+		}
     }
 
     host_buffer(host_buffer&&) = default;
