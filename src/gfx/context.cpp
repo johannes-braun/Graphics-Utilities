@@ -49,7 +49,9 @@ void context::make_current()
     make_current(shared_from_this());
     _implementation->make_current(_window);
 
-    if (_options.use_window && !_swapchain) _swapchain.emplace();
+	if (_options.use_window && !_swapchain) {
+		_swapchain.emplace().resize(_options.window_width, _options.window_height);
+	}
 }
 
 GLFWwindow* context::window() const noexcept

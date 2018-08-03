@@ -1,5 +1,6 @@
 #include "host_image.hpp"
 #include "opengl/device_image_opengl.hpp"
+#include "vulkan/device_image_vulkan.hpp"
 #include "state_info.hpp"
 #include <gfx/context.hpp>
 #include "image_view.hpp"
@@ -11,8 +12,7 @@ std::unique_ptr<detail::device_image_implementation> detail::device_image_implem
     switch (context::current()->options().graphics_api)
     {
     case gapi::opengl: return std::make_unique<opengl::device_image_implementation>();
-    case gapi::vulkan:
-        // return std::make_unique<vulkan::texture_implementation>();
+    case gapi::vulkan: return std::make_unique<vulkan::device_image_implementation>();
     default: break;
     }
     return nullptr;
