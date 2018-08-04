@@ -8,6 +8,7 @@
 namespace gfx {
 inline namespace v1 {
 namespace vulkan {
+VkFormat get_format(format f);
 
 class device_image_implementation : public detail::device_image_implementation
 {

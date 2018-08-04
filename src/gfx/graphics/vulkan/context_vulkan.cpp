@@ -47,6 +47,20 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
     vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::compute]);
     pool_info.queueFamilyIndex = _queue_families[fam::transfer];
     vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::transfer]);
+
+	init<VkDescriptorPoolCreateInfo> dpi{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+	dpi.maxSets = 1024;
+
+    std::array<VkDescriptorPoolSize, 4> sizes{
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 512u },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1024u },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 32u },
+		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024u }
+	};
+
+	dpi.pPoolSizes = sizes.data();
+	dpi.poolSizeCount = static_cast<u32>(sizes.size());
+	vkCreateDescriptorPool(_device, &dpi, nullptr, &_descriptor_pool);
 }
 
 void context_implementation::init_instance(const context_options& opt)
@@ -82,8 +96,9 @@ void context_implementation::init_instance(const context_options& opt)
 void context_implementation::init_debug_callback()
 {
     init<VkDebugReportCallbackCreateInfoEXT> debug_info{VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT};
-    debug_info.pUserData   = nullptr;
-    debug_info.flags       = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
+    debug_info.pUserData = nullptr;
+    debug_info.flags     = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT
+                       | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
     debug_info.pfnCallback = [](VkDebugReportFlagsEXT f, VkDebugReportObjectTypeEXT ot, uint64_t o, size_t l, int32_t m, const char* lp,
                                 const char* msg, void* ud) -> VkBool32 {
         switch (f)
@@ -149,10 +164,10 @@ void context_implementation::init_devices()
 
     std::vector<VkDeviceQueueCreateInfo> queue_infos;
     for (const auto& filter : queue_filter) {
-        auto& info = queue_infos.emplace_back(init<VkDeviceQueueCreateInfo>(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO));
-        info.queueFamilyIndex         = filter.first;
-        info.queueCount               = static_cast<uint32_t>(filter.second.size());
-        info.pQueuePriorities         = filter.second.data();
+        auto& info            = queue_infos.emplace_back(init<VkDeviceQueueCreateInfo>(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO));
+        info.queueFamilyIndex = filter.first;
+        info.queueCount       = static_cast<uint32_t>(filter.second.size());
+        info.pQueuePriorities = filter.second.data();
     }
     init<VkDeviceCreateInfo> device_info{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     device_info.enabledExtensionCount   = static_cast<uint32_t>(std::size(device_extensions));

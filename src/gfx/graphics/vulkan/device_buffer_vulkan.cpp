@@ -181,7 +181,7 @@ void device_buffer_implementation::update(difference_type offset, size_type size
 
 std::any device_buffer_implementation::api_handle()
 {
-    return _buffer;
+    return VkBuffer(_buffer);
 }
 
 void device_buffer_implementation::update_flags(buffer_usage_flags usage)

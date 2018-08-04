@@ -1,4 +1,5 @@
 #include "opengl/vertex_input_opengl.hpp"
+#include "vulkan/vertex_input_vulkan.hpp"
 #include "vertex_input.hpp"
 #include <gfx/context.hpp>
 
@@ -9,7 +10,7 @@ std::unique_ptr<detail::vertex_input_implementation> detail::vertex_input_implem
     switch (context::current()->options().graphics_api)
     {
     case gapi::opengl: return std::make_unique<opengl::vertex_input_implementation>();
-    case gapi::vulkan: break;
+	case gapi::vulkan: return std::make_unique<vulkan::vertex_input_implementation>();
     default:;
     }
     return nullptr;
@@ -36,15 +37,15 @@ void vertex_input::set_assembly(topology mode, bool enable_primitive_restart)
     _implementation->set_assembly(mode, enable_primitive_restart);
 }
 
-void vertex_input::draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance) const
-{
-    _implementation->draw(vertices, instances, base_vertex, base_instance);
-}
-
-void vertex_input::draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex,
-                                uint32_t base_instance) const
-{
-    _implementation->draw_indexed(indices, instances, base_index, base_vertex, base_instance);
-}
+//void vertex_input::draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance) const
+//{
+//    _implementation->draw(vertices, instances, base_vertex, base_instance);
+//}
+//
+//void vertex_input::draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex,
+//                                uint32_t base_instance) const
+//{
+//    _implementation->draw_indexed(indices, instances, base_index, base_vertex, base_instance);
+//}
 }    // namespace v1
 }    // namespace gfx

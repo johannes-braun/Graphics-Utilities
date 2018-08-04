@@ -1,6 +1,7 @@
 #include "sampler.hpp"
 #include <gfx/context.hpp>
-#include <gfx/graphics/opengl/sampler_opengl.hpp>
+#include "opengl/sampler_opengl.hpp"
+#include "vulkan/sampler_vulkan.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -9,7 +10,7 @@ std::unique_ptr<detail::sampler_implementation> detail::sampler_implementation::
     switch (context::current()->options().graphics_api)
     {
     case gapi::opengl: return std::make_unique<opengl::sampler_implementation>();
-    case gapi::vulkan: return nullptr;
+    case gapi::vulkan: return std::make_unique<vulkan::sampler_implementation>();
     default:;
     }
     return nullptr;

@@ -37,6 +37,8 @@
 #include <gfx/graphics/descriptor.hpp>
 #include <gfx/graphics/commands.hpp>
 #include <gfx/graphics/framebuffer.hpp>
+#include <gfx/graphics/binding_layout.hpp>
+#include <gfx/graphics/binding_set.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>

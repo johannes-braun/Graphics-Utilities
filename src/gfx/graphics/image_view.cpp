@@ -1,5 +1,6 @@
 #include "image_view.hpp"
 #include "opengl/image_view_opengl.hpp"
+#include "vulkan/image_view_vulkan.hpp"
 #include <gfx/context.hpp>
 
 namespace gfx {
@@ -9,7 +10,7 @@ std::unique_ptr<detail::image_view_implementation> detail::image_view_implementa
     switch (context::current()->options().graphics_api)
     {
     case gapi::opengl: return std::make_unique<opengl::image_view_implementation>();
-    case gapi::vulkan: break;
+	case gapi::vulkan: return std::make_unique<vulkan::image_view_implementation>();
     default: break;
     }
     return nullptr;

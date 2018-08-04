@@ -46,12 +46,12 @@ public:
     virtual ~vertex_input_implementation()                                                                     = default;
     virtual uint32_t add_attribute(uint32_t binding, gfx::format fmt, size_t offset)                           = 0;
     virtual void     set_binding_info(uint32_t binding, size_t stride, input_rate rate)                        = 0;
-    virtual void     bind_vertex_buffer(uint32_t binding, const std::any& buffer_handle, ptrdiff_t offset)     = 0;
-    virtual void     bind_index_buffer(const std::any& buffer_handle, index_type type, ptrdiff_t offset)       = 0;
+    /*virtual void     bind_vertex_buffer(uint32_t binding, const std::any& buffer_handle, ptrdiff_t offset)     = 0;
+    virtual void     bind_index_buffer(const std::any& buffer_handle, index_type type, ptrdiff_t offset)       = 0;*/
     virtual void     set_assembly(topology mode, bool enable_primitive_restart = true)                         = 0;
-    virtual void     draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance) = 0;
+  /*  virtual void     draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance) = 0;
     virtual void draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex, uint32_t base_instance) = 0;
-    virtual void draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count, uint32_t stride)            = 0;
+    virtual void draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count, uint32_t stride)            = 0;*/
 };
 }    // namespace detail
 
@@ -66,46 +66,13 @@ public:
     uint32_t add_attribute(uint32_t binding, gfx::format fmt, size_t offset);
     void     set_binding_info(uint32_t binding, size_t stride, input_rate rate);
 
-    template<typename T>
-    void bind_vertex_buffer(uint32_t binding, const device_buffer<T>& buffer, ptrdiff_t offset = 0) const;
-    template<typename T>
-    void bind_index_buffer(const device_buffer<T>& buffer, index_type type, ptrdiff_t offset = 0) const;
-
     void set_assembly(topology mode, bool enable_primitive_restart = false);
-
-    [[deprecated("Should be replaced by some pipeline state system.")]] void
-                                                                             draw(uint32_t vertices, uint32_t instances = 1, uint32_t base_vertex = 0, uint32_t base_instance = 0) const;
-    [[deprecated("Should be replaced by some pipeline state system.")]] void draw_indexed(uint32_t indices, uint32_t instances = 1,
-                                                                                          uint32_t base_index = 0, int32_t base_vertex = 0,
-                                                                                          uint32_t base_instance = 0) const;
-
-    template<typename T>
-    [[deprecated("Should be replaced by some pipeline state system.")]] void
-        draw_indexed_indirect(const device_buffer<T>& buffer, size_t offset, uint32_t draw_count, uint32_t stride) const;
 
     topology assembly_topology() const noexcept { return _topology; }
 
 private:
     topology _topology;
 };
-
-template<typename T>
-void vertex_input::bind_vertex_buffer(uint32_t binding, const device_buffer<T>& buffer, ptrdiff_t offset) const
-{
-    _implementation->bind_vertex_buffer(binding, buffer._implementation->api_handle(), offset);
-}
-
-template<typename T>
-void vertex_input::bind_index_buffer(const device_buffer<T>& buffer, index_type type, ptrdiff_t offset) const
-{
-    _implementation->bind_index_buffer(buffer._implementation->api_handle(), type, offset);
-}
-
-template<typename T>
-void vertex_input::draw_indexed_indirect(const device_buffer<T>& buffer, size_t offset, uint32_t draw_count, uint32_t stride) const
-{
-    _implementation->draw_indexed_indirect(buffer._implementation->api_handle(), offset, draw_count, stride);
-}
 
 }    // namespace v1
 }    // namespace gfx

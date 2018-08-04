@@ -45,7 +45,6 @@ void sampler_implementation::set_wrap(wrap w, wrap_mode mode)
     const auto wm = [&]() {
         switch (mode)
         {
-        case wrap_mode::none: return GL_NONE;
         case wrap_mode::repeat: return GL_REPEAT;
         case wrap_mode::mirror_repeat: return GL_MIRRORED_REPEAT;
         case wrap_mode::clamp_to_edge: return GL_CLAMP_TO_EDGE;

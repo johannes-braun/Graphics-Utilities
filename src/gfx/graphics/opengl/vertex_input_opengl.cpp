@@ -49,27 +49,27 @@ std::any vertex_input_implementation::api_handle()
     return _handle.get();
 }
 
-void vertex_input_implementation::bind_vertex_buffer(uint32_t binding, const std::any& buffer_handle, ptrdiff_t offset)
-{
-    mygl::buffer buf = std::any_cast<mygl::buffer>(buffer_handle);
-    glVertexArrayVertexBuffer(_handle, binding, buf, static_cast<GLintptr>(offset), static_cast<int>(_binding_strides[binding]));
-}
-
-void vertex_input_implementation::bind_index_buffer(const std::any& buffer_handle, index_type type, ptrdiff_t offset)
-{
-    mygl::buffer buf = std::any_cast<mygl::buffer>(buffer_handle);
-    glVertexArrayElementBuffer(_handle, buf);
-    _index_buffer_offset = offset;
-    _draw_index_type     = [&]() {
-        switch (type)
-        {
-        case index_type::uint16: return GL_UNSIGNED_SHORT;
-        case index_type::uint32: return GL_UNSIGNED_INT;
-        default: return GLenum(0);
-        }
-    }();
-    _draw_index_type_size = static_cast<uint32_t>(type);
-}
+//void vertex_input_implementation::bind_vertex_buffer(uint32_t binding, const std::any& buffer_handle, ptrdiff_t offset)
+//{
+//    mygl::buffer buf = std::any_cast<mygl::buffer>(buffer_handle);
+//    glVertexArrayVertexBuffer(_handle, binding, buf, static_cast<GLintptr>(offset), static_cast<int>(_binding_strides[binding]));
+//}
+//
+//void vertex_input_implementation::bind_index_buffer(const std::any& buffer_handle, index_type type, ptrdiff_t offset)
+//{
+//    mygl::buffer buf = std::any_cast<mygl::buffer>(buffer_handle);
+//    glVertexArrayElementBuffer(_handle, buf);
+//    _index_buffer_offset = offset;
+//    _draw_index_type     = [&]() {
+//        switch (type)
+//        {
+//        case index_type::uint16: return GL_UNSIGNED_SHORT;
+//        case index_type::uint32: return GL_UNSIGNED_INT;
+//        default: return GLenum(0);
+//        }
+//    }();
+//    _draw_index_type_size = static_cast<uint32_t>(type);
+//}
 
 void vertex_input_implementation::set_assembly(topology mode, bool enable_primitive_restart)
 {
@@ -93,37 +93,37 @@ void vertex_input_implementation::set_assembly(topology mode, bool enable_primit
     _enable_primitive_restart = enable_primitive_restart;
 }
 
-void vertex_input_implementation::draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance)
-{
-    glBindVertexArray(_handle);
-    glDrawArraysInstancedBaseInstance(_draw_mode, base_vertex, vertices, instances, base_instance);
-    glBindVertexArray(mygl::vertex_array::zero);
-}
-
-void vertex_input_implementation::draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex,
-                                                       uint32_t base_instance)
-{
-    _enable_primitive_restart ? glEnable(GL_PRIMITIVE_RESTART) : glDisable(GL_PRIMITIVE_RESTART);
-    glBindVertexArray(_handle);
-    glDrawElementsInstancedBaseVertexBaseInstance(
-        _draw_mode, indices, _draw_index_type, static_cast<std::byte*>(nullptr) + _draw_index_type_size * base_index + _index_buffer_offset,
-        instances, base_vertex, base_instance);
-    glBindVertexArray(mygl::vertex_array::zero);
-    glDisable(GL_PRIMITIVE_RESTART);
-}
-
-void vertex_input_implementation::draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count,
-                                                                uint32_t stride)
-{
-    _enable_primitive_restart ? glEnable(GL_PRIMITIVE_RESTART) : glDisable(GL_PRIMITIVE_RESTART);
-    glBindVertexArray(_handle);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, std::any_cast<mygl::buffer>(buffer_handle));
-    glMultiDrawElementsIndirect(_draw_mode, _draw_index_type, reinterpret_cast<const void*>(offset), static_cast<int>(draw_count),
-                                static_cast<int>(stride));
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer::zero);
-    glBindVertexArray(mygl::vertex_array::zero);
-    glDisable(GL_PRIMITIVE_RESTART);
-}
+//void vertex_input_implementation::draw(uint32_t vertices, uint32_t instances, uint32_t base_vertex, uint32_t base_instance)
+//{
+//    glBindVertexArray(_handle);
+//    glDrawArraysInstancedBaseInstance(_draw_mode, base_vertex, vertices, instances, base_instance);
+//    glBindVertexArray(mygl::vertex_array::zero);
+//}
+//
+//void vertex_input_implementation::draw_indexed(uint32_t indices, uint32_t instances, uint32_t base_index, int32_t base_vertex,
+//                                                       uint32_t base_instance)
+//{
+//    _enable_primitive_restart ? glEnable(GL_PRIMITIVE_RESTART) : glDisable(GL_PRIMITIVE_RESTART);
+//    glBindVertexArray(_handle);
+//    glDrawElementsInstancedBaseVertexBaseInstance(
+//        _draw_mode, indices, _draw_index_type, static_cast<std::byte*>(nullptr) + _draw_index_type_size * base_index + _index_buffer_offset,
+//        instances, base_vertex, base_instance);
+//    glBindVertexArray(mygl::vertex_array::zero);
+//    glDisable(GL_PRIMITIVE_RESTART);
+//}
+//
+//void vertex_input_implementation::draw_indexed_indirect(const std::any& buffer_handle, size_t offset, uint32_t draw_count,
+//                                                                uint32_t stride)
+//{
+//    _enable_primitive_restart ? glEnable(GL_PRIMITIVE_RESTART) : glDisable(GL_PRIMITIVE_RESTART);
+//    glBindVertexArray(_handle);
+//    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, std::any_cast<mygl::buffer>(buffer_handle));
+//    glMultiDrawElementsIndirect(_draw_mode, _draw_index_type, reinterpret_cast<const void*>(offset), static_cast<int>(draw_count),
+//                                static_cast<int>(stride));
+//    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer::zero);
+//    glBindVertexArray(mygl::vertex_array::zero);
+//    glDisable(GL_PRIMITIVE_RESTART);
+//}
 }    // namespace opengl
 }    // namespace v1
 }    // namespace gfx

@@ -25,18 +25,14 @@ host_buffer_implementation::allocation host_buffer_implementation::allocate(size
 
     _allocator = impl->allocator();
 
-    VmaAllocation           new_allocation{0};
-    VmaAllocationCreateInfo alloc_info{0};
-    init<VmaAllocationInfo> alloc_result_info;
+    init<VmaAllocationCreateInfo> alloc_info;
+    init<VmaAllocationInfo>       alloc_result_info;
     alloc_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
     alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    VkBuffer new_buffer;
-    vkCreateBuffer(impl->device(), &create_info, nullptr, &new_buffer);
-    VkMemoryRequirements req{0};
-    vkGetBufferMemoryRequirements(impl->device(), new_buffer, &req);
-    auto res = vmaAllocateMemory(_allocator, &req, &alloc_info, &new_allocation, &alloc_result_info);
-    vkBindBufferMemory(impl->device(), new_buffer, alloc_result_info.deviceMemory, alloc_result_info.offset);
+    VkBuffer      new_buffer     = nullptr;
+    VmaAllocation new_allocation = nullptr;
+    vmaCreateBuffer(_allocator, &create_info, &alloc_info, &new_buffer, &new_allocation, &alloc_result_info);
 
     _last_buffer = new_buffer;
 
@@ -51,8 +47,7 @@ void host_buffer_implementation::deallocate(const allocation& alloc)
     if (alloc.handle.has_value()) {
         --_alloc_dealloc;
         auto && [ buffer, last_alloc ] = std::any_cast<std::pair<VkBuffer, VmaAllocation>>(alloc.handle);
-        vmaFreeMemory(_allocator, last_alloc);
-        vkDestroyBuffer(_device, buffer, nullptr);
+		vmaDestroyBuffer(_allocator, buffer, last_alloc);
     }
 }
 
