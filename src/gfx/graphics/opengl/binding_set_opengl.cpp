@@ -38,8 +38,7 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
 	    case binding_type::sampled_image: return "Texture/Sampler Binding";
 	    default: return "INVALID";
 	    }
-	}() << " #" << b;
-
+	}() << " #" << b << " + set-offset";
 
     switch (type)
     {

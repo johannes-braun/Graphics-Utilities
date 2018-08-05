@@ -55,7 +55,6 @@ public:
 };
 }    // namespace detail
 
-// TODO: for VK: combine to provider for VkPipelineVertexInputStateCreateInfo and VkPipelineInputAssemblyStateCreateInfo + draw
 class vertex_input : public impl::implements<detail::vertex_input_implementation>
 {
 public:
