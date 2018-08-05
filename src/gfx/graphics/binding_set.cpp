@@ -1,6 +1,7 @@
 #include "../context.hpp"
 #include "binding_set.hpp"
 #include "vulkan/binding_set_vulkan.hpp"
+#include "opengl/binding_set_opengl.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -8,7 +9,7 @@ std::unique_ptr<detail::binding_set_implementation> detail::binding_set_implemen
 {
     switch (context::current()->options().graphics_api)
     {
-    case gapi::opengl: return nullptr;
+    case gapi::opengl: return std::make_unique<opengl::binding_set_implementation>();
 	case gapi::vulkan: return std::make_unique<vulkan::binding_set_implementation>();
     default: return nullptr;
     }

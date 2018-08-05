@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <gfx/graphics/opengl/binding_set_opengl.hpp>
+
 int main()
 {
     gfx::context_options opt;
@@ -51,15 +53,14 @@ int main()
     sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
     sampler.set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
     // TODO: for building/creating a sampler it must be casted once.
-    VkSampler finished = gfx::handle_cast<VkSampler>(sampler);
+    // VkSampler finished = gfx::handle_cast<VkSampler>(sampler);
 
 
-
-    //TODO:
+    // TODO:
     /*
 
     - span<binding_set> as pipeline parameters
-    - 
+    -
 
      */
 
@@ -71,9 +72,9 @@ int main()
         .push(gfx::binding_type::storage_image);    // VK: { set: 0, binding: 3 }; GL: { image binding: 0 }
     gfx::binding_layout layout2;
     layout2
-        .push(gfx::binding_type::uniform_buffer)     // VK: { set: 1, binding: 0 }; GL: { uniform buffer binding: 1 }
-        .push(gfx::binding_type::uniform_buffer)     // VK: { set: 1, binding: 1 }; GL: { uniform buffer binding: 2 }
-        .push(gfx::binding_type::storage_buffer);    // VK: { set: 1, binding: 0 }; GL: { uniform buffer binding: 0
+        .push(gfx::binding_type::uniform_buffer, 2)    // VK: { set: 1, binding: 0, arr:0, 1 }; GL: { uniform buffer binding: 1, 2 }
+        .push(gfx::binding_type::uniform_buffer)       // VK: { set: 1, binding: 1 }; GL: { uniform buffer binding: 3 }
+        .push(gfx::binding_type::storage_buffer);      // VK: { set: 1, binding: 0 }; GL: { uniform buffer binding: 0
 
     gfx::binding_set set1(layout1);
     set1.bind(0, dst);
@@ -81,16 +82,17 @@ int main()
     set1.bind(2, texture, sampler);
     set1.bind(3, texture);
 
-	gfx::binding_set set2(layout2);
-    set2.bind(0, dst);
+    gfx::binding_set set2(layout2);
+    set2.bind(0, 0, dst);
+    set2.bind(0, 1, dst);
     set2.bind(1, src);
     set2.bind(2, src);
+	//gfx::opengl::bind_sets({ &set1, &set2 })();
 
-	const auto input = std::make_shared<gfx::vertex_input>();
+    const auto input = std::make_shared<gfx::vertex_input>();
 
     while (context->run()) {
     }
-
 
     std::cin.ignore();
 }
