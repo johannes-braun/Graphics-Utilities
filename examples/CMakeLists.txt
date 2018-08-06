@@ -30,6 +30,7 @@ function(mark_as_executable exe_name)
 
 	if(TARGET shaders_${exe_name})
 		add_dependencies(${exe_name} shaders_${exe_name})
+		message("Target found: shaders_${exe_name}")
 	endif()
 endfunction()
 

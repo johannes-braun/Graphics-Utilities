@@ -13,7 +13,7 @@ namespace gfx
 			struct shader_module
 			{
 				movable_handle<mygl::shader_program> s;
-				~shader_module();
+				~shader_module() { glDeleteProgram(s); }
 			};
 
 			class graphics_pipeline_implementation : public detail::graphics_pipeline_implementation
@@ -21,7 +21,7 @@ namespace gfx
 			public:
 				~graphics_pipeline_implementation();
 
-			    void initialize(const pipeline_state& state) override;
+			    void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
 			    handle api_handle() override;
                 
 			private:

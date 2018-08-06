@@ -82,21 +82,34 @@ compute_pipeline::compute_pipeline(const std::shared_ptr<shader>& input)
 	implementation()->build(*_shader);
 }
 
-shader::shader(shader_format fmt, const std::filesystem::path& path) : _format(fmt), _path(path)
+shader::shader(shader_type stage, const std::filesystem::path& path) : _stage(stage), _path(path)
 {
-    if (context::current()->options().graphics_api != gapi::opengl && fmt == shader_format::text) {
-        elog << "Invalid configuration: Trying to create an opengl-format shader with a non-opengl context.";
-        return;
-    }
+	std::string gapi_str;
+	bool enable_text = false;
+	switch (gfx::context::current()->options().graphics_api)
+	{
+	case gfx::gapi::opengl: gapi_str = "opengl"; enable_text = true; break;
+	case gfx::gapi::vulkan: gapi_str = "vulkan"; break;
+	}
+	std::filesystem::path combined = (path.string() + ".spv-" + gapi_str);
 
-    bool path_valid = _path.is_absolute();
-    if (!path_valid)
-        for (auto&& inc : shader_includes::directories)
-            if (exists(inc / _path)) {
-                _path      = inc / _path;
-                path_valid = true;
-                break;
-            }
+	bool path_valid = path.is_absolute();
+	if (!path_valid)
+		for (auto&& inc : gfx::shader_includes::directories)
+			if (exists(inc / combined))
+			{
+				_format = gfx::shader_format::spirv;
+				_path      = inc / combined;
+				path_valid = true;
+				break;
+			}
+			else if (enable_text && exists(inc / path)) {
+				_format = gfx::shader_format::text;
+				_path      = inc / _path;
+				path_valid = true;
+				break;
+			}
+
     if (!path_valid) {
         elog << "Shader not found: " << path;
         return;

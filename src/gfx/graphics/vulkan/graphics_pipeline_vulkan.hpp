@@ -15,10 +15,11 @@ namespace gfx
 			public:
 				~graphics_pipeline_implementation();
 
-			    void initialize(const pipeline_state& state) override;
+			    void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
 			    handle api_handle() override;
                 
 			private:
+				bool _invalid = true;
 				VkDevice _device;
 				movable_handle<VkPipelineLayout> _layout;
 				movable_handle<VkPipeline> _pipeline;

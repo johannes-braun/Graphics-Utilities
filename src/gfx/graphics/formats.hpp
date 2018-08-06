@@ -76,7 +76,9 @@ enum format
     s8ui,
     d32f,
     d24unorms8ui,
-    d32fs8ui
+    d32fs8ui,
+
+	unspecified = ~0u,
 };
 
 size_t format_element_size(format fmt);

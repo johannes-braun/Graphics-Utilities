@@ -8,6 +8,8 @@
 #include "formats.hpp"
 #include <vector>
 
+#include "pipeline.hpp"
+
 namespace gfx {
 namespace v2 {
 
@@ -216,6 +218,33 @@ struct viewport
 
 using scissor = bounds<int, 2, 2>;
 
+class renderpass_layout
+{
+public:
+	renderpass_layout(sample_count samples = sample_count::x1)
+		: _samples(samples)
+	{
+
+	}
+
+	void add_color_attachment(format fmt, format resolve_fmt = format::unspecified) {
+		auto& p = _color_attachment_formats.emplace_back();
+		p.first = fmt;
+		p.second = resolve_fmt == format::unspecified ? fmt : resolve_fmt;
+	}
+	void set_depth_stencil_attachment(format fmt) { _depth_attachment_format = fmt; }
+
+
+	sample_count samples() const noexcept { return _samples; }
+	const std::vector<std::pair<format, format>>& color_attachment_formats() const noexcept{ return _color_attachment_formats; }
+	format depth_attachment_format() const noexcept { return _depth_attachment_format; }
+
+private:
+	sample_count _samples;
+	std::vector<std::pair<format, format>> _color_attachment_formats;
+	format _depth_attachment_format;
+};
+
 struct pipeline_state
 {
     struct stencil_state
@@ -259,7 +288,7 @@ struct pipeline_state
     struct layout
     {
         std::vector<binding_layout*> binding_layouts;
-    } * state_bindings;
+    } * state_bindings = nullptr;
 
     struct vertex_input
     {
@@ -337,7 +366,7 @@ namespace detail {
 	public:
 		static std::unique_ptr<graphics_pipeline_implementation> make();
 
-		virtual void initialize(const pipeline_state& state) = 0;
+		virtual void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) = 0;
 		virtual handle api_handle() = 0;
 	};
 }
@@ -345,9 +374,9 @@ namespace detail {
 class graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
 {
 public:
-    graphics_pipeline(const pipeline_state& state);
-
-    void attach(...) {} // TODO
+	graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, std::initializer_list<v1::shader> shaders);
+	graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, std::initializer_list<const v1::shader* const> shaders);
+    graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders);
 
 private:
 
