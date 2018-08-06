@@ -27,9 +27,10 @@ public:
 
 enum class img_type
 {
-    image1d = 1,
-    image2d = 2,
-    image3d = 3
+	image1d = 1,
+	image2d = 2,
+	image3d = 3,
+	attachment = 4
 };
 
 class image_view;

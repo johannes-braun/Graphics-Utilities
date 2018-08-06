@@ -65,6 +65,8 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
     _extent          = size;
     _levels          = levels;
 
+	layer_dimensions = layer_dimensions == 4 ? 2 : layer_dimensions;
+
     switch (layer_dimensions)
     {
     case 1:

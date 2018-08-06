@@ -28,6 +28,7 @@ private:
     GLFWwindow*              _window;
     uint32_t                 _current_image = 0;
     uint32_t                 _image_count   = 0;
+	v2::renderpass_layout    _blit_helper_layout;
 };
 }    // namespace opengl
 }    // namespace v1

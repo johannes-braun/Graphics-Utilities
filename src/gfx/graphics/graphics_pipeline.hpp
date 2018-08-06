@@ -1,9 +1,9 @@
 #pragma once
 
+#include "../api.hpp"
 #include "../flags.hpp"
 #include "../geometry.hpp"
 #include "../type.hpp"
-#include "../api.hpp"
 #include "binding_layout.hpp"
 #include "formats.hpp"
 #include <vector>
@@ -221,28 +221,25 @@ using scissor = bounds<int, 2, 2>;
 class renderpass_layout
 {
 public:
-	renderpass_layout(sample_count samples = sample_count::x1)
-		: _samples(samples)
-	{
+    renderpass_layout(sample_count samples = sample_count::x1) : _samples(samples) {}
 
-	}
-
-	void add_color_attachment(format fmt, format resolve_fmt = format::unspecified) {
-		auto& p = _color_attachment_formats.emplace_back();
-		p.first = fmt;
-		p.second = resolve_fmt == format::unspecified ? fmt : resolve_fmt;
-	}
-	void set_depth_stencil_attachment(format fmt) { _depth_attachment_format = fmt; }
+    void add_color_attachment(format fmt, format resolve_fmt = format::unspecified)
+    {
+        auto& p  = _color_attachment_formats.emplace_back();
+        p.first  = fmt;
+        p.second = resolve_fmt == format::unspecified ? fmt : resolve_fmt;
+    }
+    void set_depth_stencil_attachment(format fmt) { _depth_attachment_format = fmt; }
 
 
-	sample_count samples() const noexcept { return _samples; }
-	const std::vector<std::pair<format, format>>& color_attachment_formats() const noexcept{ return _color_attachment_formats; }
-	format depth_attachment_format() const noexcept { return _depth_attachment_format; }
+    sample_count                                  samples() const noexcept { return _samples; }
+    const std::vector<std::pair<format, format>>& color_attachment_formats() const noexcept { return _color_attachment_formats; }
+    format                                        depth_attachment_format() const noexcept { return _depth_attachment_format; }
 
 private:
-	sample_count _samples;
-	std::vector<std::pair<format, format>> _color_attachment_formats;
-	format _depth_attachment_format;
+    sample_count                           _samples;
+    std::vector<std::pair<format, format>> _color_attachment_formats;
+    format                                 _depth_attachment_format;
 };
 
 struct pipeline_state
@@ -288,7 +285,7 @@ struct pipeline_state
     struct layout
     {
         std::vector<binding_layout*> binding_layouts;
-    } * state_bindings = nullptr;
+    }* state_bindings = nullptr;
 
     struct vertex_input
     {
@@ -361,25 +358,38 @@ struct pipeline_state
 }    // namespace state
 
 namespace detail {
-	class graphics_pipeline_implementation
-	{
-	public:
-		static std::unique_ptr<graphics_pipeline_implementation> make();
+class graphics_pipeline_implementation
+{
+public:
+    static std::unique_ptr<graphics_pipeline_implementation> make();
 
-		virtual void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) = 0;
-		virtual handle api_handle() = 0;
-	};
-}
+    virtual void   initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) = 0;
+    virtual handle api_handle()                                                                                                        = 0;
+};
+
+class compute_pipeline_implementation
+{
+public:
+    static std::unique_ptr<compute_pipeline_implementation> make();
+
+    virtual void   initialize(const pipeline_state::layout& layout, const v1::shader& cs) = 0;
+    virtual handle api_handle()                                                           = 0;
+};
+}    // namespace detail
 
 class graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
 {
 public:
-	graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, std::initializer_list<v1::shader> shaders);
-	graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, std::initializer_list<const v1::shader* const> shaders);
+    graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, std::initializer_list<v1::shader> shaders);
+    graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass,
+                      std::initializer_list<const v1::shader* const> shaders);
     graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders);
+};
 
-private:
-
+class compute_pipeline : public impl::implements<detail::compute_pipeline_implementation>
+{
+public:
+    compute_pipeline(const pipeline_state::layout& layout, const v1::shader& cs);
 };
 
 }    // namespace v2

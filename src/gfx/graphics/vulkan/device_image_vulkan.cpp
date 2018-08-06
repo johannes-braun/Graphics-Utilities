@@ -71,12 +71,13 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
     _levels         = levels;
 
     init<VkImageCreateInfo> img_create{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    
-    if(layer_dimensions == 2)
-    {
-		img_create.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-		if (size.depth >= 6 && size.depth % 6 == 0)
-			img_create.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+    const bool as_attachment = layer_dimensions == 4;
+    layer_dimensions         = as_attachment ? 2 : layer_dimensions;
+
+    if (layer_dimensions == 2) {
+        img_create.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+        if (size.depth >= 6 && size.depth % 6 == 0) img_create.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     }
 
     img_create.format = get_format(format);
@@ -111,9 +112,8 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
     img_create.samples               = VkSampleCountFlagBits(samples);
     img_create.sharingMode           = VK_SHARING_MODE_CONCURRENT;
     img_create.tiling                = VK_IMAGE_TILING_OPTIMAL;
-    img_create.usage =
-        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 
+    // TODO
     switch (format)
     {
     case d16unorm:
@@ -121,9 +121,14 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
     case s8ui:
     case d32f:
     case d24unorms8ui:
-    case d32fs8ui: img_create.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT; break;
-        // TODO
-    default: /*img_create.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;*/ break; 
+    case d32fs8ui:
+		assert(as_attachment);
+        img_create.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        break;
+    default:
+        img_create.usage = (as_attachment ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                           | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+        break;
     }
 
     init<VmaAllocationCreateInfo> allocInfo = {};
@@ -312,8 +317,6 @@ void device_image_implementation::generate_mipmaps()
             blit.dstSubresource.baseArrayLayer = layer;
             blit.dstSubresource.layerCount     = 1;
             blit.dstSubresource.mipLevel       = i;
-
-			ilog << "Blitting from " << blit.srcSubresource.mipLevel << " to " << blit.dstSubresource.mipLevel;
 
             vkCmdBlitImage(cmd, _image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, _image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit,
                            VK_FILTER_LINEAR);

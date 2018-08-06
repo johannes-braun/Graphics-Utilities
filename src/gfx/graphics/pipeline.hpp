@@ -39,7 +39,7 @@ std::shared_ptr<std::decay_t<T>> fwd_create(T&& t)
     return std::make_shared<std::decay_t<T>>(std::forward<T&&>(t));
 }
 
-class graphics_pipeline_implementation
+class [[deprecated]] graphics_pipeline_implementation
 {
 public:
     static std::unique_ptr<graphics_pipeline_implementation> make();
@@ -51,7 +51,7 @@ public:
     virtual std::any api_handle() = 0;
 };
 
-class compute_pipeline_implementation
+class [[deprecated]] compute_pipeline_implementation
 {
 public:
 	static std::unique_ptr<compute_pipeline_implementation> make();
@@ -63,7 +63,7 @@ public:
 };
 }    // namespace detail
 
-class graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
+class [[deprecated]] graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
 {
 public:
     graphics_pipeline();
@@ -87,7 +87,7 @@ private:
     std::vector<std::pair<shader_type, std::shared_ptr<shader>>> _shaders;
 };
 
-class compute_pipeline : public impl::implements<detail::compute_pipeline_implementation>
+class [[deprecated]] compute_pipeline : public impl::implements<detail::compute_pipeline_implementation>
 {
 public:
     compute_pipeline(shader&& input);

@@ -7,7 +7,7 @@
 
 namespace gfx {
 inline namespace v1 {
-enum class compare_op
+enum class [[deprecated]] compare_op
 {
     never,
     less,
@@ -19,14 +19,14 @@ enum class compare_op
     always
 };
 
-enum class poly_mode
+enum class [[deprecated]] poly_mode
 {
     fill,
     line,
     point
 };
 
-enum class cull_mode
+enum class [[deprecated]] cull_mode
 {
     none,
     front,
@@ -34,13 +34,13 @@ enum class cull_mode
     front_and_back
 };
 
-enum class orientation
+enum class [[deprecated]] orientation
 {
     cw,
     ccw
 };
 
-enum class sample_count
+enum class [[deprecated]] sample_count
 {
     x1  = 1 << 0,
     x2  = 1 << 1,
@@ -51,7 +51,7 @@ enum class sample_count
     x64 = 1 << 6
 };
 
-enum class logic_op
+enum class [[deprecated]] logic_op
 {
     op_clear,
     op_and,
@@ -71,7 +71,7 @@ enum class logic_op
     op_set
 };
 
-enum class blend_factor
+enum class [[deprecated]] blend_factor
 {
     zero,
     one,
@@ -94,7 +94,7 @@ enum class blend_factor
     one_minus_src1_alpha
 };
 
-enum class blend_op
+enum class [[deprecated]] blend_op
 {
     op_add,
     op_sub,
@@ -147,7 +147,7 @@ enum class blend_op
     op_blue
 };
 
-enum class stencil_op
+enum class [[deprecated]] stencil_op
 {
     keep,
     zero,
@@ -159,7 +159,7 @@ enum class stencil_op
     dec_wrap
 };
 
-enum class color_components : uint32_t
+enum class [[deprecated]] color_components : uint32_t
 {
     r    = 1 << 0,
     g    = 1 << 1,
@@ -175,7 +175,7 @@ inline color_component_flags operator|(color_components a, color_components b)
     return color_component_flags(a) | b;
 }
 
-struct viewport
+struct [[deprecated]] viewport
 {
     viewport() = default;
     viewport(float x, float y, float w, float h, float n, float f) : x(x), y(y), width(w), height(h), min_depth(n), max_depth(f) {}
@@ -190,11 +190,11 @@ struct viewport
 
 using scissor = bounds<int, 2, 2>;
 
-struct state_info
+struct [[deprecated]] state_info
 {
     using bool32 = uint32_t;
 
-    struct stencil_state
+    struct [[deprecated]] stencil_state
     {
         stencil_op failOp      = stencil_op::zero;
         stencil_op passOp      = stencil_op::zero;
@@ -205,7 +205,7 @@ struct state_info
         uint32_t   reference   = 0;
     };
 
-    struct state_info_depth_stencil
+    struct [[deprecated]] state_info_depth_stencil
     {
         bool32     depth_test_enable        = true;
         bool32     depth_write_enable       = true;
@@ -220,7 +220,7 @@ struct state_info
         float depth_bounds_max = 1.f;
     } depth_stencil;
 
-    struct state_info_rasterizer
+    struct [[deprecated]] state_info_rasterizer
     {
         bool32      depth_clamp_enable        = false;
         bool32      rasterizer_discard_enable = false;
@@ -236,7 +236,7 @@ struct state_info
         float line_width = 1.f;
     } rasterizer;
 
-    struct state_info_multisample
+    struct [[deprecated]] state_info_multisample
     {
         sample_count samples                  = sample_count::x1;
         bool32       sample_shading_enable    = false;
@@ -246,7 +246,7 @@ struct state_info
         bool32       alpha_to_one_enable      = false;
     } multisample;
 
-    struct blend_attachment
+    struct [[deprecated]] blend_attachment
     {
         bool32                blendEnable         = false;
         blend_factor          srcColorBlendFactor = blend_factor::one;
@@ -258,7 +258,7 @@ struct state_info
         color_component_flags colorWriteMask      = color_components::rgba;
     };
 
-    struct state_info_blend
+    struct [[deprecated]] state_info_blend
     {
         bool32                        logic_op_enable = false;
         logic_op                      op              = logic_op::op_copy;
@@ -266,12 +266,12 @@ struct state_info
         float                         blend_constants[4]{0, 0, 0, 0};
     } blend;
 
-    struct state_info_tesselation
+    struct [[deprecated]] state_info_tesselation
     {
         uint32_t patch_control_points = 3;
     } tesselation;
 
-    struct state_info_viewport
+    struct [[deprecated]] state_info_viewport
     {
         std::vector<viewport> viewports;
         std::vector<scissor>  scissors;

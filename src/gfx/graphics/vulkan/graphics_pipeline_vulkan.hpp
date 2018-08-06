@@ -19,7 +19,19 @@ namespace gfx
 			    handle api_handle() override;
                 
 			private:
-				bool _invalid = true;
+				VkDevice _device;
+				movable_handle<VkPipelineLayout> _layout;
+				movable_handle<VkPipeline> _pipeline;
+			};
+
+			class compute_pipeline_implementation : public detail::compute_pipeline_implementation
+			{
+			public:
+				~compute_pipeline_implementation();
+				void initialize(const pipeline_state::layout& layout, const v1::shader& cs) override;
+				handle api_handle() override;
+
+			private:
 				VkDevice _device;
 				movable_handle<VkPipelineLayout> _layout;
 				movable_handle<VkPipeline> _pipeline;

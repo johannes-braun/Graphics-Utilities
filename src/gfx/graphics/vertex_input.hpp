@@ -9,19 +9,19 @@
 
 namespace gfx {
 inline namespace v1 {
-enum class index_type
+enum class [[deprecated]] index_type
 {
     uint16 = 2,
     uint32 = 4
 };
 
-enum class input_rate
+enum class [[deprecated]] input_rate
 {
     vertex,
     instance
 };
 
-enum class topology
+enum class [[deprecated]] topology
 {
     point_list,
     line_list,
@@ -37,7 +37,7 @@ enum class topology
 };
 
 namespace detail {
-class vertex_input_implementation
+class [[deprecated]] vertex_input_implementation
 {
 public:
     static std::unique_ptr<vertex_input_implementation> make();
@@ -55,7 +55,7 @@ public:
 };
 }    // namespace detail
 
-class vertex_input : public impl::implements<detail::vertex_input_implementation>
+class [[deprecated]] vertex_input : public impl::implements<detail::vertex_input_implementation>
 {
 public:
     explicit vertex_input(topology mode = topology::triangle_list, bool enable_primitive_restart = false);

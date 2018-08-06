@@ -48,24 +48,28 @@ private:
 template<typename T>
 void binding_set::bind(u32 binding, const device_buffer<T>& buffer)
 {
+	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
 	implementation()->bind(binding, 0, _layout->types()[binding], &buffer.implementation());
 }
 
 template<typename T>
 void binding_set::bind(u32 binding, const host_buffer<T>& buffer)
 {
+	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
 	implementation()->bind(binding, 0, _layout->types()[binding], &buffer.implementation());
 }
 
 template<typename T>
 void binding_set::bind(u32 binding, u32 array_element, const device_buffer<T>& buffer)
 {
+	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
 	implementation()->bind(binding, array_element, _layout->types()[binding], &buffer.implementation());
 }
 
 template<typename T>
 void binding_set::bind(u32 binding, u32 array_element, const host_buffer<T>& buffer)
 {
+	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
 	implementation()->bind(binding, array_element, _layout->types()[binding], &buffer.implementation());
 }
 

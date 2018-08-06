@@ -47,6 +47,7 @@ void swapchain_implementation::present()
     init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info);
+
 	_presented = true;
 }
 

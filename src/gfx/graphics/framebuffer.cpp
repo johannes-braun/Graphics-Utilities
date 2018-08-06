@@ -1,5 +1,6 @@
 #include "framebuffer.hpp"
 #include "opengl/framebuffer_opengl.hpp"
+#include "vulkan/framebuffer_vulkan.hpp"
 #include <gfx/context.hpp>
 
 namespace gfx {
@@ -9,7 +10,7 @@ std::unique_ptr<detail::framebuffer_implementation> detail::framebuffer_implemen
     switch(context::current()->options().graphics_api)
     {
 	case gapi::opengl: return std::make_unique<opengl::framebuffer_implementation>();
-    case gapi::vulkan: break;
+	case gapi::vulkan: return std::make_unique<vulkan::framebuffer_implementation>();
     default: break;
     }
 	return nullptr;
@@ -21,11 +22,11 @@ depth_stencil::depth_stencil(float d, u32 s)
 {
 }
 
-framebuffer::framebuffer(uint32_t width, uint32_t height)
+framebuffer::framebuffer(u32 width, u32 height, u32 layers, const v2::renderpass_layout& layout)
     : _width(width)
-    , _height(height)
+    , _height(height), _layers(layers)
 {
-    implementation()->create(_width, _height);
+    implementation()->create(_width, _height, _layers, layout);
 }
 
 void framebuffer::attach(attachment att, uint32_t index, const image_view& img_view, std::optional<clear_value> clear)

@@ -12,6 +12,8 @@ swapchain_implementation::swapchain_implementation() : _context(context::current
     _window      = sp->window();
     _image_count = sp->options().framebuffer_images;
     swapchain_implementation::resize(sp->options().window_width, sp->options().window_height);
+
+	_blit_helper_layout.add_color_attachment(gfx::rgba8unorm);
 }
 
 uint32_t swapchain_implementation::current_image() const noexcept
@@ -43,7 +45,7 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     for (int i = 0; i < _image_count; ++i) {
         _images.emplace_back(img_type::image2d, rgba8unorm, extent(width, height, 1), 1);
         _image_views.emplace_back(imgv_type::image2d, _images[i]);
-        _blit_helpers.emplace_back(width, height);
+        _blit_helpers.emplace_back(width, height, 1, _blit_helper_layout);
         _blit_helpers.back().attach(gfx::attachment::color, 0, _image_views.back());
     }
     _current_image = 0;

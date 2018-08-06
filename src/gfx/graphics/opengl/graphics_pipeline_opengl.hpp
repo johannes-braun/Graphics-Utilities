@@ -32,6 +32,19 @@ namespace gfx
 				movable_handle<mygl::pipeline> _pipeline;
 				std::vector<shader_module>     _shds;
 			};
+
+            class compute_pipeline_implementation : public detail::compute_pipeline_implementation
+            {
+            public:
+				~compute_pipeline_implementation();
+                void initialize(const pipeline_state::layout& layout, const v1::shader& cs) override;
+                handle api_handle() override;
+
+            private:
+				std::unordered_map<uint32_t, size_t> _binding_strides;
+				movable_handle<mygl::pipeline>        _pipeline;
+				shader_module                       _shader;
+            };
         }
     }
 }

@@ -14,7 +14,7 @@ class framebuffer_implementation : public detail::framebuffer_implementation
 
 public:
     ~framebuffer_implementation();
-    void   create(u32 width, u32 height) override;
+    void   create(u32 width, u32 height, u32 layers, const v2::renderpass_layout& layout) override;
     void   attach(attachment att, u32 index, const image_view& img_view, std::optional<clear_value> clear) override;
     void   detach(attachment att, u32 index) override;
     handle api_handle() override;
