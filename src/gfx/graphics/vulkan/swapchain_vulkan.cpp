@@ -32,6 +32,7 @@ void swapchain_implementation::present()
         imb.subresourceRange.levelCount     = 1;
         vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
                              VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
+
         vkEndCommandBuffer(_primary_command_buffers[_current_image]);
 
         std::array<VkSemaphore, 1>          wait_semaphores{_present_semaphore};

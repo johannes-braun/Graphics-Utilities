@@ -259,7 +259,7 @@ int main()
 
             begin.renderArea.extent.width  = ras.x;
             begin.renderArea.extent.height = ras.y;
-
+			_last_render_area = begin.renderArea;
             vkCmdBeginRenderPass(_cmd, &begin, VK_SUBPASS_CONTENTS_INLINE);
         }
 
@@ -275,22 +275,35 @@ int main()
                                         static_cast<gfx::v2::vulkan::graphics_pipeline_implementation*>(&*p.implementation())->layout(), 0,
                                         std::size(bindings), _sets.data() + offset, 0, nullptr);
             }
+
+            // bind default viewports and scissors
+			VkViewport vps{0};
+			vps.width    = _last_render_area.extent.width;
+			vps.height   = _last_render_area.extent.height;
+			vps.maxDepth = 1.f;
+			vps.minDepth = 0.f;
+			vkCmdSetViewport(_cmd, 0, 1, &vps);
+
+			VkRect2D scs = _last_render_area;
+			vkCmdSetScissor(_cmd, 0, 1, &scs);
         }
 
         void draw(gfx::u32 vertex_count, gfx::u32 instance_count, gfx::u32 base_vertex, gfx::u32 base_instance)
         {
             vkCmdDraw(_cmd, vertex_count, instance_count, base_vertex, base_instance);
         }
+
+		VkRect2D _last_render_area;
     };
 
 
-    graphics_commands cmd1;
+    compute_commands cmd1;
     cmd1.begin();
     cmd1.bind_compute_pipeline(cp, {});
     cmd1.dispatch(1, 1);
     cmd1.end();
 
-    graphics_commands cmd2;
+	compute_commands cmd2;
     cmd2.begin();
     cmd2.bind_compute_pipeline(cp, {});
     cmd2.dispatch(1, 1);
@@ -300,23 +313,9 @@ int main()
     cmd3.begin();
     cmd3.begin_pass(fbo);
     cmd3.bind_graphics_pipeline(pipeline, {&set1});
-
-    VkViewport vps{0};
-    vps.width    = 1280;
-    vps.height   = 720;
-    vps.maxDepth = 1.f;
-    vps.minDepth = 0.f;
-    vkCmdSetViewport(cmd3._cmd, 0, 1, &vps);
-
-    VkRect2D scs{0};
-    scs.extent = {1280u, 720u};
-    vkCmdSetScissor(cmd3._cmd, 0, 1, &scs);
-
     cmd3.draw(3, 1, 0, 0);
     cmd3.end_pass();
     cmd3.end();
-
-    gfx::fence fence;
 
     int i = 0;
     while (context->run()) {

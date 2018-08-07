@@ -98,7 +98,9 @@ void context_implementation::init_debug_callback()
     init<VkDebugReportCallbackCreateInfoEXT> debug_info{VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT};
     debug_info.pUserData = nullptr;
     debug_info.flags     = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT
-                       | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+                       | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
+   /* | VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT*/
+    ;
     debug_info.pfnCallback = [](VkDebugReportFlagsEXT f, VkDebugReportObjectTypeEXT ot, uint64_t o, size_t l, int32_t m, const char* lp,
                                 const char* msg, void* ud) -> VkBool32 {
         switch (f)

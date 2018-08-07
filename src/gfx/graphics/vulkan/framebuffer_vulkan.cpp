@@ -24,7 +24,7 @@ void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const
 
     _subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     init<VkAttachmentDescription> att;
-    att.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    att.finalLayout    = VK_IMAGE_LAYOUT_GENERAL;
     att.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     att.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
     att.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
