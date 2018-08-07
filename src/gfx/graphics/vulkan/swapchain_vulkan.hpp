@@ -3,6 +3,7 @@
 #include "../general/handle.hpp"
 #include "../swapchain.hpp"
 #include <vulkan/vulkan.h>
+#include "context_vulkan.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -20,6 +21,7 @@ public:
     handle                           api_handle() override;
     
 private:
+	context_implementation* _ctx_impl = nullptr;
     VkDevice                       _device            = nullptr;
     movable_handle<VkSwapchainKHR> _swapchain         = nullptr;
     movable_handle<VkSemaphore>    _present_semaphore = nullptr;

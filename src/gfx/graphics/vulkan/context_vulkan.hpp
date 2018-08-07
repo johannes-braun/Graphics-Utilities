@@ -33,6 +33,7 @@ public:
 
     void initialize(GLFWwindow* window, const context_options& options) override;
     void make_current(GLFWwindow* window) override;
+	void on_run() override;
 
     VkSurfaceKHR                        surface() const { return _surface; }
     const std::array<uint32_t, 4>&      queue_families() const { return _queue_families; }
@@ -43,6 +44,9 @@ public:
     VkPhysicalDevice                    gpu() const { return _gpu; }
     VmaAllocator                        allocator() const { return _allocator; }
 	VkDescriptorPool                    descriptor_pool() const { return _descriptor_pool; }
+
+	std::array<std::vector<VkSemaphore>, 4>          final_wait_semaphores;
+	std::array<std::vector<VkPipelineStageFlags>, 4> final_wait_stages;
 
 private:
     void init_instance(const context_options& opt);

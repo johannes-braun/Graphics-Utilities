@@ -76,6 +76,8 @@ bool context::run()
 
     make_current();
 
+	_implementation->on_run();
+
     if (do_present && _swapchain) _swapchain->present();
     do_present    = true;
     _should_close = glfwWindowShouldClose(_window);

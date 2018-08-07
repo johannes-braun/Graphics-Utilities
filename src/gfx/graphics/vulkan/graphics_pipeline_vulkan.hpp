@@ -17,6 +17,8 @@ namespace gfx
 
 			    void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
 			    handle api_handle() override;
+
+				VkPipelineLayout layout() const noexcept { return _layout; }
                 
 			private:
 				VkDevice _device;
@@ -30,7 +32,7 @@ namespace gfx
 				~compute_pipeline_implementation();
 				void initialize(const pipeline_state::layout& layout, const v1::shader& cs) override;
 				handle api_handle() override;
-
+				VkPipelineLayout layout() const noexcept { return _layout; }
 			private:
 				VkDevice _device;
 				movable_handle<VkPipelineLayout> _layout;

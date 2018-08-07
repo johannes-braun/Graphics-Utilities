@@ -38,6 +38,7 @@ namespace gfx
 				init<VkRenderPassBeginInfo> _begin_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
 				std::vector<std::optional<clear_value>> _color_clear_values;
 				std::optional<clear_value>              _depth_clear_value;
+				std::vector<VkClearValue> _clear_values;
 			};
         }
     }

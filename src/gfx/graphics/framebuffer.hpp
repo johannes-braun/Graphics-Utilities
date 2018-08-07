@@ -50,8 +50,11 @@ public:
     void attach(attachment att, u32 index, const image_view& img_view, std::optional<clear_value> clear = {});
     void detach(attachment att, u32 index);
 
-    const std::vector<std::optional<clear_value>>& color_clear_values() const noexcept;;
-    const std::optional<clear_value>& depth_clear_value() const noexcept;;
+    const std::vector<std::optional<clear_value>>& color_clear_values() const noexcept;
+    const std::optional<clear_value>& depth_clear_value() const noexcept;
+
+	u32                                width() const noexcept { return _width; }
+	u32                                height() const noexcept { return _height; }
 
 private:
     u32                                _width;

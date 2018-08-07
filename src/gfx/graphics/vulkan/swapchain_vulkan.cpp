@@ -1,4 +1,3 @@
-#include "context_vulkan.hpp"
 #include "init_struct.hpp"
 #include "swapchain_vulkan.hpp"
 
@@ -14,6 +13,25 @@ uint32_t swapchain_implementation::current_image() const noexcept
 void swapchain_implementation::present()
 {
     if (_presented) {
+        vkResetCommandBuffer(_primary_command_buffers[_current_image], 0);
+        init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info);
+        init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+        imb.srcAccessMask                   = 0;
+        imb.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        imb.image                           = _temp_images[_current_image];
+        imb.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+        imb.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        imb.subresourceRange.baseArrayLayer = 0;
+        imb.subresourceRange.baseMipLevel   = 0;
+        imb.subresourceRange.layerCount     = 1;
+        imb.subresourceRange.levelCount     = 1;
+        vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
         vkEndCommandBuffer(_primary_command_buffers[_current_image]);
 
         std::array<VkSemaphore, 1>          wait_semaphores{_present_semaphore};
@@ -27,6 +45,7 @@ void swapchain_implementation::present()
         submit.pSignalSemaphores    = &_render_semaphore;
         submit.signalSemaphoreCount = 1;
         submit.pWaitDstStageMask    = std::data(wait_masks);
+        // In graphics queue. Waits on all posted semaphores.
         vkQueueSubmit(_graphics_queue, 1, &submit, _render_fences[_current_image]);
 
         uint32_t               idx = _current_image;
@@ -36,49 +55,45 @@ void swapchain_implementation::present()
         present_info.swapchainCount     = 1;
         present_info.pWaitSemaphores    = &_render_semaphore;
         present_info.waitSemaphoreCount = 1;
-        VkResult present_result         = vkQueuePresentKHR(_present_queue, &present_info);
+        // Solely in present queue, but waits for _render_semaphore which is triggered only after all posted semaphores are signaled.
+        VkResult present_result = vkQueuePresentKHR(_present_queue, &present_info);
     }
     vkAcquireNextImageKHR(_device, _swapchain, std::numeric_limits<uint64_t>::max(), _present_semaphore, nullptr, &_current_image);
     // Wait until last frame using this image has finished rendering
     vkWaitForFences(_device, 1, &_render_fences[_current_image], true, std::numeric_limits<uint64_t>::max());
     vkResetFences(_device, 1, &_render_fences[_current_image]);
 
-    vkResetCommandBuffer(_primary_command_buffers[_current_image], 0);
-    init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-    vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info);
-
-	_presented = true;
+    _presented = true;
 }
 
 void swapchain_implementation::resize(uint32_t width, uint32_t height)
 {
-    auto&      ctx  = context::current();
-    const auto impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));
+    auto& ctx = context::current();
+    _ctx_impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));
 
     if (_swapchain && _device) vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 
-    _device = impl->device();
+    _device = _ctx_impl->device();
     init<VkSwapchainCreateInfoKHR> swapchain_info{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     swapchain_info.clipped               = true;
     swapchain_info.compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapchain_info.imageArrayLayers      = 1;
     swapchain_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
     swapchain_info.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    swapchain_info.pQueueFamilyIndices   = &(impl->queue_families()[fam::present]);
+    swapchain_info.pQueueFamilyIndices   = &(_ctx_impl->queue_families()[fam::present]);
     swapchain_info.queueFamilyIndexCount = 1;
 
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(impl->gpu(), impl->surface(), &capabilities);
-    swapchain_info.surface       = impl->surface();
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &capabilities);
+    swapchain_info.surface       = _ctx_impl->surface();
     swapchain_info.imageExtent   = VkExtent2D{width, height};
     swapchain_info.minImageCount = ctx->options().framebuffer_images;
     swapchain_info.preTransform  = capabilities.currentTransform;
 
     u32 fmt_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(impl->gpu(), impl->surface(), &fmt_count, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &fmt_count, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(fmt_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(impl->gpu(), impl->surface(), &fmt_count, formats.data());
+    vkGetPhysicalDeviceSurfaceFormatsKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &fmt_count, formats.data());
     if (const auto it = std::find_if(formats.begin(), formats.end(),
                                      [](const VkSurfaceFormatKHR& fmt) {
                                          return fmt.format == VK_FORMAT_B8G8R8A8_UNORM
@@ -95,9 +110,9 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     }
 
     u32 pm_count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(impl->gpu(), impl->surface(), &pm_count, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &pm_count, nullptr);
     std::vector<VkPresentModeKHR> present_modes(pm_count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(impl->gpu(), impl->surface(), &pm_count, present_modes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &pm_count, present_modes.data());
     if (const auto it = std::find_if(present_modes.begin(), present_modes.end(),
                                      [](const VkPresentModeKHR& mode) { return mode == VK_PRESENT_MODE_MAILBOX_KHR; });
         it == present_modes.end())
@@ -109,8 +124,8 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
 
     vkCreateSwapchainKHR(_device, &swapchain_info, nullptr, &_swapchain);
 
-    _present_queue  = impl->queues()[fam::present];
-    _graphics_queue = impl->queues()[fam::graphics];
+    _present_queue  = _ctx_impl->queues()[fam::present];
+    _graphics_queue = _ctx_impl->queues()[fam::graphics];
 
     // TODO:
     u32 img_count = 0;
@@ -120,12 +135,12 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
 
     init<VkCommandBufferAllocateInfo> cmd_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     cmd_info.commandBufferCount = static_cast<uint32_t>(_temp_images.size());
-    cmd_info.commandPool        = impl->command_pools()[fam::graphics];
+    cmd_info.commandPool        = _ctx_impl->command_pools()[fam::graphics];
     cmd_info.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     _primary_command_buffers.resize(_temp_images.size());
     vkAllocateCommandBuffers(_device, &cmd_info, _primary_command_buffers.data());
 
-    _command_pool = impl->command_pools()[fam::graphics];
+    _command_pool = _ctx_impl->command_pools()[fam::graphics];
 
     init<VkSemaphoreCreateInfo> sem_info{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     vkCreateSemaphore(_device, &sem_info, nullptr, &_present_semaphore);
@@ -155,7 +170,8 @@ swapchain_implementation::~swapchain_implementation()
 {
     if (_swapchain) vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 
-    for (auto& f : _render_fences) vkDestroyFence(_device, f, nullptr);
+    for (auto& f : _render_fences) 
+		vkDestroyFence(_device, f, nullptr);
 
     if (_device && !_primary_command_buffers.empty())
         vkFreeCommandBuffers(_device, _command_pool, _primary_command_buffers.size(), _primary_command_buffers.data());

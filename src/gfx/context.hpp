@@ -31,7 +31,8 @@ class context_implementation
 public:
     virtual ~context_implementation()                                           = default;
     virtual void initialize(GLFWwindow* window, const context_options& options) = 0;
-    virtual void make_current(GLFWwindow* window)                               = 0;
+	virtual void make_current(GLFWwindow* window)                               = 0;
+    virtual void on_run() {}
 };
 std::unique_ptr<context_implementation> make_context_implementation(gapi api);
 }    // namespace detail

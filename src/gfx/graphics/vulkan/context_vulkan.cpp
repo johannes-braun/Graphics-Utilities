@@ -197,6 +197,24 @@ void context_implementation::make_current(GLFWwindow* window)
 {
     // Nothing.
 }
+
+void context_implementation::on_run()
+{
+	for (int i=0; i<4; ++i)
+	{
+		if (!final_wait_semaphores[i].empty())
+		{
+			init<VkSubmitInfo> submit{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+			submit.waitSemaphoreCount = static_cast<u32>(final_wait_semaphores[i].size());
+			submit.pWaitSemaphores    = final_wait_semaphores[i].data();
+			submit.pWaitDstStageMask  = final_wait_stages[i].data();
+			vkQueueSubmit(_queues[i], 1, &submit, nullptr);
+
+			final_wait_semaphores[i].clear();
+			final_wait_stages[i].clear();
+		}
+	}
+}
 }    // namespace vulkan
 }    // namespace v1
 }    // namespace gfx
