@@ -1,5 +1,6 @@
 #include "init_struct.hpp"
 #include "swapchain_vulkan.hpp"
+#include "image_view_vulkan.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -17,13 +18,31 @@ void swapchain_implementation::present()
         init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
         begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info);
-        init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-        imb.srcAccessMask                   = 0;
+		init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+		imb.srcAccessMask                   = 0;
+		imb.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imb.image                           = _temp_images[_current_image];
+		imb.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+		imb.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		imb.subresourceRange.baseArrayLayer = 0;
+		imb.subresourceRange.baseMipLevel   = 0;
+		imb.subresourceRange.layerCount     = 1;
+		imb.subresourceRange.levelCount     = 1;
+		vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
+
+		//VkClearColorValue pcol ={ 1.f, 0.4f, 0.1f, 1.f };
+		//vkCmdClearColorImage(_primary_command_buffers[_current_image], _temp_images[_current_image], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &pcol, 1, &imb.subresourceRange);
+
+        imb.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
         imb.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         imb.image                           = _temp_images[_current_image];
-        imb.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+        imb.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         imb.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         imb.subresourceRange.baseArrayLayer = 0;
@@ -80,7 +99,7 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     swapchain_info.compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapchain_info.imageArrayLayers      = 1;
     swapchain_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
-    swapchain_info.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchain_info.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swapchain_info.pQueueFamilyIndices   = &(_ctx_impl->queue_families()[fam::present]);
     swapchain_info.queueFamilyIndexCount = 1;
 
@@ -149,12 +168,18 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
 
     init<VkFenceCreateInfo> fen_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     fen_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    for (int i = 0; i < _temp_images.size(); ++i) vkCreateFence(_device, &fen_info, nullptr, &_render_fences.emplace_back());
+	for (int i = 0; i < _temp_images.size(); ++i)
+	{
+		vkCreateFence(_device, &fen_info, nullptr, &_render_fences.emplace_back());
+
+		image_view& view = _image_views.emplace_back();
+		static_cast<image_view_implementation*>(&*view.implementation())->initialize_vk(gfx::imgv_type::image2d, gfx::format::bgra8unorm, _temp_images[i], 0, 1, 0, 1);
+	}
 }
 
 const std::vector<image_view>& swapchain_implementation::image_views() const
 {
-    return {};
+    return _image_views;
 }
 
 const std::vector<device_image>& swapchain_implementation::images() const

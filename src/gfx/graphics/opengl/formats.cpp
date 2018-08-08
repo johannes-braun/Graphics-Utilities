@@ -63,6 +63,9 @@ format_info format_from(format format)
     case rgba32i: return {GL_RGBA32I, GL_RGBA_INTEGER, GL_UNSIGNED_INT, false, GL_COLOR_BUFFER_BIT};
     case rgba32f: return {GL_RGBA32F, GL_RGBA, GL_FLOAT, false, GL_COLOR_BUFFER_BIT};
 
+	case bgra8unorm: return {GL_BGRA, GL_BGRA, GL_UNSIGNED_BYTE, true, GL_COLOR_BUFFER_BIT};
+	case bgr8unorm: return {GL_BGR, GL_BGR, GL_UNSIGNED_BYTE, true, GL_COLOR_BUFFER_BIT};
+
     case d16unorm: return {GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, true, GL_DEPTH_BUFFER_BIT};
     case d24unorm: return {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT_24_8, true, GL_DEPTH_BUFFER_BIT};
     case s8ui: return {GL_STENCIL_INDEX8, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, false, GL_STENCIL_BUFFER_BIT};

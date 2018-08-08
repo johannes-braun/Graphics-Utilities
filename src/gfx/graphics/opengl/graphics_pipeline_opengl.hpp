@@ -24,6 +24,9 @@ namespace gfx
 			    void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
 			    handle api_handle() override;
                 
+				void apply_all();
+				topology primitive_topology() const noexcept { return _prim_topology; }
+
 			private:
 				topology _prim_topology = topology::triangle_list;
 				movable_handle<mygl::vertex_array> _vao; 

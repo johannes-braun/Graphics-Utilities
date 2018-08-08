@@ -37,6 +37,9 @@ VkFormat get_format(format f)
         fmts(16, f, SFLOAT);
         fmts(32, f, SFLOAT);
 
+	case bgr8unorm: return VK_FORMAT_B8G8R8_UNORM;
+	case bgra8unorm: return VK_FORMAT_B8G8R8A8_UNORM;
+
     case rgb5a1unorm: return VK_FORMAT_R5G5B5A1_UNORM_PACK16;
     case rgb10a2unorm: return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
     case rgb10a2snorm: return VK_FORMAT_A2R10G10B10_SNORM_PACK32;

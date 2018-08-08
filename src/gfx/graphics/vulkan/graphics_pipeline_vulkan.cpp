@@ -66,9 +66,9 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     pp_info.stageCount = stages.size();
 
 
-	v1::vulkan::init<VkRenderPassCreateInfo> rpc{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-	v1::vulkan::init<VkSubpassDescription> subpass;
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    v1::vulkan::init<VkRenderPassCreateInfo> rpc{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    v1::vulkan::init<VkSubpassDescription>   subpass;
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     std::vector<VkAttachmentDescription>      attachments;
     std::vector<VkAttachmentReference>        color_attachment_refs;
     std::vector<VkAttachmentReference>        resolve_attachment_refs;
@@ -464,13 +464,26 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
         t.dstAlphaBlendFactor = mk_fac(a.dstAlphaBlendFactor);
         t.colorBlendOp        = mk_blob(a.colorBlendOp);
         t.alphaBlendOp        = mk_blob(a.alphaBlendOp);
+		t.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
         blatt.emplace_back(t);
     }
 
     if (blatt.size() < renderpass.color_attachment_formats().size()) {
+        pipeline_state::blend_attachment def;
         for (int i = blatt.size(); i < (renderpass.color_attachment_formats().size() - blatt.size()); ++i) {
-            blatt.emplace_back().blendEnable = false;
+            v1::vulkan::init<VkPipelineColorBlendAttachmentState> t;
+
+            t.srcColorBlendFactor = mk_fac(def.srcColorBlendFactor);
+            t.srcAlphaBlendFactor = mk_fac(def.srcAlphaBlendFactor);
+            t.dstColorBlendFactor = mk_fac(def.dstColorBlendFactor);
+            t.dstAlphaBlendFactor = mk_fac(def.dstAlphaBlendFactor);
+            t.colorBlendOp        = mk_blob(def.colorBlendOp);
+            t.alphaBlendOp        = mk_blob(def.alphaBlendOp);
+            t.blendEnable         = false;
+			t.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+            blatt.emplace_back(t);
         }
     }
     bls.attachmentCount = blatt.size();

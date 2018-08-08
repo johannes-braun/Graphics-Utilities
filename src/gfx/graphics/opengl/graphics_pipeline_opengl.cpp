@@ -13,6 +13,8 @@ std::function<void()> apply_func(pipeline_state::rasterizer* ptr)
 {
     return [obj = ptr ? *ptr : pipeline_state::rasterizer{}]
     {
+		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+		glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
         enable_for(obj.rasterizer_discard_enable, GL_RASTERIZER_DISCARD);
         enable_for(obj.cull != cull_mode::none, GL_CULL_FACE);
 
@@ -425,6 +427,14 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 handle graphics_pipeline_implementation::api_handle()
 {
     return mygl::pipeline(_pipeline);
+}
+
+void graphics_pipeline_implementation::apply_all()
+{
+	glBindProgramPipeline(_pipeline);
+	for (auto& s : _apply_state)
+		s();
+	glBindVertexArray(_vao);
 }
 
 compute_pipeline_implementation::~compute_pipeline_implementation()

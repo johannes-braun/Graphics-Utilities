@@ -36,6 +36,7 @@ private:
 
     // TODO:
     std::vector<VkImage> _temp_images;
+	std::vector<image_view> _image_views;
 };
 }    // namespace vulkan
 }    // namespace v1

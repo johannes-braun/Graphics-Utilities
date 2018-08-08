@@ -320,8 +320,8 @@ struct pipeline_state
         cull_mode   cull                       = cull_mode::none;
         orientation front_face                 = orientation::ccw;
         bool        depth_bias_enable          = false;
-        float       depth_bias_constant_factor = 1.f;
-        float       depth_bias_clamp           = 1.f;
+        float       depth_bias_constant_factor = 0.f;
+        float       depth_bias_clamp           = 0.f;
         float       depth_bias_slope_factor    = 0.f;
         float       line_width                 = 1.f;
     }* state_rasterizer = nullptr;

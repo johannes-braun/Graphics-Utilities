@@ -43,7 +43,8 @@ void binding_layout_implementation::push(binding_type type, u32 array_size = 1)
         default: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
     }();
-    bnd.stageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+	
+    bnd.stageFlags = VK_SHADER_STAGE_ALL;
     _bindings.emplace_back(bnd);
     _invalidated              = true;
 }

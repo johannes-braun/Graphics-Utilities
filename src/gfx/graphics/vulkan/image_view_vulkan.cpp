@@ -11,7 +11,14 @@ image_view_implementation::~image_view_implementation()
 	if (_view) vkDestroyImageView(_device, _view, nullptr);
 }
 
+
 void image_view_implementation::initialize(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count,
+	uint32_t base_layer, uint32_t layer_count)
+{
+	initialize_vk(type, format, handle_cast<VkImage>(image), base_mip, mip_count, base_layer, layer_count);
+}
+
+void image_view_implementation::initialize_vk(imgv_type type, format format, const VkImage& image, uint32_t base_mip, uint32_t mip_count,
                                            uint32_t base_layer, uint32_t layer_count)
 {
 	auto&                    ctx = context::current();
@@ -38,7 +45,7 @@ void image_view_implementation::initialize(imgv_type type, format format, const 
 	create_info.subresourceRange.baseMipLevel = base_mip;
 	create_info.subresourceRange.layerCount = layer_count;
 	create_info.subresourceRange.levelCount = mip_count;
-	create_info.image = handle_cast<VkImage>(image);
+	create_info.image = image;
     create_info.viewType = [&]() -> VkImageViewType {
         switch(type)
         {

@@ -78,6 +78,10 @@ enum format
     d24unorms8ui,
     d32fs8ui,
 
+	// BGR/BGRA
+	bgr8unorm,
+	bgra8unorm,
+
 	unspecified = ~0u,
 };
 

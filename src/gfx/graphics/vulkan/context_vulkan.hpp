@@ -33,7 +33,7 @@ public:
 
     void initialize(GLFWwindow* window, const context_options& options) override;
     void make_current(GLFWwindow* window) override;
-	void on_run() override;
+	bool on_run(bool open) override;
 
     VkSurfaceKHR                        surface() const { return _surface; }
     const std::array<uint32_t, 4>&      queue_families() const { return _queue_families; }

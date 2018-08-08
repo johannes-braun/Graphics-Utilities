@@ -133,7 +133,14 @@ glm::vec4 host_image::load(const glm::uvec3& pixel) const
     case rgb8snorm: return glm::vec4(*reinterpret_cast<const glm::i8vec3*>(&_storage[index]), 255) / 255.f;
     case rgba8unorm: return glm::vec4(*reinterpret_cast<const glm::u8vec4*>(&_storage[index])) / 255.f;
     case rgba8snorm: return glm::vec4(*reinterpret_cast<const glm::i8vec4*>(&_storage[index])) / 255.f;
-
+	case bgra8unorm: return [&]() {
+		glm::vec4 rgba = glm::vec4(*reinterpret_cast<const glm::i8vec4*>(&_storage[index])) / 255.f;
+		return glm::vec4(rgba.b, rgba.g, rgba.r, rgba.a);
+	}();
+	case bgr8unorm: return [&]() {
+		glm::vec4 rgba = glm::vec4(*reinterpret_cast<const glm::i8vec3*>(&_storage[index]), 255.f) / 255.f;
+		return glm::vec4(rgba.b, rgba.g, rgba.r, rgba.a);
+	}();
     case r16unorm:
         return glm::vec4(*reinterpret_cast<const uint16_t*>(&_storage[index]), 0, 0, std::numeric_limits<uint16_t>::max())
                / float(std::numeric_limits<uint16_t>::max());
@@ -252,6 +259,15 @@ void host_image::store(const glm::uvec3& pixel, const glm::vec4& p)
     case rgb8snorm: *reinterpret_cast<glm::u8vec3*>(&_storage[index]) = cnorm<int8_t, 3>(p); break;
     case rgba8unorm: *reinterpret_cast<glm::u8vec4*>(&_storage[index]) = cnorm<uint8_t, 4>(p); break;
     case rgba8snorm: *reinterpret_cast<glm::i8vec4*>(&_storage[index]) = cnorm<int8_t, 4>(p); break;
+	
+	case bgr8unorm: [&] {
+		const auto cnormed = cnorm<int8_t, 3>(p);
+		*reinterpret_cast<glm::i8vec3*>(&_storage[index]) ={ cnormed.b, cnormed.g, cnormed.r };
+	}();
+	case bgra8unorm: [&] {
+		const auto cnormed = cnorm<int8_t, 4>(p);
+		*reinterpret_cast<glm::i8vec4*>(&_storage[index]) ={ cnormed.b, cnormed.g, cnormed.r, cnormed.a };
+	}();
 
     case r16unorm: *reinterpret_cast<uint16_t*>(&_storage[index]) = cnorm<uint16_t, 1>(p); break;
     case r16snorm: *reinterpret_cast<int16_t*>(&_storage[index]) = cnorm<int16_t, 1>(p); break;

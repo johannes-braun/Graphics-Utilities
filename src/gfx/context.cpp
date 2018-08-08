@@ -76,13 +76,13 @@ bool context::run()
 
     make_current();
 
-	_implementation->on_run();
-
-    if (do_present && _swapchain) _swapchain->present();
-    do_present    = true;
-    _should_close = glfwWindowShouldClose(_window);
-    glfwPollEvents();
-
+	glfwPollEvents();
+	_should_close = glfwWindowShouldClose(_window);
+	if (_implementation->on_run(!_should_close))
+	{
+		if (do_present && _swapchain) _swapchain->present();
+		do_present    = true;
+	}
     const double t = glfwGetTime();
     _delta         = t - _last_time;
     _last_time     = glfwGetTime();

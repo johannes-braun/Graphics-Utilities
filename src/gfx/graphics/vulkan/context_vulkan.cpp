@@ -200,8 +200,14 @@ void context_implementation::make_current(GLFWwindow* window)
     // Nothing.
 }
 
-void context_implementation::on_run()
+bool context_implementation::on_run(bool open)
 {
+	if (!open)
+	{
+		vkDeviceWaitIdle(_device);
+		return false;
+	}
+
 	for (int i=0; i<4; ++i)
 	{
 		if (!final_wait_semaphores[i].empty())
@@ -216,6 +222,7 @@ void context_implementation::on_run()
 			final_wait_stages[i].clear();
 		}
 	}
+	return true;
 }
 }    // namespace vulkan
 }    // namespace v1
