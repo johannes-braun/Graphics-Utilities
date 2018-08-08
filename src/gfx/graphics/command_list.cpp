@@ -5,7 +5,7 @@
 
 namespace gfx
 {
-	namespace v2
+	inline namespace v1
 	{
 		std::unique_ptr<detail::commands_implementation> detail::commands_implementation::make()
 		{

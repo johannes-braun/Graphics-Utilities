@@ -6,7 +6,7 @@
 
 namespace gfx
 {
-	namespace v2
+	inline namespace v1
 	{
 		namespace opengl
 		{

@@ -22,7 +22,7 @@ depth_stencil::depth_stencil(float d, u32 s)
 {
 }
 
-framebuffer::framebuffer(u32 width, u32 height, u32 layers, const v2::renderpass_layout& layout)
+framebuffer::framebuffer(u32 width, u32 height, u32 layers, const renderpass_layout& layout)
     : _width(width)
     , _height(height), _layers(layers)
 {

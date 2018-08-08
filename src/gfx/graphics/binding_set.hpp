@@ -15,7 +15,8 @@ namespace detail {
 class binding_set_implementation
 {
 public:
-	static std::unique_ptr<binding_set_implementation> make();
+    virtual ~binding_set_implementation() = default;
+    static std::unique_ptr<binding_set_implementation> make();
 
 	virtual void initialize(const binding_layout& layout) = 0;
 	virtual void bind(u32 binding, u32 arr_element, binding_type type, std::any obj) = 0;

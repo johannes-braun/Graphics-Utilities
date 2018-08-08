@@ -1,7 +1,7 @@
 #pragma once
 
 #include "implementation.hpp"
-#include "state_info.hpp"
+#include "graphics_pipeline.hpp"
 #include <any>
 #include <gfx/api.hpp>
 #include <memory>

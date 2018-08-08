@@ -76,24 +76,24 @@ int main()
     set2.bind(1, src);
     set2.bind(2, src);
 
-    gfx::v2::renderpass_layout rpl;
+    gfx::renderpass_layout rpl;
     rpl.add_color_attachment(gfx::bgra8unorm);
     rpl.set_depth_stencil_attachment(gfx::d32f);
 
-	gfx::v2::pipeline_state::depth_stencil ds;
+	gfx::pipeline_state::depth_stencil ds;
 	ds.depth_test_enable = false;
-    gfx::v2::pipeline_state::layout layout;
+    gfx::pipeline_state::layout layout;
     layout.binding_layouts.push_back(&layout1);
 
-    gfx::v2::pipeline_state g_state;
+    gfx::pipeline_state g_state;
     g_state.state_bindings = &layout;
 	g_state.state_depth_stencil = &ds;
 
-    gfx::v2::graphics_pipeline pipeline(g_state, rpl,
+    gfx::graphics_pipeline pipeline(g_state, rpl,
                                         {gfx::shader{gfx::shader_type::vert, "05_implementation_tests/vert.vert"},
                                          gfx::shader{gfx::shader_type::frag, "05_implementation_tests/frag.frag"}});
 
-    gfx::v2::compute_pipeline cp({}, gfx::shader{gfx::shader_type::comp, "05_implementation_tests/comp.comp"});
+    gfx::compute_pipeline cp({}, gfx::shader{gfx::shader_type::comp, "05_implementation_tests/comp.comp"});
 
 
 	std::vector<gfx::framebuffer> fbos;
@@ -107,22 +107,22 @@ int main()
 		fbos.back().attach(gfx::attachment::depth_stencil, 0, dep_vs.back(), gfx::depth_stencil(0.f, 0));
 	}
 	
-	gfx::v2::commands cmd1(gfx::v2::commands_type::compute);
+	gfx::commands cmd1(gfx::commands_type::compute);
     cmd1.begin();
     cmd1.bind_pipeline(cp, {});
     cmd1.dispatch(1, 1);
     cmd1.end();
 
-	gfx::v2::commands cmd2(gfx::v2::commands_type::compute);
+	gfx::commands cmd2(gfx::commands_type::compute);
     cmd2.begin();
     cmd2.bind_pipeline(cp, {});
     cmd2.dispatch(1, 1);
     cmd2.end();
 
-    std::vector<gfx::v2::commands> cmd3;
+    std::vector<gfx::commands> cmd3;
 	for (int i=0; i<fbos.size(); ++i)
 	{
-		cmd3.emplace_back(gfx::v2::commands_type::graphics);
+		cmd3.emplace_back(gfx::commands_type::graphics);
 		cmd3[i].begin();
 		cmd3[i].begin_pass(fbos[i]);
 		cmd3[i].bind_pipeline(pipeline, { &set1 });

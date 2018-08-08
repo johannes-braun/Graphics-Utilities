@@ -5,7 +5,7 @@
 #include <gfx/log.hpp>
 
 namespace gfx {
-namespace v2 {
+	inline namespace v1 {
 namespace vulkan {
 graphics_pipeline_implementation::~graphics_pipeline_implementation()
 {

@@ -9,6 +9,7 @@ inline namespace v1 {
 namespace vulkan {
 context_implementation::~context_implementation()
 {
+	if (_descriptor_pool) vkDestroyDescriptorPool(_device, _descriptor_pool, nullptr);
     if (_allocator) vmaDestroyAllocator(_allocator);
     if (_surface) vkDestroySurfaceKHR(_instance, _surface, nullptr);
     if (_debug_callback) _vkDestroyDebugReportCallbackEXT(_instance, _debug_callback, nullptr);
@@ -58,6 +59,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
 		VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024u }
 	};
 
+	dpi.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	dpi.pPoolSizes = sizes.data();
 	dpi.poolSizeCount = static_cast<u32>(sizes.size());
 	vkCreateDescriptorPool(_device, &dpi, nullptr, &_descriptor_pool);

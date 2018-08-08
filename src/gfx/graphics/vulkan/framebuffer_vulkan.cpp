@@ -12,7 +12,7 @@ framebuffer_implementation::~framebuffer_implementation()
     if (_pass) vkDestroyRenderPass(_device, _pass, nullptr);
 }
 
-void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const v2::renderpass_layout& layout)
+void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const renderpass_layout& layout)
 {
     auto& ctx  = context::current();
     auto  impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));

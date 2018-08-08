@@ -6,14 +6,12 @@
 #include "../type.hpp"
 #include "binding_layout.hpp"
 #include "formats.hpp"
+#include "shader.hpp"
 #include <vector>
 
-#include "pipeline.hpp"
-
 namespace gfx {
-namespace v2 {
+inline namespace v1 {
 
-inline namespace state {
 enum class input_rate
 {
     vertex,
@@ -355,12 +353,12 @@ struct pipeline_state
         std::vector<scissor>  scissors;
     }* state_viewports = nullptr;
 };
-}    // namespace state
 
 namespace detail {
 class graphics_pipeline_implementation
 {
 public:
+    virtual ~graphics_pipeline_implementation() = default;
     static std::unique_ptr<graphics_pipeline_implementation> make();
 
     virtual void   initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) = 0;
@@ -370,6 +368,7 @@ public:
 class compute_pipeline_implementation
 {
 public:
+    virtual ~compute_pipeline_implementation() = default;
     static std::unique_ptr<compute_pipeline_implementation> make();
 
     virtual void   initialize(const pipeline_state::layout& layout, const v1::shader& cs) = 0;

@@ -4,7 +4,7 @@
 #include <mygl/mygl.hpp>
 
 namespace gfx {
-namespace v2 {
+inline namespace v1 {
 namespace opengl {
 class commands_implementation : public detail::commands_implementation
 {

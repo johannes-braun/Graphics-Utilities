@@ -19,6 +19,7 @@ namespace detail {
 class binding_layout_implementation
 {
 public:
+    virtual ~binding_layout_implementation() = default;
     static std::unique_ptr<binding_layout_implementation> make();
 
     virtual void   push(binding_type type, u32 array_size) = 0;

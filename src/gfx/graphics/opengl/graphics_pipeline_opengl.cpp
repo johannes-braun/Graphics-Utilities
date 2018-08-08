@@ -3,7 +3,7 @@
 #include <gfx/log.hpp>
 
 namespace gfx {
-namespace v2 {
+	inline namespace v1 {
 namespace opengl {
 void enable_for(bool b, GLenum e)
 {

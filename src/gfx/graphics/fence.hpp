@@ -6,8 +6,8 @@
 
 namespace gfx {
 inline namespace v1 {
-namespace detail {
 class commands;
+namespace detail {
 class fence_implementation
 {
 public:

@@ -4,7 +4,7 @@
 #include "vulkan/graphics_pipeline_vulkan.hpp"
 
 namespace gfx {
-namespace v2 {
+inline namespace v1 {
 std::unique_ptr<detail::graphics_pipeline_implementation> detail::graphics_pipeline_implementation::make()
 {
     switch (context::current()->options().graphics_api)

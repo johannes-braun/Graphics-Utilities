@@ -1,5 +1,5 @@
 #define GFX_EXPOSE_APIS
-#include "../state_info.hpp"
+#include "../graphics_pipeline.hpp"
 #include "device_image_opengl.hpp"
 #include "formats.hpp"
 #include <any>
@@ -21,35 +21,6 @@ device_image_implementation::~device_image_implementation()
 {
     if (glIsTexture(_handle)) glDeleteTextures(1, &_handle);
 }
-
-//device_image_implementation::device_image_implementation(device_image_implementation&& other) noexcept
-//{
-//    _handle          = other._handle;
-//    _internal_format = other._internal_format;
-//    _external_format = other._external_format;
-//    _external_type   = other._external_type;
-//    _extent          = other._extent;
-//    _type            = other._type;
-//    _levels          = other._levels;
-//    _format          = other._format;
-//
-//    other._handle = mygl::texture::zero;
-//}
-//
-//device_image_implementation& device_image_implementation::operator=(device_image_implementation&& other) noexcept
-//{
-//	_handle          = other._handle;
-//	_internal_format = other._internal_format;
-//	_external_format = other._external_format;
-//	_external_type   = other._external_type;
-//	_extent          = other._extent;
-//	_type            = other._type;
-//	_levels          = other._levels;
-//	_format          = other._format;
-//
-//	other._handle = mygl::texture::zero;
-//	return *this;
-//}
 
 void device_image_implementation::initialize(uint32_t layer_dimensions, format format, const extent& size, uint32_t levels,
                                              sample_count samples)

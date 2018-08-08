@@ -5,11 +5,12 @@
 #include "../general/handle.hpp"
 
 namespace gfx {
-namespace v2 {
+inline namespace v1 {
 namespace vulkan {
 class commands_implementation : public detail::commands_implementation
 {
 public:
+	~commands_implementation();
     // Geerbt über commands_implementation
     void initialize(commands_type type) override;
 

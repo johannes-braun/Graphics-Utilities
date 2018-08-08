@@ -10,7 +10,7 @@ framebuffer_implementation::~framebuffer_implementation()
     if (glIsFramebuffer(_resolve_fbo)) glDeleteFramebuffers(1, &_resolve_fbo);
 }
 
-void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const v2::renderpass_layout& layout)
+void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const renderpass_layout& layout)
 {
     this->~framebuffer_implementation();
     glCreateFramebuffers(1, &_msaa_fbo);

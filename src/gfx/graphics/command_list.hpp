@@ -9,7 +9,7 @@
 
 namespace gfx
 {
-	namespace v2
+	inline namespace v1
 	{
 		enum class commands_type
 		{
@@ -24,7 +24,8 @@ namespace gfx
 			class commands_implementation
 			{
 			public:
-				static std::unique_ptr<commands_implementation> make();
+			    virtual ~commands_implementation() = default;
+			    static std::unique_ptr<commands_implementation> make();
 
 				virtual void initialize(commands_type type) = 0;
 

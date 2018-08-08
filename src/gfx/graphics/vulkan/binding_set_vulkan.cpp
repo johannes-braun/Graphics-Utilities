@@ -94,7 +94,7 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
 				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			case binding_type::uniform_buffer:
 				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			default: VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			default: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		    }
 		}();
 		write.dstArrayElement = arr_element;
@@ -122,7 +122,7 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
 				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			case binding_type::uniform_buffer:
 				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			default: VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			default: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			}
 		}();
 		write.dstArrayElement = arr_element;

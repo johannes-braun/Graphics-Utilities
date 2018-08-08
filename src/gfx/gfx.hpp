@@ -24,18 +24,17 @@
 #include <gfx/imgui/imgui.h>
 
 // Includes for gfx/graphics:
-#include <gfx/graphics/pipeline.hpp>
+#include <gfx/graphics/graphics_pipeline.hpp>
 #include <gfx/graphics/device_buffer.hpp>
 #include <gfx/graphics/device_image.hpp>
 #include <gfx/graphics/host_buffer.hpp>
 #include <gfx/graphics/host_image.hpp>
 #include <gfx/graphics/image_view.hpp>
 #include <gfx/graphics/sampler.hpp>
-#include <gfx/graphics/state_info.hpp>
 #include <gfx/graphics/swapchain.hpp>
-#include <gfx/graphics/vertex_input.hpp>
-#include <gfx/graphics/descriptor.hpp>
-#include <gfx/graphics/commands.hpp>
+#include <gfx/graphics/binding_set.hpp>
+#include <gfx/graphics/binding_layout.hpp>
+#include <gfx/graphics/command_list.hpp>
 #include <gfx/graphics/framebuffer.hpp>
 #include <gfx/graphics/binding_layout.hpp>
 #include <gfx/graphics/binding_set.hpp>

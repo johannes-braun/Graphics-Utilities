@@ -2,7 +2,7 @@
 #include "device_image_opengl.hpp"
 #include "formats.hpp"
 #include "image_view_opengl.hpp"
-#include "state_info.hpp"
+#include "graphics_pipeline_opengl.hpp"
 
 namespace gfx {
 inline namespace v1 {
