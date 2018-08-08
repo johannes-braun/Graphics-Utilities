@@ -2,6 +2,7 @@
 #include "host_buffer_vulkan.hpp"
 #include "init_struct.hpp"
 #include <unordered_set>
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -32,7 +33,7 @@ host_buffer_implementation::allocation host_buffer_implementation::allocate(size
 
     VkBuffer      new_buffer     = nullptr;
     VmaAllocation new_allocation = nullptr;
-    vmaCreateBuffer(_allocator, &create_info, &alloc_info, &new_buffer, &new_allocation, &alloc_result_info);
+	check_result(vmaCreateBuffer(_allocator, &create_info, &alloc_info, &new_buffer, &new_allocation, &alloc_result_info));
 
     _last_buffer = new_buffer;
 

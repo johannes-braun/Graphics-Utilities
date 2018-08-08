@@ -255,14 +255,16 @@ struct pipeline_state
 
     struct vertex_attribute
     {
+		vertex_attribute(u32 loc, u32 binding, format fmt, i64 offset) : location(loc), binding(binding), fmt(fmt), offset(offset) {}
         u32       location = 0;
         u32       binding  = 0;
         format    fmt      = r32f;
-        ptrdiff_t offset   = 0;
+        i64 offset   = 0;
     };
 
     struct vertex_binding
     {
+		vertex_binding(u32 binding, size_t stride, input_rate rate = input_rate::vertex) : binding(binding), stride(stride), rate(rate) {}
         u32        binding = 0;
         size_t     stride  = 0;
         input_rate rate    = input_rate::vertex;

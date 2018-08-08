@@ -12,7 +12,7 @@ namespace gfx
 struct camera
 {
     transform  transform_mode;
-    projection projection_mode{glm::radians(80.f), 100, 100, 0.1f, 1000.f, false, true};
+    projection projection_mode{glm::radians(80.f), 100, 100, 0.1f, 1000.f, true, true};
 
     struct data
     {
@@ -32,6 +32,7 @@ struct camera_controller
 
     float rotation_speed = 1.f;
     float movement_speed = 12.f;
+	bool inverse_y = false;
 
     keyboard_button btn_forward{GLFW_KEY_W};
     keyboard_button btn_backward{GLFW_KEY_S};

@@ -8,22 +8,13 @@ int main()
 {
     const auto           then = std::chrono::steady_clock::now();
     gfx::context_options opt;
-    opt.graphics_api = gfx::gapi::vulkan;
-    opt.debug        = true;
-    opt.use_window   = true;
+    opt.graphics_api        = gfx::gapi::vulkan;
+    opt.debug               = true;
+    opt.use_window          = true;
+    opt.framebuffer_samples = 8;
 
     auto context = gfx::context::create(opt);
     context->make_current();
-
-    //// Buffer
-    gfx::hbuffer<float> x{1.f, 23.f, 29.f};
-    gfx::hbuffer<float> src = std::move(x);
-    gfx::buffer<float>  dst(gfx::buffer_usage::uniform, {2.f, 1.f, 0.5f, 10.f, 1.f, 9.f});
-    dst << src;
-
-    gfx::buf_copy(src, dst, dst.capacity());
-
-    for (auto f : src) gfx::ilog << f;
 
     // Images
     const auto cubemap_format = gfx::rgba8unorm;
@@ -41,100 +32,102 @@ int main()
 
     auto cubemap = file_texture.view(gfx::imgv_type::image_cube);
     auto texture = another_image.view(gfx::imgv_type::image2d);
-
-    // Samplers
-    gfx::sampler sampler;
-    sampler.set_anisotropy(true, 16.f);
-    sampler.set_filter(gfx::filter_mode::min, gfx::filter::linear);
-    sampler.set_filter(gfx::filter_mode::mag, gfx::filter::linear);
-    sampler.set_filter(gfx::filter_mode::mipmap, gfx::filter::linear);
-    sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
-    sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
-    sampler.set_wrap(gfx::wrap::w, gfx::wrap_mode::mirror_repeat);
+    const gfx::sampler sampler;
 
     gfx::binding_layout layout1;
-    layout1
-        .push(gfx::binding_type::uniform_buffer)      // VK: { set: 0, binding: 0 }; GL: { uniform buffer binding: 0 }
-        .push(gfx::binding_type::sampled_image, 2)    // VK: { set: 0, binding: 1 }; GL: { texture binding: 0 }
-        .push(gfx::binding_type::sampled_image)       // VK: { set: 0, binding: 2 }; GL: { texture binding: 1 }
-        .push(gfx::binding_type::storage_image);      // VK: { set: 0, binding: 3 }; GL: { image binding: 0 }
-    gfx::binding_layout layout2;
-    layout2
-        .push(gfx::binding_type::uniform_buffer)     // VK: { set: 1, binding: 0, arr:0, 1 }; GL: { uniform buffer binding: 1, 2 }
-        .push(gfx::binding_type::uniform_buffer)     // VK: { set: 1, binding: 1 }; GL: { uniform buffer binding: 3 }
-        .push(gfx::binding_type::storage_buffer);    // VK: { set: 1, binding: 0 }; GL: { uniform buffer binding: 0
+	layout1
+		.push(gfx::binding_type::uniform_buffer)      // VK: { set: 0, binding: 0 }; GL: { uniform buffer binding: 0 }
+		.push(gfx::binding_type::sampled_image)    // VK: { set: 0, binding: 1 }; GL: { texture binding: 0 }
+	    .push(gfx::binding_type::sampled_image);    // VK: { set: 0, binding: 1 }; GL: { texture binding: 0 }
+
+	gfx::camera cam;
+	cam.transform_mode.position ={ 0, 0, 3.f };
+	gfx::camera_controller controller;
+	gfx::hbuffer<gfx::camera::data> cam_buffer(1);
 
     gfx::binding_set set1(layout1);
-    set1.bind(0, dst);
-    set1.bind(1, 0, cubemap, sampler);
-    set1.bind(1, 1, cubemap, sampler);
-    set1.bind(2, texture, sampler);
-    set1.bind(3, texture);
+    set1.bind(0, cam_buffer);
+	set1.bind(1, texture, sampler);
+    set1.bind(2, cubemap, sampler);
 
-    gfx::binding_set set2(layout2);
-    set2.bind(0, dst);
-    set2.bind(1, src);
-    set2.bind(2, src);
+	gfx::scene_file scene("bunny.dae");
+	auto geometry = scene.mesh.geometries[0];
+	gfx::buffer<gfx::vertex3d> vertex_buffer(gfx::buffer_usage::vertex, scene.mesh.vertices);
+	gfx::buffer<gfx::index32> index_buffer(gfx::buffer_usage::index, scene.mesh.indices);
 
-    gfx::renderpass_layout rpl;
+
+	gfx::pipeline_state::vertex_input input;
+	input.attributes.emplace_back(0, 0, gfx::rgb32f, offsetof(gfx::vertex3d, position));
+	input.attributes.emplace_back(1, 0, gfx::rg32f, offsetof(gfx::vertex3d, uv));
+	input.attributes.emplace_back(2, 0, gfx::rgb32f, offsetof(gfx::vertex3d, normal));
+	input.bindings.emplace_back(0, sizeof(gfx::vertex3d));
+    gfx::pipeline_state::depth_stencil ds;
+    ds.depth_test_enable = true;
+    gfx::pipeline_state::layout layout;
+    layout.binding_layouts.push_back(&layout1);
+    gfx::pipeline_state::multisample msaa;
+    msaa.sample_shading_enable = true;
+    msaa.samples               = gfx::sample_count::x8;
+
+    gfx::pipeline_state g_state;
+    g_state.state_bindings      = &layout;
+    g_state.state_depth_stencil = &ds;
+    g_state.state_multisample   = &msaa;
+	g_state.state_vertex_input  = &input;
+
+    gfx::renderpass_layout rpl(gfx::sample_count::x8);
     rpl.add_color_attachment(gfx::bgra8unorm);
     rpl.set_depth_stencil_attachment(gfx::d32f);
 
-	gfx::pipeline_state::depth_stencil ds;
-	ds.depth_test_enable = false;
-    gfx::pipeline_state::layout layout;
-    layout.binding_layouts.push_back(&layout1);
-
-    gfx::pipeline_state g_state;
-    g_state.state_bindings = &layout;
-	g_state.state_depth_stencil = &ds;
-
     gfx::graphics_pipeline pipeline(g_state, rpl,
-                                        {gfx::shader{gfx::shader_type::vert, "05_implementation_tests/vert.vert"},
-                                         gfx::shader{gfx::shader_type::frag, "05_implementation_tests/frag.frag"}});
-
-    gfx::compute_pipeline cp({}, gfx::shader{gfx::shader_type::comp, "05_implementation_tests/comp.comp"});
+                                    {gfx::shader{gfx::shader_type::vert, "05_implementation_tests/vert.vert"},
+                                     gfx::shader{gfx::shader_type::frag, "05_implementation_tests/frag.frag"}});
 
 
-	std::vector<gfx::framebuffer> fbos;
-	std::vector<gfx::image> deps;
-	std::vector<gfx::image_view> dep_vs;
-	for (int i=0; i<context->swapchain()->image_views().size(); ++i)
-	{
-		dep_vs.push_back(deps.emplace_back(gfx::img_type::attachment, gfx::d32f, gfx::extent{1280, 720}, 1).view(gfx::imgv_type::image2d));
-		fbos.emplace_back(1280, 720, 1, rpl);
-		fbos.back().attach(gfx::attachment::color, 0, context->swapchain()->image_views()[i], glm::vec4(0.5f, 0.2f, 0.1f, 1.f));
-		fbos.back().attach(gfx::attachment::depth_stencil, 0, dep_vs.back(), gfx::depth_stencil(0.f, 0));
-	}
-	
-	gfx::commands cmd1(gfx::commands_type::compute);
-    cmd1.begin();
-    cmd1.bind_pipeline(cp, {});
-    cmd1.dispatch(1, 1);
-    cmd1.end();
-
-	gfx::commands cmd2(gfx::commands_type::compute);
-    cmd2.begin();
-    cmd2.bind_pipeline(cp, {});
-    cmd2.dispatch(1, 1);
-    cmd2.end();
+    std::vector<gfx::framebuffer> fbos;
+    std::vector<gfx::image>       deps;
+    std::vector<gfx::image_view>  dep_vs;
+    std::vector<gfx::image>       msaa_tex;
+    std::vector<gfx::image_view>  msaa_tex_v;
+    for (int i = 0; i < context->swapchain()->image_views().size(); ++i) {
+        dep_vs.push_back(deps.emplace_back(gfx::img_type::attachment, gfx::d32f, gfx::extent{1280, 720}, gfx::sample_count::x8)
+                             .view(gfx::imgv_type::image2d));
+        msaa_tex_v.push_back(
+            msaa_tex.emplace_back(gfx::img_type::attachment, gfx::bgra8unorm, gfx::extent{1280, 720}, gfx::sample_count::x8)
+                .view(gfx::imgv_type::image2d));
+        fbos.emplace_back(1280, 720, 1, rpl);
+        fbos.back().attach(gfx::attachment::color, 0, msaa_tex_v.back(), glm::vec4(0.5f, 0.2f, 0.1f, 1.f));
+        fbos.back().attach(gfx::attachment::resolve, 0, context->swapchain()->image_views()[i], glm::vec4(0.5f, 0.2f, 0.1f, 1.f));
+        fbos.back().attach(gfx::attachment::depth_stencil, 0, dep_vs.back(), gfx::depth_stencil(0.f, 0));
+    }
 
     std::vector<gfx::commands> cmd3;
-	for (int i=0; i<fbos.size(); ++i)
-	{
-		cmd3.emplace_back(gfx::commands_type::graphics);
-		cmd3[i].begin();
-		cmd3[i].begin_pass(fbos[i]);
-		cmd3[i].bind_pipeline(pipeline, { &set1 });
-		cmd3[i].draw(3, 1, 0, 0);
-		cmd3[i].end_pass();
-		cmd3[i].end();
-	}
+    for (int i = 0; i < fbos.size(); ++i) {
+        cmd3.emplace_back(gfx::commands_type::graphics);
+        cmd3[i].begin();
+        cmd3[i].begin_pass(fbos[i]);
+        cmd3[i].bind_pipeline(pipeline, {&set1});
+		cmd3[i].bind_vertex_buffer(vertex_buffer, 0);
+		cmd3[i].bind_index_buffer(index_buffer, gfx::index_type::uint32);
+		cmd3[i].draw_indexed(geometry.index_count, 1, geometry.base_index, geometry.base_vertex);
+        cmd3[i].end_pass();
+        cmd3[i].end();
+    }
 
-    int i = 0;
+    float f = 0;
+	int frames = 0;
     while (context->run()) {
-        cmd1.execute();
-        cmd2.execute_sync_after(cmd1);
+        f += context->delta();
+		++frames;
+        if (f > 1.f) {
+            glfwSetWindowTitle(context->window(), ("FPS: " + std::to_string(frames / f)).c_str());
+			f = 0;
+			frames = 0;
+        }
+
+		controller.update(cam);
+		cam_buffer[0] = cam.info();
+
         cmd3[context->swapchain()->current_image()].execute();
     }
 }

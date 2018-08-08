@@ -1,6 +1,7 @@
 #include "init_struct.hpp"
 #include "swapchain_vulkan.hpp"
 #include "image_view_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -14,59 +15,47 @@ uint32_t swapchain_implementation::current_image() const noexcept
 void swapchain_implementation::present()
 {
     if (_presented) {
-        vkResetCommandBuffer(_primary_command_buffers[_current_image], 0);
-        init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-        begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-        vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info);
-		init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-		imb.srcAccessMask                   = 0;
-		imb.dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-		imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-		imb.image                           = _temp_images[_current_image];
-		imb.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imb.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		imb.subresourceRange.baseArrayLayer = 0;
-		imb.subresourceRange.baseMipLevel   = 0;
-		imb.subresourceRange.layerCount     = 1;
-		imb.subresourceRange.levelCount     = 1;
-		vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
+		//check_result(vkResetCommandBuffer(_primary_command_buffers[_current_image], 0));
+  //      init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+  //      begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		//check_result(vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info));
 
-		//VkClearColorValue pcol ={ 1.f, 0.4f, 0.1f, 1.f };
-		//vkCmdClearColorImage(_primary_command_buffers[_current_image], _temp_images[_current_image], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &pcol, 1, &imb.subresourceRange);
+		//init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+  //      imb.srcAccessMask                   = 0;
+  //      imb.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+  //      imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+  //      imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+  //      imb.image                           = _temp_images[_current_image];
+  //      imb.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+  //      imb.newLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  //      imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  //      imb.subresourceRange.baseArrayLayer = 0;
+  //      imb.subresourceRange.baseMipLevel   = 0;
+  //      imb.subresourceRange.layerCount     = 1;
+  //      imb.subresourceRange.levelCount     = 1;
+  //      vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		//	VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
 
-        imb.srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imb.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-        imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-        imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-        imb.image                           = _temp_images[_current_image];
-        imb.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imb.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        imb.subresourceRange.baseArrayLayer = 0;
-        imb.subresourceRange.baseMipLevel   = 0;
-        imb.subresourceRange.layerCount     = 1;
-        imb.subresourceRange.levelCount     = 1;
-        vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
+		//imb.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		//imb.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		//vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		//	VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
 
-        vkEndCommandBuffer(_primary_command_buffers[_current_image]);
+		//check_result(vkEndCommandBuffer(_primary_command_buffers[_current_image]));
 
         std::array<VkSemaphore, 1>          wait_semaphores{_present_semaphore};
         std::array<VkPipelineStageFlags, 1> wait_masks{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         std::array<VkCommandBuffer, 1>      command_buffers{_primary_command_buffers[_current_image]};
         init<VkSubmitInfo>                  submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        submit.commandBufferCount   = std::size(command_buffers);
-        submit.pCommandBuffers      = std::data(command_buffers);
+        //submit.commandBufferCount   = std::size(command_buffers);
+        //submit.pCommandBuffers      = std::data(command_buffers);
         submit.pWaitSemaphores      = std::data(wait_semaphores);
         submit.waitSemaphoreCount   = std::size(wait_semaphores);
         submit.pSignalSemaphores    = &_render_semaphore;
         submit.signalSemaphoreCount = 1;
         submit.pWaitDstStageMask    = std::data(wait_masks);
         // In graphics queue. Waits on all posted semaphores.
-        vkQueueSubmit(_graphics_queue, 1, &submit, _render_fences[_current_image]);
+		check_result(vkQueueSubmit(_graphics_queue, 1, &submit, _render_fences[_current_image]));
 
         uint32_t               idx = _current_image;
         init<VkPresentInfoKHR> present_info{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
@@ -75,13 +64,16 @@ void swapchain_implementation::present()
         present_info.swapchainCount     = 1;
         present_info.pWaitSemaphores    = &_render_semaphore;
         present_info.waitSemaphoreCount = 1;
+		VkResult swapchain_result;
+		present_info.pResults = &swapchain_result;
         // Solely in present queue, but waits for _render_semaphore which is triggered only after all posted semaphores are signaled.
-        VkResult present_result = vkQueuePresentKHR(_present_queue, &present_info);
+        VkResult present_result = check_result(vkQueuePresentKHR(_present_queue, &present_info));
+		check_result(swapchain_result);
     }
-    vkAcquireNextImageKHR(_device, _swapchain, std::numeric_limits<uint64_t>::max(), _present_semaphore, nullptr, &_current_image);
+	check_result(vkAcquireNextImageKHR(_device, _swapchain, std::numeric_limits<uint64_t>::max(), _present_semaphore, nullptr, &_current_image));
     // Wait until last frame using this image has finished rendering
-    vkWaitForFences(_device, 1, &_render_fences[_current_image], true, std::numeric_limits<uint64_t>::max());
-    vkResetFences(_device, 1, &_render_fences[_current_image]);
+	check_result(vkWaitForFences(_device, 1, &_render_fences[_current_image], true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkResetFences(_device, 1, &_render_fences[_current_image]));
 
     _presented = true;
 }
@@ -91,7 +83,11 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     auto& ctx = context::current();
     _ctx_impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));
 
-    if (_swapchain && _device) vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+	if (!_render_fences.empty())
+		vkWaitForFences(_ctx_impl->device(), _render_fences.size(), _render_fences.data(), true, std::numeric_limits<uint64_t>::max());
+
+    //if (_swapchain && _device) vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+	this->~swapchain_implementation();
 
     _device = _ctx_impl->device();
     init<VkSwapchainCreateInfoKHR> swapchain_info{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
@@ -104,16 +100,16 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     swapchain_info.queueFamilyIndexCount = 1;
 
     VkSurfaceCapabilitiesKHR capabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &capabilities);
+	check_result(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &capabilities));
     swapchain_info.surface       = _ctx_impl->surface();
     swapchain_info.imageExtent   = VkExtent2D{width, height};
     swapchain_info.minImageCount = ctx->options().framebuffer_images;
     swapchain_info.preTransform  = capabilities.currentTransform;
 
     u32 fmt_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &fmt_count, nullptr);
+	check_result(vkGetPhysicalDeviceSurfaceFormatsKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &fmt_count, nullptr));
     std::vector<VkSurfaceFormatKHR> formats(fmt_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &fmt_count, formats.data());
+	check_result(vkGetPhysicalDeviceSurfaceFormatsKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &fmt_count, formats.data()));
     if (const auto it = std::find_if(formats.begin(), formats.end(),
                                      [](const VkSurfaceFormatKHR& fmt) {
                                          return fmt.format == VK_FORMAT_B8G8R8A8_UNORM
@@ -130,9 +126,9 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     }
 
     u32 pm_count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &pm_count, nullptr);
+	check_result(vkGetPhysicalDeviceSurfacePresentModesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &pm_count, nullptr));
     std::vector<VkPresentModeKHR> present_modes(pm_count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &pm_count, present_modes.data());
+	check_result(vkGetPhysicalDeviceSurfacePresentModesKHR(_ctx_impl->gpu(), _ctx_impl->surface(), &pm_count, present_modes.data()));
     if (const auto it = std::find_if(present_modes.begin(), present_modes.end(),
                                      [](const VkPresentModeKHR& mode) { return mode == VK_PRESENT_MODE_MAILBOX_KHR; });
         it == present_modes.end())
@@ -142,35 +138,35 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     else
         swapchain_info.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
-    vkCreateSwapchainKHR(_device, &swapchain_info, nullptr, &_swapchain);
+	check_result(vkCreateSwapchainKHR(_device, &swapchain_info, nullptr, &_swapchain));
 
     _present_queue  = _ctx_impl->queues()[fam::present];
     _graphics_queue = _ctx_impl->queues()[fam::graphics];
 
     // TODO:
     u32 img_count = 0;
-    vkGetSwapchainImagesKHR(_device, _swapchain, &img_count, nullptr);
+	check_result(vkGetSwapchainImagesKHR(_device, _swapchain, &img_count, nullptr));
     _temp_images.resize(img_count);
-    vkGetSwapchainImagesKHR(_device, _swapchain, &img_count, _temp_images.data());
+	check_result(vkGetSwapchainImagesKHR(_device, _swapchain, &img_count, _temp_images.data()));
 
     init<VkCommandBufferAllocateInfo> cmd_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     cmd_info.commandBufferCount = static_cast<uint32_t>(_temp_images.size());
     cmd_info.commandPool        = _ctx_impl->command_pools()[fam::graphics];
     cmd_info.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     _primary_command_buffers.resize(_temp_images.size());
-    vkAllocateCommandBuffers(_device, &cmd_info, _primary_command_buffers.data());
+	check_result(vkAllocateCommandBuffers(_device, &cmd_info, _primary_command_buffers.data()));
 
     _command_pool = _ctx_impl->command_pools()[fam::graphics];
 
     init<VkSemaphoreCreateInfo> sem_info{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    vkCreateSemaphore(_device, &sem_info, nullptr, &_present_semaphore);
-    vkCreateSemaphore(_device, &sem_info, nullptr, &_render_semaphore);
+	check_result(vkCreateSemaphore(_device, &sem_info, nullptr, &_present_semaphore));
+	check_result(vkCreateSemaphore(_device, &sem_info, nullptr, &_render_semaphore));
 
     init<VkFenceCreateInfo> fen_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     fen_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	for (int i = 0; i < _temp_images.size(); ++i)
 	{
-		vkCreateFence(_device, &fen_info, nullptr, &_render_fences.emplace_back());
+		check_result(vkCreateFence(_device, &fen_info, nullptr, &_render_fences.emplace_back()));
 
 		image_view& view = _image_views.emplace_back();
 		static_cast<image_view_implementation*>(&*view.implementation())->initialize_vk(gfx::imgv_type::image2d, gfx::format::bgra8unorm, _temp_images[i], 0, 1, 0, 1);

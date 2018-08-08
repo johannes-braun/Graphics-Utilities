@@ -13,7 +13,7 @@ namespace gfx
 			struct shader_module
 			{
 				movable_handle<mygl::shader_program> s;
-				~shader_module() { glDeleteProgram(s); }
+				~shader_module() { if(glIsProgram(s)) glDeleteProgram(s); }
 			};
 
 			class graphics_pipeline_implementation : public detail::graphics_pipeline_implementation
@@ -26,6 +26,7 @@ namespace gfx
                 
 				void apply_all();
 				topology primitive_topology() const noexcept { return _prim_topology; }
+				const std::unordered_map<uint32_t, size_t>& binding_strides() const noexcept { return _binding_strides; }
 
 			private:
 				topology _prim_topology = topology::triangle_list;

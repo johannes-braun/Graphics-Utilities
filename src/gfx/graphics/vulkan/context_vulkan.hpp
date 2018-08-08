@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../general/handle.hpp"
+#include "init_struct.hpp"
 #include <vulkan/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
@@ -9,8 +10,7 @@
 namespace gfx {
 inline namespace v1 {
 namespace vulkan {
-constexpr const char* layers[]{"VK_LAYER_LUNARG_standard_validation", "VK_LAYER_LUNARG_core_validation",
-                               "VK_LAYER_LUNARG_parameter_validation"};
+constexpr const char* layers[]{"VK_LAYER_LUNARG_standard_validation"};
 constexpr const char* instance_extensions[]{VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_REPORT_EXTENSION_NAME};
 constexpr const char* device_extensions[]{VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
                                           VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME};
@@ -44,6 +44,7 @@ public:
     VkPhysicalDevice                    gpu() const { return _gpu; }
     VmaAllocator                        allocator() const { return _allocator; }
 	VkDescriptorPool                    descriptor_pool() const { return _descriptor_pool; }
+	const VkPhysicalDeviceProperties& gpu_properties() const noexcept { return _gpu_properties; }
 
 	std::array<std::vector<VkSemaphore>, 4>          final_wait_semaphores;
 	std::array<std::vector<VkPipelineStageFlags>, 4> final_wait_stages;
@@ -66,6 +67,7 @@ private:
     movable_handle<VkDevice>                 _device;
     VkPhysicalDevice                         _gpu = nullptr;
     movable_handle<VmaAllocator>             _allocator;
+	init<VkPhysicalDeviceProperties>         _gpu_properties;
 };
 }    // namespace vulkan
 }    // namespace v1

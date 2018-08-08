@@ -1,6 +1,7 @@
 #include "binding_layout_vulkan.hpp"
 #include "binding_set_vulkan.hpp"
 #include "context_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -24,7 +25,7 @@ void binding_set_implementation::initialize(const binding_layout& layout)
     alloc.pSetLayouts        = &l;
     alloc.descriptorPool     = impl->descriptor_pool();
 
-    vkAllocateDescriptorSets(_device, &alloc, &_set);
+	check_result(vkAllocateDescriptorSets(_device, &alloc, &_set));
 }
 
 handle binding_set_implementation::api_handle()

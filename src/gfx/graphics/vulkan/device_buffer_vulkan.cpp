@@ -3,6 +3,7 @@
 #include "host_buffer_vulkan.hpp"
 #include "init_struct.hpp"
 #include <unordered_set>
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -22,13 +23,13 @@ void device_buffer_implementation::allocate(size_type size)
         cmd_alloc.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
         _transfer_commands.resize(cmd_alloc.commandBufferCount);
-        vkAllocateCommandBuffers(_device, &cmd_alloc, _transfer_commands.data());
+		check_result(vkAllocateCommandBuffers(_device, &cmd_alloc, _transfer_commands.data()));
 
         _transfer_queue = impl->queues()[fam::transfer];
         init<VkFenceCreateInfo> fen_info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         fen_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         for (int i = 0; i < _transfer_commands.size(); ++i)
-            vkCreateFence(impl->device(), &fen_info, nullptr, &_transfer_fences.emplace_back());
+			check_result(vkCreateFence(impl->device(), &fen_info, nullptr, &_transfer_fences.emplace_back()));
         _allocator = impl->allocator();
     }
     std::unordered_set<u32> family_ind{
@@ -48,7 +49,7 @@ void device_buffer_implementation::allocate(size_type size)
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage                   = VMA_MEMORY_USAGE_GPU_ONLY;
-    vmaCreateBuffer(_allocator, &create_info, &allocInfo, &_buffer, &_allocation, nullptr);
+	check_result(vmaCreateBuffer(_allocator, &create_info, &allocInfo, &_buffer, &_allocation, nullptr));
 }
 
 void device_buffer_implementation::copy(const std::any& source, const std::any& target, difference_type src_offset,
@@ -75,11 +76,11 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
 
     std::vector<VkFence> fences{_transfer_fences[_current_cmd]};
     if (f) fences.push_back(handle_cast<VkFence>(*f));
-    vkWaitForFences(_device, fences.size(), fences.data(), true, std::numeric_limits<uint64_t>::max());
-    vkResetFences(_device, 1, &fences.back());
+	check_result(vkWaitForFences(_device, fences.size(), fences.data(), true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkResetFences(_device, 1, &fences.back()));
     init<VkCommandBufferBeginInfo> begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(_transfer_commands[_current_cmd], &begin);
+	check_result(vkBeginCommandBuffer(_transfer_commands[_current_cmd], &begin));
 
     // vk::BufferMemoryBarrier membarr_dst;
     // membarr_dst.buffer                  = dst_buffer;
@@ -121,26 +122,26 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
     //                                   {membarr_src, membarr_dst},
     //                                   nullptr);
 
-    vkEndCommandBuffer(_transfer_commands[_current_cmd]);
+	check_result(vkEndCommandBuffer(_transfer_commands[_current_cmd]));
 
     init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = 1;
     submit.pCommandBuffers    = &_transfer_commands[_current_cmd];
-    vkQueueSubmit(_transfer_queue, 1, &submit, fences.back());
+	check_result(vkQueueSubmit(_transfer_queue, 1, &submit, fences.back()));
     _current_cmd = (_current_cmd + 1) % _transfer_commands.size();
 
-    vkWaitForFences(_device, 1, &fences.back(), true, std::numeric_limits<uint64_t>::max());
+	check_result(vkWaitForFences(_device, 1, &fences.back(), true, std::numeric_limits<uint64_t>::max()));
     // vkResetFences(_device, 1, &fences.back());
 }
 
 void device_buffer_implementation::update(difference_type offset, size_type size, const std::byte* data)
 {
-    vkWaitForFences(_device, 1, &_transfer_fences[_current_cmd], true, std::numeric_limits<uint64_t>::max());
-    vkResetFences(_device, 1, &_transfer_fences[_current_cmd]);
+	check_result(vkWaitForFences(_device, 1, &_transfer_fences[_current_cmd], true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkResetFences(_device, 1, &_transfer_fences[_current_cmd]));
     init<VkCommandBufferBeginInfo> begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    vkBeginCommandBuffer(_transfer_commands[_current_cmd], &begin);
+	check_result(vkBeginCommandBuffer(_transfer_commands[_current_cmd], &begin));
 
     /* vk::BufferMemoryBarrier membarr_dst;
     membarr_dst.buffer        = _buffer;
@@ -170,12 +171,12 @@ void device_buffer_implementation::update(difference_type offset, size_type size
     //                                   membarr_dst,
     //                                   nullptr);
 
-    vkEndCommandBuffer(_transfer_commands[_current_cmd]);
+	check_result(vkEndCommandBuffer(_transfer_commands[_current_cmd]));
 
     init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = 1;
     submit.pCommandBuffers    = &_transfer_commands[_current_cmd];
-    vkQueueSubmit(_transfer_queue, 1, &submit, _transfer_fences[_current_cmd]);
+	check_result(vkQueueSubmit(_transfer_queue, 1, &submit, _transfer_fences[_current_cmd]));
     _current_cmd = (_current_cmd + 1) % _transfer_commands.size();
 }
 

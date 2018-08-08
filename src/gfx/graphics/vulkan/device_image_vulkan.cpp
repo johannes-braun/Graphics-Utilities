@@ -2,6 +2,7 @@
 #include "device_image_vulkan.hpp"
 #include "init_struct.hpp"
 #include <unordered_set>
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -136,10 +137,10 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
 
     init<VmaAllocationCreateInfo> allocInfo = {};
     allocInfo.usage                         = VMA_MEMORY_USAGE_GPU_ONLY;
-    vmaCreateImage(_allocator, &img_create, &allocInfo, &_image, &_allocation, nullptr);
+	check_result(vmaCreateImage(_allocator, &img_create, &allocInfo, &_image, &_allocation, nullptr));
 
     init<VkFenceCreateInfo> finf{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    vkCreateFence(_device, &finf, nullptr, &_transfer_fence);
+	check_result(vkCreateFence(_device, &finf, nullptr, &_transfer_fence));
 }
 
 void device_image_implementation::fill_from(const host_image& image, uint32_t level, uint32_t layer)
@@ -149,11 +150,11 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
     cmdalloc.commandBufferCount = 1;
     cmdalloc.commandPool        = _transfer_pool;
     cmdalloc.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vkAllocateCommandBuffers(_device, &cmdalloc, &cmd);
+	check_result(vkAllocateCommandBuffers(_device, &cmdalloc, &cmd));
 
     init<VkCommandBufferBeginInfo> beg{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beg.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &beg);
+	check_result(vkBeginCommandBuffer(cmd, &beg));
 
     init<VkImageMemoryBarrier> imembarr{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     imembarr.srcAccessMask                   = 0;
@@ -187,14 +188,14 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
     vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr,
                          0, nullptr, 1, &imembarr);
 
-    vkEndCommandBuffer(cmd);
+	check_result(vkEndCommandBuffer(cmd));
     init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = 1;
     submit.pCommandBuffers    = &cmd;
 
-    vkQueueSubmit(_transfer_queue, 1, &submit, _transfer_fence);
-    vkWaitForFences(_device, 1, &_transfer_fence, true, std::numeric_limits<uint64_t>::max());
-    vkResetFences(_device, 1, &_transfer_fence);
+	check_result(vkQueueSubmit(_transfer_queue, 1, &submit, _transfer_fence));
+	check_result(vkWaitForFences(_device, 1, &_transfer_fence, true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkResetFences(_device, 1, &_transfer_fence));
     vkFreeCommandBuffers(_device, _transfer_pool, 1, &cmd);
 }
 
@@ -205,11 +206,11 @@ void device_image_implementation::fill_to(const host_image& image, uint32_t leve
     cmdalloc.commandBufferCount = 1;
     cmdalloc.commandPool        = _transfer_pool;
     cmdalloc.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vkAllocateCommandBuffers(_device, &cmdalloc, &cmd);
+	check_result(vkAllocateCommandBuffers(_device, &cmdalloc, &cmd));
 
     init<VkCommandBufferBeginInfo> beg{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beg.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &beg);
+	check_result(vkBeginCommandBuffer(cmd, &beg));
 
     init<VkImageMemoryBarrier> imembarr{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     imembarr.srcAccessMask                   = 0;
@@ -244,14 +245,14 @@ void device_image_implementation::fill_to(const host_image& image, uint32_t leve
     vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr,
                          0, nullptr, 1, &imembarr);
 
-    vkEndCommandBuffer(cmd);
+	check_result(vkEndCommandBuffer(cmd));
     init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = 1;
     submit.pCommandBuffers    = &cmd;
 
-    vkQueueSubmit(_transfer_queue, 1, &submit, _transfer_fence);
-    vkWaitForFences(_device, 1, &_transfer_fence, true, std::numeric_limits<uint64_t>::max());
-    vkResetFences(_device, 1, &_transfer_fence);
+	check_result(vkQueueSubmit(_transfer_queue, 1, &submit, _transfer_fence));
+	check_result(vkWaitForFences(_device, 1, &_transfer_fence, true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkResetFences(_device, 1, &_transfer_fence));
     vkFreeCommandBuffers(_device, _transfer_pool, 1, &cmd);
 }
 
@@ -267,11 +268,11 @@ void device_image_implementation::generate_mipmaps()
     cmdalloc.commandBufferCount = 1;
     cmdalloc.commandPool        = _graphics_pool;
     cmdalloc.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    vkAllocateCommandBuffers(_device, &cmdalloc, &cmd);
+	check_result(vkAllocateCommandBuffers(_device, &cmdalloc, &cmd));
 
     init<VkCommandBufferBeginInfo> beg{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beg.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cmd, &beg);
+	check_result(vkBeginCommandBuffer(cmd, &beg));
 
     init<VkImageMemoryBarrier> initial{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
     initial.srcAccessMask                   = 0;
@@ -343,14 +344,14 @@ void device_image_implementation::generate_mipmaps()
     vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr,
                          0, nullptr, 1, &initial);
 
-    vkEndCommandBuffer(cmd);
+	check_result(vkEndCommandBuffer(cmd));
 
     init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = 1;
     submit.pCommandBuffers    = &cmd;
-    vkQueueSubmit(_graphics_queue, 1, &submit, _transfer_fence);
-    vkWaitForFences(_device, 1, &_transfer_fence, true, std::numeric_limits<uint64_t>::max());
-    vkResetFences(_device, 1, &_transfer_fence);
+	check_result(vkQueueSubmit(_graphics_queue, 1, &submit, _transfer_fence));
+	check_result(vkWaitForFences(_device, 1, &_transfer_fence, true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkResetFences(_device, 1, &_transfer_fence));
     vkFreeCommandBuffers(_device, _graphics_pool, 1, &cmd);
 }
 }    // namespace vulkan

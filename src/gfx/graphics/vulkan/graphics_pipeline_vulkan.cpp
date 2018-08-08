@@ -3,6 +3,7 @@
 #include "graphics_pipeline_vulkan.hpp"
 #include "init_struct.hpp"
 #include <gfx/log.hpp>
+#include "result.hpp"
 
 namespace gfx {
 	inline namespace v1 {
@@ -17,10 +18,10 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
                                                   span<const v1::shader* const> shaders)
 {
     auto& ctx = context::current();
-    auto impl = static_cast<v1::vulkan::context_implementation*>(std::any_cast<v1::detail::context_implementation*>(ctx->implementation()));
+    auto impl = static_cast<context_implementation*>(std::any_cast<v1::detail::context_implementation*>(ctx->implementation()));
     _device   = impl->device();
 
-    v1::vulkan::init<VkPipelineLayoutCreateInfo> pl_info{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    init<VkPipelineLayoutCreateInfo> pl_info{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     std::vector<VkDescriptorSetLayout> layouts;
     if (state.state_bindings) {
@@ -28,9 +29,9 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }
     pl_info.setLayoutCount = layouts.size();
     pl_info.pSetLayouts    = layouts.data();
-    vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout);
+	check_result(vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout));
 
-    v1::vulkan::init<VkGraphicsPipelineCreateInfo> pp_info{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+    init<VkGraphicsPipelineCreateInfo> pp_info{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
     pp_info.layout = _layout;
 
     std::vector<VkShaderModule>                  modules;
@@ -38,12 +39,12 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     for (auto* s : shaders) {
         assert(s->format() == shader_format::spirv);
 
-        v1::vulkan::init<VkShaderModuleCreateInfo> smc{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+        init<VkShaderModuleCreateInfo> smc{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
         smc.codeSize = s->data().size();
         smc.pCode    = reinterpret_cast<const u32*>(s->data().data());
-        vkCreateShaderModule(_device, &smc, nullptr, &modules.emplace_back());
+		check_result(vkCreateShaderModule(_device, &smc, nullptr, &modules.emplace_back()));
 
-        v1::vulkan::init<VkPipelineShaderStageCreateInfo> st{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
+        init<VkPipelineShaderStageCreateInfo> st{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
         st.module = modules.back();
         st.pName  = "main";
         st.stage  = [&] {
@@ -66,23 +67,23 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     pp_info.stageCount = stages.size();
 
 
-    v1::vulkan::init<VkRenderPassCreateInfo> rpc{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-    v1::vulkan::init<VkSubpassDescription>   subpass;
+    init<VkRenderPassCreateInfo> rpc{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    init<VkSubpassDescription>   subpass;
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     std::vector<VkAttachmentDescription>      attachments;
     std::vector<VkAttachmentReference>        color_attachment_refs;
     std::vector<VkAttachmentReference>        resolve_attachment_refs;
-    v1::vulkan::init<VkAttachmentDescription> att;
+    init<VkAttachmentDescription> att;
     att.finalLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     att.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     att.loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     att.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     att.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    v1::vulkan::init<VkAttachmentReference> att_ref;
+    init<VkAttachmentReference> att_ref;
     att_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     for (int i = 0; i < renderpass.color_attachment_formats().size(); ++i) {
-        att.format  = v1::vulkan::get_format(renderpass.color_attachment_formats()[i].first);
+        att.format  = get_format(renderpass.color_attachment_formats()[i].first);
         att.samples = VkSampleCountFlagBits(renderpass.samples());
         attachments.push_back(att);
 
@@ -90,7 +91,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
         color_attachment_refs.push_back(att_ref);
 
         if (u32(renderpass.samples()) > 1) {
-            att.format  = v1::vulkan::get_format(renderpass.color_attachment_formats()[i].second);
+            att.format  = get_format(renderpass.color_attachment_formats()[i].second);
             att.samples = VK_SAMPLE_COUNT_1_BIT;
             attachments.push_back(att);
             att_ref.attachment = attachments.size() - 1;
@@ -98,7 +99,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
         }
     }
 
-    att.format      = v1::vulkan::get_format(renderpass.depth_attachment_format());
+    att.format      = get_format(renderpass.depth_attachment_format());
     att.samples     = VkSampleCountFlagBits(renderpass.samples());
     att.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     attachments.push_back(att);
@@ -115,7 +116,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     rpc.subpassCount    = 1;
     rpc.pSubpasses      = &subpass;
 
-    v1::vulkan::init<VkSubpassDependency> dep;
+    init<VkSubpassDependency> dep;
     dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
     dep.srcAccessMask   = 0;
     dep.srcStageMask    = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
@@ -127,24 +128,24 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     rpc.dependencyCount = 1;
 
     movable_handle<VkRenderPass> renderpass_template;
-    vkCreateRenderPass(_device, &rpc, nullptr, &renderpass_template);
+	check_result(vkCreateRenderPass(_device, &rpc, nullptr, &renderpass_template));
     pp_info.renderPass = renderpass_template;
 
-    v1::vulkan::init<VkPipelineVertexInputStateCreateInfo> vert_inp{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    init<VkPipelineVertexInputStateCreateInfo> vert_inp{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
 
     std::vector<VkVertexInputAttributeDescription> attr_desc;
     std::vector<VkVertexInputBindingDescription>   bind_desc;
     if (state.state_vertex_input) {
         for (auto& d : state.state_vertex_input->attributes) {
-            v1::vulkan::init<VkVertexInputAttributeDescription> attr;
+            init<VkVertexInputAttributeDescription> attr;
             attr.location = d.location;
-            attr.format   = v1::vulkan::get_format(d.fmt);
+            attr.format   = get_format(d.fmt);
             attr.binding  = d.binding;
             attr.offset   = d.offset;
             attr_desc.push_back(attr);
         }
         for (auto& b : state.state_vertex_input->bindings) {
-            v1::vulkan::init<VkVertexInputBindingDescription> bind;
+            init<VkVertexInputBindingDescription> bind;
             bind.binding   = b.binding;
             bind.inputRate = [&] {
                 switch (b.rate)
@@ -164,7 +165,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     vert_inp.vertexBindingDescriptionCount   = bind_desc.size();
     pp_info.pVertexInputState                = &vert_inp;
 
-    v1::vulkan::init<VkPipelineInputAssemblyStateCreateInfo> inp_ass{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+    init<VkPipelineInputAssemblyStateCreateInfo> inp_ass{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
 
     static pipeline_state::input_assembly ia;
     pipeline_state::input_assembly*       iap = state.state_input_assembly ? state.state_input_assembly : &ia;
@@ -189,7 +190,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     static pipeline_state::rasterizer                        rst;
     pipeline_state::rasterizer*                              rstp = state.state_rasterizer ? state.state_rasterizer : &rst;
-    v1::vulkan::init<VkPipelineRasterizationStateCreateInfo> rast{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+    init<VkPipelineRasterizationStateCreateInfo> rast{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     rast.cullMode = [&] {
         switch (rstp->cull)
         {
@@ -228,7 +229,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     static pipeline_state::multisample                     mul;
     pipeline_state::multisample*                           mulp = state.state_multisample ? state.state_multisample : &mul;
-    v1::vulkan::init<VkPipelineMultisampleStateCreateInfo> msaa{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+    init<VkPipelineMultisampleStateCreateInfo> msaa{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     msaa.alphaToCoverageEnable = mulp->alpha_to_coverage_enable;
     msaa.alphaToOneEnable      = mulp->alpha_to_one_enable;
     msaa.minSampleShading      = mulp->min_sample_shading;
@@ -239,7 +240,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     static pipeline_state::tesselation                      tes;
     pipeline_state::tesselation*                            tesp = state.state_tesselation ? state.state_tesselation : &tes;
-    v1::vulkan::init<VkPipelineTessellationStateCreateInfo> tess{VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO};
+    init<VkPipelineTessellationStateCreateInfo> tess{VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO};
     tess.patchControlPoints    = tesp->patch_control_points;
     pp_info.pTessellationState = &tess;
 
@@ -247,7 +248,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     static pipeline_state::render_area                  vp;
     pipeline_state::render_area*                        vpp = state.state_viewports ? state.state_viewports : &vp;
-    v1::vulkan::init<VkPipelineViewportStateCreateInfo> vps{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+    init<VkPipelineViewportStateCreateInfo> vps{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
     std::vector<VkRect2D>                               scissors;
     std::vector<VkViewport>                             viewports;
     if (vpp->scissors.empty()) {
@@ -287,14 +288,14 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }
     pp_info.pViewportState = &vps;
 
-    v1::vulkan::init<VkPipelineDynamicStateCreateInfo> dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+    init<VkPipelineDynamicStateCreateInfo> dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
     dyn.dynamicStateCount = dyn_states.size();
     dyn.pDynamicStates    = dyn_states.data();
     pp_info.pDynamicState = &dyn;
 
     static pipeline_state::depth_stencil                    ds;
     pipeline_state::depth_stencil*                          dsp = state.state_depth_stencil ? state.state_depth_stencil : &ds;
-    v1::vulkan::init<VkPipelineDepthStencilStateCreateInfo> depsten{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+    init<VkPipelineDepthStencilStateCreateInfo> depsten{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     depsten.depthBoundsTestEnable = dsp->depth_bounds_test_enable;
     depsten.depthTestEnable       = dsp->depth_test_enable;
     depsten.depthWriteEnable      = dsp->depth_write_enable;
@@ -350,7 +351,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     static pipeline_state::blending                       bl;
     pipeline_state::blending*                             blp = state.state_blending ? state.state_blending : &bl;
-    v1::vulkan::init<VkPipelineColorBlendStateCreateInfo> bls{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    init<VkPipelineColorBlendStateCreateInfo> bls{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
     memcpy(bls.blendConstants, blp->blend_constants, sizeof(bls.blendConstants));
     bls.logicOpEnable = blp->logic_op_enable;
     bls.logicOp       = [&]() {
@@ -455,7 +456,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     std::vector<VkPipelineColorBlendAttachmentState> blatt;
     for (auto& a : blp->attachments) {
-        v1::vulkan::init<VkPipelineColorBlendAttachmentState> t;
+        init<VkPipelineColorBlendAttachmentState> t;
         t.blendEnable = a.blendEnable;
 
         t.srcColorBlendFactor = mk_fac(a.srcColorBlendFactor);
@@ -472,7 +473,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     if (blatt.size() < renderpass.color_attachment_formats().size()) {
         pipeline_state::blend_attachment def;
         for (int i = blatt.size(); i < (renderpass.color_attachment_formats().size() - blatt.size()); ++i) {
-            v1::vulkan::init<VkPipelineColorBlendAttachmentState> t;
+            init<VkPipelineColorBlendAttachmentState> t;
 
             t.srcColorBlendFactor = mk_fac(def.srcColorBlendFactor);
             t.srcAlphaBlendFactor = mk_fac(def.srcAlphaBlendFactor);
@@ -490,7 +491,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     bls.pAttachments    = blatt.data();
 
     pp_info.pColorBlendState = &bls;
-    vkCreateGraphicsPipelines(_device, nullptr, 1, &pp_info, nullptr, &_pipeline);
+	check_result(vkCreateGraphicsPipelines(_device, nullptr, 1, &pp_info, nullptr, &_pipeline));
     vkDestroyRenderPass(_device, renderpass_template, nullptr);
 
     for (auto& psm : modules) {
@@ -512,25 +513,25 @@ compute_pipeline_implementation::~compute_pipeline_implementation()
 void compute_pipeline_implementation::initialize(const pipeline_state::layout& layout, const v1::shader& cs)
 {
     auto& ctx = context::current();
-    auto impl = static_cast<v1::vulkan::context_implementation*>(std::any_cast<v1::detail::context_implementation*>(ctx->implementation()));
+    auto impl = static_cast<context_implementation*>(std::any_cast<v1::detail::context_implementation*>(ctx->implementation()));
     _device   = impl->device();
 
-    v1::vulkan::init<VkPipelineLayoutCreateInfo> pl_info{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    init<VkPipelineLayoutCreateInfo> pl_info{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     std::vector<VkDescriptorSetLayout> layouts;
     for (auto& bl : layout.binding_layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
     pl_info.setLayoutCount = layouts.size();
     pl_info.pSetLayouts    = layouts.data();
-    vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout);
+	check_result(vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout));
 
-    v1::vulkan::init<VkComputePipelineCreateInfo> pp_info{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+    init<VkComputePipelineCreateInfo> pp_info{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
     pp_info.layout      = _layout;
     pp_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 
-    v1::vulkan::init<VkShaderModuleCreateInfo> smc{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+    init<VkShaderModuleCreateInfo> smc{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     smc.codeSize = cs.data().size();
     smc.pCode    = reinterpret_cast<const u32*>(cs.data().data());
-    vkCreateShaderModule(_device, &smc, nullptr, &pp_info.stage.module);
+	check_result(vkCreateShaderModule(_device, &smc, nullptr, &pp_info.stage.module));
     pp_info.stage.pName = "main";
     pp_info.stage.stage = [&] {
         switch (cs.stage())
@@ -556,7 +557,7 @@ void compute_pipeline_implementation::initialize(const pipeline_state::layout& l
         return VK_SHADER_STAGE_VERTEX_BIT;
     }();
 
-    vkCreateComputePipelines(_device, nullptr, 1, &pp_info, nullptr, &_pipeline);
+	check_result(vkCreateComputePipelines(_device, nullptr, 1, &pp_info, nullptr, &_pipeline));
 
     vkDestroyShaderModule(_device, pp_info.stage.module, nullptr);
 }

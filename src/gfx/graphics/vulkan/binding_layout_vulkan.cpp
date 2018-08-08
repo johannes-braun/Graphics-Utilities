@@ -1,5 +1,6 @@
 #include "binding_layout_vulkan.hpp"
 #include "context_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -22,7 +23,7 @@ handle binding_layout_implementation::api_handle()
 		if (_layout) vkDestroyDescriptorSetLayout(_device, _layout, nullptr);
 		_create_info.bindingCount = static_cast<u32>(_bindings.size());
 		_create_info.pBindings    = _bindings.data();
-        vkCreateDescriptorSetLayout(_device, &_create_info, nullptr, &_layout);
+		check_result(vkCreateDescriptorSetLayout(_device, &_create_info, nullptr, &_layout));
     }
 
     return VkDescriptorSetLayout(_layout);

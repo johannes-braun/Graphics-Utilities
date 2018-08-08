@@ -1,6 +1,7 @@
 #include "context_vulkan.hpp"
 #include "device_image_vulkan.hpp"
 #include "framebuffer_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -24,7 +25,7 @@ void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const
 
     _subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     init<VkAttachmentDescription> att;
-    att.finalLayout    = VK_IMAGE_LAYOUT_GENERAL;
+    att.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     att.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     att.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
     att.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
@@ -177,11 +178,11 @@ const VkRenderPassBeginInfo& framebuffer_implementation::begin_info()
 {
     if (_invalid) {
         _invalid = false;
-        vkCreateRenderPass(_device, &_rpcreate, nullptr, &_pass);
+		check_result(vkCreateRenderPass(_device, &_rpcreate, nullptr, &_pass));
         _fbcreate.renderPass      = _pass;
         _fbcreate.attachmentCount = _attachments.size();
         _fbcreate.pAttachments    = _attachments.data();
-        vkCreateFramebuffer(_device, &_fbcreate, nullptr, &_fbo);
+		check_result(vkCreateFramebuffer(_device, &_fbcreate, nullptr, &_fbo));
         _begin_info.renderPass  = _pass;
         _begin_info.framebuffer = _fbo;
 		_begin_info.clearValueCount = u32(_clear_values.size());

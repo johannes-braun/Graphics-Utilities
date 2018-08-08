@@ -51,14 +51,14 @@ void camera_controller::update(camera& camera)
         const auto delta = -_cursor_controls.delta();
         _target_transform.rotation =
                 glm::quat(glm::vec3(0, glm::radians(delta.x / (2 * glm::pi<float>())) * rotation_speed, 0.f)) * _target_transform.rotation;
-        _target_transform.rotation *= glm::quat(glm::vec3(glm::radians(delta.y / (2 * glm::pi<float>())) * rotation_speed, 0.f, 0.f));
+        _target_transform.rotation *= glm::quat(glm::vec3(glm::radians((inverse_y ? -1 : 1)*delta.y / (2 * glm::pi<float>())) * rotation_speed, 0.f, 0.f));
     }
 
     _target_transform.position += rotate(_target_transform.rotation,
                                          glm::vec3{static_cast<float>(btn_right.state() == button_state::down) -
                                                            static_cast<float>(btn_left.state() == button_state::down),
-                                                   static_cast<float>(btn_up.state() == button_state::down) -
-                                                           static_cast<float>(btn_down.state() == button_state::down),
+                                                   static_cast<float>((inverse_y ? btn_down : btn_up).state() == button_state::down) -
+                                                           static_cast<float>((inverse_y ? btn_up : btn_down).state() == button_state::down),
                                                    static_cast<float>(btn_backward.state() == button_state::down) -
                                                            static_cast<float>(btn_forward.state() == button_state::down)}) *
                                   (glfwGetKey(_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS

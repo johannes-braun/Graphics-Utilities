@@ -2,6 +2,7 @@
 #include "image_view_vulkan.hpp"
 #include "init_struct.hpp"
 #include "context_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -60,7 +61,7 @@ void image_view_implementation::initialize_vk(imgv_type type, format format, con
         }
 	}();
 
-	vkCreateImageView(_device, &create_info, nullptr, &_view);
+	check_result(vkCreateImageView(_device, &create_info, nullptr, &_view));
 }
 
 std::any image_view_implementation::api_handle()

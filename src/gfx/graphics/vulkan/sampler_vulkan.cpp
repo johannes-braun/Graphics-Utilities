@@ -1,5 +1,6 @@
 #include "sampler_vulkan.hpp"
 #include "context_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -156,7 +157,7 @@ void sampler_implementation::init_handle()
 		auto  impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));
 		_device = impl->device();
 	}
-    vkCreateSampler(_device, &_create_info, nullptr, &_sampler);
+	check_result(vkCreateSampler(_device, &_create_info, nullptr, &_sampler));
 }
 }    // namespace vulkan
 }    // namespace v1

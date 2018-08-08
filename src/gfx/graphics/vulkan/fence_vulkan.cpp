@@ -1,6 +1,7 @@
 #include "fence_vulkan.hpp"
 #include "init_struct.hpp"
 #include "context_vulkan.hpp"
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -14,8 +15,8 @@ fence_implementation::~fence_implementation()
 
 void fence_implementation::wait(std::chrono::nanoseconds timeout)
 {
-	vkWaitForFences(_device, 1, &_fence, true, timeout.count());
-	vkResetFences(_device, 1, &_fence);
+	check_result(vkWaitForFences(_device, 1, &_fence, true, timeout.count()));
+	check_result(vkResetFences(_device, 1, &_fence));
 }
 
 std::any fence_implementation::api_handle()
@@ -27,7 +28,7 @@ std::any fence_implementation::api_handle()
 		_device = impl->device();
 
 		init<VkFenceCreateInfo> info{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-		vkCreateFence(_device, &info, nullptr, &_fence);
+		check_result(vkCreateFence(_device, &info, nullptr, &_fence));
     }
 	return VkFence(_fence);
 }

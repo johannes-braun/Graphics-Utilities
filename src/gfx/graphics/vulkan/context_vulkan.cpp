@@ -3,6 +3,7 @@
 #include <gfx/log.hpp>
 #define VMA_IMPLEMENTATION
 #include <vulkan/vk_mem_alloc.h>
+#include "result.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -28,26 +29,31 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
     if (options.use_window) glfwCreateWindowSurface(_instance, window, nullptr, &_surface);
 
     u32 gpu_count = 0;
-    vkEnumeratePhysicalDevices(_instance, &gpu_count, nullptr);
+	check_result(vkEnumeratePhysicalDevices(_instance, &gpu_count, nullptr));
     std::vector<VkPhysicalDevice> gpus(gpu_count);
-    vkEnumeratePhysicalDevices(_instance, &gpu_count, gpus.data());
+	check_result(vkEnumeratePhysicalDevices(_instance, &gpu_count, gpus.data()));
     _gpu = gpus[0];
+
+	vkGetPhysicalDeviceProperties(_gpu, &_gpu_properties);
+	ilog("vulkan") << "Initialized a Vulkan " << VK_VERSION_MAJOR(_gpu_properties.apiVersion) << '.' << VK_VERSION_MINOR(_gpu_properties.apiVersion) << " context";
+	ilog("vulkan") << "Device: " << _gpu_properties.deviceName;
+
     init_devices();
 
     init<VmaAllocatorCreateInfo> alloc_create_info;
     alloc_create_info.device         = _device;
     alloc_create_info.physicalDevice = _gpu;
     alloc_create_info.flags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
-    vmaCreateAllocator(&alloc_create_info, &_allocator);
+	check_result(vmaCreateAllocator(&alloc_create_info, &_allocator));
 
     init<VkCommandPoolCreateInfo> pool_info{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     pool_info.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     pool_info.queueFamilyIndex = _queue_families[fam::graphics];
-    vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::graphics]);
+	check_result(vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::graphics]));
     pool_info.queueFamilyIndex = _queue_families[fam::compute];
-    vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::compute]);
+	check_result(vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::compute]));
     pool_info.queueFamilyIndex = _queue_families[fam::transfer];
-    vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::transfer]);
+	check_result(vkCreateCommandPool(_device, &pool_info, nullptr, &_command_pools[fam::transfer]));
 
 	init<VkDescriptorPoolCreateInfo> dpi{ VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 	dpi.maxSets = 1024;
@@ -62,7 +68,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
 	dpi.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	dpi.pPoolSizes = sizes.data();
 	dpi.poolSizeCount = static_cast<u32>(sizes.size());
-	vkCreateDescriptorPool(_device, &dpi, nullptr, &_descriptor_pool);
+	check_result(vkCreateDescriptorPool(_device, &dpi, nullptr, &_descriptor_pool));
 }
 
 void context_implementation::init_instance(const context_options& opt)
@@ -92,7 +98,7 @@ void context_implementation::init_instance(const context_options& opt)
         instance_info.enabledLayerCount   = static_cast<uint32_t>(std::size(layers));
         instance_info.ppEnabledLayerNames = std::data(layers);
     }
-    vkCreateInstance(&instance_info, nullptr, &_instance);
+	check_result(vkCreateInstance(&instance_info, nullptr, &_instance));
 }
 
 void context_implementation::init_debug_callback()
@@ -101,7 +107,7 @@ void context_implementation::init_debug_callback()
     debug_info.pUserData = nullptr;
     debug_info.flags     = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT
                        | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
-   /* | VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT*/
+    /*| VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_DEBUG_BIT_EXT*/
     ;
     debug_info.pfnCallback = [](VkDebugReportFlagsEXT f, VkDebugReportObjectTypeEXT ot, uint64_t o, size_t l, int32_t m, const char* lp,
                                 const char* msg, void* ud) -> VkBool32 {
@@ -122,7 +128,7 @@ void context_implementation::init_debug_callback()
     _vkDestroyDebugReportCallbackEXT =
         reinterpret_cast<decltype(_vkDestroyDebugReportCallbackEXT)>(vkGetInstanceProcAddr(_instance, "vkDestroyDebugReportCallbackEXT"));
 
-    _vkCreateDebugReportCallbackEXT(_instance, &debug_info, nullptr, &_debug_callback);
+	check_result(_vkCreateDebugReportCallbackEXT(_instance, &debug_info, nullptr, &_debug_callback));
 }
 
 void context_implementation::init_devices()
@@ -150,7 +156,7 @@ void context_implementation::init_devices()
 
         if (_surface) {
             VkBool32 supports = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(_gpu, family, _surface, &supports);
+			check_result(vkGetPhysicalDeviceSurfaceSupportKHR(_gpu, family, _surface, &supports));
             if (glfwGetPhysicalDevicePresentationSupport(_instance, _gpu, family) && supports) queues.families[fam::present] = family;
         }
     }
@@ -186,7 +192,7 @@ void context_implementation::init_devices()
     features.multiDrawIndirect   = true;
     device_info.pEnabledFeatures = &features;
 
-    vkCreateDevice(_gpu, &device_info, nullptr, &_device);
+	check_result(vkCreateDevice(_gpu, &device_info, nullptr, &_device));
 
     _queue_families = queues.families;
     _queue_indices  = queues.family_indices;
@@ -206,7 +212,7 @@ bool context_implementation::on_run(bool open)
 {
 	if (!open)
 	{
-		vkDeviceWaitIdle(_device);
+		check_result(vkDeviceWaitIdle(_device));
 		return false;
 	}
 
@@ -218,7 +224,7 @@ bool context_implementation::on_run(bool open)
 			submit.waitSemaphoreCount = static_cast<u32>(final_wait_semaphores[i].size());
 			submit.pWaitSemaphores    = final_wait_semaphores[i].data();
 			submit.pWaitDstStageMask  = final_wait_stages[i].data();
-			vkQueueSubmit(_queues[i], 1, &submit, nullptr);
+			check_result(vkQueueSubmit(_queues[i], 1, &submit, nullptr));
 
 			final_wait_semaphores[i].clear();
 			final_wait_stages[i].clear();

@@ -17,6 +17,11 @@ namespace gfx
 			compute,
 			transfer
 		};
+		enum class index_type
+		{
+			uint16 = 2,
+			uint32 = 4
+		};
 		class commands;
 
 		namespace detail
@@ -43,7 +48,10 @@ namespace gfx
 				virtual void end_pass() = 0;
 
 				virtual void bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings) = 0;
+				virtual void bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset) = 0;
+				virtual void bind_index_buffer(const handle& buffer, index_type index, i64 offset) = 0;
 				virtual void draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance) = 0;
+				virtual void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) = 0;
 			};
 		}
 
@@ -66,7 +74,12 @@ namespace gfx
 			void end_pass()  { implementation()->end_pass(); }
 
 			void bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings ={})  { implementation()->bind_pipeline(p, bindings); }
-			void draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)  { implementation()->draw(vertex_count, instance_count, base_vertex, base_instance); }
+            template<typename T>
+			void bind_vertex_buffer(const device_buffer<T>& buffer, u32 binding, i64 offset = 0) { implementation()->bind_vertex_buffer(buffer.api_handle(), binding, offset); }
+			template<typename T>
+			void bind_index_buffer(const device_buffer<T>& buffer, index_type index, i64 offset = 0) { implementation()->bind_index_buffer(buffer.api_handle(), index, offset); }
+			void draw(u32 vertex_count, u32 instance_count = 1, u32 base_vertex = 0, u32 base_instance = 0)  { implementation()->draw(vertex_count, instance_count, base_vertex, base_instance); }
+			void draw_indexed(u32 index_count, u32 instance_count = 1, u32 base_index = 0, u32 base_vertex = 0, u32 base_instance = 0) { implementation()->draw_indexed(index_count, instance_count, base_index, base_vertex, base_instance); }
 		};
 
 	}

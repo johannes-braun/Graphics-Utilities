@@ -29,6 +29,10 @@ public:
 
     void bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings) override;
     void draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance) override;
+	void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) override;
+
+	void bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset) override;
+	void bind_index_buffer(const handle& buffer, index_type index, i64 offset) override;
 
 private:
 	GLenum current_draw_mode() const;
