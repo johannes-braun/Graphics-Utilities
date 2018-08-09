@@ -19,8 +19,13 @@ namespace gfx
 				void initialize(const binding_layout& layout) override;
 				handle api_handle() override;
 				void bind(u32 binding, u32 arr_element, binding_type type, std::any obj) override;
+				u32 binding(u32 b, u32 arr) const;
 
 				std::function<void()> bind_all(u32& ssb_offset, u32& ub_offset, u32& img_offset, u32& tex_offset);
+
+				u32 count(binding_type t) const {
+					return std::count(_types.begin(), _types.end(), t);
+				}
 
 			private:
 				std::vector<u32> _items;

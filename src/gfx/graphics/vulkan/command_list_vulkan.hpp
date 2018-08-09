@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../command_list.hpp"
-#include "context_vulkan.hpp"
 #include "../general/handle.hpp"
+#include "context_vulkan.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -10,7 +10,7 @@ namespace vulkan {
 class commands_implementation : public detail::commands_implementation
 {
 public:
-	~commands_implementation();
+    ~commands_implementation();
     // Geerbt über commands_implementation
     void initialize(commands_type type) override;
 
@@ -33,18 +33,24 @@ public:
     void bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset) override;
     void bind_index_buffer(const handle& buffer, index_type index, i64 offset) override;
     void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) override;
+
+    void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj) override;
+    void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors);
+
 private:
-	commands_type _type;
+    commands_type                        _type;
     VkRect2D                             _last_render_area;
     gfx::vulkan::context_implementation* _ctx_impl;
     gfx::u32                             _family;
     std::vector<VkDescriptorSet>         _sets;
-    VkDevice                             _device = nullptr;
-    VkCommandPool                        _pool   = nullptr;
-    VkQueue                              _queue  = nullptr;
-    gfx::movable_handle<VkCommandBuffer> _cmd    = nullptr;
-    gfx::movable_handle<VkSemaphore>     _signal = nullptr;
+    const graphics_pipeline*             _last_gpipeline = nullptr;
+    const compute_pipeline*              _last_cpipeline = nullptr;
+    VkDevice                             _device         = nullptr;
+    VkCommandPool                        _pool           = nullptr;
+    VkQueue                              _queue          = nullptr;
+    gfx::movable_handle<VkCommandBuffer> _cmd            = nullptr;
+    gfx::movable_handle<VkSemaphore>     _signal         = nullptr;
 };
 }    // namespace vulkan
-}    // namespace v2
+}    // namespace v1
 }    // namespace gfx

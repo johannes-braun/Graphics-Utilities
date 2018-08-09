@@ -5,6 +5,18 @@
 #include <vulkan/vk_mem_alloc.h>
 #include "result.hpp"
 
+PFN_vkCmdPushDescriptorSetKHR _vkCmdPushDescriptorSetKHR = nullptr;
+VKAPI_ATTR void VKAPI_CALL vkCmdPushDescriptorSetKHR(
+	VkCommandBuffer                             commandBuffer,
+	VkPipelineBindPoint                         pipelineBindPoint,
+	VkPipelineLayout                            layout,
+	uint32_t                                    set,
+	uint32_t                                    descriptorWriteCount,
+	const VkWriteDescriptorSet*                 pDescriptorWrites)
+{
+	_vkCmdPushDescriptorSetKHR(commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+}
+
 namespace gfx {
 inline namespace v1 {
 namespace vulkan {
@@ -27,6 +39,8 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
     if (options.debug) init_debug_callback();
 
     if (options.use_window) glfwCreateWindowSurface(_instance, window, nullptr, &_surface);
+
+	_vkCmdPushDescriptorSetKHR = reinterpret_cast<decltype(_vkCmdPushDescriptorSetKHR)>(vkGetInstanceProcAddr(_instance, "vkCmdPushDescriptorSetKHR"));
 
     u32 gpu_count = 0;
 	check_result(vkEnumeratePhysicalDevices(_instance, &gpu_count, nullptr));

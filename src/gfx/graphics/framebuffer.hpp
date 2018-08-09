@@ -21,7 +21,9 @@ struct depth_stencil
     float    depth;
     u32 stencil;
 };
-using clear_value = std::variant<glm::vec4, depth_stencil>;
+
+struct load {};
+using clear_value = std::variant<glm::vec4, depth_stencil, load>;
 
 namespace detail {
 class framebuffer_implementation

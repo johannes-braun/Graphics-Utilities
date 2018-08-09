@@ -22,12 +22,18 @@ handle binding_set_implementation::api_handle()
 	return {};
 }
 
+u32 binding_set_implementation::binding(u32 b, u32 arr) const
+{
+	binding_type bt = _types[b];
+	return _layout[static_cast<u32>(bt)][_items[b]].begin + arr;
+}
+
 void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type type, std::any obj)
 {
     binding_type bt = _types[binding];
-    assert(bt == type);
     u32 b = _layout[static_cast<u32>(bt)][_items[binding]].begin + arr_element;
 
+	assert(bt == type);
 
 	dlog << "Binding information: binding: " << binding << ", arr_elem: " << arr_element << " ==> " << [type]{
 	    switch(type)

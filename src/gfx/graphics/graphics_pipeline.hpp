@@ -237,7 +237,7 @@ public:
 private:
     sample_count                           _samples;
     std::vector<std::pair<format, format>> _color_attachment_formats;
-    format                                 _depth_attachment_format;
+	format                                 _depth_attachment_format = format::unspecified;
 };
 
 struct pipeline_state

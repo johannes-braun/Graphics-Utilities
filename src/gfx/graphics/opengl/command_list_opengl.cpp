@@ -1,5 +1,5 @@
-#include "binding_set_opengl.hpp"
 #include "command_list_opengl.hpp"
+#include "binding_set_opengl.hpp"
 #include "fence_opengl.hpp"
 #include "framebuffer_opengl.hpp"
 #include "graphics_pipeline_opengl.hpp"
@@ -22,9 +22,7 @@ void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
 }
 void commands_implementation::execute(fence* f)
 {
-    for (auto& q : _queue) {
-        q();
-    }
+    for (auto& q : _queue) { q(); }
     _curr_pipeline = nullptr;
 
     glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
@@ -47,12 +45,13 @@ void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<r
     _queue.emplace_back([fbo = _curr_framebuffer] {
         static_cast<v1::opengl::framebuffer_implementation*>(&*fbo->implementation())->begin();
 
-        for (int i = 0; i < fbo->color_clear_values().size(); ++i) {
-            if (const auto cv = fbo->color_clear_values()[i]) {
-                glClearNamedFramebufferfv(handle_cast<mygl::framebuffer>(*fbo), GL_COLOR, i, glm::value_ptr(std::get<glm::vec4>(*cv)));
-            }
+        for (int i = 0; i < fbo->color_clear_values().size(); ++i)
+        {
+            if (const auto cv = fbo->color_clear_values()[i]; cv && std::holds_alternative<glm::vec4>(*cv))
+            { glClearNamedFramebufferfv(handle_cast<mygl::framebuffer>(*fbo), GL_COLOR, i, glm::value_ptr(std::get<glm::vec4>(*cv))); }
         }
-        if (const auto dv = fbo->depth_clear_value()) {
+        if (const auto dv = fbo->depth_clear_value(); dv && std::holds_alternative<depth_stencil>(*dv))
+        {
             const auto& dvv = std::get<depth_stencil>(*dv);
             glClearNamedFramebufferfi(handle_cast<mygl::framebuffer>(*fbo), GL_DEPTH_STENCIL, 0, dvv.depth, dvv.stencil);
         }
@@ -69,19 +68,19 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
     _curr_pipeline = &p;
     _queue.emplace_back([&] { static_cast<graphics_pipeline_implementation*>(&*p.implementation())->apply_all(); });
 
-    if (bindings.size() > 0) {
+    if (bindings.size() > 0)
+    {
         u32 ssb = 0;
         u32 ub  = 0;
         u32 img = 0;
         u32 tex = 0;
-        for (auto* b : bindings) {
-            _queue.emplace_back(static_cast<v1::opengl::binding_set_implementation*>(&*b->implementation())->bind_all(ssb, ub, img, tex));
-        }
+        for (auto* b : bindings)
+        { _queue.emplace_back(static_cast<v1::opengl::binding_set_implementation*>(&*b->implementation())->bind_all(ssb, ub, img, tex)); }
     }
 }
 void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)
 {
-    _queue.emplace_back([ =, draw_mode = current_draw_mode() ] {
+    _queue.emplace_back([=, draw_mode = current_draw_mode()] {
         glDrawArraysInstancedBaseInstance(draw_mode, static_cast<int>(base_vertex), static_cast<int>(vertex_count),
                                           static_cast<int>(instance_count), static_cast<uint32_t>(base_instance));
     });
@@ -89,7 +88,7 @@ void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 bas
 
 void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance)
 {
-    _queue.emplace_back([ =, draw_mode = current_draw_mode() ] {
+    _queue.emplace_back([=, draw_mode = current_draw_mode()] {
         glDrawElementsInstancedBaseVertexBaseInstance(draw_mode, index_count, _element_type,
                                                       reinterpret_cast<void*>(_element_offset + base_index * _element_type_size),
                                                       instance_count, base_vertex, base_instance);
@@ -138,6 +137,96 @@ GLenum commands_implementation::current_draw_mode() const
     default: return GLenum(0);
     }
 }
+
+void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, binding_type type, std::any obj)
+{
+    const auto& ps = static_cast<graphics_pipeline_implementation*>(&*_curr_pipeline->implementation())->proxy_sets();
+
+    u32 offset = 0;
+    for (int i = 0; i < set; ++i) { offset += static_cast<binding_set_implementation*>(&*ps[i].implementation())->count(type); }
+
+    auto& proxy_set = ps[set];
+    auto  binding   = offset + static_cast<binding_set_implementation*>(&*proxy_set.implementation())->binding(b, arr_element);
+
+    switch (type)
+    {
+    case binding_type::storage_buffer:
+    {
+        mygl::buffer buffer;
+        if (obj.type() == typeid(const std::unique_ptr<detail::host_buffer_implementation>*))
+        {
+            auto& buf = *std::any_cast<const std::unique_ptr<detail::host_buffer_implementation>*>(obj);
+            buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
+        }
+        if (obj.type() == typeid(const std::unique_ptr<detail::device_buffer_implementation>*))
+        {
+            auto& buf = *std::any_cast<const std::unique_ptr<detail::device_buffer_implementation>*>(obj);
+            buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
+        }
+        _queue.emplace_back([=] { glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer); });
+    }
+    break;
+    case binding_type::uniform_buffer:
+    {
+        mygl::buffer buffer;
+        if (obj.type() == typeid(const std::unique_ptr<detail::host_buffer_implementation>*))
+        {
+            auto& buf = *std::any_cast<const std::unique_ptr<detail::host_buffer_implementation>*>(obj);
+            buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
+        }
+        if (obj.type() == typeid(const std::unique_ptr<detail::device_buffer_implementation>*))
+        {
+            auto& buf = *std::any_cast<const std::unique_ptr<detail::device_buffer_implementation>*>(obj);
+            buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
+        }
+        _queue.emplace_back([=] { glBindBufferBase(GL_UNIFORM_BUFFER, binding, buffer); });
+    }
+    break;
+    case binding_type::storage_image:
+    {
+        auto& iv       = *std::any_cast<const std::unique_ptr<detail::image_view_implementation>*>(obj);
+        auto  img_view = std::any_cast<mygl::texture>(iv->api_handle());
+
+        _queue.emplace_back([=] { glBindImageTextures(binding, 1, &img_view); });
+    }
+    break;
+    case binding_type::sampled_image:
+    {
+        auto [ivp, sp] = std::any_cast<
+            std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*>>(
+            obj);
+        auto& iv       = *ivp;
+        auto& s        = *sp;
+        auto  img_view = std::any_cast<mygl::texture>(iv->api_handle());
+        auto  smp      = std::any_cast<mygl::sampler>(s->api_handle());
+
+        _queue.emplace_back([=] {
+            glBindSampler(binding, smp);
+            glBindTextureUnit(binding, img_view);
+        });
+    }
+    break;
+    default:;
+    }
+}
+
+void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors)
+{
+    _queue.emplace_back(
+        [=, vps = std::vector<viewport>(vp.begin(), vp.end()), scs = std::vector<rect2f>(scissors.begin(), scissors.end())] {
+            for (int i = 0; i < vp.size(); ++i)
+            {
+                if (!scissors.empty())
+                {
+                    const auto s = scs[i].size();
+                    glScissorIndexed(i + first, scs[i].min.x, scs[i].min.y, s.x, s.y);
+                }
+                glViewportIndexedf(i + first, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
+                glDepthRangeIndexed(i + first, vps[i].min_depth, vps[i].max_depth);
+            }
+        });
+}
+
 }    // namespace opengl
 }    // namespace v1
 }    // namespace gfx

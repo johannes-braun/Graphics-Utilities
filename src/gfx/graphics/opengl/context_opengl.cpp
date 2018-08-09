@@ -22,7 +22,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
     glGetIntegerv(GL_MINOR_VERSION, &min);
 
     ilog("opengl") << "Initialized an OpenGL " << maj << '.' << min << " context";
-    ilog("opengl") << "Vendor: " << glGetString(GL_VENDOR);
+    ilog("opengl") << "Device: " << glGetString(GL_RENDERER);
 
     if (options.debug) {
         glDebugMessageCallback(

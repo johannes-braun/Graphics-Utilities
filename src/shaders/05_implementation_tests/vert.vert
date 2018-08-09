@@ -20,14 +20,17 @@ out gl_PerVertex
 layout(loc_gl(0) loc_vk(0, 0)) uniform MyUBO0 { 
 	mat4 view;
 	mat4 proj;
+	vec3 position;
 } camera;
 
 layout(location=0) out vec3 out_normal;
 layout(location=1) out vec2 out_uv;
+layout(location=2) out vec3 view_direction;
 
 void main()
 {
 	gl_Position = camera.proj * camera.view * vec4(position, 1);
 	out_normal = normal;
 	out_uv = uv;
+	view_direction = position - camera.position;
 }

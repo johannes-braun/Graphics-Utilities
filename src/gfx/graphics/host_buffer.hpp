@@ -123,9 +123,12 @@ public:
     void resize(size_type elements, const_reference base);
     void reserve(size_type size);
 
+	void clear() { _data_span = gsl::make_span(_data_span.data(), 0); }
+
     void shrink_to_fit();
 
     void push_back(value_type&& value);
+	void push_back(const value_type& value);
 
     template<typename... Args, typename = decltype(value_type(std::declval<Args>()...))>
     T& emplace_back(Args&&... args);

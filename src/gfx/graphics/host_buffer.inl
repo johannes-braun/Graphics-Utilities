@@ -246,6 +246,18 @@ void host_buffer<T>::push_back(value_type&& value)
 }
 
 template<typename T>
+void host_buffer<T>::push_back(const value_type& value)
+{
+	if (_data_span.size() < _capacity) {
+		(_data_span = {_data_span.data(), _data_span.size() + 1})[_data_span.size() - 1] = value;
+		return;
+	}
+
+	reserve(std::max(_capacity * 2, 1ll));
+	(_data_span = {_data_span.data(), _data_span.size() + 1})[_data_span.size() - 1] = value;
+}
+
+template<typename T>
 template<typename... Args, typename>
 T& host_buffer<T>::emplace_back(Args&&... args)
 {

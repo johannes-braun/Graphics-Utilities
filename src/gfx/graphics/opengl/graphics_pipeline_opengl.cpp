@@ -411,7 +411,8 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }
 
     if (state.state_bindings) {
-        // Nothing.
+		for (auto& l : state.state_bindings->binding_layouts)
+			_proxy_sets.emplace_back(*l);
     }
 
     glCreateProgramPipelines(1, &_pipeline);
@@ -447,6 +448,9 @@ void compute_pipeline_implementation::initialize(const pipeline_state::layout& l
     glCreateProgramPipelines(1, &_pipeline);
     _shader = make_shader(cs.stage(), cs, _pipeline);
     validate(_pipeline);
+
+	for (auto& l : layout.binding_layouts)
+		_proxy_sets.emplace_back(*l);
 }
 
 handle compute_pipeline_implementation::api_handle()

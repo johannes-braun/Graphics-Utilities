@@ -21,6 +21,7 @@ handle binding_layout_implementation::api_handle()
 
     if (_invalidated) {
 		if (_layout) vkDestroyDescriptorSetLayout(_device, _layout, nullptr);
+		_create_info.flags = _dynamic ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR : 0;
 		_create_info.bindingCount = static_cast<u32>(_bindings.size());
 		_create_info.pBindings    = _bindings.data();
 		check_result(vkCreateDescriptorSetLayout(_device, &_create_info, nullptr, &_layout));

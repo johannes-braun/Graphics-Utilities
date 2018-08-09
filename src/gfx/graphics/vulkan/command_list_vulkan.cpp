@@ -1,6 +1,7 @@
 #include "command_list_vulkan.hpp"
 #include "framebuffer_vulkan.hpp"
 #include "graphics_pipeline_vulkan.hpp"
+#include "image_view_vulkan.hpp"
 #include "init_struct.hpp"
 #include "result.hpp"
 
@@ -32,13 +33,13 @@ void commands_implementation::initialize(commands_type type)
     _pool     = _ctx_impl->command_pools()[_family];
     _queue    = _ctx_impl->queues()[_family];
 
-    init<VkCommandBufferAllocateInfo> alloc{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    init<VkCommandBufferAllocateInfo> alloc {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     alloc.commandPool        = _pool;
     alloc.commandBufferCount = 1;
     alloc.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     check_result(vkAllocateCommandBuffers(_device, &alloc, &_cmd));
 
-    init<VkSemaphoreCreateInfo> sem{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    init<VkSemaphoreCreateInfo> sem {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     check_result(vkCreateSemaphore(_device, &sem, nullptr, &_signal));
 }
 void commands_implementation::reset()
@@ -47,7 +48,7 @@ void commands_implementation::reset()
 }
 void commands_implementation::begin()
 {
-    init<VkCommandBufferBeginInfo> beg{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    init<VkCommandBufferBeginInfo> beg {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beg.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     _sets.clear();
     check_result(vkBeginCommandBuffer(_cmd, &beg));
@@ -72,7 +73,7 @@ void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
         _ctx_impl->final_wait_stages[_family].push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     }
 
-    init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    init<VkSubmitInfo> submit {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount       = 1;
     submit.pCommandBuffers          = &_cmd;
     submit.signalSemaphoreCount     = 1;
@@ -88,7 +89,7 @@ void commands_implementation::execute(fence* f)
     _ctx_impl->final_wait_semaphores[_family].push_back(_signal);
     _ctx_impl->final_wait_stages[_family].push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
-    init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    init<VkSubmitInfo> submit {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount   = 1;
     submit.pCommandBuffers      = &_cmd;
     submit.signalSemaphoreCount = 1;
@@ -97,8 +98,11 @@ void commands_implementation::execute(fence* f)
 }
 void commands_implementation::bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
+    _last_gpipeline = nullptr;
+    _last_cpipeline = &p;
     vkCmdBindPipeline(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE, handle_cast<VkPipeline>(p));
-    if (bindings.size() > 0) {
+    if (bindings.size() > 0)
+    {
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
         vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -129,8 +133,11 @@ void commands_implementation::end_pass()
 }
 void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
+    _last_gpipeline = &p;
+    _last_cpipeline = nullptr;
     vkCmdBindPipeline(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, handle_cast<VkPipeline>(p));
-    if (bindings.size() > 0) {
+    if (bindings.size() > 0)
+    {
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
         vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -139,7 +146,7 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
     }
 
     // bind default viewports and scissors
-    VkViewport vps{0};
+    VkViewport vps {0};
     vps.width    = _last_render_area.extent.width;
     vps.height   = _last_render_area.extent.height;
     vps.maxDepth = 1.f;
@@ -170,14 +177,156 @@ void commands_implementation::bind_index_buffer(const handle& buffer, index_type
         case index_type::uint16: return VK_INDEX_TYPE_UINT16;
         case index_type::uint32: return VK_INDEX_TYPE_UINT32;
         }
-		return VK_INDEX_TYPE_UINT32;
-	}());
+        return VK_INDEX_TYPE_UINT32;
+    }());
 }
 
 void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance)
 {
-	vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
+    vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
 }
+
+void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj)
+{
+    assert(_last_gpipeline || _last_cpipeline);
+    const auto bind_point = _last_gpipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+
+    VkPipelineLayout layout = _last_cpipeline
+                                  ? static_cast<compute_pipeline_implementation*>(&*_last_cpipeline->implementation())->layout()
+                                  : static_cast<graphics_pipeline_implementation*>(&*_last_gpipeline->implementation())->layout();
+
+    if (obj.type()
+        == typeid(std::pair<const std::unique_ptr<detail::image_view_implementation>*,
+                            const std::unique_ptr<detail::sampler_implementation>*>))
+    {
+        assert(type == binding_type::sampled_image);
+
+        auto [ivp, sp] = std::any_cast<
+            std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*>>(
+            obj);
+
+        auto& iv = *ivp;
+        auto& s  = *sp;
+
+        auto img_view = std::any_cast<VkImageView>(iv->api_handle());
+        auto smp      = std::any_cast<VkSampler>(s->api_handle());
+
+        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.descriptorCount = 1;
+        write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.dstArrayElement = arr_element;
+        write.dstBinding      = binding;
+        write.dstSet          = nullptr;
+
+        init<VkDescriptorImageInfo> img_info;
+        img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        img_info.imageView   = img_view;
+        img_info.sampler     = smp;
+        write.pImageInfo     = &img_info;
+        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+    }
+    else if (obj.type() == typeid(const std::unique_ptr<detail::image_view_implementation>*))
+    {
+        assert(type == binding_type::storage_image);
+        auto& iv = *std::any_cast<const std::unique_ptr<detail::image_view_implementation>*>(obj);
+
+        auto img_view = std::any_cast<VkImageView>(iv->api_handle());
+
+        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.descriptorCount = 1;
+        write.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        write.dstArrayElement = arr_element;
+        write.dstBinding      = binding;
+        write.dstSet          = nullptr;
+
+        init<VkDescriptorImageInfo> img_info;
+        img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        img_info.imageView   = img_view;
+        img_info.sampler     = nullptr;
+        write.pImageInfo     = &img_info;
+        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+    }
+    else if (obj.type() == typeid(const std::unique_ptr<detail::host_buffer_implementation>*))
+    {
+        auto& buf    = *std::any_cast<const std::unique_ptr<detail::host_buffer_implementation>*>(obj);
+        auto  buffer = std::any_cast<VkBuffer>(buf->api_handle());
+
+        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.descriptorCount = 1;
+        write.descriptorType  = [=] {
+            switch (type)
+            {
+            case binding_type::storage_buffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case binding_type::uniform_buffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            default: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            }
+        }();
+        write.dstArrayElement = arr_element;
+        write.dstBinding      = binding;
+        write.dstSet          = nullptr;
+
+        init<VkDescriptorBufferInfo> buf_info;
+        buf_info.buffer   = buffer;
+        buf_info.range    = VK_WHOLE_SIZE;
+        write.pBufferInfo = &buf_info;
+
+        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+    }
+    else if (obj.type() == typeid(const std::unique_ptr<detail::device_buffer_implementation>*))
+    {
+        auto& buf    = *std::any_cast<const std::unique_ptr<detail::device_buffer_implementation>*>(obj);
+        auto  buffer = std::any_cast<VkBuffer>(buf->api_handle());
+
+        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.descriptorCount = 1;
+        write.descriptorType  = [=] {
+            switch (type)
+            {
+            case binding_type::storage_buffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case binding_type::uniform_buffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            default: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            }
+        }();
+        write.dstArrayElement = arr_element;
+        write.dstBinding      = binding;
+        write.dstSet          = nullptr;
+
+        init<VkDescriptorBufferInfo> buf_info;
+        buf_info.buffer   = buffer;
+        buf_info.range    = VK_WHOLE_SIZE;
+        write.pBufferInfo = &buf_info;
+
+        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+    }
+}
+
+void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors)
+{
+    std::vector<VkViewport> vps(vp.size());
+    std::vector<VkRect2D>   sci(scissors.size());
+    for (int i = 0; i < vp.size(); ++i)
+    {
+        if (!sci.empty())
+        {
+            auto size            = scissors[i].size();
+            sci[i].extent.width  = size.x;
+            sci[i].extent.height = size.y;
+            sci[i].offset.x      = scissors[i].min.x;
+            sci[i].offset.y      = scissors[i].min.y;
+        }
+
+        vps[i].width    = vp[i].width;
+        vps[i].height   = vp[i].height;
+        vps[i].x        = vp[i].x;
+        vps[i].y        = vp[i].y;
+        vps[i].minDepth = vp[i].min_depth;
+        vps[i].maxDepth = vp[i].max_depth;
+    }
+
+    vkCmdSetViewport(_cmd, first, vps.size(), vps.data());
+    if (!sci.empty()) { vkCmdSetScissor(_cmd, first, sci.size(), sci.data()); }
+}
+
 }    // namespace vulkan
 }    // namespace v1
 }    // namespace gfx

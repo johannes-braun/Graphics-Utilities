@@ -99,18 +99,23 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
         }
     }
 
-    att.format      = get_format(renderpass.depth_attachment_format());
-    att.samples     = VkSampleCountFlagBits(renderpass.samples());
-    att.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    attachments.push_back(att);
-
+	if (renderpass.depth_attachment_format() != format::unspecified)
+	{
+		att.format      = get_format(renderpass.depth_attachment_format());
+		att.samples     = VkSampleCountFlagBits(renderpass.samples());
+		att.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		attachments.push_back(att);
+	}
     att_ref.attachment           = attachments.size() - 1;
     att_ref.layout               = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     subpass.colorAttachmentCount = color_attachment_refs.size();
     subpass.pColorAttachments    = color_attachment_refs.data();
     if (u32(renderpass.samples()) > 1) subpass.pResolveAttachments = resolve_attachment_refs.data();
-    subpass.pDepthStencilAttachment = &att_ref;
 
+	if (renderpass.depth_attachment_format() != format::unspecified)
+	{
+		subpass.pDepthStencilAttachment = &att_ref;
+	}
     rpc.attachmentCount = attachments.size();
     rpc.pAttachments    = attachments.data();
     rpc.subpassCount    = 1;

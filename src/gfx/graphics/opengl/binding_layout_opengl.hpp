@@ -17,6 +17,7 @@ public:
 		u32 count;
 	};
 
+	void   initialize(bool dynamic) override { _dynamic=dynamic; }
     void   push(binding_type type, u32 array_size) override;
     handle api_handle() override;
 
@@ -24,6 +25,7 @@ public:
 	const std::vector<u32>& items() const noexcept;
 
 private:
+	bool _dynamic;
 	std::vector<u32> _items;
 	std::vector<std::vector<range>> _binding_counts;
 };
