@@ -59,7 +59,7 @@
 
  Designed for developers and content-creators, not the typical end-user! Some of the weaknesses includes:
  - Doesn't look fancy, doesn't animate
- - Limited layout features, intricate layouts are typically crafted in code
+ - Limited state_binding_layout features, intricate layouts are typically crafted in code
 
 
  END-USER GUIDE
@@ -657,7 +657,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <gfx/imgui/imgui.h>
+#include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
@@ -2139,7 +2139,7 @@ static inline bool IsWindowContentHoverable(ImGuiWindow* window, ImGuiHoveredFla
     return true;
 }
 
-// Advance cursor given item size for layout.
+// Advance cursor given item size for state_binding_layout.
 void ImGui::ItemSize(const ImVec2& size, float text_offset_y)
 {
     ImGuiContext& g = *GImGui;
@@ -2161,7 +2161,7 @@ void ImGui::ItemSize(const ImVec2& size, float text_offset_y)
     window->DC.PrevLineTextBaseOffset = text_base_offset;
     window->DC.CurrentLineHeight = window->DC.CurrentLineTextBaseOffset = 0.0f;
 
-    // Horizontal layout mode
+    // Horizontal state_binding_layout mode
     if (window->DC.LayoutType == ImGuiLayoutType_Horizontal)
         SameLine();
 }
@@ -11101,7 +11101,7 @@ bool ImGui::MenuItem(const char* label, const char* shortcut, bool selected, boo
     bool pressed;
     if (window->DC.LayoutType == ImGuiLayoutType_Horizontal)
     {
-        // Mimic the exact layout spacing of BeginMenu() to allow MenuItem() inside a menu bar, which is a little misleading but may be useful
+        // Mimic the exact state_binding_layout spacing of BeginMenu() to allow MenuItem() inside a menu bar, which is a little misleading but may be useful
         // Note that in this situation we render neither the shortcut neither the selected tick mark
         float w = label_size.x;
         window->DC.CursorPos.x += (float)(int)(style.ItemSpacing.x * 0.5f);
@@ -12194,7 +12194,7 @@ void ImGui::Separator()
         x1 += window->DC.IndentX;
 
     const ImRect bb(ImVec2(x1, window->DC.CursorPos.y), ImVec2(x2, window->DC.CursorPos.y+1.0f));
-    ItemSize(ImVec2(0.0f, 0.0f)); // NB: we don't provide our width so that it doesn't get feed back into AutoFit, we don't provide height to not alter layout.
+    ItemSize(ImVec2(0.0f, 0.0f)); // NB: we don't provide our width so that it doesn't get feed back into AutoFit, we don't provide height to not alter state_binding_layout.
     if (!ItemAdd(bb, 0))
     {
         if (window->DC.ColumnsSet)
@@ -12311,7 +12311,7 @@ bool ImGui::IsRectVisible(const ImVec2& rect_min, const ImVec2& rect_max)
     return window->ClipRect.Overlaps(ImRect(rect_min, rect_max));
 }
 
-// Lock horizontal starting position + capture group bounding box into one "item" (so you can use IsItemHovered() or layout primitives such as SameLine() on whole group, etc.)
+// Lock horizontal starting position + capture group bounding box into one "item" (so you can use IsItemHovered() or state_binding_layout primitives such as SameLine() on whole group, etc.)
 void ImGui::BeginGroup()
 {
     ImGuiWindow* window = GetCurrentWindow();
@@ -12374,7 +12374,7 @@ void ImGui::EndGroup()
     //window->DrawList->AddRect(group_bb.Min, group_bb.Max, IM_COL32(255,0,255,255));   // [Debug]
 }
 
-// Gets back to previous line and continue with horizontal layout
+// Gets back to previous line and continue with horizontal state_binding_layout
 //      pos_x == 0      : follow right after previous item
 //      pos_x != 0      : align to specified x position (relative to window/group left)
 //      spacing_w < 0   : use default spacing if pos_x == 0, no spacing if pos_x != 0

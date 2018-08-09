@@ -1,5 +1,5 @@
 #include "formats.hpp"
-#include "graphics_pipeline_opengl.hpp"
+#include "pipeline_opengl.hpp"
 #include <gfx/log.hpp>
 
 namespace gfx {
@@ -9,10 +9,11 @@ void enable_for(bool b, GLenum e)
 {
     b ? glEnable(e) : glDisable(e);
 }
-std::function<void()> apply_func(pipeline_state::rasterizer* ptr)
+std::function<void()> apply_func(pipe_state::rasterizer* ptr)
 {
-    return [obj = ptr ? *ptr : pipeline_state::rasterizer{}]
+    return [obj = ptr ? *ptr : pipe_state::rasterizer{}]
     {
+		glEnable(GL_SCISSOR_TEST);
 		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
         enable_for(obj.rasterizer_discard_enable, GL_RASTERIZER_DISCARD);
@@ -55,9 +56,9 @@ std::function<void()> apply_func(pipeline_state::rasterizer* ptr)
     };
 }
 
-std::function<void()> apply_func(pipeline_state::render_area* ptr)
+std::function<void()> apply_func(pipe_state::render_area* ptr)
 {
-    return [obj = ptr ? *ptr : pipeline_state::render_area{}]
+    return [obj = ptr ? *ptr : pipe_state::render_area{}]
     {
         uint32_t i = 0;
         for (const auto& vp : obj.viewports) {
@@ -72,14 +73,14 @@ std::function<void()> apply_func(pipeline_state::render_area* ptr)
     };
 }
 
-std::function<void()> apply_func(pipeline_state::tesselation* ptr)
+std::function<void()> apply_func(pipe_state::tesselation* ptr)
 {
-    return [obj = ptr ? *ptr : pipeline_state::tesselation{}] { glPatchParameteri(GL_PATCH_VERTICES, obj.patch_control_points); };
+    return [obj = ptr ? *ptr : pipe_state::tesselation{}] { glPatchParameteri(GL_PATCH_VERTICES, obj.patch_control_points); };
 }
 
-std::function<void()> apply_func(pipeline_state::depth_stencil* ptr)
+std::function<void()> apply_func(pipe_state::depth_stencil* ptr)
 {
-    return [obj = ptr ? *ptr : pipeline_state::depth_stencil{}]
+    return [obj = ptr ? *ptr : pipe_state::depth_stencil{}]
     {
         enable_for(obj.depth_test_enable, GL_DEPTH_TEST);
         enable_for(obj.depth_bounds_test_enable, GL_DEPTH_BOUNDS_TEST_EXT);
@@ -131,9 +132,9 @@ std::function<void()> apply_func(pipeline_state::depth_stencil* ptr)
     };
 }
 
-std::function<void()> apply_func(pipeline_state::blending* ptr)
+std::function<void()> apply_func(pipe_state::blending* ptr)
 {
-    return [obj = ptr ? *ptr : pipeline_state::blending{}]
+    return [obj = ptr ? *ptr : pipe_state::blending{}]
     {
         enable_for(obj.logic_op_enable, GL_COLOR_LOGIC_OP);
         glLogicOp([&]() {
@@ -255,9 +256,9 @@ std::function<void()> apply_func(pipeline_state::blending* ptr)
     };
 }
 
-std::function<void()> apply_func(pipeline_state::multisample* ptr)
+std::function<void()> apply_func(pipe_state::multisample* ptr)
 {
-    return [obj = ptr ? *ptr : pipeline_state::multisample{}]
+    return [obj = ptr ? *ptr : pipe_state::multisample{}]
     {
         enable_for(obj.sample_shading_enable, GL_MULTISAMPLE);
         enable_for(obj.alpha_to_coverage_enable, GL_SAMPLE_ALPHA_TO_COVERAGE);
@@ -367,14 +368,14 @@ graphics_pipeline_implementation::~graphics_pipeline_implementation()
     if (glIsProgramPipeline(_pipeline)) glDeleteProgramPipelines(1, &_pipeline);
 }
 
-void graphics_pipeline_implementation::initialize(const pipeline_state& state, const renderpass_layout& renderpass,
+void graphics_pipeline_implementation::initialize(const pipe_state& state, const renderpass_layout& renderpass,
                                                   span<const v1::shader* const> shaders)
 {
     _apply_state.push_back(apply_func(state.state_blending));
     _apply_state.push_back(apply_func(state.state_multisample));
     _apply_state.push_back(apply_func(state.state_depth_stencil));
     _apply_state.push_back(apply_func(state.state_tesselation));
-    _apply_state.push_back(apply_func(state.state_viewports));
+    _apply_state.push_back(apply_func(state.state_render_area));
     _apply_state.push_back(apply_func(state.state_rasterizer));
     _apply_state.push_back([en = state.state_input_assembly ? state.state_input_assembly->primitive_restart_enable : false] {
         enable_for(en, GL_PRIMITIVE_RESTART);
@@ -411,7 +412,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }
 
     if (state.state_bindings) {
-		for (auto& l : state.state_bindings->binding_layouts)
+		for (auto& l : state.state_bindings->layouts)
 			_proxy_sets.emplace_back(*l);
     }
 
@@ -443,13 +444,13 @@ compute_pipeline_implementation::~compute_pipeline_implementation()
     if (glIsProgramPipeline(_pipeline)) glDeleteProgramPipelines(1, &_pipeline);
 }
 
-void compute_pipeline_implementation::initialize(const pipeline_state::layout& layout, const v1::shader& cs)
+void compute_pipeline_implementation::initialize(const pipe_state::binding_layouts& layout, const shader& cs)
 {
     glCreateProgramPipelines(1, &_pipeline);
     _shader = make_shader(cs.stage(), cs, _pipeline);
     validate(_pipeline);
 
-	for (auto& l : layout.binding_layouts)
+	for (auto& l : layout.layouts)
 		_proxy_sets.emplace_back(*l);
 }
 

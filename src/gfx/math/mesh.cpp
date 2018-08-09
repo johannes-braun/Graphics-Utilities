@@ -1,4 +1,4 @@
-#include "../geometry.hpp"
+#include "geometry.hpp"
 #include <execution>
 
 namespace gfx {

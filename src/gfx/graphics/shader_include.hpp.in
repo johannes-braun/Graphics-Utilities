@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gfx/file.hpp>
+#include <gfx/file/file.hpp>
 
 namespace gfx {
 inline namespace v1 {

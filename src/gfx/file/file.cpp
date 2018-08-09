@@ -1,5 +1,5 @@
 #include "tinyfiledialogs.h"
-#include <gfx/file.hpp>
+#include "file.hpp"
 #include <gfx/log.hpp>
 
 #include <gfx/file/file_config.hpp>

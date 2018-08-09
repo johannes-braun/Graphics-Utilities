@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../api.hpp"
-#include "../flags.hpp"
-#include "../geometry.hpp"
+#include "../data/flags.hpp"
+#include "../math/geometry.hpp"
 #include "../type.hpp"
 #include "binding_layout.hpp"
 #include "formats.hpp"
@@ -240,7 +240,7 @@ private:
 	format                                 _depth_attachment_format = format::unspecified;
 };
 
-struct pipeline_state
+struct pipe_state
 {
     struct stencil_state
     {
@@ -282,9 +282,9 @@ struct pipeline_state
         color_component_flags colorWriteMask      = color_components::rgba;
     };
 
-    struct layout
+    struct binding_layouts
     {
-        std::vector<binding_layout*> binding_layouts;
+        std::vector<binding_layout*> layouts;
     }* state_bindings = nullptr;
 
     struct vertex_input
@@ -353,7 +353,7 @@ struct pipeline_state
     {
         std::vector<viewport> viewports;
         std::vector<scissor>  scissors;
-    }* state_viewports = nullptr;
+    }* state_render_area = nullptr;
 };
 
 namespace detail {
@@ -363,7 +363,7 @@ public:
     virtual ~graphics_pipeline_implementation() = default;
     static std::unique_ptr<graphics_pipeline_implementation> make();
 
-    virtual void   initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) = 0;
+    virtual void   initialize(const pipe_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) = 0;
     virtual handle api_handle()                                                                                                        = 0;
 };
 
@@ -373,7 +373,7 @@ public:
     virtual ~compute_pipeline_implementation() = default;
     static std::unique_ptr<compute_pipeline_implementation> make();
 
-    virtual void   initialize(const pipeline_state::layout& layout, const v1::shader& cs) = 0;
+    virtual void   initialize(const pipe_state::binding_layouts& layout, const v1::shader& cs) = 0;
     virtual handle api_handle()                                                           = 0;
 };
 }    // namespace detail
@@ -381,16 +381,16 @@ public:
 class graphics_pipeline : public impl::implements<detail::graphics_pipeline_implementation>
 {
 public:
-    graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, std::initializer_list<v1::shader> shaders);
-    graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass,
+    graphics_pipeline(const pipe_state& state, const renderpass_layout& renderpass, std::initializer_list<v1::shader> shaders);
+    graphics_pipeline(const pipe_state& state, const renderpass_layout& renderpass,
                       std::initializer_list<const v1::shader* const> shaders);
-    graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders);
+    graphics_pipeline(const pipe_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders);
 };
 
 class compute_pipeline : public impl::implements<detail::compute_pipeline_implementation>
 {
 public:
-    compute_pipeline(const pipeline_state::layout& layout, const v1::shader& cs);
+    compute_pipeline(const pipe_state::binding_layouts& layout, const v1::shader& cs);
 };
 
 }    // namespace v2

@@ -17,7 +17,6 @@ public:
     void                             present() override;
     void                             resize(uint32_t width, uint32_t height) override;
     const std::vector<image_view>&   image_views() const override;
-    const std::vector<device_image>& images() const override;
     handle                           api_handle() override;
     
 private:

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../graphics_pipeline.hpp"
+#include "../pipeline.hpp"
 #include <vulkan/vulkan.h>
 #include "../general/handle.hpp"
 
@@ -15,7 +15,7 @@ namespace gfx
 			public:
 				~graphics_pipeline_implementation();
 
-			    void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
+			    void initialize(const pipe_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
 			    handle api_handle() override;
 
 				VkPipelineLayout layout() const noexcept { return _layout; }
@@ -30,7 +30,7 @@ namespace gfx
 			{
 			public:
 				~compute_pipeline_implementation();
-				void initialize(const pipeline_state::layout& layout, const v1::shader& cs) override;
+				void initialize(const pipe_state::binding_layouts& layout, const v1::shader& cs) override;
 				handle api_handle() override;
 				VkPipelineLayout layout() const noexcept { return _layout; }
 			private:

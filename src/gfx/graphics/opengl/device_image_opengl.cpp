@@ -1,5 +1,5 @@
 #define GFX_EXPOSE_APIS
-#include "../graphics_pipeline.hpp"
+#include "../pipeline.hpp"
 #include "device_image_opengl.hpp"
 #include "formats.hpp"
 #include <any>

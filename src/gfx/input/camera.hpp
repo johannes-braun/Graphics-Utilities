@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geometry.hpp"
+#include "../math/geometry.hpp"
 #include "input.hpp"
 
 #include <GLFW/glfw3.h>

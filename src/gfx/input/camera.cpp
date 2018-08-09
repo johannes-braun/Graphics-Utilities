@@ -1,4 +1,4 @@
-#include "../camera.hpp"
+#include "camera.hpp"
 
 #include <glm/ext.hpp>
 #include <gfx/context.hpp>

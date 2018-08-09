@@ -178,11 +178,6 @@ const std::vector<image_view>& swapchain_implementation::image_views() const
     return _image_views;
 }
 
-const std::vector<device_image>& swapchain_implementation::images() const
-{
-    return {};
-}
-
 handle swapchain_implementation::api_handle()
 {
     return _swapchain;

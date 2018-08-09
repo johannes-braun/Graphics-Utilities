@@ -3,7 +3,7 @@
 #include "host_buffer.hpp"
 #include <cinttypes>
 #include <functional>
-#include <gfx/file.hpp>
+#include <gfx/file/file.hpp>
 #include <glm/ext.hpp>
 
 namespace gfx {

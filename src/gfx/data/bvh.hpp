@@ -13,7 +13,7 @@
 #include <stack>
 #include <glm/glm.hpp>
 
-#include "../geometry.hpp"
+#include "../math/geometry.hpp"
 
 namespace gfx
 {

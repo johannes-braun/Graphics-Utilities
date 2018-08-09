@@ -1,7 +1,7 @@
 #include "../context.hpp"
-#include "graphics_pipeline.hpp"
-#include "opengl/graphics_pipeline_opengl.hpp"
-#include "vulkan/graphics_pipeline_vulkan.hpp"
+#include "pipeline.hpp"
+#include "opengl/pipeline_opengl.hpp"
+#include "vulkan/pipeline_vulkan.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -27,7 +27,7 @@ std::unique_ptr<detail::compute_pipeline_implementation> detail::compute_pipelin
     return nullptr;
 }
 
-graphics_pipeline::graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass,
+graphics_pipeline::graphics_pipeline(const pipe_state& state, const renderpass_layout& renderpass,
                                      std::initializer_list<v1::shader> shaders)
 {
     std::vector<const v1::shader*> shs;
@@ -35,18 +35,18 @@ graphics_pipeline::graphics_pipeline(const pipeline_state& state, const renderpa
     implementation()->initialize(state, renderpass, shs);
 }
 
-graphics_pipeline::graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass,
+graphics_pipeline::graphics_pipeline(const pipe_state& state, const renderpass_layout& renderpass,
                                      std::initializer_list<const v1::shader* const> shaders)
       : graphics_pipeline(state, renderpass, span<const v1::shader* const>(std::data(shaders), std::size(shaders)))
 {}
 
-graphics_pipeline::graphics_pipeline(const pipeline_state& state, const renderpass_layout& renderpass,
+graphics_pipeline::graphics_pipeline(const pipe_state& state, const renderpass_layout& renderpass,
                                      span<const v1::shader* const> shaders)
 {
     implementation()->initialize(state, renderpass, shaders);
 }
 
-compute_pipeline::compute_pipeline(const pipeline_state::layout& layout, const v1::shader& cs)
+compute_pipeline::compute_pipeline(const pipe_state::binding_layouts& layout, const v1::shader& cs)
 {
     implementation()->initialize(layout, cs);
 }

@@ -207,11 +207,11 @@ struct mesh3d
 }    // namespace v1
 }    // namespace gfx
 
-#include "geometry/bounds.inl"
-#include "geometry/hashes.inl"
-#include "geometry/projection.inl"
-#include "geometry/transform.inl"
-#include "geometry/vertex.inl"
+#include "bounds.inl"
+#include "hashes.inl"
+#include "projection.inl"
+#include "transform.inl"
+#include "vertex.inl"
 
 namespace gfx {
 inline namespace v1 {

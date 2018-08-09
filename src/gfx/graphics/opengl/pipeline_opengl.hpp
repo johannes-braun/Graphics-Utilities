@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../graphics_pipeline.hpp"
+#include "../pipeline.hpp"
 #include <mygl/mygl.hpp>
 #include "../general/handle.hpp"
 #include "binding_set_opengl.hpp"
@@ -22,7 +22,7 @@ namespace gfx
 			public:
 				~graphics_pipeline_implementation();
 
-			    void initialize(const pipeline_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
+			    void initialize(const pipe_state& state, const renderpass_layout& renderpass, span<const v1::shader* const> shaders) override;
 			    handle api_handle() override;
                 
 				void apply_all();
@@ -44,7 +44,7 @@ namespace gfx
             {
             public:
 				~compute_pipeline_implementation();
-                void initialize(const pipeline_state::layout& layout, const v1::shader& cs) override;
+                void initialize(const pipe_state::binding_layouts& layout, const shader& cs) override;
                 handle api_handle() override;
 				const std::vector<binding_set>& proxy_sets() const noexcept { return _proxy_sets; }
 

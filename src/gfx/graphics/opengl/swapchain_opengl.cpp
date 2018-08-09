@@ -23,8 +23,13 @@ uint32_t swapchain_implementation::current_image() const noexcept
 
 void swapchain_implementation::present()
 {
-    if (!_context.expired()) {
+	static bool p = false;
+    if (!_context.expired() && p) {
+
         const auto ext = _images[_current_image].extents();
+		glViewportIndexedf(0, 0, 0, ext.width, ext.height);
+		glDepthRangeIndexed(0, 0.f, 1.f);
+		glScissorIndexed(0, 0, 0, ext.width, ext.height);
         glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
         glDrawBuffer(GL_FRONT);
         glBlitNamedFramebuffer(handle_cast<mygl::framebuffer>(_blit_helpers[_current_image]), mygl::framebuffer::zero, 0, 0, ext.width,
@@ -33,6 +38,7 @@ void swapchain_implementation::present()
         // glfwSwapBuffers(_window);
         _current_image = (_current_image + 1) % _image_count;
     }
+	p = true;
 }
 
 void swapchain_implementation::resize(uint32_t width, uint32_t height)

@@ -97,14 +97,22 @@ void framebuffer_implementation::attach(attachment att, u32 index, const image_v
 
         if (clear)
         {
-            if (std::holds_alternative<load>(*clear))
-                _attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            else
+			if (std::holds_alternative<load>(*clear))
+			{
+				_attachment_descriptions[iv_id].initialLayout  = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+				_attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			}
+            else if(std::holds_alternative<glm::vec4>(*clear))
             {
                 _attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                 glm::vec4& cr                          = std::get<glm::vec4>(*clear);
                 _clear_values[iv_id].color             = VkClearColorValue {cr.r, cr.g, cr.b, cr.a};
             }
+			else
+			{
+				_attachment_descriptions[iv_id].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+				_attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			}
         }
 
         _color_clear_values.resize(std::max<size_t>(_color_clear_values.size(), index + 1));
@@ -120,13 +128,21 @@ void framebuffer_implementation::attach(attachment att, u32 index, const image_v
 
         if (clear)
         {
-            if (std::holds_alternative<load>(*clear))
-                _attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            else
+			if (std::holds_alternative<load>(*clear))
+			{
+				_attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+				_attachment_descriptions[iv_id].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			}
+            else if(std::holds_alternative<glm::vec4>(*clear))
             {
                 _attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                 glm::vec4& cr                          = std::get<glm::vec4>(*clear);
                 _clear_values[iv_id].color             = VkClearColorValue {cr.r, cr.g, cr.b, cr.a};
+            } 
+            else
+            {
+				_attachment_descriptions[iv_id].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				_attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             }
         }
     }
@@ -142,14 +158,22 @@ void framebuffer_implementation::attach(attachment att, u32 index, const image_v
 
         if (clear)
         {
-            if (std::holds_alternative<load>(*clear))
-                _attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            else
+			if (std::holds_alternative<load>(*clear))
+			{
+				_attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+				_attachment_descriptions[iv_id].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			}
+            else if(std::holds_alternative<depth_stencil>(*clear))
             {
                 _attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                 depth_stencil& dsr                     = std::get<depth_stencil>(*clear);
                 _clear_values[iv_id].depthStencil      = VkClearDepthStencilValue {dsr.depth, dsr.stencil};
             }
+			else
+			{
+				_attachment_descriptions[iv_id].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				_attachment_descriptions[iv_id].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			}
         }
     }
     break;

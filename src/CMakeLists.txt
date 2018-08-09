@@ -1,7 +1,7 @@
 set(gfx_dir ${var_source_dir}/gfx)
 
-file(GLOB_RECURSE gfx_sources *.cpp *.c *.h *.hpp)
-
+file(GLOB_RECURSE gfx_sources *.cpp *.c *.h *.hpp )
+message(${gfx_sources})
 message("INCLUDE DIRECTORY IS " ${var_include_dir})
 add_library(gfx ${gfx_sources})
 target_include_directories(gfx 
@@ -26,6 +26,9 @@ target_link_libraries(gfx
 		OpenAL::OpenAL)
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 
+	if(MSVC)
+		set_target_properties(gfx PROPERTIES LINK_FLAGS "/NATVIS")
+	endif()
 endif()
 
 target_compile_definitions(gfx 
@@ -49,7 +52,6 @@ target_compile_definitions(gfx
 		$<$<CONFIG:relwithdebinfo>:GFX_RELWIDTHDEBINFO=1>
 		$<$<CONFIG:release>:GFX_RELEASE=1>)
 
-target_compile_options(gfx PRIVATE ${compile_options})
 add_library(jbraun::gfx ALIAS gfx)
 
 install(TARGETS gfx EXPORT gfxTargets

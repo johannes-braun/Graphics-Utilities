@@ -1,11 +1,10 @@
-#include "../imgui.hpp"
-#include "../log.hpp"
-#include <gfx/file.hpp>
-#include <gfx/imgui/imgui.h>
-#include <gfx/imgui/imgui_internal.h>
+#include "gui.hpp"
+#include "imgui/imgui.h"
+#include "imgui/imgui_internal.h"
+#include <gfx/file/file.hpp>
 
 namespace gfx {
-imgui::imgui() noexcept
+gui::gui() noexcept
 {
     _gfx_context = gfx::context::current();
     _context     = ImGui::CreateContext();
@@ -37,9 +36,9 @@ imgui::imgui() noexcept
     io.RenderDrawListsFn  = nullptr;
     io.ClipboardUserData  = this;
     io.SetClipboardTextFn = [](void* data, const char* text) {
-        glfwSetClipboardString(reinterpret_cast<imgui*>(data)->_gfx_context->window(), text);
+        glfwSetClipboardString(reinterpret_cast<gui*>(data)->_gfx_context->window(), text);
     };
-    io.GetClipboardTextFn = [](void* data) { return glfwGetClipboardString(reinterpret_cast<imgui*>(data)->_gfx_context->window()); };
+    io.GetClipboardTextFn = [](void* data) { return glfwGetClipboardString(reinterpret_cast<gui*>(data)->_gfx_context->window()); };
 
     _key_callback = _gfx_context->key_callback.add([this](GLFWwindow*, int key, int, int action, int mods) {
         auto&& io = _context->IO;
@@ -65,21 +64,20 @@ imgui::imgui() noexcept
         if (c > 0 && c < 0x10000) io.AddInputCharacter(static_cast<unsigned short>(c));
     });
 
-    // if(_gfx_context->options().graphics_api == gapi::opengl)
-    //    _handler = std::make_unique<imgui_handler_opengl>(*this);
-    // else if(_gfx_context->options().graphics_api == gapi::vulkan)
-    //    _handler = std::make_unique<imgui_handler_vulkan>(*this);
-
     unsigned char* pixels;
     int            width, height;
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-    _font_atlas = std::make_unique<device_image>(img_type::image2d, rgba8unorm, extent(width, height), 1);
+
+    gfx::host_image stage(gfx::rgba8unorm, extent(width, height));
+    memcpy(stage.storage().data(), pixels, width * height * 4);
+
+    _font_atlas = std::make_unique<device_image>(stage, 1);
     _sampler.set_filter(filter_mode::min, filter::linear);
     _sampler.set_filter(filter_mode::mag, filter::linear);
     _sampler.set_lod(lod::max, 1.f);
 
     _font_atlas_view            = std::make_unique<image_view>(imgv_type::image2d, *_font_atlas);
-    ImGui::GetIO().Fonts->TexID = reinterpret_cast<uint64_t>(_font_atlas_view.get());
+    ImGui::GetIO().Fonts->TexID = _font_atlas_view.get();
 
     _pipe_vertex_bindings.attributes.emplace_back(0, 0, rg32f, offsetof(ImDrawVert, pos));
     _pipe_vertex_bindings.attributes.emplace_back(1, 0, rg32f, offsetof(ImDrawVert, uv));
@@ -92,35 +90,32 @@ imgui::imgui() noexcept
     _render_layout = renderpass_layout();
     _render_layout.add_color_attachment(bgra8unorm);
 
-    for (auto& iv : _gfx_context->swapchain()->image_views())
-    {
+    for (auto& iv : _gfx_context->swapchain()->image_views()) {
         _per_frame_infos.emplace_back(_data_layout, _gfx_context->options().window_width, _gfx_context->options().window_height,
                                       _render_layout);
-        _per_frame_infos.back().fbo.attach(attachment::color, 0, iv, load {});
+        _per_frame_infos.back().fbo.attach(attachment::color, 0, iv, load{});
         _per_frame_infos.back().data_set.bind(0, _per_frame_infos.back().data);
     }
 
-    auto shaders1 = {shader(shader_type::vert, "imgui/imgui.vert"), shader(shader_type::frag, "imgui/imgui_tex.frag")};
     auto shaders2 = {shader(shader_type::vert, "imgui/imgui.vert"), shader(shader_type::frag, "imgui/imgui.frag")};
 
-    pipeline_state::layout bnd;
+    pipe_state::binding_layouts bnd;
     _pipe_state.state_bindings = &bnd;
-    _pipe_state.state_bindings->binding_layouts.push_back(&_data_layout);
-    _pipe_state.state_bindings->binding_layouts.push_back(&_push_layout);
+    _pipe_state.state_bindings->layouts.push_back(&_data_layout);
+    _pipe_state.state_bindings->layouts.push_back(&_push_layout);
 
-    pipeline_state::blending          blend;
-    pipeline_state::blend_attachment& att = blend.attachments.emplace_back();
-    att.blendEnable                       = true;
-    att.colorBlendOp                      = blend_op::op_add;
-    att.srcColorBlendFactor               = blend_factor::src_alpha;
-    att.dstColorBlendFactor               = blend_factor::one_minus_src_alpha;
-    _pipe_state.state_blending            = &blend;
+    pipe_state::blending          blend;
+    pipe_state::blend_attachment& att = blend.attachments.emplace_back();
+    att.blendEnable                   = true;
+    att.colorBlendOp                  = blend_op::op_add;
+    att.srcColorBlendFactor           = blend_factor::src_alpha;
+    att.dstColorBlendFactor           = blend_factor::one_minus_src_alpha;
+    _pipe_state.state_blending        = &blend;
 
-    _pipeline     = std::make_unique<graphics_pipeline>(_pipe_state, _render_layout, shaders2);
-    _pipeline_tex = std::make_unique<graphics_pipeline>(_pipe_state, _render_layout, shaders1);
+    _pipeline = std::make_unique<graphics_pipeline>(_pipe_state, _render_layout, shaders2);
 }
 
-imgui::~imgui()
+gui::~gui()
 {
     _gfx_context->key_callback.remove(_key_callback);
     _gfx_context->char_callback.remove(_char_callback);
@@ -128,7 +123,7 @@ imgui::~imgui()
     _gfx_context->scroll_callback.remove(_scroll_callback);
 }
 
-void imgui::new_frame()
+void gui::new_frame()
 {
     _gfx_context->make_current();
     ImGui::SetCurrentContext(_context);
@@ -143,10 +138,10 @@ void imgui::new_frame()
     io.DeltaTime               = static_cast<float>(glfwGetTime() - _last_time);
     _last_time                 = static_cast<float>(glfwGetTime());
 
-    if (glfwGetWindowAttrib(_gfx_context->window(), GLFW_FOCUSED))
-    {
-        if (io.WantSetMousePos)
-        { glfwSetCursorPos(_gfx_context->window(), static_cast<double>(io.MousePos.x), static_cast<double>(io.MousePos.y)); }
+    if (glfwGetWindowAttrib(_gfx_context->window(), GLFW_FOCUSED)) {
+        if (io.WantSetMousePos) {
+            glfwSetCursorPos(_gfx_context->window(), static_cast<double>(io.MousePos.x), static_cast<double>(io.MousePos.y));
+        }
         else
         {
             double mouse_x, mouse_y;
@@ -159,8 +154,7 @@ void imgui::new_frame()
         io.MousePos = ImVec2(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
     }
 
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter
         // than 1 frame.
         io.MouseDown[i]         = _mouse_button_states[i] || glfwGetMouseButton(_gfx_context->window(), i) != 0;
@@ -173,7 +167,7 @@ void imgui::new_frame()
     ImGui::NewFrame();
 }
 
-void imgui::render() const
+void gui::render() const
 {
     ImGui::SetCurrentContext(_context);
     ImGui::Render();
@@ -193,8 +187,7 @@ void imgui::render() const
     frame.vbo.clear();
     frame.ibo.clear();
 
-    for (int list = 0; list < draw_data->CmdListsCount; ++list)
-    {
+    for (int list = 0; list < draw_data->CmdListsCount; ++list) {
         const auto cmd_list = draw_data->CmdLists[list];
 
         for (auto& d : cmd_list->VtxBuffer) frame.vbo.push_back(d);
@@ -204,32 +197,31 @@ void imgui::render() const
     frame.data[0]       = glm::mat4(1.f);
     frame.data[0][0][0] = 2.0f / io.DisplaySize.x;
     frame.data[0][1][1] = 2.0f / io.DisplaySize.y;
-    frame.data[0][2]    = glm::vec4 {0.0f, 0.0f, -1.0f, 0.0f};
-    frame.data[0][3]    = glm::vec4 {-1.0f, -1.0f, 0.0f, 1.0f};
+    frame.data[0][2]    = glm::vec4{0.0f, 0.0f, -1.0f, 0.0f};
+    frame.data[0][3]    = glm::vec4{-1.0f, -1.0f, 0.0f, 1.0f};
 
     frame.render_commands.reset();
     frame.render_commands.begin();
 
     frame.render_commands.begin_pass(frame.fbo);
 
-    viewport vp[] {viewport(0, 0, io.DisplaySize.x, io.DisplaySize.y, 0.f, 1.f)};
+    viewport vp[]{{0, 0, io.DisplaySize.x, io.DisplaySize.y, 0.f, 1.f}};
 
     size_t vtx_buffer_offset = 0;
     size_t idx_buffer_offset = 0;
-    for (auto n = 0; n < draw_data->CmdListsCount; n++)
-    {
+    for (auto n = 0; n < draw_data->CmdListsCount; n++) {
         const auto cmd_list = draw_data->CmdLists[n];
 
-        for (auto cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
-        {
+        for (auto cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
             const auto& pcmd = cmd_list->CmdBuffer[cmd_i];
-            if (pcmd.UserCallback) { pcmd.UserCallback(cmd_list, &pcmd); }
+            if (pcmd.UserCallback) {
+                pcmd.UserCallback(cmd_list, &pcmd);
+            }
             else
             {
-                if (pcmd.TextureId)
-                {
-                    image_view* iv = reinterpret_cast<image_view*>(pcmd.TextureId);
-                    frame.render_commands.bind_pipeline(*_pipeline_tex, {&frame.data_set});
+                if (pcmd.TextureId) {
+                    const image_view* iv = static_cast<const image_view*>(pcmd.TextureId);
+                    frame.render_commands.bind_pipeline(*_pipeline, {&frame.data_set});
                     frame.render_commands.bind_vertex_buffer(frame.vbo, 0);
                     frame.render_commands.bind_index_buffer(frame.ibo, index_type::uint16);
                     frame.render_commands.push_binding(1, 0, binding_type::sampled_image, *iv, _sampler);
@@ -240,7 +232,7 @@ void imgui::render() const
                     frame.render_commands.bind_vertex_buffer(frame.vbo, 0);
                     frame.render_commands.bind_index_buffer(frame.ibo, index_type::uint16);
                 }
-                rect2f sc[] {rect2f(glm::vec2(pcmd.ClipRect.x, pcmd.ClipRect.y), glm::vec2(pcmd.ClipRect.z, pcmd.ClipRect.w))};
+                rect2f sc[]{{glm::vec2(pcmd.ClipRect.x, pcmd.ClipRect.y), glm::vec2(pcmd.ClipRect.z, pcmd.ClipRect.w)}};
                 frame.render_commands.set_viewports(0, vp, sc);
                 frame.render_commands.draw_indexed(pcmd.ElemCount, 1, u32(idx_buffer_offset), u32(vtx_buffer_offset));
             }
@@ -253,16 +245,16 @@ void imgui::render() const
     frame.render_commands.execute();
 }
 
-void imgui::apply_theme() const
+void gui::apply_theme()
 {
     auto atlas = _context->IO.Fonts;
 
     // Default Font
-    file font_file("ui/fonts/Ruda-Bold.ttf");
-    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 12);
-    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 10);
-    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 14);
-    atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 18);
+    file font_file("ui/fonts/Poppins-SemiBold.ttf");
+    _font_default = atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 14);
+    _font_small = atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 13);
+    _font_large = atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 16);
+    _font_huge = atlas->AddFontFromFileTTF(font_file.path.string().c_str(), 24);
 
     atlas->Build();
 

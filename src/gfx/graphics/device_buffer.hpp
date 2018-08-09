@@ -5,7 +5,7 @@
 #include <any>
 #include <cinttypes>
 #include <gfx/api.hpp>
-#include <gfx/flags.hpp>
+#include <gfx/data/flags.hpp>
 #include <memory>
 #include "fence.hpp"
 

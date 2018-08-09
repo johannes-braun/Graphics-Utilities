@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../geometry.hpp"
+#include "../math/geometry.hpp"
 #include "binding_set.hpp"
 #include "fence.hpp"
 #include "framebuffer.hpp"
-#include "graphics_pipeline.hpp"
+#include "pipeline.hpp"
 #include <optional>
 
 namespace gfx {

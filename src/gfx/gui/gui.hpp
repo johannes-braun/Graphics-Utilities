@@ -1,11 +1,10 @@
 #pragma once
 
-#include "context.hpp"
-#include "graphics/binding_set.hpp"
-#include "graphics/command_list.hpp"
-#include "graphics/framebuffer.hpp"
-#include "graphics/host_buffer.hpp"
-#include "interface/imgui_handler.hpp"
+#include "../context.hpp"
+#include "../graphics/binding_set.hpp"
+#include "../graphics/command_list.hpp"
+#include "../graphics/framebuffer.hpp"
+#include "../graphics/host_buffer.hpp"
 
 #include "imgui/imgui.h"
 #include <GLFW/glfw3.h>
@@ -13,20 +12,29 @@
 #include <memory>
 
 namespace gfx {
-class imgui
+class gui
 {
 public:
-    imgui() noexcept;
-    ~imgui();
+	gui() noexcept;
+    ~gui();
 
     void new_frame();
     void render() const;
 
+	ImFont* font_default() const noexcept { return _font_default; }
+	ImFont* font_small() const noexcept { return _font_small; }
+	ImFont* font_large() const noexcept { return _font_large; }
+	ImFont* font_huge() const noexcept { return _font_huge; }
+
 private:
-    void apply_theme() const;
+    void apply_theme();
+
+	ImFont* _font_default = nullptr;
+	ImFont* _font_small = nullptr;
+	ImFont* _font_large = nullptr;
+	ImFont* _font_huge = nullptr;
 
     std::shared_ptr<gfx::context>  _gfx_context;
-    std::unique_ptr<imgui_handler> _handler;
     ImGuiContext*                  _context;
     float                          _last_time = 0;
 
@@ -42,10 +50,9 @@ private:
     std::unique_ptr<image_view>   _font_atlas_view;
     sampler                       _sampler;
 
-    pipeline_state                     _pipe_state;
-    pipeline_state::vertex_input       _pipe_vertex_bindings;
+    pipe_state                     _pipe_state;
+    pipe_state::vertex_input       _pipe_vertex_bindings;
     std::unique_ptr<graphics_pipeline> _pipeline;
-    std::unique_ptr<graphics_pipeline> _pipeline_tex;
 
     binding_layout _data_layout;
     binding_layout _push_layout {true};

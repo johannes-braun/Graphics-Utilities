@@ -4,7 +4,7 @@
 #include <array>
 #include <atomic>
 #include <memory>
-#include "../geometry.hpp"
+#include "../math/geometry.hpp"
 
 namespace gfx
 {

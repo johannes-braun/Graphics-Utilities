@@ -18,7 +18,6 @@ public:
     virtual void                           present()                               = 0;
     virtual void                           resize(uint32_t width, uint32_t height) = 0;
     virtual const std::vector<image_view>& image_views() const                     = 0;
-	virtual const std::vector<device_image>& images() const                         = 0;
     virtual handle                         api_handle()                            = 0;
 };
 }    // namespace detail
@@ -31,7 +30,6 @@ public:
     void     resize(uint32_t width, uint32_t height);
 
     const std::vector<image_view>& image_views() const { return implementation()->image_views(); }
-	const std::vector<device_image>& images() const { return implementation()->images(); }
 };
 }    // namespace v1
 }    // namespace gfx

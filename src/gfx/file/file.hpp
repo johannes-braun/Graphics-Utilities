@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geometry.hpp"
+#include "../math/geometry.hpp"
 
 //#if __has_include(<filesystem>)
 #include <filesystem>

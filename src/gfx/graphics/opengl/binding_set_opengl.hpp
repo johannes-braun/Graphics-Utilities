@@ -24,7 +24,7 @@ namespace gfx
 				std::function<void()> bind_all(u32& ssb_offset, u32& ub_offset, u32& img_offset, u32& tex_offset);
 
 				u32 count(binding_type t) const {
-					return std::count(_types.begin(), _types.end(), t);
+					return u32(std::count(_types.begin(), _types.end(), t));
 				}
 
 			private:

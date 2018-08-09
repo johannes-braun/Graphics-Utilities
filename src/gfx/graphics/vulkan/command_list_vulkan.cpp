@@ -1,6 +1,6 @@
 #include "command_list_vulkan.hpp"
 #include "framebuffer_vulkan.hpp"
-#include "graphics_pipeline_vulkan.hpp"
+#include "pipeline_vulkan.hpp"
 #include "image_view_vulkan.hpp"
 #include "init_struct.hpp"
 #include "result.hpp"

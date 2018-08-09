@@ -1,7 +1,7 @@
 #include "host_image.hpp"
 #include "opengl/device_image_opengl.hpp"
 #include "vulkan/device_image_vulkan.hpp"
-#include "graphics_pipeline.hpp"
+#include "pipeline.hpp"
 #include <gfx/context.hpp>
 #include "image_view.hpp"
 

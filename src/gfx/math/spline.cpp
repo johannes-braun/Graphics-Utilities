@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <gfx/spline.hpp>
+#include "spline.hpp"
 #include <numeric>
 
 namespace gfx {

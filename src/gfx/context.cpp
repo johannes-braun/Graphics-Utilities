@@ -72,16 +72,13 @@ bool context::run()
 {
     if (!_options.use_window) return _should_close;
 
-    static bool do_present = false;
-
     make_current();
 
 	glfwPollEvents();
 	_should_close = glfwWindowShouldClose(_window);
 	if (_implementation->on_run(!_should_close))
 	{
-		if (do_present && _swapchain) _swapchain->present();
-		do_present    = true;
+		if (_swapchain) _swapchain->present();
 	}
     const double t = glfwGetTime();
     _delta         = t - _last_time;

@@ -4,7 +4,7 @@
 #include <gfx/api.hpp>
 #include <optional>
 
-#include "graphics_pipeline.hpp"
+#include "pipeline.hpp"
 
 namespace gfx {
 inline namespace v1 {

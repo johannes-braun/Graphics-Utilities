@@ -2,7 +2,7 @@
 #include "binding_set_opengl.hpp"
 #include "fence_opengl.hpp"
 #include "framebuffer_opengl.hpp"
-#include "graphics_pipeline_opengl.hpp"
+#include "pipeline_opengl.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -26,7 +26,7 @@ void commands_implementation::execute(fence* f)
     _curr_pipeline = nullptr;
 
     glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
-    v1::opengl::push_fence(f);
+    push_fence(f);
     glFlush();
 }
 void commands_implementation::bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings)
@@ -42,8 +42,12 @@ void commands_implementation::dispatch(u32 x, u32 y, u32 z)
 void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<rect2f> render_area)
 {
     _curr_framebuffer = &fbo;
-    _queue.emplace_back([fbo = _curr_framebuffer] {
-        static_cast<v1::opengl::framebuffer_implementation*>(&*fbo->implementation())->begin();
+
+	if (!render_area)
+		render_area ={ {0, 0}, {fbo.width(), fbo.height()} };
+
+    _queue.emplace_back([fbo = _curr_framebuffer, render_area] {
+        static_cast<framebuffer_implementation*>(&*fbo->implementation())->begin();
 
         for (int i = 0; i < fbo->color_clear_values().size(); ++i)
         {
@@ -60,13 +64,23 @@ void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<r
 void commands_implementation::end_pass()
 {
     _queue.emplace_back(
-        [fbo = _curr_framebuffer] { static_cast<v1::opengl::framebuffer_implementation*>(&*fbo->implementation())->end(); });
+        [fbo = _curr_framebuffer] { static_cast<framebuffer_implementation*>(&*fbo->implementation())->end(); });
 }
 void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
+	assert(_curr_framebuffer);
     _has_state     = true;
     _curr_pipeline = &p;
-    _queue.emplace_back([&] { static_cast<graphics_pipeline_implementation*>(&*p.implementation())->apply_all(); });
+    _queue.emplace_back([&, s = glm::vec2(_curr_framebuffer->width(), _curr_framebuffer->height())] {
+		for (int i=0; i<15; ++i)
+		{
+			glViewportIndexedf(i, 0, 0, s.x, s.y);
+			glDepthRangeIndexed(i, 0.f, 1.f);
+			glScissorIndexed(i, 0, 0, s.x, s.y);
+		}
+
+        static_cast<graphics_pipeline_implementation*>(&*p.implementation())->apply_all(); 
+    });
 
     if (bindings.size() > 0)
     {
@@ -75,7 +89,9 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
         u32 img = 0;
         u32 tex = 0;
         for (auto* b : bindings)
-        { _queue.emplace_back(static_cast<v1::opengl::binding_set_implementation*>(&*b->implementation())->bind_all(ssb, ub, img, tex)); }
+        {
+            _queue.emplace_back(static_cast<binding_set_implementation*>(&*b->implementation())->bind_all(ssb, ub, img, tex));
+        }
     }
 }
 void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)
@@ -212,17 +228,18 @@ void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, bind
 
 void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors)
 {
+	assert(_curr_framebuffer);
     _queue.emplace_back(
-        [=, vps = std::vector<viewport>(vp.begin(), vp.end()), scs = std::vector<rect2f>(scissors.begin(), scissors.end())] {
-            for (int i = 0; i < vp.size(); ++i)
+        [first, vps = std::vector<viewport>(vp.begin(), vp.end()), scs = std::vector<rect2f>(scissors.begin(), scissors.end()), h = _curr_framebuffer->height()] {
+            for (int i = 0; i < vps.size(); ++i)
             {
-                if (!scissors.empty())
+                glViewportIndexedf(i + first, vps[i].x, h-(vps[i].y + vps[i].height), vps[i].width, vps[i].height);
+                glDepthRangeIndexed(i + first, vps[i].min_depth, vps[i].max_depth);
+                if (!scs.empty())
                 {
                     const auto s = scs[i].size();
-                    glScissorIndexed(i + first, scs[i].min.x, scs[i].min.y, s.x, s.y);
+                    glScissorIndexed(i + first, scs[i].min.x, h-scs[i].max.y, s.x, s.y);
                 }
-                glViewportIndexedf(i + first, vps[i].x, vps[i].y, vps[i].width, vps[i].height);
-                glDepthRangeIndexed(i + first, vps[i].min_depth, vps[i].max_depth);
             }
         });
 }

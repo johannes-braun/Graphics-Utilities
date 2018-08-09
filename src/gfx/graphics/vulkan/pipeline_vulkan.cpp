@@ -1,6 +1,6 @@
 #include "context_vulkan.hpp"
 #include "device_image_vulkan.hpp"
-#include "graphics_pipeline_vulkan.hpp"
+#include "pipeline_vulkan.hpp"
 #include "init_struct.hpp"
 #include <gfx/log.hpp>
 #include "result.hpp"
@@ -14,7 +14,7 @@ graphics_pipeline_implementation::~graphics_pipeline_implementation()
     if (_layout) vkDestroyPipelineLayout(_device, _layout, nullptr);
 }
 
-void graphics_pipeline_implementation::initialize(const pipeline_state& state, const renderpass_layout& renderpass,
+void graphics_pipeline_implementation::initialize(const pipe_state& state, const renderpass_layout& renderpass,
                                                   span<const v1::shader* const> shaders)
 {
     auto& ctx = context::current();
@@ -25,7 +25,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     std::vector<VkDescriptorSetLayout> layouts;
     if (state.state_bindings) {
-        for (auto& bl : state.state_bindings->binding_layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
+        for (auto& bl : state.state_bindings->layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
     }
     pl_info.setLayoutCount = layouts.size();
     pl_info.pSetLayouts    = layouts.data();
@@ -172,8 +172,8 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     init<VkPipelineInputAssemblyStateCreateInfo> inp_ass{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
 
-    static pipeline_state::input_assembly ia;
-    pipeline_state::input_assembly*       iap = state.state_input_assembly ? state.state_input_assembly : &ia;
+    static pipe_state::input_assembly ia;
+    pipe_state::input_assembly*       iap = state.state_input_assembly ? state.state_input_assembly : &ia;
     inp_ass.primitiveRestartEnable            = iap->primitive_restart_enable;
     inp_ass.topology                          = [&]() {
         switch (iap->primitive_topology)
@@ -193,8 +193,8 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }();
     pp_info.pInputAssemblyState = &inp_ass;
 
-    static pipeline_state::rasterizer                        rst;
-    pipeline_state::rasterizer*                              rstp = state.state_rasterizer ? state.state_rasterizer : &rst;
+    static pipe_state::rasterizer                        rst;
+    pipe_state::rasterizer*                              rstp = state.state_rasterizer ? state.state_rasterizer : &rst;
     init<VkPipelineRasterizationStateCreateInfo> rast{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
     rast.cullMode = [&] {
         switch (rstp->cull)
@@ -232,8 +232,8 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }();
     pp_info.pRasterizationState = &rast;
 
-    static pipeline_state::multisample                     mul;
-    pipeline_state::multisample*                           mulp = state.state_multisample ? state.state_multisample : &mul;
+    static pipe_state::multisample                     mul;
+    pipe_state::multisample*                           mulp = state.state_multisample ? state.state_multisample : &mul;
     init<VkPipelineMultisampleStateCreateInfo> msaa{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     msaa.alphaToCoverageEnable = mulp->alpha_to_coverage_enable;
     msaa.alphaToOneEnable      = mulp->alpha_to_one_enable;
@@ -243,16 +243,16 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     msaa.sampleShadingEnable   = mulp->sample_shading_enable;
     pp_info.pMultisampleState  = &msaa;
 
-    static pipeline_state::tesselation                      tes;
-    pipeline_state::tesselation*                            tesp = state.state_tesselation ? state.state_tesselation : &tes;
+    static pipe_state::tesselation                      tes;
+    pipe_state::tesselation*                            tesp = state.state_tesselation ? state.state_tesselation : &tes;
     init<VkPipelineTessellationStateCreateInfo> tess{VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO};
     tess.patchControlPoints    = tesp->patch_control_points;
     pp_info.pTessellationState = &tess;
 
     std::vector<VkDynamicState> dyn_states;
 
-    static pipeline_state::render_area                  vp;
-    pipeline_state::render_area*                        vpp = state.state_viewports ? state.state_viewports : &vp;
+    static pipe_state::render_area                  vp;
+    pipe_state::render_area*                        vpp = state.state_render_area ? state.state_render_area : &vp;
     init<VkPipelineViewportStateCreateInfo> vps{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
     std::vector<VkRect2D>                               scissors;
     std::vector<VkViewport>                             viewports;
@@ -298,8 +298,8 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     dyn.pDynamicStates    = dyn_states.data();
     pp_info.pDynamicState = &dyn;
 
-    static pipeline_state::depth_stencil                    ds;
-    pipeline_state::depth_stencil*                          dsp = state.state_depth_stencil ? state.state_depth_stencil : &ds;
+    static pipe_state::depth_stencil                    ds;
+    pipe_state::depth_stencil*                          dsp = state.state_depth_stencil ? state.state_depth_stencil : &ds;
     init<VkPipelineDepthStencilStateCreateInfo> depsten{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     depsten.depthBoundsTestEnable = dsp->depth_bounds_test_enable;
     depsten.depthTestEnable       = dsp->depth_test_enable;
@@ -340,7 +340,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
 
     depsten.depthCompareOp = mk_op(dsp->depth_compare);
 
-    const auto init_state = [&](VkStencilOpState& out, const pipeline_state::stencil_state& in) {
+    const auto init_state = [&](VkStencilOpState& out, const pipe_state::stencil_state& in) {
         out.reference   = in.reference;
         out.writeMask   = in.writeMask;
         out.compareOp   = mk_op(in.compareOp);
@@ -354,8 +354,8 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     init_state(depsten.back, dsp->back);
     pp_info.pDepthStencilState = &depsten;
 
-    static pipeline_state::blending                       bl;
-    pipeline_state::blending*                             blp = state.state_blending ? state.state_blending : &bl;
+    static pipe_state::blending                       bl;
+    pipe_state::blending*                             blp = state.state_blending ? state.state_blending : &bl;
     init<VkPipelineColorBlendStateCreateInfo> bls{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
     memcpy(bls.blendConstants, blp->blend_constants, sizeof(bls.blendConstants));
     bls.logicOpEnable = blp->logic_op_enable;
@@ -476,7 +476,7 @@ void graphics_pipeline_implementation::initialize(const pipeline_state& state, c
     }
 
     if (blatt.size() < renderpass.color_attachment_formats().size()) {
-        pipeline_state::blend_attachment def;
+        pipe_state::blend_attachment def;
         for (int i = blatt.size(); i < (renderpass.color_attachment_formats().size() - blatt.size()); ++i) {
             init<VkPipelineColorBlendAttachmentState> t;
 
@@ -515,7 +515,7 @@ compute_pipeline_implementation::~compute_pipeline_implementation()
     if (_layout) vkDestroyPipelineLayout(_device, _layout, nullptr);
 }
 
-void compute_pipeline_implementation::initialize(const pipeline_state::layout& layout, const v1::shader& cs)
+void compute_pipeline_implementation::initialize(const pipe_state::binding_layouts& layout, const v1::shader& cs)
 {
     auto& ctx = context::current();
     auto impl = static_cast<context_implementation*>(std::any_cast<v1::detail::context_implementation*>(ctx->implementation()));
@@ -524,7 +524,7 @@ void compute_pipeline_implementation::initialize(const pipeline_state::layout& l
     init<VkPipelineLayoutCreateInfo> pl_info{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
     std::vector<VkDescriptorSetLayout> layouts;
-    for (auto& bl : layout.binding_layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
+    for (auto& bl : layout.layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
     pl_info.setLayoutCount = layouts.size();
     pl_info.pSetLayouts    = layouts.data();
 	check_result(vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout));

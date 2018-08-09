@@ -12,7 +12,8 @@
 #pragma once
 
 #include <cinttypes>
-#define ImTextureID uint64_t
+using const_void_ptr = const void*;
+#define ImTextureID const_void_ptr
 
 //---- Define assertion handler. Defaults to calling assert().
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)

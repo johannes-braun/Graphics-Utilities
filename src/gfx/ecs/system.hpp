@@ -3,7 +3,7 @@
 #include "component.hpp"
 #include <algorithm>
 #include <execution>
-#include <gfx/flags.hpp>
+#include <gfx/data/flags.hpp>
 
 namespace gfx::ecs
 {
