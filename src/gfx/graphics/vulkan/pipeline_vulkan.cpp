@@ -190,6 +190,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
         case topology::triangle_strip_adj: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
         case topology::patch_list: return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
         }
+		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     }();
     pp_info.pInputAssemblyState = &inp_ass;
 

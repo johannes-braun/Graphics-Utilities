@@ -30,10 +30,11 @@ std::function<void()> apply_func(pipe_state::rasterizer* ptr)
                 }
             }());
         glFrontFace([&]() {
+			// Flip "clockwise-ness"
             switch (obj.front_face)
             {
-            case orientation::ccw: return GL_CCW;
-            case orientation::cw: return GL_CW;
+            case orientation::cw: return GL_CCW;
+            case orientation::ccw: return GL_CW;
             }
             return GLenum(0);
         }());

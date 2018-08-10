@@ -19,7 +19,7 @@ struct context_options
 
     bool        use_window          = true;
     std::string window_title        = "";
-    uint32_t    framebuffer_samples = 1;
+    sample_count    framebuffer_samples = sample_count::x1;
     uint32_t    framebuffer_images  = 3;
     uint32_t    window_width        = 1280;
     uint32_t    window_height       = 720;

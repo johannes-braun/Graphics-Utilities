@@ -35,7 +35,7 @@ void swapchain_implementation::present()
         glBlitNamedFramebuffer(handle_cast<mygl::framebuffer>(_blit_helpers[_current_image]), mygl::framebuffer::zero, 0, 0, ext.width,
                                ext.height, 0, 0, ext.width, ext.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glFlush();
-        // glfwSwapBuffers(_window);
+        glfwSwapBuffers(_window);
         _current_image = (_current_image + 1) % _image_count;
     }
 	p = true;

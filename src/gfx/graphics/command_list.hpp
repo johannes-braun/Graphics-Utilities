@@ -6,6 +6,7 @@
 #include "framebuffer.hpp"
 #include "pipeline.hpp"
 #include <optional>
+#include <utility>
 
 namespace gfx {
 inline namespace v1 {
@@ -146,6 +147,11 @@ public:
         implementation()->push_binding(set, binding, array_element, type, &view.implementation());
     }
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) { implementation()->set_viewports(first, vp, scissors); }
+
+	template<typename T, typename = decltype(std::declval<T>().render(std::declval<commands&>()))>
+	auto render(T& obj) {
+		return obj.render(*this);
+	}
 };
 
 }    // namespace v1

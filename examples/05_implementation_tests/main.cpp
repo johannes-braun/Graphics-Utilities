@@ -1,5 +1,4 @@
 #include <gfx/gfx.hpp>
-#include "gfx/gui/imgui/imgui_internal.h"
 
 int main()
 {
@@ -7,7 +6,7 @@ int main()
     opt.graphics_api        = gfx::gapi::vulkan;
     opt.debug               = false;
     opt.use_window          = true;
-    opt.framebuffer_samples = 8;
+    opt.framebuffer_samples = gfx::sample_count::x8;
 
     auto context = gfx::context::create(opt);
     context->make_current();
@@ -126,7 +125,9 @@ int main()
 		ImGui::Columns(1);
 		ImGui::Separator();
 		ImGui::Spacing();
+		ImGui::End();
 
+		ImGui::Begin("Settings");
 		ImGui::Button("Click me!");
 		ImGui::TextWrapped("This is a randomly brain-generated text to test fonts.");
         ImGui::End();
@@ -153,9 +154,10 @@ int main()
         for(const auto& g : scene.mesh.geometries)
             cmd3[frame].draw_indexed(g.index_count, 1, g.base_index, g.base_vertex);
         cmd3[frame].end_pass();
-        cmd3[frame].end();
-        cmd3[frame].execute();
 
-        gui.render();
+		cmd3[frame].render(gui);
+
+		cmd3[frame].end();
+		cmd3[frame].execute();
     }
 }

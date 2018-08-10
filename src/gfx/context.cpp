@@ -109,9 +109,10 @@ const context_options& context::options() const noexcept
 context::context(const context_options& options) : _options(options)
 {
     glfwWindowHint(GLFW_CLIENT_API, _options.graphics_api == gapi::opengl ? GLFW_OPENGL_API : GLFW_NO_API);
-    glfwWindowHint(GLFW_SAMPLES, _options.framebuffer_samples);
+    glfwWindowHint(GLFW_SAMPLES, int(_options.framebuffer_samples));
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, _options.debug);
     glfwWindowHint(GLFW_VISIBLE, _options.use_window);
+	glfwWindowHint(GLFW_DOUBLEBUFFER, false);
 
     _last_time = glfwGetTime();
     _window    = glfwCreateWindow(options.window_width, options.window_height, options.window_title.c_str(), nullptr,

@@ -20,6 +20,7 @@ public:
 
     void new_frame();
     void render() const;
+	void render(commands& cmd) const;
 
 	ImFont* font_default() const noexcept { return _font_default; }
 	ImFont* font_small() const noexcept { return _font_small; }

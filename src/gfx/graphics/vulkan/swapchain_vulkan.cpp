@@ -15,40 +15,10 @@ uint32_t swapchain_implementation::current_image() const noexcept
 void swapchain_implementation::present()
 {
     if (_presented) {
-		//check_result(vkResetCommandBuffer(_primary_command_buffers[_current_image], 0));
-  //      init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-  //      begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		//check_result(vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info));
-
-		//init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-  //      imb.srcAccessMask                   = 0;
-  //      imb.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-  //      imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-  //      imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-  //      imb.image                           = _temp_images[_current_image];
-  //      imb.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-  //      imb.newLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  //      imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-  //      imb.subresourceRange.baseArrayLayer = 0;
-  //      imb.subresourceRange.baseMipLevel   = 0;
-  //      imb.subresourceRange.layerCount     = 1;
-  //      imb.subresourceRange.levelCount     = 1;
-  //      vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-		//	VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
-
-		//imb.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		//imb.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		//vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-		//	VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
-
-		//check_result(vkEndCommandBuffer(_primary_command_buffers[_current_image]));
-
         std::array<VkSemaphore, 1>          wait_semaphores{_present_semaphore};
         std::array<VkPipelineStageFlags, 1> wait_masks{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         std::array<VkCommandBuffer, 1>      command_buffers{_primary_command_buffers[_current_image]};
         init<VkSubmitInfo>                  submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-        //submit.commandBufferCount   = std::size(command_buffers);
-        //submit.pCommandBuffers      = std::data(command_buffers);
         submit.pWaitSemaphores      = std::data(wait_semaphores);
         submit.waitSemaphoreCount   = std::size(wait_semaphores);
         submit.pSignalSemaphores    = &_render_semaphore;
@@ -86,9 +56,9 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
 	if (!_render_fences.empty())
 		vkWaitForFences(_ctx_impl->device(), _render_fences.size(), _render_fences.data(), true, std::numeric_limits<uint64_t>::max());
 
-    //if (_swapchain && _device) vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+	vkDeviceWaitIdle(_ctx_impl->device());
 	this->~swapchain_implementation();
-
+	_presented = false;
     _device = _ctx_impl->device();
     init<VkSwapchainCreateInfoKHR> swapchain_info{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     swapchain_info.clipped               = true;

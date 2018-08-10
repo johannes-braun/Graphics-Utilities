@@ -90,12 +90,22 @@ gui::gui() noexcept
     _render_layout = renderpass_layout();
     _render_layout.add_color_attachment(bgra8unorm);
 
+
     for (auto& iv : _gfx_context->swapchain()->image_views()) {
         _per_frame_infos.emplace_back(_data_layout, _gfx_context->options().window_width, _gfx_context->options().window_height,
                                       _render_layout);
         _per_frame_infos.back().fbo.attach(attachment::color, 0, iv, load{});
         _per_frame_infos.back().data_set.bind(0, _per_frame_infos.back().data);
     }
+
+	_gfx_context->framebuffer_size_callback.add([this](GLFWwindow* w, int x, int y) {
+		for (int i=0; i<_per_frame_infos.size(); ++i)
+		{
+			_per_frame_infos[i].fbo = gfx::framebuffer(_gfx_context->options().window_width, _gfx_context->options().window_height, 1,
+				_render_layout);
+			_per_frame_infos[i].fbo.attach(attachment::color, 0, _gfx_context->swapchain()->image_views()[i], load{});
+		}
+	});
 
     auto shaders2 = {shader(shader_type::vert, "imgui/imgui.vert"), shader(shader_type::frag, "imgui/imgui.frag")};
 
@@ -169,6 +179,16 @@ void gui::new_frame()
 
 void gui::render() const
 {
+	auto& frame = _per_frame_infos[_gfx_context->swapchain()->current_image()];
+	frame.render_commands.reset();
+	frame.render_commands.begin();
+	render(frame.render_commands);
+	frame.render_commands.end();
+	frame.render_commands.execute();
+}
+
+void gui::render(commands& cmd) const
+{
     ImGui::SetCurrentContext(_context);
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
@@ -200,13 +220,13 @@ void gui::render() const
     frame.data[0][2]    = glm::vec4{0.0f, 0.0f, -1.0f, 0.0f};
     frame.data[0][3]    = glm::vec4{-1.0f, -1.0f, 0.0f, 1.0f};
 
-    frame.render_commands.reset();
-    frame.render_commands.begin();
-
-    frame.render_commands.begin_pass(frame.fbo);
+    cmd.begin_pass(frame.fbo);
 
     viewport vp[]{{0, 0, io.DisplaySize.x, io.DisplaySize.y, 0.f, 1.f}};
 
+	cmd.bind_pipeline(*_pipeline, {&frame.data_set});
+	cmd.bind_vertex_buffer(frame.vbo, 0);
+	cmd.bind_index_buffer(frame.ibo, index_type::uint16);
     size_t vtx_buffer_offset = 0;
     size_t idx_buffer_offset = 0;
     for (auto n = 0; n < draw_data->CmdListsCount; n++) {
@@ -219,30 +239,17 @@ void gui::render() const
             }
             else
             {
-                if (pcmd.TextureId) {
-                    const image_view* iv = static_cast<const image_view*>(pcmd.TextureId);
-                    frame.render_commands.bind_pipeline(*_pipeline, {&frame.data_set});
-                    frame.render_commands.bind_vertex_buffer(frame.vbo, 0);
-                    frame.render_commands.bind_index_buffer(frame.ibo, index_type::uint16);
-                    frame.render_commands.push_binding(1, 0, binding_type::sampled_image, *iv, _sampler);
-                }
-                else
-                {
-                    frame.render_commands.bind_pipeline(*_pipeline, {&frame.data_set});
-                    frame.render_commands.bind_vertex_buffer(frame.vbo, 0);
-                    frame.render_commands.bind_index_buffer(frame.ibo, index_type::uint16);
-                }
+                const image_view* iv = static_cast<const image_view*>(pcmd.TextureId);
+                cmd.push_binding(1, 0, binding_type::sampled_image, *iv, _sampler);
                 rect2f sc[]{{glm::vec2(pcmd.ClipRect.x, pcmd.ClipRect.y), glm::vec2(pcmd.ClipRect.z, pcmd.ClipRect.w)}};
-                frame.render_commands.set_viewports(0, vp, sc);
-                frame.render_commands.draw_indexed(pcmd.ElemCount, 1, u32(idx_buffer_offset), u32(vtx_buffer_offset));
+                cmd.set_viewports(0, vp, sc);
+                cmd.draw_indexed(pcmd.ElemCount, 1, u32(idx_buffer_offset), u32(vtx_buffer_offset));
             }
             idx_buffer_offset += pcmd.ElemCount;
         }
         vtx_buffer_offset += cmd_list->VtxBuffer.Size;
     }
-    frame.render_commands.end_pass();
-    frame.render_commands.end();
-    frame.render_commands.execute();
+    cmd.end_pass();
 }
 
 void gui::apply_theme()

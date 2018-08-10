@@ -104,9 +104,9 @@ void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 bas
 
 void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance)
 {
-    _queue.emplace_back([=, draw_mode = current_draw_mode()] {
-        glDrawElementsInstancedBaseVertexBaseInstance(draw_mode, index_count, _element_type,
-                                                      reinterpret_cast<void*>(_element_offset + base_index * _element_type_size),
+    _queue.emplace_back([=, draw_mode = current_draw_mode(), et = _element_type.load(), eo = _element_offset.load(), es = _element_type_size.load()] {
+        glDrawElementsInstancedBaseVertexBaseInstance(draw_mode, index_count, et,
+                                                      reinterpret_cast<void*>(eo + base_index * es),
                                                       instance_count, base_vertex, base_instance);
     });
 }
