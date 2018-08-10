@@ -1,4 +1,11 @@
 #version 460 core
+#ifdef VULKAN
+#define loc_gl(N)
+#define loc_vk(S, N) set = S, binding = N
+#else
+#define loc_gl(N) binding = N
+#define loc_vk(S, N) 
+#endif
 
 layout(local_size_x = 128) in;
 
@@ -9,22 +16,21 @@ struct boid
 	vec4 color;
 };
 
-layout(binding=0) readonly buffer SourceBoids
+layout(loc_gl(0) loc_vk(0, 0)) readonly buffer SourceBoids
 {
 	boid src_boids[];
 };
 
-layout(binding=1) writeonly buffer DestinationBoids
+layout(loc_gl(1) loc_vk(0, 1)) writeonly buffer DestinationBoids
 {
 	boid dst_boids[];
 };
 
-layout(binding = 0) uniform Mouse
+layout(loc_gl(0) loc_vk(0, 2)) uniform Mouse
 {
-	struct {
-		vec2 position;
-	} mouse;
-};
+	vec2 position;
+	float dt;
+} mouse;
 
 void main()
 {
@@ -34,7 +40,7 @@ void main()
 
 	boid item = src_boids[id];
 
-	const float dt = 0.0017f;
+	const float dt = mouse.dt;
 	const float radius = 0.06f;
 	const float sep = 0.020f;
 	const float ff = 1.f;

@@ -1,4 +1,11 @@
 #version 460 core
+#ifdef VULKAN
+#define loc_gl(N)
+#define loc_vk(S, N) set = S, binding = N
+#else
+#define loc_gl(N) binding = N
+#define loc_vk(S, N) 
+#endif
 
 layout(points) in;
 layout(triangle_strip, max_vertices=4) out;
@@ -18,7 +25,7 @@ layout(location = 1) in vec2 vel[];
 layout(location = 0) out vec4 out_color;
 layout(location = 1) out vec2 out_uv;
 
-layout(binding = 0) uniform sampler2D img;
+layout(loc_gl(0) loc_vk(0, 0)) uniform sampler2D img;
 
 void main()
 {

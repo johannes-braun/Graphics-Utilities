@@ -34,6 +34,17 @@ void commands_implementation::bind_pipeline(const compute_pipeline& p, std::init
     _has_state     = false;
     _curr_pipeline = nullptr;
     _queue.emplace_back([hnd = handle_cast<mygl::pipeline>(p)] { glBindProgramPipeline(hnd); });
+	if (bindings.size() > 0)
+	{
+		u32 ssb = 0;
+		u32 ub  = 0;
+		u32 img = 0;
+		u32 tex = 0;
+		for (auto* b : bindings)
+		{
+			_queue.emplace_back(static_cast<binding_set_implementation*>(&*b->implementation())->bind_all(ssb, ub, img, tex));
+		}
+	}
 }
 void commands_implementation::dispatch(u32 x, u32 y, u32 z)
 {
