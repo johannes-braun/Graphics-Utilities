@@ -1,51 +1,57 @@
-#include <gfx/gfx.hpp>
+#include <executable.hpp>
 
-#include <runnable.hpp>
-
-void runnable::init(gfx::context_options& options)
+void executable::init(gfx::context_options& options)
 {
-    options.window_title = "[14] Cubemapper";
-    options.debug        = true;
-	options.framebuffer_samples = 8;
+    options.window_title        = "[14] Cubemapper";
+    options.debug               = true;
+    options.framebuffer_samples = gfx::sample_count::x8;
+    options.graphics_api        = gfx::gapi::vulkan;
 }
 
-void runnable::run()
+void executable::run()
 {
-    gfx::commands cmd;
-
     gfx::hbuffer<float> time_buffer(1);
 
-    gfx::descriptor_set descriptor;
-    descriptor.set(gfx::descriptor_type::uniform_buffer, 0, *camera_buffer);
-    descriptor.set(gfx::descriptor_type::uniform_buffer, 1, time_buffer);
+    gfx::binding_layout bindings;
+    bindings.push(gfx::binding_type::uniform_buffer).push(gfx::binding_type::uniform_buffer);
 
-    const auto cubemap_render_state                        = std::make_shared<gfx::state_info>();
-    cubemap_render_state->depth_stencil.depth_write_enable = false;
-	cubemap_render_state->multisample.sample_shading_enable = true;
-	cubemap_render_state->multisample.samples = gfx::sample_count::x8;
-    gfx::graphics_pipeline pipeline(gfx::vertex_input{}, cubemap_render_state);
-    pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::text, "14_cubemapper/skybox.vert"));
-    pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::text, "14_cubemapper/skybox.frag"));
+    gfx::pipe_state::binding_layouts binding_state;
+    binding_state.layouts.push_back(&bindings);
+
+    gfx::binding_set set(bindings);
+    set.bind(0, *camera_buffer);
+    set.bind(1, time_buffer);
+
+    gfx::pipe_state::depth_stencil depth;
+    depth.depth_write_enable = false;
+    depth.depth_test_enable  = true;
+
+    gfx::pipe_state state;
+    state.state_bindings      = &binding_state;
+    state.state_depth_stencil = &depth;
+    state.state_multisample   = &msaa_state;
+
+    gfx::graphics_pipeline pipeline(state, pass_layout,
+                                    {gfx::shader(gfx::shader_type::vert, "14_cubemapper/skybox.vert"),
+                                     gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});
 
     context->key_callback.add([&](GLFWwindow*, int k, int sc, int a, int m) {
         if (k == GLFW_KEY_F5 && a == GLFW_PRESS)
-            pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::text, "14_cubemapper/skybox.frag"));
+            pipeline = gfx::graphics_pipeline(state, pass_layout,
+                                              {gfx::shader(gfx::shader_type::vert, "14_cubemapper/skybox.vert"),
+                                               gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});
     });
 
     while (frame()) {
-        ImGui::Begin("Bla");
+        ImGui::Begin("Settings");
         ImGui::Button("Blub");
         ImGui::End();
 
         time_buffer[0] = float(glfwGetTime());
 
-        cmd.reset();
-        cmd.begin_pass(main_framebuffer());
-		cmd.bind_descriptors({ &descriptor, 1 });
-        cmd.bind_pipeline(pipeline);
-		cmd.set_viewports({ &main_viewport, 1 }, 0);
-        cmd.draw(3);
-		cmd.end_pass();
-        cmd.execute();
+		current_command->begin_pass(*current_framebuffer);
+		current_command->bind_pipeline(pipeline, { &set });
+		current_command->draw(3);
+		current_command->end_pass();
     }
 }

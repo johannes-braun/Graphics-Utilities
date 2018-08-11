@@ -135,7 +135,10 @@ std::function<void()> apply_func(pipe_state::depth_stencil* ptr)
 
 std::function<void()> apply_func(pipe_state::blending* ptr)
 {
-    return [obj = ptr ? *ptr : pipe_state::blending{}]
+	int dbs=0;
+	glGetIntegerv(GL_MAX_DRAW_BUFFERS, &dbs);
+
+    return [dbs, obj = ptr ? *ptr : pipe_state::blending{}]
     {
         enable_for(obj.logic_op_enable, GL_COLOR_LOGIC_OP);
         glLogicOp([&]() {
@@ -162,7 +165,7 @@ std::function<void()> apply_func(pipe_state::blending* ptr)
         }());
         glBlendColor(obj.blend_constants[0], obj.blend_constants[1], obj.blend_constants[2], obj.blend_constants[3]);
 
-        for (int i = 0; i < 15; ++i) {
+        for (int i = 0; i < dbs; ++i) {
             if (i < obj.attachments.size()) {
                 const auto& a = obj.attachments[i];
                 a.blendEnable ? glEnablei(GL_BLEND, i) : glDisablei(GL_BLEND, i);
@@ -253,6 +256,10 @@ std::function<void()> apply_func(pipe_state::blending* ptr)
                              (a.colorWriteMask & color_components::b) == color_components::b,
                              (a.colorWriteMask & color_components::a) == color_components::a);
             }
+			else
+			{
+				glDisablei(GL_BLEND, i);
+			}
         }
     };
 }

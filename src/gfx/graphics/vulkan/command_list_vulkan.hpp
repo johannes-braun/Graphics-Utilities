@@ -37,7 +37,10 @@ public:
     void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj) override;
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors);
 
+	handle api_handle() { return VkCommandBuffer(_cmd); }
+
 private:
+	movable_handle<VkFence> _default_fence = nullptr;
     commands_type                        _type;
     VkRect2D                             _last_render_area;
     gfx::vulkan::context_implementation* _ctx_impl;

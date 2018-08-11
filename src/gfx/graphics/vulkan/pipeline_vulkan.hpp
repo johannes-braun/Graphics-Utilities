@@ -19,8 +19,12 @@ namespace gfx
 			    handle api_handle() override;
 
 				VkPipelineLayout layout() const noexcept { return _layout; }
+				bool dynamic_viewports() const noexcept { return _dynamic_viewports; }
+				bool dynamic_scissors() const noexcept { return _dynamic_scissors; }
                 
 			private:
+				bool _dynamic_viewports = false;
+				bool _dynamic_scissors = false;
 				VkDevice _device;
 				movable_handle<VkPipelineLayout> _layout;
 				movable_handle<VkPipeline> _pipeline;

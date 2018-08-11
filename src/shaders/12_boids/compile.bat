@@ -1,9 +1,10 @@
-glslc render_points.frag -o render_points.frag.spv-opengl --target-env=opengl
-glslc render_points.geom -o render_points.geom.spv-opengl --target-env=opengl
-glslc render_points.vert -o render_points.vert.spv-opengl --target-env=opengl
-glslc render_points.frag -o render_points.frag.spv-vulkan --target-env=vulkan
-glslc render_points.geom -o render_points.geom.spv-vulkan --target-env=vulkan
-glslc render_points.vert -o render_points.vert.spv-vulkan --target-env=vulkan -Dgl_VertexID=gl_VertexIndex
+@echo off
 
-glslc update.comp -o update.comp.spv-opengl --target-env=opengl
-glslc update.comp -o update.comp.spv-vulkan --target-env=vulkan
+for %%e in (*.frag *.vert *.tese *.tesc *.geom *.comp) do (
+	for %%f in (%%e) do (
+		echo %%f [GL]
+		glslc %%f -o %%f.spv-opengl --target-env=opengl
+		echo %%f [VK]
+		glslc %%f -o %%f.spv-vulkan --target-env=vulkan -Dgl_VertexID=gl_VertexIndex
+	)
+)

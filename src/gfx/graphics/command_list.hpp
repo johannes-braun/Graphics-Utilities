@@ -54,6 +54,8 @@ public:
     virtual void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj) = 0;
 
     virtual void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) = 0;
+
+	virtual handle api_handle() { return {}; }
 };
 }    // namespace detail
 
@@ -66,8 +68,10 @@ public:
     void begin() { implementation()->begin(); }
     void end() { implementation()->end(); }
 
-    void execute_sync_after(const commands& cmd, fence* f = nullptr) { implementation()->execute_sync_after(cmd, f); }
-    void execute(fence* f = nullptr) { implementation()->execute(f); }
+    void execute() { implementation()->execute(nullptr); }
+	void execute(fence& f) { implementation()->execute(&f); }
+	void execute_sync_after(const commands& cmd) { implementation()->execute_sync_after(cmd, nullptr); }
+	void execute_sync_after(const commands& cmd, fence& f) { implementation()->execute_sync_after(cmd, &f); }
 
     void bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings = {})
     {

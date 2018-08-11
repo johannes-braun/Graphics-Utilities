@@ -227,6 +227,7 @@ const VkRenderPassBeginInfo& framebuffer_implementation::begin_info()
         _fbcreate.renderPass      = _pass;
         _fbcreate.attachmentCount = _attachments.size();
         _fbcreate.pAttachments    = _attachments.data();
+
         check_result(vkCreateFramebuffer(_device, &_fbcreate, nullptr, &_fbo));
         _begin_info.renderPass      = _pass;
         _begin_info.framebuffer     = _fbo;

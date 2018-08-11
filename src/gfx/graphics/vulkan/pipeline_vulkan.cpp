@@ -260,6 +260,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
     if (vpp->scissors.empty()) {
         vps.scissorCount = 1;
         dyn_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+		_dynamic_scissors = true;
     }
     else
     {
@@ -277,6 +278,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
     if (vpp->viewports.empty()) {
         vps.viewportCount = 1;
         dyn_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+		_dynamic_viewports = true;
     }
     else
     {
@@ -297,7 +299,10 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
     init<VkPipelineDynamicStateCreateInfo> dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
     dyn.dynamicStateCount = dyn_states.size();
     dyn.pDynamicStates    = dyn_states.data();
-    pp_info.pDynamicState = &dyn;
+	if (!dyn_states.empty())
+	{
+		pp_info.pDynamicState = &dyn;
+	}
 
     static pipe_state::depth_stencil                    ds;
     pipe_state::depth_stencil*                          dsp = state.state_depth_stencil ? state.state_depth_stencil : &ds;

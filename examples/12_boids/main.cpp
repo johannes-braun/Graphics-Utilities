@@ -56,7 +56,7 @@ void executable::run()
 	gfx::pipe_state::vertex_input input;
 	input.attributes.emplace_back(0, 0, gfx::rg32f, offsetof(boid, position));
 	input.attributes.emplace_back(1, 0, gfx::rg32f, offsetof(boid, velocity));
-	input.attributes.emplace_back(2, 0, gfx::rg32f, offsetof(boid, color));
+	input.attributes.emplace_back(2, 0, gfx::rgba32f, offsetof(boid, color));
 	input.bindings.emplace_back(0, sizeof(boid));
 
 	gfx::pipe_state::input_assembly ass;

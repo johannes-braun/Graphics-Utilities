@@ -1,15 +1,19 @@
 #version 460 core
+
+#include "../api.glsl"
+
+
 #define TAU 6.282185317
 const float PI = 3.14159235659f;
 
 layout(location = 0) in vec3 dir;
 layout(location = 0) out vec4 color;
 
-layout(binding = 0) uniform Roughness 
+layout(loc_gl(0) loc_vk(0, 1)) uniform Roughness 
 {
 	float roughness;
 };
-layout(binding = 0) uniform samplerCube cubemap;
+layout(loc_gl(0) loc_vk(0, 0)) uniform samplerCube cubemap;
 
 vec2 random_hammersley_2d(float current, float inverse_sample_count)
 {

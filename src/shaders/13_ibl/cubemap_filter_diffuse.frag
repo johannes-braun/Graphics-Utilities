@@ -55,4 +55,6 @@ void main()
 	}
 
 	color /= count;
+
+	color = vec4(0, 1, 0, 1);
 }

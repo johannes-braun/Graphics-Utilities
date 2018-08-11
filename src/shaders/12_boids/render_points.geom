@@ -1,11 +1,6 @@
 #version 460 core
-#ifdef VULKAN
-#define loc_gl(N)
-#define loc_vk(S, N) set = S, binding = N
-#else
-#define loc_gl(N) binding = N
-#define loc_vk(S, N) 
-#endif
+
+#include "../api.glsl"
 
 layout(points) in;
 layout(triangle_strip, max_vertices=4) out;

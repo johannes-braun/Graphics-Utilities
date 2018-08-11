@@ -1,33 +1,37 @@
 #version 460 core
+#include "../api.glsl"
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec3 unnormalized_normal;
 
-layout(binding = 0) uniform Camera
+layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 {
 	mat4 view;
 	mat4 proj;
 	vec3 position;
 } camera;
 
-layout(binding = 1) uniform Lighting
+layout(loc_gl(1) loc_vk(0, 1)) uniform Lighting
 {
 	float gamma;
 	float exposure;
 } lighting;
 
-layout(binding = 0) restrict readonly buffer Materials
+struct packed_material
 {
-	struct {
-		uint packed_logf0_roughness;
-		uint packed_albedo_transparency;
-	} materials[];
+	uint packed_logf0_roughness;
+	uint packed_albedo_transparency;
 };
 
-layout(binding = 0) uniform samplerCube irradiance_cubemap;
-layout(binding = 1) uniform samplerCube specular_cubemap;
-layout(binding = 2) uniform sampler2D brdf_lut;
+layout(loc_gl(0) loc_vk(0, 2), std430) restrict readonly buffer Materials
+{
+	packed_material materials[];
+};
+
+layout(loc_gl(0) loc_vk(0, 3)) uniform samplerCube irradiance_cubemap;
+layout(loc_gl(1) loc_vk(0, 4)) uniform samplerCube specular_cubemap;
+layout(loc_gl(2) loc_vk(0, 5)) uniform sampler2D brdf_lut;
 
 layout(location = 0) out vec4 color;
 

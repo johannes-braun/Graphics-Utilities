@@ -1,8 +1,8 @@
 #include "command_list_vulkan.hpp"
 #include "framebuffer_vulkan.hpp"
-#include "pipeline_vulkan.hpp"
 #include "image_view_vulkan.hpp"
 #include "init_struct.hpp"
+#include "pipeline_vulkan.hpp"
 #include "result.hpp"
 
 namespace gfx {
@@ -10,6 +10,19 @@ inline namespace v1 {
 namespace vulkan {
 commands_implementation::~commands_implementation()
 {
+    if (const auto it =
+            std::find(_ctx_impl->final_wait_semaphores[_family].begin(), _ctx_impl->final_wait_semaphores[_family].end(), _signal);
+        it != _ctx_impl->final_wait_semaphores[_family].end())
+    {
+        std::iter_swap(std::prev(_ctx_impl->final_wait_semaphores[_family].end()), it);
+        _ctx_impl->final_wait_semaphores[_family].pop_back();
+    }
+
+    if (_default_fence) {
+        if (vkGetFenceStatus(_device, _default_fence) == VK_NOT_READY)
+            check_result(vkWaitForFences(_device, 1, &_default_fence, true, std::numeric_limits<uint64_t>::max()));
+        vkDestroyFence(_device, _default_fence, nullptr);
+    }
     if (_signal) vkDestroySemaphore(_device, _signal, nullptr);
     if (_cmd) vkFreeCommandBuffers(_device, _pool, 1, &_cmd);
 }
@@ -33,22 +46,27 @@ void commands_implementation::initialize(commands_type type)
     _pool     = _ctx_impl->command_pools()[_family];
     _queue    = _ctx_impl->queues()[_family];
 
-    init<VkCommandBufferAllocateInfo> alloc {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    init<VkCommandBufferAllocateInfo> alloc{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     alloc.commandPool        = _pool;
     alloc.commandBufferCount = 1;
     alloc.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     check_result(vkAllocateCommandBuffers(_device, &alloc, &_cmd));
 
-    init<VkSemaphoreCreateInfo> sem {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    init<VkSemaphoreCreateInfo> sem{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     check_result(vkCreateSemaphore(_device, &sem, nullptr, &_signal));
 }
 void commands_implementation::reset()
 {
+    if (_default_fence) {
+        if (vkGetFenceStatus(_device, _default_fence) == VK_NOT_READY)
+            check_result(vkWaitForFences(_device, 1, &_default_fence, true, std::numeric_limits<uint64_t>::max()));
+        check_result(vkResetFences(_device, 1, &_default_fence));
+    }
     check_result(vkResetCommandBuffer(_cmd, 0));
 }
 void commands_implementation::begin()
 {
-    init<VkCommandBufferBeginInfo> beg {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    init<VkCommandBufferBeginInfo> beg{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beg.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     _sets.clear();
     check_result(vkBeginCommandBuffer(_cmd, &beg));
@@ -73,7 +91,7 @@ void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
         _ctx_impl->final_wait_stages[_family].push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     }
 
-    init<VkSubmitInfo> submit {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount       = 1;
     submit.pCommandBuffers          = &_cmd;
     submit.signalSemaphoreCount     = 1;
@@ -82,27 +100,38 @@ void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
     submit.pWaitSemaphores          = &static_cast<commands_implementation*>(&*cmd.implementation())->_signal;
     VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     submit.pWaitDstStageMask        = &stageFlags;
-    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : nullptr));
+
+    if (!_default_fence && !f) {
+        init<VkFenceCreateInfo> fc{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        check_result(vkCreateFence(_device, &fc, nullptr, &_default_fence));
+    }
+
+    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : _default_fence));
 }
 void commands_implementation::execute(fence* f)
 {
     _ctx_impl->final_wait_semaphores[_family].push_back(_signal);
     _ctx_impl->final_wait_stages[_family].push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
-    init<VkSubmitInfo> submit {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    init<VkSubmitInfo> submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount   = 1;
     submit.pCommandBuffers      = &_cmd;
     submit.signalSemaphoreCount = 1;
     submit.pSignalSemaphores    = &_signal;
-    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : nullptr));
+
+    if (!_default_fence && !f) {
+        init<VkFenceCreateInfo> fc{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        check_result(vkCreateFence(_device, &fc, nullptr, &_default_fence));
+    }
+
+    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : _default_fence));
 }
 void commands_implementation::bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
     _last_gpipeline = nullptr;
     _last_cpipeline = &p;
     vkCmdBindPipeline(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE, handle_cast<VkPipeline>(p));
-    if (bindings.size() > 0)
-    {
+    if (bindings.size() > 0) {
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
         vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -136,8 +165,7 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
     _last_gpipeline = &p;
     _last_cpipeline = nullptr;
     vkCmdBindPipeline(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, handle_cast<VkPipeline>(p));
-    if (bindings.size() > 0)
-    {
+    if (bindings.size() > 0) {
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
         vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -145,16 +173,22 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
                                 _sets.data() + offset, 0, nullptr);
     }
 
-    // bind default viewports and scissors
-    VkViewport vps {0};
-    vps.width    = _last_render_area.extent.width;
-    vps.height   = _last_render_area.extent.height;
-    vps.maxDepth = 1.f;
-    vps.minDepth = 0.f;
-    vkCmdSetViewport(_cmd, 0, 1, &vps);
+    const auto* impl = static_cast<graphics_pipeline_implementation*>(&*p.implementation());
 
-    VkRect2D scs = _last_render_area;
-    vkCmdSetScissor(_cmd, 0, 1, &scs);
+    // bind default viewports and scissors
+    if (impl->dynamic_viewports()) {
+        VkViewport vps{0};
+        vps.width    = _last_render_area.extent.width;
+        vps.height   = _last_render_area.extent.height;
+        vps.maxDepth = 1.f;
+        vps.minDepth = 0.f;
+        vkCmdSetViewport(_cmd, 0, 1, &vps);
+    }
+
+    if (impl->dynamic_scissors()) {
+        VkRect2D scs = _last_render_area;
+        vkCmdSetScissor(_cmd, 0, 1, &scs);
+    }
 }
 void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)
 {
@@ -201,7 +235,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
     {
         assert(type == binding_type::sampled_image);
 
-        auto [ivp, sp] = std::any_cast<
+        auto[ivp, sp] = std::any_cast<
             std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*>>(
             obj);
 
@@ -211,7 +245,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         auto img_view = std::any_cast<VkImageView>(iv->api_handle());
         auto smp      = std::any_cast<VkSampler>(s->api_handle());
 
-        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        init<VkWriteDescriptorSet> write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.descriptorCount = 1;
         write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         write.dstArrayElement = arr_element;
@@ -232,7 +266,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
 
         auto img_view = std::any_cast<VkImageView>(iv->api_handle());
 
-        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        init<VkWriteDescriptorSet> write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.descriptorCount = 1;
         write.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         write.dstArrayElement = arr_element;
@@ -251,7 +285,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         auto& buf    = *std::any_cast<const std::unique_ptr<detail::host_buffer_implementation>*>(obj);
         auto  buffer = std::any_cast<VkBuffer>(buf->api_handle());
 
-        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        init<VkWriteDescriptorSet> write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.descriptorCount = 1;
         write.descriptorType  = [=] {
             switch (type)
@@ -277,7 +311,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         auto& buf    = *std::any_cast<const std::unique_ptr<detail::device_buffer_implementation>*>(obj);
         auto  buffer = std::any_cast<VkBuffer>(buf->api_handle());
 
-        init<VkWriteDescriptorSet> write {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        init<VkWriteDescriptorSet> write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.descriptorCount = 1;
         write.descriptorType  = [=] {
             switch (type)
@@ -304,10 +338,8 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
 {
     std::vector<VkViewport> vps(vp.size());
     std::vector<VkRect2D>   sci(scissors.size());
-    for (int i = 0; i < vp.size(); ++i)
-    {
-        if (!sci.empty())
-        {
+    for (int i = 0; i < vp.size(); ++i) {
+        if (!sci.empty()) {
             auto size            = scissors[i].size();
             sci[i].extent.width  = size.x;
             sci[i].extent.height = size.y;
@@ -324,7 +356,9 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
     }
 
     vkCmdSetViewport(_cmd, first, vps.size(), vps.data());
-    if (!sci.empty()) { vkCmdSetScissor(_cmd, first, sci.size(), sci.data()); }
+    if (!sci.empty()) {
+        vkCmdSetScissor(_cmd, first, sci.size(), sci.data());
+    }
 }
 
 }    // namespace vulkan
