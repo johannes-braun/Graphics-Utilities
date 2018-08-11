@@ -192,8 +192,7 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
 }
 void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)
 {
-    if(vertex_count > 0)
-        vkCmdDraw(_cmd, vertex_count, instance_count, base_vertex, base_instance);
+    if (vertex_count > 0) vkCmdDraw(_cmd, vertex_count, instance_count, base_vertex, base_instance);
 }
 
 void commands_implementation::bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset)
@@ -218,11 +217,10 @@ void commands_implementation::bind_index_buffer(const handle& buffer, index_type
 
 void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance)
 {
-	if(index_count > 0)
-        vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
+    if (index_count > 0) vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
 }
 
-void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj)
+void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)
 {
     assert(_last_gpipeline || _last_cpipeline);
     const auto bind_point = _last_gpipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
@@ -303,7 +301,8 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
 
         init<VkDescriptorBufferInfo> buf_info;
         buf_info.buffer   = buffer;
-        buf_info.range    = VK_WHOLE_SIZE;
+        buf_info.range    = size == 0 ? VK_WHOLE_SIZE : size;
+        buf_info.offset   = offset;
         write.pBufferInfo = &buf_info;
 
         vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
@@ -329,7 +328,8 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
 
         init<VkDescriptorBufferInfo> buf_info;
         buf_info.buffer   = buffer;
-        buf_info.range    = VK_WHOLE_SIZE;
+        buf_info.range    = size == 0 ? VK_WHOLE_SIZE : size;
+        buf_info.offset   = offset;
         write.pBufferInfo = &buf_info;
 
         vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);

@@ -34,7 +34,7 @@ public:
     void bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset) override;
     void bind_index_buffer(const handle& buffer, index_type index, i64 offset) override;
 
-    void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj);
+    void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size);
 
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors);
 

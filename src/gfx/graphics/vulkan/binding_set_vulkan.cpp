@@ -32,7 +32,7 @@ handle binding_set_implementation::api_handle()
 {
     return VkDescriptorSet(_set);
 }
-void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type type, std::any obj)
+void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)
 {
 	if (obj.type() == typeid(std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*>))
 	{
@@ -104,7 +104,8 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
 
 		init<VkDescriptorBufferInfo> buf_info;
 		buf_info.buffer = buffer;
-		buf_info.range = VK_WHOLE_SIZE;
+		buf_info.range = size == 0 ? VK_WHOLE_SIZE : size;
+		buf_info.offset = offset;
 		write.pBufferInfo = &buf_info;
 
 		vkUpdateDescriptorSets(_device, 1, &write, 0, nullptr);
@@ -132,7 +133,8 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
 
 		init<VkDescriptorBufferInfo> buf_info;
 		buf_info.buffer = buffer;
-		buf_info.range = VK_WHOLE_SIZE;
+		buf_info.range = size == 0 ? VK_WHOLE_SIZE : size;
+		buf_info.offset = offset;
 		write.pBufferInfo = &buf_info;
 
 		vkUpdateDescriptorSets(_device, 1, &write, 0, nullptr);

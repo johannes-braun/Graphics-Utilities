@@ -28,23 +28,23 @@ u32 binding_set_implementation::binding(u32 b, u32 arr) const
 	return _layout[static_cast<u32>(bt)][_items[b]].begin + arr;
 }
 
-void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type type, std::any obj)
+void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)
 {
     binding_type bt = _types[binding];
     u32 b = _layout[static_cast<u32>(bt)][_items[binding]].begin + arr_element;
 
 	assert(bt == type);
 
-	dlog << "Binding information: binding: " << binding << ", arr_elem: " << arr_element << " ==> " << [type]{
-	    switch(type)
-	    {
-	    case binding_type::storage_buffer: return "GL_SHADER_STORAGE_BUFFER";
-	    case binding_type::uniform_buffer: return "GL_UNIFORM_BUFFER";
-	    case binding_type::storage_image: return "Image Binding";
-	    case binding_type::sampled_image: return "Texture/Sampler Binding";
-	    default: return "INVALID";
-	    }
-	}() << " #" << b << " + set-offset";
+	//dlog << "Binding information: binding: " << binding << ", arr_elem: " << arr_element << " ==> " << [type]{
+	//    switch(type)
+	//    {
+	//    case binding_type::storage_buffer: return "GL_SHADER_STORAGE_BUFFER";
+	//    case binding_type::uniform_buffer: return "GL_UNIFORM_BUFFER";
+	//    case binding_type::storage_image: return "Image Binding";
+	//    case binding_type::sampled_image: return "Texture/Sampler Binding";
+	//    default: return "INVALID";
+	//    }
+	//}() << " #" << b << " + set-offset";
 
     switch (type)
     {
@@ -60,7 +60,7 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
             buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
         }
 		_storage_buffers.resize(std::max(u32(_storage_buffers.size()), b + 1));
-		_storage_buffers[b] = buffer;
+		_storage_buffers[b] ={ buffer, offset, size };
     }
     break;
     case binding_type::uniform_buffer:
@@ -75,7 +75,7 @@ void binding_set_implementation::bind(u32 binding, u32 arr_element, binding_type
             buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
         }
 		_uniform_buffers.resize(std::max(u32(_uniform_buffers.size()), b + 1));
-		_uniform_buffers[b] = buffer;
+		_uniform_buffers[b] = { buffer, offset, size };
     }
     break;
     case binding_type::storage_image:
@@ -110,10 +110,10 @@ std::function<void()> binding_set_implementation::bind_all(u32& ssb_offset, u32&
 {
     const auto lbd = [sbo = ssb_offset, ubo = ub_offset, sio = img_offset, texo = tex_offset, sb = _storage_buffers, ub = _uniform_buffers, si = _storage_images, tex = _sampled_images, smp = _sampled_image_samplers]
 	{
-	    for(int i=0; i<sb.size(); ++i)
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, sbo + i, sb[i]);
+		for (int i=0; i<sb.size(); ++i)
+			sb[i].size != 0 ? glBindBufferRange(GL_SHADER_STORAGE_BUFFER, sbo + i, sb[i].buf, sb[i].offset, sb[i].size) : glBindBufferBase(GL_SHADER_STORAGE_BUFFER, sbo + i, sb[i].buf);
 		for(int i=0; i<ub.size(); ++i)
-			glBindBufferBase(GL_UNIFORM_BUFFER, ubo + i, ub[i]);
+			ub[i].size != 0 ? glBindBufferRange(GL_UNIFORM_BUFFER, ubo + i, ub[i].buf, ub[i].offset, ub[i].size) : glBindBufferBase(GL_UNIFORM_BUFFER, ubo + i, ub[i].buf);
 		glBindImageTextures(sio, si.size(), si.data());
 
 		glBindSamplers(texo, smp.size(), smp.data());

@@ -100,7 +100,7 @@ struct executable
 		return rv;
 	}
 
-	void init(gfx::context_options& opt);
+	static void init(gfx::context_options& opt);
 	void run();
 
 	gfx::ressources res;

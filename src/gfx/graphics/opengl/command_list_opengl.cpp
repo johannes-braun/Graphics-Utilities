@@ -165,15 +165,15 @@ GLenum commands_implementation::current_draw_mode() const
     }
 }
 
-void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, binding_type type, std::any obj)
+void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)
 {
     const auto& ps = static_cast<graphics_pipeline_implementation*>(&*_curr_pipeline->implementation())->proxy_sets();
 
-    u32 offset = 0;
-    for (int i = 0; i < set; ++i) { offset += static_cast<binding_set_implementation*>(&*ps[i].implementation())->count(type); }
+    u32 set_offset = 0;
+    for (int i = 0; i < set; ++i) { set_offset += static_cast<binding_set_implementation*>(&*ps[i].implementation())->count(type); }
 
     auto& proxy_set = ps[set];
-    auto  binding   = offset + static_cast<binding_set_implementation*>(&*proxy_set.implementation())->binding(b, arr_element);
+    auto  binding   = set_offset + static_cast<binding_set_implementation*>(&*proxy_set.implementation())->binding(b, arr_element);
 
     switch (type)
     {
@@ -190,7 +190,10 @@ void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, bind
             auto& buf = *std::any_cast<const std::unique_ptr<detail::device_buffer_implementation>*>(obj);
             buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
         }
-        _queue.emplace_back([=] { glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer); });
+		if(size!= 0)
+			_queue.emplace_back([=] { glBindBufferRange(GL_SHADER_STORAGE_BUFFER, binding, buffer, offset, size); });
+		else
+			_queue.emplace_back([=] { glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, buffer); });
     }
     break;
     case binding_type::uniform_buffer:
@@ -206,7 +209,10 @@ void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, bind
             auto& buf = *std::any_cast<const std::unique_ptr<detail::device_buffer_implementation>*>(obj);
             buffer    = std::any_cast<mygl::buffer>(buf->api_handle());
         }
-        _queue.emplace_back([=] { glBindBufferBase(GL_UNIFORM_BUFFER, binding, buffer); });
+        if(size!= 0)
+            _queue.emplace_back([=] { glBindBufferRange(GL_UNIFORM_BUFFER, binding, buffer, offset, size); });
+		else
+			_queue.emplace_back([=] { glBindBufferBase(GL_UNIFORM_BUFFER, binding, buffer); });
     }
     break;
     case binding_type::storage_image:

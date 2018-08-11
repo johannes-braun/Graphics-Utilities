@@ -9,9 +9,6 @@
 #include <gfx/log.hpp>
 #include <gfx/res.hpp>
 
-// Includes for gfx/ecs:
-#include <gfx/ecs/ecs.hpp>
-
 // Includes for gfx/gui:
 #include <gfx/gui/imgui/imconfig.h>
 #include <gfx/gui/gui.hpp>
@@ -55,3 +52,6 @@
 
 // Include the type aliases last
 #include <gfx/alias.inl>
+
+// Includes for gfx/ecs:
+#include <gfx/ecs/ecs.hpp>

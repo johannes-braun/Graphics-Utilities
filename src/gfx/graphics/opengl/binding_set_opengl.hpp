@@ -18,7 +18,7 @@ namespace gfx
 				~binding_set_implementation();
 				void initialize(const binding_layout& layout) override;
 				handle api_handle() override;
-				void bind(u32 binding, u32 arr_element, binding_type type, std::any obj) override;
+				void bind(u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) override;
 				u32 binding(u32 b, u32 arr) const;
 
 				std::function<void()> bind_all(u32& ssb_offset, u32& ub_offset, u32& img_offset, u32& tex_offset);
@@ -32,8 +32,15 @@ namespace gfx
 				std::vector<std::vector<binding_layout_implementation::range>> _layout;
 				std::vector<binding_type> _types;
 
-				std::vector<mygl::buffer> _storage_buffers;
-				std::vector<mygl::buffer> _uniform_buffers;
+                struct buffer_binding
+                {
+					mygl::buffer buf;
+					u32 offset;
+					u32 size;
+                };
+
+				std::vector<buffer_binding> _storage_buffers;
+				std::vector<buffer_binding> _uniform_buffers;
 				std::vector<mygl::texture> _storage_images;
 				std::vector<mygl::texture> _sampled_images;
 				std::vector<mygl::sampler> _sampled_image_samplers;

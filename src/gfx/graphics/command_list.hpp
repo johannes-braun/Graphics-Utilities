@@ -51,7 +51,7 @@ public:
     virtual void draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)                        = 0;
     virtual void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) = 0;
 
-    virtual void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj) = 0;
+    virtual void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) = 0;
 
     virtual void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) = 0;
 
@@ -116,14 +116,14 @@ public:
     }
 
     template<typename T>
-    void push_binding(u32 set, u32 binding, binding_type type, const device_buffer<T>& buffer)
+    void push_binding(u32 set, u32 binding, binding_type type, const device_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
     {
-        push_binding(set, binding, 0, type, buffer);
+        push_binding(set, binding, 0, type, buffer, count, first);
     }
     template<typename T>
-    void push_binding(u32 set, u32 binding, binding_type type, const host_buffer<T>& buffer)
+    void push_binding(u32 set, u32 binding, binding_type type, const host_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
     {
-        push_binding(set, binding, 0, type, buffer);
+        push_binding(set, binding, 0, type, buffer, count, first);
     }
     void push_binding(u32 set, u32 binding, binding_type type, const image_view& view, const sampler& sampler)
     {
@@ -131,24 +131,24 @@ public:
     }
     void push_binding(u32 set, u32 binding, binding_type type, const image_view& view) { push_binding(set, binding, 0, type, view); }
     template<typename T>
-    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const device_buffer<T>& buffer)
+    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const device_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
     {
-        implementation()->push_binding(set, binding, array_element, type, &buffer.implementation());
+        implementation()->push_binding(set, binding, array_element, type, &buffer.implementation(), first * sizeof(T), count == ~0 ? buffer.capacity() * sizeof(T) : count * sizeof(T));
     }
     template<typename T>
-    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const host_buffer<T>& buffer)
+    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const host_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
     {
-        implementation()->push_binding(set, binding, array_element, type, &buffer.implementation());
+        implementation()->push_binding(set, binding, array_element, type, &buffer.implementation(), first * sizeof(T), count == ~0 ? buffer.size() * sizeof(T) : count * sizeof(T));
     }
     void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const image_view& view, const sampler& sampler)
     {
         std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*> p(
             &view.implementation(), &sampler.implementation());
-        implementation()->push_binding(set, binding, array_element, type, p);
+        implementation()->push_binding(set, binding, array_element, type, p, 0, 0);
     }
     void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const image_view& view)
     {
-        implementation()->push_binding(set, binding, array_element, type, &view.implementation());
+        implementation()->push_binding(set, binding, array_element, type, &view.implementation(), 0, 0);
     }
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) { implementation()->set_viewports(first, vp, scissors); }
 

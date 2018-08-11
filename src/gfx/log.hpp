@@ -14,7 +14,7 @@
 #include <string>
 
 #if GFX_RELEASE
-#include "file.hpp"
+#include "file/file.hpp"
 #endif
 
 #if __has_include(<Windows.h>)

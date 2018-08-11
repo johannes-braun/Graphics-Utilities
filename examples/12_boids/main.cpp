@@ -7,7 +7,7 @@ void executable::init(gfx::context_options& opt)
     opt.window_title        = "[12] Boids";
     opt.window_height       = 900;
     opt.window_width        = 900;
-	opt.graphics_api = gfx::gapi::opengl;
+	opt.graphics_api = gfx::gapi::vulkan;
 }
 
 struct boid
@@ -103,7 +103,7 @@ void executable::run()
 
     int f = 0;
     while (frame()) {
-        if (ImGui::BeginMainMenuBar()) {
+      /*  if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("File")) {
                 bool u = false;
                 ImGui::MenuItem("Open", "Ctrl+O", &u);
@@ -114,7 +114,7 @@ void executable::run()
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
-        }
+        }*/
 
         ImGui::Begin("Settings");
         ImGui::Value("Current set", current_set);

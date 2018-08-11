@@ -75,6 +75,7 @@ void ecs::update(double delta, system_list& list)
 {
     std::vector<component_base*>         multi_components;
     std::vector<std::vector<std::byte>*> component_arrays;
+    #pragma omp parallel for schedule(dynamic)
     for (int64_t                         i               = 0; i < static_cast<int64_t>(list.size()); ++i) {
         const auto&                      component_types = list[static_cast<uint32_t>(i)].types();
         if (component_types.size() == 1) {

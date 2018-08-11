@@ -15,7 +15,7 @@ namespace gfx {
 				~binding_set_implementation();
                 void initialize(const binding_layout& layout) override;
                 handle api_handle() override;
-				void bind(u32 binding, u32 arr_element, binding_type type, std::any obj) override;
+				void bind(u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) override;
 
             private:
 				VkDevice _device;
