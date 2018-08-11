@@ -103,6 +103,7 @@ struct executable
 	void init(gfx::context_options& opt);
 	void run();
 
+	gfx::ressources res;
 	gfx::context_options             options;
 	std::shared_ptr<gfx::context>    context;
 	gfx::renderpass_layout           pass_layout;

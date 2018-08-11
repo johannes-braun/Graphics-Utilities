@@ -68,7 +68,6 @@ void executable::init(gfx::context_options& options)
 
 void executable::run()
 {
-    gfx::ressources res;
     gfx::image&     base_cubemap = res.cubemaps_hdr["arboretum/hdr"];
     gfx::image_view base_cubemap_view(gfx::imgv_type::image_cube, base_cubemap);
     gfx::sampler    sampler;

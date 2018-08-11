@@ -15,10 +15,33 @@ uint32_t swapchain_implementation::current_image() const noexcept
 void swapchain_implementation::present()
 {
     if (_presented) {
+		vkResetCommandBuffer(_primary_command_buffers[_current_image], 0);
+		init<VkCommandBufferBeginInfo> begin_info{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		vkBeginCommandBuffer(_primary_command_buffers[_current_image], &begin_info);
+		init<VkImageMemoryBarrier> imb{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+		imb.srcAccessMask                   = 0;
+		imb.dstAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+		imb.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imb.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imb.image                           = _temp_images[_current_image];
+		imb.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+		imb.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imb.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		imb.subresourceRange.baseArrayLayer = 0;
+		imb.subresourceRange.baseMipLevel   = 0;
+		imb.subresourceRange.layerCount     = 1;
+		imb.subresourceRange.levelCount     = 1;
+		vkCmdPipelineBarrier(_primary_command_buffers[_current_image], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, nullptr, 0, nullptr, 1, &imb);
+		vkEndCommandBuffer(_primary_command_buffers[_current_image]);
+
         std::array<VkSemaphore, 1>          wait_semaphores{_present_semaphore};
         std::array<VkPipelineStageFlags, 1> wait_masks{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         std::array<VkCommandBuffer, 1>      command_buffers{_primary_command_buffers[_current_image]};
         init<VkSubmitInfo>                  submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+		submit.commandBufferCount = 1;
+		submit.pCommandBuffers = &_primary_command_buffers[_current_image];
         submit.pWaitSemaphores      = std::data(wait_semaphores);
         submit.waitSemaphoreCount   = std::size(wait_semaphores);
         submit.pSignalSemaphores    = &_render_semaphore;
@@ -44,7 +67,7 @@ void swapchain_implementation::present()
     // Wait until last frame using this image has finished rendering
 	check_result(vkWaitForFences(_device, 1, &_render_fences[_current_image], true, std::numeric_limits<uint64_t>::max()));
 	check_result(vkResetFences(_device, 1, &_render_fences[_current_image]));
-
+    
     _presented = true;
 }
 
@@ -65,7 +88,7 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     swapchain_info.compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapchain_info.imageArrayLayers      = 1;
     swapchain_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
-    swapchain_info.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    swapchain_info.imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
     swapchain_info.pQueueFamilyIndices   = &(_ctx_impl->queue_families()[fam::present]);
     swapchain_info.queueFamilyIndexCount = 1;
 

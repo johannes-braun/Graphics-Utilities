@@ -1,13 +1,13 @@
-#include <gfx/gfx.hpp>
-#include <gfx/res.hpp>
+#include <executable.hpp>
 #include <random>
-#include <runnable.hpp>
 
-void runnable::init(gfx::context_options& opt)
+#include <gfx/graphics/vulkan/swapchain_vulkan.hpp>
+
+void executable::init(gfx::context_options& opt)
 {
     opt.window_title        = "[11] Incremental Pathtracer";
-    opt.framebuffer_samples = 1;
-    opt.graphics_api        = gfx::gapi::opengl;
+    opt.framebuffer_samples = gfx::sample_count::x1;
+    opt.graphics_api        = gfx::gapi::vulkan;
 }
 
 struct helper_info
@@ -17,7 +17,7 @@ struct helper_info
     gfx::u32  reset;
 };
 
-void runnable::run()
+void executable::run()
 {
     camera.transform_mode.position.z += 4.f;
 
@@ -37,7 +37,30 @@ void runnable::run()
 	const gfx::image_view cubemap_view = cubemap.view(gfx::imgv_type::image_cube);
 	const gfx::sampler    sampler;
 
-    gfx::compute_pipeline trace_pipeline(gfx::shader(gfx::shader_format::text, "11_pathtracer_incremental/trace.comp"));
+	gfx::binding_layout trace_layout;
+	trace_layout.push(gfx::binding_type::uniform_buffer);
+	trace_layout.push(gfx::binding_type::uniform_buffer);
+	trace_layout.push(gfx::binding_type::storage_buffer);
+	trace_layout.push(gfx::binding_type::storage_buffer);
+	trace_layout.push(gfx::binding_type::storage_buffer);
+	trace_layout.push(gfx::binding_type::sampled_image);
+	trace_layout.push(gfx::binding_type::storage_image);
+	trace_layout.push(gfx::binding_type::storage_image);
+	trace_layout.push(gfx::binding_type::storage_image);
+	trace_layout.push(gfx::binding_type::storage_image);
+	trace_layout.push(gfx::binding_type::storage_image);
+
+	gfx::pipe_state::binding_layouts trace_layouts;
+	trace_layouts.layouts.push_back(&trace_layout);
+
+	gfx::pipe_state trace_state;
+	trace_state.state_bindings = &trace_layouts;
+	trace_state.state_multisample = &msaa_state;
+
+	gfx::graphics_pipeline trace_pipeline(trace_state, pass_layout, {
+		gfx::shader(gfx::shader_type::vert, "postfx/screen.vert"),
+		gfx::shader(gfx::shader_type::frag, "11_pathtracer_incremental/trace.frag")
+	});
 
     gfx::scene_file& scene1      = res.scenes["bunny.dae"];
 	gfx::scene_file& scene2      = res.scenes["monkey.dae"];
@@ -52,26 +75,18 @@ void runnable::run()
 
     gfx::hbuffer<helper_info> helper_info_buffer(1);
 
-    std::vector<gfx::descriptor_set> trace_descriptors(context->swapchain()->image_views().size());
-    for (int i = 0; i < trace_descriptors.size(); ++i) {
-        trace_descriptors[i].set(gfx::descriptor_type::uniform_buffer, 0, *camera_buffer);
-        trace_descriptors[i].set(gfx::descriptor_type::uniform_buffer, 1, helper_info_buffer);
-
-        trace_descriptors[i].set(gfx::descriptor_type::storage_buffer, 0, model_bvh);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_buffer, 1, vertices);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_buffer, 2, indices);
-
-        trace_descriptors[i].set(gfx::descriptor_type::sampled_texture, 0, cubemap_view, sampler);
-
-        trace_descriptors[i].set(gfx::descriptor_type::storage_image, 0, accumulation_cache_view);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_image, 1, bounce_cache_view);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_image, 2, direction_cache_view);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_image, 3, origin_cache_view);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_image, 4, counter_cache_view);
-        trace_descriptors[i].set(gfx::descriptor_type::storage_image, 5, context->swapchain()->image_views()[i]);
-    }
-    gfx::commands cmd;
-    gfx::fence    update_fence;
+	gfx::binding_set trace_set(trace_layout);
+	trace_set.bind(0, *camera_buffer);
+	trace_set.bind(1, helper_info_buffer);
+	trace_set.bind(2, model_bvh);
+	trace_set.bind(3, vertices);
+	trace_set.bind(4, indices);
+	trace_set.bind(5, cubemap_view, sampler);
+	trace_set.bind(6, accumulation_cache_view);
+	trace_set.bind(7, bounce_cache_view);
+	trace_set.bind(8, direction_cache_view);
+	trace_set.bind(9, origin_cache_view);
+	trace_set.bind(10, counter_cache_view);
 
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist(0.f, 1.f);
@@ -99,12 +114,10 @@ void runnable::run()
             glm::mat4(glm::mat3(glm::inverse(camera_buffer->at(0).view))) * inverse(camera_buffer->at(0).projection);
         helper_info_buffer[0].time  = float(glfwGetTime()) * dist(gen);
         helper_info_buffer[0].reset = i++;
-        cmd.reset();
-        cmd.bind_pipeline(trace_pipeline);
-        cmd.bind_descriptors({&trace_descriptors[context->swapchain()->current_image()], 1});
-        cmd.dispatch_compute((1280 + 15) / 16, (720 + 15) / 16);
-        cmd.execute(update_fence);
-        update_fence.wait();
-        time = (std::chrono::steady_clock::now() - then).count() / 1'000'000.f;
+
+		current_command->begin_pass(*current_framebuffer);
+        current_command->bind_pipeline(trace_pipeline, {&trace_set});
+		current_command->draw(3);
+		current_command->end_pass();
     }
 }

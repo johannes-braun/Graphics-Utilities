@@ -18,6 +18,7 @@ public:
     void                             resize(uint32_t width, uint32_t height) override;
     const std::vector<image_view>&   image_views() const override;
     handle                           api_handle() override;
+	const std::vector<VkImage>& temp_images() const noexcept { return _temp_images; }
     
 private:
 	context_implementation* _ctx_impl = nullptr;

@@ -1,21 +1,21 @@
 #version 460 core
 
-layout(local_size_x = 16, local_size_y = 16) in;
-layout(binding = 0, rgba32f) uniform image2D accumulation_cache;
-layout(binding = 1, rgba32f) uniform image2D bounce_cache;
-layout(binding = 2, rgba32f) uniform image2D direction_cache;
-layout(binding = 3, rgba32f) uniform image2D origin_cache;
-layout(binding = 4, rg32ui) uniform uimage2D counter_cache;
-layout(binding = 5, rgba8) uniform image2D color_output;
-layout(binding = 0) uniform samplerCube cubemap;
-layout(binding = 0) uniform Camera
+#include "../api.glsl"
+
+layout(loc_gl(0) loc_vk(0, 6), rgba32f) uniform image2D accumulation_cache;
+layout(loc_gl(1) loc_vk(0, 7), rgba32f) uniform image2D bounce_cache;
+layout(loc_gl(2) loc_vk(0, 8), rgba32f) uniform image2D direction_cache;
+layout(loc_gl(3) loc_vk(0, 9), rgba32f) uniform image2D origin_cache;
+layout(loc_gl(4) loc_vk(0, 10), rg32ui) uniform uimage2D counter_cache;
+layout(loc_gl(0) loc_vk(0, 5)) uniform samplerCube cubemap;
+layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 {
     mat4 view;
     mat4 proj;
     vec3 position;
 }
 camera;
-layout(binding = 1) uniform HelperInfo
+layout(loc_gl(1) loc_vk(0, 1)) uniform HelperInfo
 {
     mat4  inverse_view_proj;
     float time;
@@ -52,27 +52,31 @@ struct bvh_result
 
     bool hits;
 };
-layout(binding = 0) restrict readonly buffer ModelBVH
+layout(loc_gl(0) loc_vk(0, 2)) restrict readonly buffer ModelBVH
 {
     bvh_node nodes[];
 }
 model_bvh;
-layout(binding = 1) restrict readonly buffer ModelVertices
+
+struct vertex
 {
-    struct
-    {
         vec3 position;
         uint metadata_position;
         vec3 normal;
         uint metadata_normal;
         vec2 uv;
         uint metadata_uv;
-    } model_vertices[];
 };
-layout(binding = 2) restrict readonly buffer ModelIndices
+layout(loc_gl(1) loc_vk(0, 3)) restrict readonly buffer ModelVertices
+{
+    vertex model_vertices[];
+};
+layout(loc_gl(2) loc_vk(0, 4)) restrict readonly buffer ModelIndices
 {
     uint model_indices[];
 };
+layout(location = 0) in vec2 uv_unused;
+layout(location = 0) out vec4 color_output;
 
 bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_distance);
 bool       intersect_bounds(const vec3 origin, const vec3 direction, const vec3 bounds_min, const vec3 bounds_max, const float max_distance,
@@ -117,7 +121,7 @@ void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_co
 
 void main()
 {
-    ivec2 pixel    = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 pixel    = ivec2(gl_FragCoord.xy);
     ivec2 img_size = ivec2(imageSize(accumulation_cache));
     if (any(greaterThanEqual(pixel, img_size))) return;
 
@@ -125,7 +129,11 @@ void main()
     vec2 random_value =
         random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (img_size.x * img_size.y),
                              1.f / (img_size.x * img_size.y));
-    vec3 precalc_direction = vec3(inverse_view_proj * vec4((((pixel + random_value) / vec2(img_size)) * 2 - 1), 0.f, 1.f));
+	vec2 uv = vec2(((pixel + random_value) / vec2(img_size)) * 2 - 1);
+	#ifndef VULKAN
+	uv.y = -uv.y;
+	#endif
+    vec3 precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
 
     uvec2 c_counters      = reset != 0 ? imageLoad(counter_cache, pixel).xy : uvec2(0);
     vec4  c_accumulation  = reset != 0 ? imageLoad(accumulation_cache, pixel) : vec4(0);
@@ -143,7 +151,11 @@ void main()
             random_value      = random_hammersley_2d(int(next_random() * img_size.x * img_size.y)
                                                     % (img_size.x * img_size.y),
                                                 1.f / (img_size.x * img_size.y));
-            precalc_direction = vec3(inverse_view_proj * vec4((((pixel + random_value) / vec2(img_size)) * 2 - 1), 0.f, 1.f));
+			uv = vec2(((pixel + random_value) / vec2(img_size)) * 2 - 1);
+			#ifndef VULKAN
+			uv.y = -uv.y;
+			#endif
+			precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
             c_bounce          = vec4(1);
             c_direction       = vec4(precalc_direction, 0);
             c_origin          = vec4(camera.position, 0);
@@ -192,7 +204,7 @@ void main()
     }
     // WRITE ----------------------------------------
 
-    imageStore(color_output, pixel, c_display_color);
+    color_output = c_display_color;
     imageStore(counter_cache, pixel, uvec4(c_counters, 0, 0));
     imageStore(accumulation_cache, pixel, c_accumulation);
     imageStore(bounce_cache, pixel, c_bounce);
