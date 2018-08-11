@@ -1,4 +1,5 @@
 #version 460 core
+#include "../api.glsl"
 
 layout(location = 0) in vec3 position;
 
@@ -8,7 +9,7 @@ out gl_PerVertex
 	float gl_PointSize;
 };
 
-layout(binding = 0, std140) uniform Camera
+layout(loc_gl(0) loc_vk(0, 2), std140) uniform Camera
 {
 	mat4 view;
 	mat4 proj;

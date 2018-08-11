@@ -1,8 +1,5 @@
-#define GFX_EXPOSE_APIS
-#include <gfx/gfx.hpp>
-#include <gfx/graphics/opengl/state_info.hpp>
-
-#include <opengl/opengl.hpp>
+#include <executable.hpp>
+#include <unordered_set>
 
 struct half_edge_structure
 {
@@ -39,14 +36,12 @@ struct surrounding
     surrounding operator++()
     {
         const int he_a_op = _str->half_edges.at(_index).opposite;
-        if (he_a_op == ~0u)
-        {
+        if (he_a_op == ~0u) {
             _index = ~0u;
             return *this;
         }
         _index = _str->next_index(he_a_op);
-        if (_index == _start_index || _index == ~0u)
-        {
+        if (_index == _start_index || _index == ~0u) {
             _index = ~0u;
             return *this;
         }
@@ -62,134 +57,111 @@ private:
     half_edge_structure* _str;
 };
 
-int main()
+void executable::init(gfx::context_options& opt)
 {
-    // --- Context ---
-    gfx::context_options opt;
     opt.window_title        = "[07] Meshing";
-    opt.debug               = false;
-    opt.framebuffer_samples = 1;
-    auto context            = gfx::context::create(opt);
-    context->make_current();
-    gfx::imgui imgui;
+    opt.debug               = true;
+    opt.framebuffer_samples = gfx::sample_count::x8;
+    opt.graphics_api        = gfx::gapi::vulkan;
+}
 
-    gfx::scene_file                             scene("bunny.dae");
-    half_edge_structure                         structure(scene.meshes[0].indices);
+void executable::run()
+{
+    gfx::scene_file scene("bunny.dae");
+    scene.mesh.collapse();
+    half_edge_structure                         structure(scene.mesh.indices);
     gfx::buffer<half_edge_structure::half_edge> half_edge_buffer(gfx::buffer_usage::storage, structure.half_edges);
 
-    for (int i = 0; i < scene.meshes[0].vertices.size(); ++i)
-    {
-        const int he_start                    = structure.vertices.at(i).halfedge;
-        int       he_a                        = he_start;
-        scene.meshes[0].vertices.at(i).normal = {0, 0, 0};
+    for (int i = 0; i < scene.mesh.vertices.size(); ++i) {
+        const int he_start               = structure.vertices.at(i).halfedge;
+        int       he_a                   = he_start;
+        scene.mesh.vertices.at(i).normal = {0, 0, 0};
 
         do
         {
-            const auto& vpos = scene.meshes[0].vertices.at(i).position;
+            const auto& vpos = scene.mesh.vertices.at(i).position;
             const int   he_b = structure.next_index(he_a);
 
-            const glm::vec3 ab = scene.meshes[0].vertices.at(structure.next_of(he_a).vertex).position - vpos;
-            const glm::vec3 ac = scene.meshes[0].vertices.at(structure.next_of(he_b).vertex).position - vpos;
+            const glm::vec3 ab = scene.mesh.vertices.at(structure.next_of(he_a).vertex).position - vpos;
+            const glm::vec3 ac = scene.mesh.vertices.at(structure.next_of(he_b).vertex).position - vpos;
 
             const int       he_a_op         = structure.half_edges.at(he_a).opposite;
             float           angle           = glm::acos(dot(ab, ac) / (length(ab) * length(ac)));
             const glm::vec3 triangle_normal = cross(ab, ac);
-            scene.meshes[0].vertices.at(i).normal += triangle_normal * angle;
+            scene.mesh.vertices.at(i).normal += triangle_normal * angle;
             if (he_a_op == ~0u) break;
             he_a = structure.next_index(he_a_op);
         } while (he_a != he_start && he_a != ~0u);
-        scene.meshes[0].vertices.at(i).normal = normalize(scene.meshes[0].vertices.at(i).normal);
+        scene.mesh.vertices.at(i).normal = normalize(scene.mesh.vertices.at(i).normal);
     }
+	gfx::buffer<gfx::vertex3d> mesh_vertices(gfx::buffer_usage::storage, scene.mesh.vertices);
 
-    gfx::buffer<gfx::vertex3d> mesh_vertices(gfx::buffer_usage::storage, scene.meshes[0].vertices);
+	gfx::binding_layout bindings;
+	bindings.push(gfx::binding_type::storage_buffer).push(gfx::binding_type::storage_buffer).push(gfx::binding_type::uniform_buffer);
 
-    auto mesh_input = std::make_shared<gfx::vertex_input>();
-    mesh_input->set_assembly(gfx::topology::triangle_list);
-    auto point_input = std::make_shared<gfx::vertex_input>();
-    point_input->set_assembly(gfx::topology::point_list);
-    point_input->add_attribute(0, gfx::rgb32f, 0);
-    point_input->set_binding_info(0, sizeof(glm::vec3), gfx::input_rate::vertex);
+	gfx::binding_set set(bindings);
+	set.bind(0, half_edge_buffer);
+	set.bind(1, mesh_vertices);
+	set.bind(2, *camera_buffer);
 
-    auto mesh_state                               = std::make_shared<gfx::state_info>();
-    mesh_state->rasterizer.cull                   = gfx::cull_mode::back;
-    mesh_state->multisample.sample_shading_enable = true;
-    mesh_state->multisample.samples               = gfx::sample_count::x8;
-    mesh_state->rasterizer.polygon_mode           = gfx::poly_mode::fill;
-    auto outline_state                            = std::make_shared<gfx::state_info>(*mesh_state);
-    outline_state->rasterizer.cull                = gfx::cull_mode::front;
-    auto points_state                             = std::make_shared<gfx::state_info>(*mesh_state);
-    points_state->rasterizer.cull                 = gfx::cull_mode::none;
+	gfx::pipe_state::binding_layouts layouts;
+	layouts.layouts.push_back(&bindings);
 
-    gfx::graphics_pipeline mesh_pipeline(mesh_input, mesh_state);
-    mesh_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "07_meshing/mesh.frag.spv-opengl"));
-    mesh_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "07_meshing/mesh.vert.spv-opengl"));
-    gfx::graphics_pipeline outline_pipeline(mesh_input, outline_state);
-    outline_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "07_meshing/outline.vert.spv-opengl"));
-    outline_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "07_meshing/outline.frag.spv-opengl"));
-    gfx::graphics_pipeline points_pipeline(point_input, points_state);
-    points_pipeline.attach(gfx::shader_type::vert, gfx::shader(gfx::shader_format::spirv, "07_meshing/points.vert.spv-opengl"));
-    points_pipeline.attach(gfx::shader_type::frag, gfx::shader(gfx::shader_format::spirv, "07_meshing/points.frag.spv-opengl"));
+    gfx::pipe_state::input_assembly point_assembly;
+    point_assembly.primitive_topology = gfx::topology::point_list;
 
-    struct camera_data
-    {
-        glm::mat4 view;
-        glm::mat4 proj;
-    };
-    gfx::hbuffer<camera_data> camera_buffer(1);
-    gfx::camera               camera;
-    gfx::camera_controller    controller;
+    gfx::pipe_state::rasterizer rast;
+    rast.cull = gfx::cull_mode::back;
 
-    gfx::image color_attachment(gfx::img_type::image2d, gfx::rgba16f, {1280, 720, 1}, gfx::sample_count::x8);
-    gfx::image depth_attachment(gfx::img_type::image2d, gfx::d32f, {1280, 720, 1}, gfx::sample_count::x8);
-    gfx::image resolve_attachment(gfx::img_type::image2d, gfx::rgba16f, {1280, 720, 1}, 1);
+    gfx::pipe_state state;
+	state.state_bindings = &layouts;
+    state.state_rasterizer  = &rast;
+    state.state_multisample = &msaa_state;
 
-    gl::framebuffer render_fbo;
-    glNamedFramebufferTexture(render_fbo, GL_COLOR_ATTACHMENT0, handle_cast<mygl::texture>(color_attachment), 0);
-    glNamedFramebufferTexture(render_fbo, GL_DEPTH_ATTACHMENT, handle_cast<mygl::texture>(depth_attachment), 0);
+    gfx::graphics_pipeline mesh_pipeline(state, pass_layout,
+                                         {
+                                             gfx::shader(gfx::shader_type::vert, "07_meshing/mesh.vert"),
+                                             gfx::shader(gfx::shader_type::frag, "07_meshing/mesh.frag"),
+                                         });
 
-    gl::framebuffer resolve_fbo;
-    glNamedFramebufferTexture(resolve_fbo, GL_COLOR_ATTACHMENT0, handle_cast<mygl::texture>(resolve_attachment), 0);
+	rast.cull = gfx::cull_mode::front;
+	gfx::graphics_pipeline outline_pipeline(state, pass_layout,
+		{
+			gfx::shader(gfx::shader_type::vert, "07_meshing/outline.vert"),
+			gfx::shader(gfx::shader_type::frag, "07_meshing/outline.frag"),
+		});
+
+	state.state_input_assembly = &point_assembly;
+	rast.cull = gfx::cull_mode::none;
+	gfx::pipe_state::vertex_input input;
+	input.attributes.emplace_back(0, 0, gfx::rgb32f, 0);
+	input.bindings.emplace_back(0, sizeof(glm::vec3));
+	state.state_vertex_input = &input;
+	gfx::graphics_pipeline points_pipeline(state, pass_layout,
+		{
+			gfx::shader(gfx::shader_type::vert, "07_meshing/points.vert"),
+			gfx::shader(gfx::shader_type::frag, "07_meshing/points.frag"),
+		});
 
     gfx::hbuffer<glm::vec3> point_buffer(50000);
-    gfx::buffer<glm::vec3>  point_buffer_device(gfx::buffer_usage::storage, 50000);
+    gfx::buffer<glm::vec3>  point_buffer_device(gfx::buffer_usage::storage | gfx::buffer_usage::vertex, 50000);
     gfx::keyboard_button    plus(GLFW_KEY_KP_ADD);
     gfx::keyboard_button    minus(GLFW_KEY_KP_SUBTRACT);
     std::vector<glm::vec3>  points;
-
-    gfx::descriptor_set main_desc;
-    main_desc.set(gfx::descriptor_type::storage_buffer, 0, half_edge_buffer);
-    main_desc.set(gfx::descriptor_type::storage_buffer, 1, mesh_vertices);
-    main_desc.set(gfx::descriptor_type::uniform_buffer, 0, camera_buffer);
-
-    gfx::commands cmd;
-
-    while (context->run())
-    {
-        imgui.new_frame();
-        render_fbo.set_drawbuffer(GL_COLOR_ATTACHMENT0);
-        render_fbo.bind();
-        render_fbo.clear(0, {0.1f, 0.1f, 0.1f, 1.f});
-        render_fbo.clear(0.f, 0);
-
-        controller.update(camera);
-        camera_buffer[0].view = glm::inverse(camera.transform_mode.matrix());
-        camera_buffer[0].proj = camera.projection_mode.matrix();
-
-        cmd.reset();
-        gfx::clear_value clear[]{glm::vec4{0.1f, 0.1f, 0.1f, 1.f}, gfx::depth_stencil{0.f, 0}};
-        cmd.begin_pass(clear, 2, mygl::framebuffer(render_fbo));
-        cmd.bind_descriptors(&main_desc, 1);
-        cmd.bind_pipeline(mesh_pipeline);
-        cmd.draw(structure.half_edges.size());
-        cmd.bind_pipeline(outline_pipeline);
-        cmd.draw(structure.half_edges.size());
+    
+    while (frame()) 
+	{
+		current_command->begin_pass(*current_framebuffer);
+		current_command->bind_pipeline(mesh_pipeline, { &set });
+		current_command->draw(structure.half_edges.size());
+		current_command->bind_pipeline(outline_pipeline);
+        current_command->draw(structure.half_edges.size());
 
         ImGui::Begin("Settings");
         static int radius = 24;
         plus.update(context->window());
         minus.update(context->window());
-        if (plus.state() == gfx::button_state::press || minus.state() == gfx::button_state::press)
-        {
+        if (plus.state() == gfx::button_state::press || minus.state() == gfx::button_state::press) {
             if (plus.state() == gfx::button_state::press)
                 ++radius;
             else
@@ -197,15 +169,12 @@ int main()
 
             std::unordered_set<uint32_t>  vertices{1};
             std::unordered_set<glm::vec3> surrounding_points;
-            for (int i = 0; i < radius; ++i)
-            {
+            for (int i = 0; i < radius; ++i) {
                 std::unordered_set<uint32_t> tmp{};
                 for (const auto& padois : vertices)
-                    for (const auto& s : surrounding(structure, padois))
-                    {
-                        const auto bla = scene.meshes[0].vertices.at(structure.next_of(s).vertex).position;
-                        if (surrounding_points.count(bla) == 0)
-                        {
+                    for (const auto& s : surrounding(structure, padois)) {
+                        const auto bla = scene.mesh.vertices.at(structure.next_of(s).vertex).position;
+                        if (surrounding_points.count(bla) == 0) {
                             surrounding_points.emplace(bla);
                             tmp.emplace(structure.next_index(s));
                         }
@@ -219,22 +188,12 @@ int main()
         ImGui::DragInt("Radius", &radius, 0.1f, 0, 1000);
         ImGui::End();
 
-        point_buffer_device.fill_from(point_buffer, 0, 0, points.size());
+		gfx::buf_copy(point_buffer_device, point_buffer, points.size());
 
-        cmd.bind_pipeline(points_pipeline);
-        cmd.bind_vertex_buffer(0, point_buffer_device);
-        cmd.draw(points.size());
-        cmd.execute();
-
-        // RESOLVE --------------------------------
-        render_fbo.set_readbuffer(GL_COLOR_ATTACHMENT0);
-        resolve_fbo.set_drawbuffer(GL_COLOR_ATTACHMENT0);
-        render_fbo.blit(resolve_fbo, 0, 0, 1280, 720, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-        resolve_fbo.set_readbuffer(GL_COLOR_ATTACHMENT0);
-        render_fbo.set_drawbuffer(GL_COLOR_ATTACHMENT0);
-
-        resolve_fbo.blit(gl::framebuffer::zero(), 0, 0, 1280, 720, 0, 0, 1280, 720, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-        imgui.render();
+		current_command->bind_pipeline(points_pipeline);
+        current_command->bind_vertex_buffer(point_buffer_device, 0);
+		current_command->draw(points.size());
+		current_command->end_pass();
     }
 }
 
@@ -246,20 +205,16 @@ half_edge_structure::half_edge_structure(const std::vector<gfx::index32>& indice
     vertices.resize(max_index);
     half_edges.resize(indices.size());
 
-    for (int i = 0; i < indices.size(); ++i)
-    {
+    for (int i = 0; i < indices.size(); ++i) {
         half_edges[i].vertex          = indices[i];
         vertices[indices[i]].halfedge = i;
         vertex_to_halfedge[indices[i]].push_back(i);
     }
 
 #pragma omp parallel for schedule(dynamic)
-    for (int begin = 0; begin < half_edges.size(); ++begin)
-    {
-        for (uint32_t end : vertex_to_halfedge[indices[next_index(begin)]])
-        {
-            if (half_edges[next_index(end)].vertex == half_edges[begin].vertex)
-            {
+    for (int begin = 0; begin < half_edges.size(); ++begin) {
+        for (uint32_t end : vertex_to_halfedge[indices[next_index(begin)]]) {
+            if (half_edges[next_index(end)].vertex == half_edges[begin].vertex) {
                 half_edges[begin].opposite = end;
                 break;
             }

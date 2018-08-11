@@ -1,4 +1,5 @@
 #version 460 core
+#include "../api.glsl"
 
 const uint invalid_edge = ~0u;
 struct point
@@ -20,17 +21,17 @@ struct vertex3d
     ivec2  metadata_uv;
 };
 
-layout(binding = 0, std430) restrict readonly buffer HalfEdges
+layout(loc_gl(0) loc_vk(0, 0), std430) restrict readonly buffer HalfEdges
 {
 	half_edge half_edges[];
 };
 
-layout(binding = 1, std430) restrict readonly buffer Vertices
+layout(loc_gl(1) loc_vk(0, 1), std430) restrict readonly buffer Vertices
 {
 	vertex3d vertices[];
 };
 
-layout(binding = 0, std140) uniform Camera
+layout(loc_gl(0) loc_vk(0, 2), std140) uniform Camera
 {
 	mat4 view;
 	mat4 proj;

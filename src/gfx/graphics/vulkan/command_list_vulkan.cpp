@@ -192,7 +192,8 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
 }
 void commands_implementation::draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)
 {
-    vkCmdDraw(_cmd, vertex_count, instance_count, base_vertex, base_instance);
+    if(vertex_count > 0)
+        vkCmdDraw(_cmd, vertex_count, instance_count, base_vertex, base_instance);
 }
 
 void commands_implementation::bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset)
@@ -217,7 +218,8 @@ void commands_implementation::bind_index_buffer(const handle& buffer, index_type
 
 void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance)
 {
-    vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
+	if(index_count > 0)
+        vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
 }
 
 void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj)
