@@ -1,4 +1,5 @@
 #version 460 core
+#include "../api.glsl"
 
 layout(points) in;
 layout(line_strip, max_vertices = 4) out;
@@ -6,13 +7,13 @@ layout(line_strip, max_vertices = 4) out;
 layout(location=0) in vec2 in_pixel[];
 
 
-layout(binding = 0) uniform Data
+layout(loc_gl(0) loc_vk(0, 1)) uniform Data
 {
     mat4 vp;
     float offset;
 };
 
-layout(binding = 0) uniform sampler2D tex;
+layout(loc_gl(0) loc_vk(0, 0)) uniform sampler2D tex;
 
 in gl_PerVertex
 {
@@ -43,7 +44,7 @@ void main()
     float val_11 = (dot(luma, color_11.rgb)-offset);
 
     pixel = in_pixel[0];
-    color = (color_00 + color_01 + color_10 + color_11) * 0.25f;
+    color = vec4(0.8f, 0.8f, 1.f, 1.f);//(color_00 + color_01 + color_10 + color_11) * 0.25f;
 
     int count = 0;
     if (val_00 * val_10 < 0)

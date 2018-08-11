@@ -1,11 +1,13 @@
 #version 460 core
 
-layout(binding = 0) uniform Data
+#include "../api.glsl"
+
+layout(loc_gl(0) loc_vk(0, 1)) uniform Data
 {
     mat4 vp;
 };
 
-layout(binding = 0) uniform sampler2D tex;
+layout(loc_gl(0) loc_vk(0, 0)) uniform sampler2D tex;
 
 out gl_PerVertex
 {
