@@ -1,12 +1,5 @@
 #version 460 core
-
-#ifdef VULKAN
-#define loc_gl(N)
-#define loc_vk(S, N) set = S, binding = N
-#else
-#define loc_gl(N) binding = N
-#define loc_vk(S, N) 
-#endif
+#include "../api.glsl"
 
 layout(location = 0) in vec2 position;
 layout(location = 1) in vec2 uv;

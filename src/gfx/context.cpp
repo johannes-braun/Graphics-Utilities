@@ -73,13 +73,15 @@ bool context::run()
     if (!_options.use_window) return _should_close;
 
     make_current();
-
 	glfwPollEvents();
 	_should_close = glfwWindowShouldClose(_window);
+    
 	if (_implementation->on_run(!_should_close))
 	{
 		if (_swapchain) _swapchain->present();
 	}
+	while(glfwGetTime() - _last_time < 1.0 / options().max_framerate)
+		glfwPollEvents();
     const double t = glfwGetTime();
     _delta         = t - _last_time;
     _last_time     = glfwGetTime();
@@ -109,7 +111,6 @@ const context_options& context::options() const noexcept
 context::context(const context_options& options) : _options(options)
 {
     glfwWindowHint(GLFW_CLIENT_API, _options.graphics_api == gapi::opengl ? GLFW_OPENGL_API : GLFW_NO_API);
-    glfwWindowHint(GLFW_SAMPLES, int(_options.framebuffer_samples));
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, _options.debug);
     glfwWindowHint(GLFW_VISIBLE, _options.use_window);
 	glfwWindowHint(GLFW_DOUBLEBUFFER, false);

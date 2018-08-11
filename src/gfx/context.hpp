@@ -17,12 +17,13 @@ struct context_options
     gapi graphics_api = gapi::opengl;
     bool debug        = true;
 
-    bool        use_window          = true;
-    std::string window_title        = "";
-    sample_count    framebuffer_samples = sample_count::x1;
-    uint32_t    framebuffer_images  = 3;
-    uint32_t    window_width        = 1280;
-    uint32_t    window_height       = 720;
+    bool         use_window          = true;
+    std::string  window_title        = "";
+    sample_count framebuffer_samples = sample_count::x1;
+    u32          framebuffer_images  = 3;
+    u32          window_width        = 1280;
+    u32          window_height       = 720;
+    u32          max_framerate       = 120;
 };
 
 namespace detail {
@@ -31,8 +32,8 @@ class context_implementation
 public:
     virtual ~context_implementation()                                           = default;
     virtual void initialize(GLFWwindow* window, const context_options& options) = 0;
-	virtual void make_current(GLFWwindow* window)                               = 0;
-	virtual bool on_run(bool open) { return open; }
+    virtual void make_current(GLFWwindow* window)                               = 0;
+    virtual bool on_run(bool open) { return open; }
 };
 std::unique_ptr<context_implementation> make_context_implementation(gapi api);
 }    // namespace detail
