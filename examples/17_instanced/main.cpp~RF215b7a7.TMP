@@ -2,6 +2,8 @@
 #include <gfx/file/json.hpp>
 #include <random>
 
+#include <gfx/graphics/vulkan/command_list_vulkan.hpp>
+
 void executable::init(gfx::context_options& opt)
 {
     opt.window_title        = "[17] Instanced";
@@ -13,30 +15,26 @@ void executable::init(gfx::context_options& opt)
 
 struct instance_proto : gfx::drawcmd_indexed
 {
-    instance_proto(const gfx::scene_file& file, const gfx::image_file& logo)
+    instance_proto(const gfx::scene_file& file)
           : gfx::drawcmd_indexed(file.mesh.indices.size())
           , vertex_count(file.mesh.vertices.size())
           , transform(glm::rotate(glm::radians(90.f), glm::vec3(1, 0, 0)))
-          , logo(gfx::himage(gfx::rgba8unorm, logo))
-          , logo_view(this->logo.view(gfx::imgv_type::image2d))
     {}
 
-    std::string     name;
-    float           speed          = 1.f;
-    float           rotation_speed = 1.f;
-    float           acceleration   = 1.f;
-    gfx::u32        vertex_count   = 0;
-    glm::mat4       transform;
-    gfx::bounds3f   bounds;
-    gfx::image      logo;
-    gfx::image_view logo_view;
+	std::string name;
+    float       speed        = 1.f;
+    float       rotation_speed        = 1.f;
+	float acceleration = 1.f;
+    gfx::u32  vertex_count = 0;
+    glm::mat4 transform;
+	gfx::bounds3f bounds;
 };
 
 struct instance : gfx::drawcmd_indexed
 {
     alignas(16) glm::mat4 matrix;
     alignas(16) glm::vec3 albedo;
-    alignas(16) gfx::bounds3f bounds;
+	alignas(16) gfx::bounds3f bounds;
 
     instance& operator=(const instance_proto& prototype)
     {
@@ -51,8 +49,8 @@ struct instance : gfx::drawcmd_indexed
 
 struct instance_component : gfx::ecs::component<instance_component>
 {
-    glm::vec3             albedo;
-    int                   buffer_index;
+    glm::vec3       albedo;
+    int             buffer_index;
     const instance_proto* prototype;
 };
 
@@ -68,11 +66,11 @@ struct target_component : gfx::ecs::component<target_component>
 
 struct speed_component : gfx::ecs::component<speed_component>
 {
-    glm::vec3 velocity{0, 0, 0};
-    glm::vec3 acceleration{0, 0, 0};
+	glm::vec3 velocity {0, 0, 0};
+	glm::vec3 acceleration {0, 0, 0};
 
-    glm::vec3 angular_velocity{0, 0, 0};
-    glm::vec3 angular_acceleration{0, 0, 0};
+	glm::vec3 angular_velocity{ 0, 0, 0 };
+	glm::vec3 angular_acceleration{ 0, 0, 0 };
 };
 
 class movement_system : public gfx::ecs::system
@@ -87,16 +85,16 @@ public:
     void update(double delta, gfx::ecs::component_base** components) const override
     {
         constexpr float movement_drag = 0.001f;
-        constexpr float rotation_drag = 0.001f;
+		constexpr float rotation_drag = 0.001f;
 
-        auto& tf = components[0]->as<transform_component>();
-        auto& sp = components[1]->as<speed_component>();
+        auto& tf  = components[0]->as<transform_component>();
+        auto& sp  = components[1]->as<speed_component>();
+        
+        sp.velocity = (1-movement_drag) * sp.velocity + sp.acceleration * delta;
+		tf.value.position += sp.velocity * delta;
 
-        sp.velocity = (1 - movement_drag) * sp.velocity + sp.acceleration * delta;
-        tf.value.position += sp.velocity * delta;
-
-        sp.angular_velocity = glm::mod((1 - rotation_drag) * sp.angular_velocity + sp.angular_acceleration * delta, glm::radians(360.f));
-        tf.value.rotation *= glm::quat(sp.angular_velocity * delta);
+		sp.angular_velocity = glm::mod((1-rotation_drag) * sp.angular_velocity + sp.angular_acceleration * delta, glm::radians(360.f));
+		tf.value.rotation *= glm::quat(sp.angular_velocity * delta);
     }
 
 private:
@@ -108,94 +106,92 @@ class flying_in_circles_system : public gfx::ecs::system
 {
 public:
     flying_in_circles_system()
-    {
-        add_component_type(transform_component::id);
-        add_component_type(speed_component::id);
-        add_component_type(target_component::id);
-        add_component_type(instance_component::id);
-    }
+	{
+		add_component_type(transform_component::id);
+		add_component_type(speed_component::id);
+		add_component_type(target_component::id);
+		add_component_type(instance_component::id);
+	}
 
-    void update(double delta, gfx::ecs::component_base** components) const override
-    {
-        auto& tf = components[0]->as<transform_component>();
-        auto& sp = components[1]->as<speed_component>();
-        auto& tg = components[2]->as<target_component>();
-        auto& in = components[3]->as<instance_component>();
+	void update(double delta, gfx::ecs::component_base** components) const override
+	{
+		auto& tf  = components[0]->as<transform_component>();
+		auto& sp  = components[1]->as<speed_component>();
+		auto& tg  = components[2]->as<target_component>();
+		auto& in  = components[3]->as<instance_component>();
 
-        const auto fwd = tf.value.forward();
-        const auto tgt = tg.target.position;
-        const auto dir = normalize(tgt - tf.value.position);
+		const auto fwd = tf.value.forward();
+		const auto tgt = tg.target.position;
+		const auto dir = normalize(tgt - tf.value.position);
 
-        if (distance(tgt, tf.value.position) < 10.f)
-            tg.target.position = {500.f * dist(gen) - 250.f, 100, 500.f * dist(gen) - 250.f};
-        else
-        {
-            tf.value.rotation =
-                glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed * delta);
-            sp.acceleration = in.prototype->acceleration * fwd;
-            if (length(sp.velocity) > in.prototype->speed) sp.velocity = normalize(sp.velocity) * in.prototype->speed;
-            sp.acceleration -= 20.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.velocity);
-            sp.acceleration -= 20.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);
-        }
-    }
+		if (distance(tgt, tf.value.position) < 10.f)
+			tg.target.position ={ 500.f * dist(gen) - 250.f, 300, 500.f * dist(gen) - 250.f };
+		else
+		{
+			tf.value.rotation = glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed*delta);
+			sp.acceleration = in.prototype->acceleration * fwd;
+			if (length(sp.velocity) > in.prototype->speed)
+				sp.velocity = normalize(sp.velocity) * in.prototype->speed;
+			sp.acceleration -= 12000.f * (-(dot(tf.value.left(), dir))) * tf.value.left()*delta;
+			sp.acceleration -= 12000.f * (-(dot(tf.value.up(), dir))) * tf.value.up()*delta;
+		}
+	}
 
 private:
-    mutable std::mt19937                          gen;
-    mutable std::uniform_real_distribution<float> dist;
+	mutable std::mt19937                          gen;
+	mutable std::uniform_real_distribution<float> dist;
 };
 
 class prototype_renderer
 {
 public:
     prototype_renderer()
-    {
-        std::ifstream  protos_file(gfx::file("protos.json"));
-        nlohmann::json protos;
-        protos_file >> protos;
-        std::ifstream  buildings_file(gfx::file("buildings.json"));
-        nlohmann::json buildings;
-        buildings_file >> buildings;
+	{
+		std::ifstream  protos_file(gfx::file("protos.json"));
+		nlohmann::json protos;
+		protos_file >> protos;
+		std::ifstream  buildings_file(gfx::file("buildings.json"));
+		nlohmann::json buildings;
+		buildings_file >> buildings;
 
-        gfx::mesh3d combined;
-        for (const auto& json : protos) {
-            const auto name           = json["name"].get<std::string>();
-            const auto path           = json["mesh"].get<std::string>();
-            const auto speed          = json["speed"].get<float>();
-            const auto acceleration   = json["acceleration"].get<float>();
-            const auto rotation_speed = json["rotation_speed"].get<float>();
-			const auto logo = json["logo"].get<std::string>();
+		gfx::mesh3d                 combined;
+		for (const auto& json : protos) {
+			const auto name  = json["name"].get<std::string>();
+			const auto path  = json["mesh"].get<std::string>();
+			const auto speed = json["speed"].get<float>();
+			const auto acceleration = json["acceleration"].get<float>();
+			const auto rotation_speed = json["rotation_speed"].get<float>();
 
-            gfx::scene_file mesh(path);
-            mesh.mesh.collapse();
-            instance_proto& proto = _vehicle_prototypes.emplace_back(mesh, gfx::image_file(logo, gfx::bits::b8, 4));
-            proto.name            = name;
-            proto.speed           = speed;
-            proto.acceleration    = acceleration;
-            proto.rotation_speed  = rotation_speed;
-            proto.base_vertex     = combined.vertices.size();
-            proto.base_index      = combined.indices.size();
-            proto.bounds          = mesh.mesh.compute_bounds();
-            combined += mesh.mesh;
-        }
-        for (const auto& json : buildings) {
-            const auto name = json["name"].get<std::string>();
-            const auto path = json["mesh"].get<std::string>();
-			const auto logo = json["logo"].get<std::string>();
+			gfx::scene_file mesh(path);
+			mesh.mesh.collapse();
+			instance_proto& proto = _vehicle_prototypes.emplace_back(mesh);
+			proto.name           = name;
+			proto.speed           = speed;
+			proto.acceleration  = acceleration;
+			proto.rotation_speed  = rotation_speed;
+			proto.base_vertex     = combined.vertices.size();
+			proto.base_index      = combined.indices.size();
+			proto.bounds = mesh.mesh.compute_bounds();
+			combined += mesh.mesh;
+		}
+		for (const auto& json : buildings) {
+			const auto name = json["name"].get<std::string>();
+			const auto path = json["mesh"].get<std::string>();
 
-            gfx::scene_file mesh(path);
-            mesh.mesh.collapse();
-            instance_proto& proto = _building_prototypes.emplace_back(mesh, gfx::image_file(logo, gfx::bits::b8, 4));
-            proto.name            = name;
-            proto.speed           = 0;
-            proto.base_vertex     = combined.vertices.size();
-            proto.base_index      = combined.indices.size();
-            proto.bounds          = mesh.mesh.compute_bounds();
-            combined += mesh.mesh;
-        }
+			gfx::scene_file mesh(path);
+			mesh.mesh.collapse();
+			instance_proto& proto = _building_prototypes.emplace_back(mesh);
+			proto.name            = name;
+			proto.speed           = 0;
+			proto.base_vertex     = combined.vertices.size();
+			proto.base_index      = combined.indices.size();
+			proto.bounds = mesh.mesh.compute_bounds();
+			combined += mesh.mesh;
+		}
 
-        _vbo = gfx::buffer<gfx::vertex3d>(gfx::buffer_usage::vertex, combined.vertices);
-        _ibo = gfx::buffer<gfx::index32>(gfx::buffer_usage::index, combined.indices);
-    }
+		_vbo = gfx::buffer<gfx::vertex3d>(gfx::buffer_usage::vertex, combined.vertices);
+		_ibo = gfx::buffer<gfx::index32>(gfx::buffer_usage::index, combined.indices);
+	}
 
     void submit(const instance& i) { _instances.push_back(i); }
 
@@ -208,32 +204,34 @@ public:
 
     void clear() { _instances.clear(); }
 
-    const instance_proto* by_name(const std::string& name) const noexcept
+	const instance_proto* by_name(const std::string& name) const noexcept
     {
-        if (const auto it =
-                std::find_if(_vehicle_prototypes.begin(), _vehicle_prototypes.end(), [&](const auto& proto) { return proto.name == name; });
-            it != _vehicle_prototypes.end())
+        if(const auto it = std::find_if(_vehicle_prototypes.begin(), _vehicle_prototypes.end(), [&](const auto& proto)
         {
-            return &*it;
-        }
-        if (const auto it = std::find_if(_building_prototypes.begin(), _building_prototypes.end(),
-                                         [&](const auto& proto) { return proto.name == name; });
-            it != _building_prototypes.end())
+			return proto.name == name;
+		}); it != _vehicle_prototypes.end())
         {
-            return &*it;
+			return &*it;
         }
-        return nullptr;
+		if(const auto it = std::find_if(_building_prototypes.begin(), _building_prototypes.end(), [&](const auto& proto)
+		{
+			return proto.name == name;
+		}); it != _building_prototypes.end())
+		{
+			return &*it;
+		}
+		return nullptr;
     }
-    const std::vector<instance_proto>& vehicle_prototypes() const noexcept { return _vehicle_prototypes; }
-    const std::vector<instance_proto>& building_prototypes() const noexcept { return _building_prototypes; }
-    const gfx::hbuffer<instance>&      instances() const noexcept { return _instances; };
+	const std::vector<instance_proto>& vehicle_prototypes() const noexcept { return _vehicle_prototypes; }
+	const std::vector<instance_proto>& building_prototypes() const noexcept { return _building_prototypes; }
+	const gfx::hbuffer<instance>&     instances() const noexcept { return _instances; };
 
 private:
-    std::vector<instance_proto> _vehicle_prototypes;
-    std::vector<instance_proto> _building_prototypes;
-    gfx::buffer<gfx::vertex3d>  _vbo{gfx::buffer_usage::vertex};
-    gfx::buffer<gfx::index32>   _ibo{gfx::buffer_usage::index};
-    gfx::hbuffer<instance>      _instances;
+	std::vector<instance_proto> _vehicle_prototypes;
+	std::vector<instance_proto> _building_prototypes;
+    gfx::buffer<gfx::vertex3d> _vbo{gfx::buffer_usage::vertex};
+    gfx::buffer<gfx::index32>  _ibo{gfx::buffer_usage::index};
+    gfx::hbuffer<instance>     _instances;
 };
 
 class prototype_system : public gfx::ecs::system
@@ -268,17 +266,17 @@ void executable::run()
 {
     gfx::ecs::ecs ecs;
 
-    movement_system          movement;
-    flying_in_circles_system circle_flyer;
-    gfx::ecs::system_list    movement_systems;
+    movement_system       movement;
+	flying_in_circles_system circle_flyer;
+    gfx::ecs::system_list movement_systems;
     movement_systems.add(movement);
     movement_systems.add(circle_flyer);
 
-    prototype_renderer    renderer;
-    gfx::ecs::system_list graphics_systems;
-    prototype_system      proto_system(renderer);
-    graphics_systems.add(proto_system);
-
+	prototype_renderer renderer;
+	gfx::ecs::system_list graphics_systems;
+	prototype_system proto_system(renderer);
+	graphics_systems.add(proto_system);
+    
     gfx::himage        heightmap_local(gfx::r8unorm, "heightmap.png");
     gfx::image         heightmap(heightmap_local);
     const auto         heightmap_view = heightmap.view(gfx::imgv_type::image2d);
@@ -287,30 +285,24 @@ void executable::run()
     const auto terrain_height = [&](glm::vec2 xz) {
         xz += glm::vec2(chunk_size * chunk_count) / 2.f;
         xz /= chunk_size * chunk_count;
-        return 220 * heightmap_local.load_bilinear(glm::vec3(xz * glm::vec2(heightmap_local.extents().vec), 0)).r;
+        return 220 * heightmap_local.load(glm::uvec3(xz * glm::vec2(heightmap_local.extents().vec), 0)).r;
     };
 
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
     std::vector<gfx::ecs::unique_entity>  entities;
-    const auto                            spawn_from_prototype = [&](const instance_proto* prototype, const glm::vec3 at) {
+    const auto                            spawn_random_vehicle = [&]() {
         instance_component inst;
         inst.albedo       = glm::vec3(dist(gen), dist(gen), dist(gen));
         inst.buffer_index = entities.size();
-        inst.prototype    = prototype;
+        inst.prototype = &renderer.vehicle_prototypes()[std::clamp(size_t(dist(gen) * renderer.vehicle_prototypes().size()), 0ull, renderer.vehicle_prototypes().size())];
         transform_component tf;
-        tf.value = gfx::transform(at);
+        tf.value = gfx::transform(glm::vec3(dist(gen), dist(gen), dist(gen)) * 50.f);
         target_component tgt;
         tgt.target = tf.value;
         speed_component sp;
         entities.push_back(ecs.create_entity_unique(inst, tf, tgt, sp));
     };
-    const auto spawn_random_vehicle = [&]() {
-        spawn_from_prototype(&renderer.vehicle_prototypes()[std::clamp(size_t(dist(gen) * renderer.vehicle_prototypes().size()), 0ull,
-                                                                       renderer.vehicle_prototypes().size())],
-                             glm::vec3(dist(gen), dist(gen), dist(gen)) * 50.f);
-    };
-
     for (int i = 0; i < 200; ++i) {
         spawn_random_vehicle();
     }
@@ -319,16 +311,16 @@ void executable::run()
         instance_component inst;
         inst.albedo       = glm::vec3(dist(gen), dist(gen), dist(gen));
         inst.buffer_index = entities.size();
-        inst.prototype    = &renderer.building_prototypes()[std::clamp(size_t(dist(gen) * renderer.building_prototypes().size()), 0ull,
-                                                                    renderer.building_prototypes().size())];
+        inst.prototype = &renderer.building_prototypes()[std::clamp(size_t(dist(gen) * renderer.building_prototypes().size()), 0ull, renderer.building_prototypes().size())];
         transform_component tf;
-        glm::vec2           loc = 1000.f * glm::vec2(dist(gen), dist(gen));
+        glm::vec2           loc = 500.f * glm::vec2(dist(gen), dist(gen));
         tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + terrain_height(loc), loc.y));
         entities.push_back(ecs.create_entity_unique(inst, tf));
     };
-    for (int i = 0; i < 1500; ++i) {
+    for (int i = 0; i < 80; ++i) {
         spawn_random_building();
     }
+
 
 
     gfx::pipe_state::vertex_input mesh_input;
@@ -356,7 +348,7 @@ void executable::run()
     };
     gfx::graphics_pipeline mesh_pipeline(mesh_state, pass_layout, shaders);
 
-    gfx::compute_pipeline cull_pipeline(layouts, gfx::shader(gfx::shader_type::comp, "17_instanced/cull.comp"));
+	gfx::compute_pipeline cull_pipeline(layouts, gfx::shader(gfx::shader_type::comp, "17_instanced/cull.comp"));
 
     struct terrain_chunk
     {
@@ -392,6 +384,7 @@ void executable::run()
     gfx::pipe_state::input_assembly terrain_assembly;
     terrain_assembly.primitive_topology = gfx::topology::patch_list;
     gfx::pipe_state::rasterizer terrain_rasterizer;
+    terrain_rasterizer.cull         = gfx::cull_mode::back;
     terrain_rasterizer.polygon_mode = gfx::poly_mode::fill;
     gfx::pipe_state terrain_state;
     terrain_state.state_rasterizer     = &terrain_rasterizer;
@@ -428,34 +421,15 @@ void executable::run()
         }
         ImGui::Value("Instances", int(renderer.instances().size()));
         ImGui::Value("Framerate", 1.f / float(context->delta()));
-		ImGui::Separator();
-
-        for(auto& proto : renderer.vehicle_prototypes())
-        {
-			ImGui::PushID(proto.name.c_str());
-			ImGui::Image(&proto.logo_view, ImVec2(64, 64));
-			ImGui::SameLine();
-			ImGui::Text(proto.name.c_str());
-			ImGui::SameLine();
-            if(ImGui::Button("Spawn"))
-            {
-				spawn_from_prototype(&proto, camera.transform_mode.position + camera.transform_mode.forward() * 8.f);
-            }
-			ImGui::PopID();
-        }
-
         ImGui::End();
-
-		camera.transform_mode.position.y = terrain_height({ camera.transform_mode.position.x, camera.transform_mode.position.z }) + 1.8f;
-		current_command->update_buffer(*camera_buffer, 0, camera.info());
 
         renderer.clear();
         ecs.update(context->delta(), movement_systems);
-        ecs.update(context->delta(), graphics_systems);
+		ecs.update(context->delta(), graphics_systems);
         mesh_sets[context->swapchain()->current_image()].bind(1, renderer.instances());
 
-        current_command->bind_pipeline(cull_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
-        current_command->dispatch((renderer.instances().size() + 31) / 32);
+		current_command->bind_pipeline(cull_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
+		current_command->dispatch((renderer.instances().size() + 31) / 32);
 
         current_command->begin_pass(*current_framebuffer);
         current_command->bind_pipeline(mesh_pipeline, {&mesh_sets[context->swapchain()->current_image()]});

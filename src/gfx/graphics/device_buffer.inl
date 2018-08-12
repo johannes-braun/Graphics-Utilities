@@ -44,6 +44,12 @@ typename device_buffer<T>::size_type device_buffer<T>::capacity() const noexcept
 }
 
 template<typename T>
+typename device_buffer<T>::size_type device_buffer<T>::size() const noexcept
+{
+    return capacity();
+}
+
+template<typename T>
 void device_buffer<T>::operator>>(const host_buffer<T>& buffer) const
 {
     copy_to(buffer, 0, 0, std::min<size_type>(buffer.size(), capacity()));
@@ -144,6 +150,85 @@ void device_buffer<T>::copy_to(const device_buffer& buffer, const difference_typ
 
     implementation()->copy(&*implementation(), &*buffer.implementation(), src_offset * type_size, dst_offset * type_size,
                            count * type_size, f);
+}
+
+
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
+{
+	constexpr static const char* invalid_argument_message = "Selected copy range does not fit into destination buffer.";
+
+	if constexpr (is_host_buffer<BufSrc> && is_device_buffer<BufDst>)
+	{
+		switch(behavior)
+		{
+		case buf_copy_behavior::resize_if_larger: 
+			if (dst.capacity() + dst_offset < src.size() + src_offset)
+				dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::resize_always: 
+			dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::throw_if_larger:
+			if (dst.capacity() + dst_offset < src.size() + src_offset)
+				throw std::invalid_argument(invalid_argument_message);
+			break;
+		}
+		dst.fill_from(src, src_offset, dst_offset, count, f);
+	}
+	else if constexpr (is_device_buffer<BufSrc> && is_device_buffer<BufDst>)
+	{
+		switch(behavior)
+		{
+		case buf_copy_behavior::resize_if_larger: 
+			if (dst.capacity() + dst_offset < src.capacity() + src_offset)
+				dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::resize_always: 
+			dst.reallocate(count + dst_offset);
+			break;
+		case buf_copy_behavior::throw_if_larger:
+			if (dst.capacity() + dst_offset < src.capacity() + src_offset)
+				throw std::invalid_argument(invalid_argument_message);
+			break;
+		}
+		src.copy_to(dst, src_offset, dst_offset, count, f);
+	}
+	else if constexpr (is_device_buffer<BufSrc> && is_host_buffer<BufDst>)
+	{
+		switch(behavior)
+		{
+		case buf_copy_behavior::resize_if_larger: 
+			if (dst.size() + dst_offset < src.capacity() + src_offset)
+				dst.resize(count + dst_offset);
+			break;
+		case buf_copy_behavior::resize_always: 
+			dst.resize(count + dst_offset);
+			break;
+		case buf_copy_behavior::throw_if_larger:
+			if (dst.size() + dst_offset < src.capacity() + src_offset)
+				throw std::invalid_argument(invalid_argument_message);
+			break;
+		}
+		src.copy_to(dst, src_offset, dst_offset, count, f);
+	}
+}
+
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
+{
+	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, src_offset, dst_offset, f);
+}
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f)
+{
+	buf_copy(behavior, dst, src, count, 0, 0, f);
+}
+
+template<typename BufDst, typename BufSrc, typename>
+void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f)
+{
+	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, f);
 }
 }    // namespace v1
 }    // namespace gfx

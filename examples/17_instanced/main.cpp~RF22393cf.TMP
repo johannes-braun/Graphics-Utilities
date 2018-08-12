@@ -2,6 +2,8 @@
 #include <gfx/file/json.hpp>
 #include <random>
 
+#include <gfx/graphics/vulkan/command_list_vulkan.hpp>
+
 void executable::init(gfx::context_options& opt)
 {
     opt.window_title        = "[17] Instanced";
@@ -127,15 +129,15 @@ public:
         const auto dir = normalize(tgt - tf.value.position);
 
         if (distance(tgt, tf.value.position) < 10.f)
-            tg.target.position = {500.f * dist(gen) - 250.f, 100, 500.f * dist(gen) - 250.f};
+            tg.target.position = {500.f * dist(gen) - 250.f, 300, 500.f * dist(gen) - 250.f};
         else
         {
             tf.value.rotation =
                 glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed * delta);
             sp.acceleration = in.prototype->acceleration * fwd;
             if (length(sp.velocity) > in.prototype->speed) sp.velocity = normalize(sp.velocity) * in.prototype->speed;
-            sp.acceleration -= 20.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.velocity);
-            sp.acceleration -= 20.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);
+            sp.acceleration -= 12000.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta;
+            sp.acceleration -= 12000.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta;
         }
     }
 
@@ -287,7 +289,7 @@ void executable::run()
     const auto terrain_height = [&](glm::vec2 xz) {
         xz += glm::vec2(chunk_size * chunk_count) / 2.f;
         xz /= chunk_size * chunk_count;
-        return 220 * heightmap_local.load_bilinear(glm::vec3(xz * glm::vec2(heightmap_local.extents().vec), 0)).r;
+        return 220 * heightmap_local.load(glm::uvec3(xz * glm::vec2(heightmap_local.extents().vec), 0)).r;
     };
 
     std::mt19937                          gen;
@@ -322,11 +324,11 @@ void executable::run()
         inst.prototype    = &renderer.building_prototypes()[std::clamp(size_t(dist(gen) * renderer.building_prototypes().size()), 0ull,
                                                                     renderer.building_prototypes().size())];
         transform_component tf;
-        glm::vec2           loc = 1000.f * glm::vec2(dist(gen), dist(gen));
+        glm::vec2           loc = 500.f * glm::vec2(dist(gen), dist(gen));
         tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + terrain_height(loc), loc.y));
         entities.push_back(ecs.create_entity_unique(inst, tf));
     };
-    for (int i = 0; i < 1500; ++i) {
+    for (int i = 0; i < 80; ++i) {
         spawn_random_building();
     }
 
@@ -392,6 +394,7 @@ void executable::run()
     gfx::pipe_state::input_assembly terrain_assembly;
     terrain_assembly.primitive_topology = gfx::topology::patch_list;
     gfx::pipe_state::rasterizer terrain_rasterizer;
+    terrain_rasterizer.cull         = gfx::cull_mode::back;
     terrain_rasterizer.polygon_mode = gfx::poly_mode::fill;
     gfx::pipe_state terrain_state;
     terrain_state.state_rasterizer     = &terrain_rasterizer;
@@ -432,22 +435,12 @@ void executable::run()
 
         for(auto& proto : renderer.vehicle_prototypes())
         {
-			ImGui::PushID(proto.name.c_str());
-			ImGui::Image(&proto.logo_view, ImVec2(64, 64));
+			ImGui::Image(&proto.logo_view, ImVec2(24, 24));
 			ImGui::SameLine();
 			ImGui::Text(proto.name.c_str());
-			ImGui::SameLine();
-            if(ImGui::Button("Spawn"))
-            {
-				spawn_from_prototype(&proto, camera.transform_mode.position + camera.transform_mode.forward() * 8.f);
-            }
-			ImGui::PopID();
         }
 
         ImGui::End();
-
-		camera.transform_mode.position.y = terrain_height({ camera.transform_mode.position.x, camera.transform_mode.position.z }) + 1.8f;
-		current_command->update_buffer(*camera_buffer, 0, camera.info());
 
         renderer.clear();
         ecs.update(context->delta(), movement_systems);

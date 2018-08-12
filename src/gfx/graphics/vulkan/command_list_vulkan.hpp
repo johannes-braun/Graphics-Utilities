@@ -33,9 +33,11 @@ public:
     void bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset) override;
     void bind_index_buffer(const handle& buffer, index_type index, i64 offset) override;
     void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) override;
+	void draw_indirect(const handle& buffer, u32 count, u32 stride, u32 first, bool indexed) override;
 
     void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) override;
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors);
+	void update_buffer(const handle& buffer, u32 offset, u32 size, const void* data) override;
 
 	handle api_handle() { return VkCommandBuffer(_cmd); }
 

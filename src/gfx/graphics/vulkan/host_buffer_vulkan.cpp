@@ -46,6 +46,7 @@ host_buffer_implementation::allocation host_buffer_implementation::allocate(size
 void host_buffer_implementation::deallocate(const allocation& alloc)
 {
     if (alloc.handle.has_value()) {
+		vkDeviceWaitIdle(_device);
         --_alloc_dealloc;
         auto && [ buffer, last_alloc ] = std::any_cast<std::pair<VkBuffer, VmaAllocation>>(alloc.handle);
 		vmaDestroyBuffer(_allocator, buffer, last_alloc);

@@ -220,6 +220,13 @@ void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, 
     if (index_count > 0) vkCmdDrawIndexed(_cmd, index_count, instance_count, base_index, base_vertex, base_instance);
 }
 
+void commands_implementation::draw_indirect(const handle& buffer, u32 count, u32 stride, u32 first, bool indexed)
+{
+	const auto h = std::any_cast<VkBuffer>(buffer);
+	decltype(&vkCmdDrawIndirect) x[]{ &vkCmdDrawIndirect, &vkCmdDrawIndexedIndirect };
+	x[int(indexed)](_cmd, h, first * stride, count, stride);
+}
+
 void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)
 {
     assert(_last_gpipeline || _last_cpipeline);
@@ -361,6 +368,11 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
     if (!sci.empty()) {
         vkCmdSetScissor(_cmd, first, sci.size(), sci.data());
     }
+}
+
+void commands_implementation::update_buffer(const handle& buffer, u32 offset, u32 size, const void* data)
+{
+	vkCmdUpdateBuffer(_cmd, std::any_cast<VkBuffer>(buffer), offset, size, data);
 }
 
 }    // namespace vulkan

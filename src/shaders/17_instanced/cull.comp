@@ -1,0 +1,78 @@
+#version 460 core
+#include "../api.glsl"
+
+layout(local_size_x = 32) in;
+
+layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
+{
+	mat4 view;
+	mat4 proj;
+	vec3 pos;
+} camera;
+
+struct instance
+{
+	uint index_count;
+	uint instance_count;
+	uint base_index;
+	uint base_vertex;
+	uint base_instance;
+
+	mat4 model;
+	vec4 albedo;
+	vec4 bounds[2];
+};
+
+layout(loc_gl(0) loc_vk(0, 1), std430) restrict buffer Instances
+{
+	instance instances[];
+};
+
+const float margins[3] = {0, 0, 0};
+
+void main() 
+{
+    uint index = uint(gl_GlobalInvocationID.x);
+    if(index >= instances.length())
+        return;
+
+//	if(camera.do_cull == 0)
+//	{
+//		instances[index].instance_count = 1;
+//		return;
+//	}
+
+    mat4 mvp = camera.proj * camera.view * instances[index].model;
+
+    vec4 corners[8];
+    for(uint corner = 0; corner < 8; ++corner)
+    {
+        const uint factor_x = (corner & (1<<0));
+        const uint factor_y = (corner & (1<<1)) >> 1;
+        const uint factor_z = (corner & (1<<2)) >> 2;
+        corners[corner]     = mvp * vec4(instances[index].bounds[factor_x].x,
+                                     instances[index].bounds[factor_y].y,
+                                     instances[index].bounds[factor_z].z,
+                                          1);
+        corners[corner].z = corners[corner].z * 2.f - 1.f;
+    }
+
+    for(int plane = 0; plane < 6; ++plane)
+    {
+        bool outside_plane = true;
+        for(uint corner = 0; corner < 8; ++corner)
+        {
+            const float sign = float(plane / 3) * 2.f - 1.f;
+            if(sign < 0)
+                outside_plane    = outside_plane && (corners[corner][plane % 3] > corners[corner].w);
+            else
+                outside_plane    = outside_plane && (corners[corner][plane % 3] < -corners[corner].w);
+        }
+        if(outside_plane)
+        {
+            instances[index].instance_count = 0;
+            return;
+        }
+    }
+    instances[index].instance_count = 1;
+}

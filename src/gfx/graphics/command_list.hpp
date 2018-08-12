@@ -23,6 +23,31 @@ enum class index_type
 };
 class commands;
 
+struct drawcmd_indexed
+{
+	drawcmd_indexed() = default;
+	drawcmd_indexed(u32 index_count, u32 instance_count = 1, u32 base_index = 0, u32 base_vertex = 0, u32 base_instance = 0)
+		: index_count(index_count), instance_count(instance_count), base_index(base_index), base_vertex(base_vertex), base_instance(base_instance) {}
+
+	u32 index_count = 0;
+	u32 instance_count = 0;
+	u32 base_index = 0;
+	u32 base_vertex = 0;
+	u32 base_instance = 0;
+};
+
+struct drawcmd
+{
+	drawcmd() = default;
+	drawcmd(u32 vertex_count, u32 instance_count = 1, u32 base_vertex = 0, u32 base_instance = 0)
+		: vertex_count(vertex_count), instance_count(instance_count), base_vertex(base_vertex), base_instance(base_instance) {}
+
+	u32 vertex_count = 0;
+	u32 instance_count = 0;
+	u32 base_vertex = 0;
+	u32 base_instance = 0;
+};
+
 namespace detail {
 class commands_implementation
 {
@@ -50,8 +75,10 @@ public:
     virtual void bind_index_buffer(const handle& buffer, index_type index, i64 offset)                                 = 0;
     virtual void draw(u32 vertex_count, u32 instance_count, u32 base_vertex, u32 base_instance)                        = 0;
     virtual void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) = 0;
+	virtual void draw_indirect(const handle& buffer, u32 count, u32 stride, u32 first, bool indexed) = 0;
 
     virtual void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) = 0;
+	virtual void update_buffer(const handle& buffer, u32 offset, u32 size, const void* data) = 0;
 
     virtual void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) = 0;
 
@@ -62,101 +89,58 @@ public:
 class commands : public impl::implements<detail::commands_implementation>
 {
 public:
-    commands(commands_type type) { implementation()->initialize(type); }
+    commands(commands_type type);
 
-    void reset() { implementation()->reset(); }
-    void begin() { implementation()->begin(); }
-    void end() { implementation()->end(); }
+    void reset() const;
+    void begin() const;
+    void end() const;
 
-    void execute() { implementation()->execute(nullptr); }
-	void execute(fence& f) { implementation()->execute(&f); }
-	void execute_sync_after(const commands& cmd) { implementation()->execute_sync_after(cmd, nullptr); }
-	void execute_sync_after(const commands& cmd, fence& f) { implementation()->execute_sync_after(cmd, &f); }
+    void execute() const;
+    void execute(fence& f) const;
+    void execute_sync_after(const commands& cmd) const;
+    void execute_sync_after(const commands& cmd, fence& f) const;
 
-    void bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings = {})
-    {
-        implementation()->bind_pipeline(p, bindings);
-    }
-    void dispatch(u32 x, u32 y = 1, u32 z = 1) { implementation()->dispatch(x, y, z); }
+    void bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings = {}) const;
+    void dispatch(u32 x, u32 y = 1, u32 z = 1) const;
 
-    void begin_pass(const framebuffer& fbo, std::optional<rect2f> render_area = {}) { implementation()->begin_pass(fbo, render_area); }
-    void end_pass() { implementation()->end_pass(); }
+    void begin_pass(const framebuffer& fbo, std::optional<rect2f> render_area = {}) const;
+    void end_pass() const;
 
-    void bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings = {})
-    {
-        implementation()->bind_pipeline(p, bindings);
-    }
-    template<typename T>
-    void bind_vertex_buffer(const device_buffer<T>& buffer, u32 binding, i64 offset = 0)
-    {
-        implementation()->bind_vertex_buffer(buffer.api_handle(), binding, offset);
-    }
-    template<typename T>
-    void bind_index_buffer(const device_buffer<T>& buffer, index_type index, i64 offset = 0)
-    {
-        implementation()->bind_index_buffer(buffer.api_handle(), index, offset);
-    }
-    template<typename T>
-    void bind_vertex_buffer(const host_buffer<T>& buffer, u32 binding, i64 offset = 0)
-    {
-        implementation()->bind_vertex_buffer(buffer.api_handle(), binding, offset);
-    }
-    template<typename T>
-    void bind_index_buffer(const host_buffer<T>& buffer, index_type index, i64 offset = 0)
-    {
-        implementation()->bind_index_buffer(buffer.api_handle(), index, offset);
-    }
-    void draw(u32 vertex_count, u32 instance_count = 1, u32 base_vertex = 0, u32 base_instance = 0)
-    {
-        implementation()->draw(vertex_count, instance_count, base_vertex, base_instance);
-    }
-    void draw_indexed(u32 index_count, u32 instance_count = 1, u32 base_index = 0, u32 base_vertex = 0, u32 base_instance = 0)
-    {
-        implementation()->draw_indexed(index_count, instance_count, base_index, base_vertex, base_instance);
-    }
+    void bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings = {}) const;
+	void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) const;
 
-    template<typename T>
-    void push_binding(u32 set, u32 binding, binding_type type, const device_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
-    {
-        push_binding(set, binding, 0, type, buffer, count, first);
-    }
-    template<typename T>
-    void push_binding(u32 set, u32 binding, binding_type type, const host_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
-    {
-        push_binding(set, binding, 0, type, buffer, count, first);
-    }
-    void push_binding(u32 set, u32 binding, binding_type type, const image_view& view, const sampler& sampler)
-    {
-        push_binding(set, binding, 0, type, view, sampler);
-    }
-    void push_binding(u32 set, u32 binding, binding_type type, const image_view& view) { push_binding(set, binding, 0, type, view); }
-    template<typename T>
-    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const device_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
-    {
-        implementation()->push_binding(set, binding, array_element, type, &buffer.implementation(), first * sizeof(T), count == ~0 ? buffer.capacity() * sizeof(T) : count * sizeof(T));
-    }
-    template<typename T>
-    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const host_buffer<T>& buffer, u32 count = ~0, u32 first = 0)
-    {
-        implementation()->push_binding(set, binding, array_element, type, &buffer.implementation(), first * sizeof(T), count == ~0 ? buffer.size() * sizeof(T) : count * sizeof(T));
-    }
-    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const image_view& view, const sampler& sampler)
-    {
-        std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*> p(
-            &view.implementation(), &sampler.implementation());
-        implementation()->push_binding(set, binding, array_element, type, p, 0, 0);
-    }
-    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const image_view& view)
-    {
-        implementation()->push_binding(set, binding, array_element, type, &view.implementation(), 0, 0);
-    }
-    void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) { implementation()->set_viewports(first, vp, scissors); }
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void bind_vertex_buffer(const Buffer<T>& buffer, u32 binding, i64 offset = 0) const;
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void bind_index_buffer(const Buffer<T>& buffer, index_type index, i64 offset = 0) const;
+
+    void draw(const drawcmd& cmd) const;
+    void draw_indexed(const drawcmd_indexed& cmd) const;
+    template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void draw_indirect(const Buffer<T>& buffer, u32 count = ~0, u32 stride = sizeof(T), u32 first = 0) const;
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void draw_indirect_indexed(const Buffer<T>& buffer, u32 count = ~0, u32 stride = sizeof(T), u32 first = 0) const;
+
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void push_binding(u32 set, u32 binding, binding_type type, const Buffer<T>& buffer, u32 count = ~0, u32 first = 0) const;
+    void push_binding(u32 set, u32 binding, binding_type type, const image_view& view, const sampler& sampler) const;
+    void push_binding(u32 set, u32 binding, binding_type type, const image_view& view) const;
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const Buffer<T>& buffer, u32 count = ~0, u32 first = 0) const;
+    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const image_view& view, const sampler& sampler) const;
+    void push_binding(u32 set, u32 binding, u32 array_element, binding_type type, const image_view& view) const;
+
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void update_buffer(const Buffer<T>& buffer, u32 offset, std::initializer_list<T> data) const;
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void update_buffer(const Buffer<T>& buffer, u32 offset, u32 count, const T* data) const;
+	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
+    void update_buffer(const Buffer<T>& buffer, u32 offset, const T& data) const;
 
 	template<typename T, typename = decltype(std::declval<T>().render(std::declval<commands&>()))>
-	auto render(T& obj) {
-		return obj.render(*this);
-	}
+	auto render(T& obj);
 };
-
 }    // namespace v1
 }    // namespace gfx
+
+#include "command_list.inl"

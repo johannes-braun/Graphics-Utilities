@@ -243,7 +243,7 @@ void gui::render(commands& cmd) const
                 cmd.push_binding(1, 0, binding_type::sampled_image, *iv, _sampler);
                 rect2f sc[]{{glm::vec2(pcmd.ClipRect.x, pcmd.ClipRect.y), glm::vec2(pcmd.ClipRect.z, pcmd.ClipRect.w)}};
                 cmd.set_viewports(0, vp, sc);
-                cmd.draw_indexed(pcmd.ElemCount, 1, u32(idx_buffer_offset), u32(vtx_buffer_offset));
+				cmd.draw_indexed({ pcmd.ElemCount, 1u, u32(idx_buffer_offset), u32(vtx_buffer_offset) });
             }
             idx_buffer_offset += pcmd.ElemCount;
         }

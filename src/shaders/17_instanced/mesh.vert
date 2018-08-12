@@ -14,8 +14,16 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 
 struct instance
 {
+	uint index_count;
+	uint instance_count;
+	uint base_index;
+	uint base_vertex;
+	uint base_instance;
+
 	mat4 model;
 	vec4 albedo;
+	vec4 bmin;
+	vec4 bmax;
 };
 
 layout(loc_gl(0) loc_vk(0, 1), std430) restrict readonly buffer Instances
@@ -35,10 +43,10 @@ layout(location = 3) out vec3 out_albedo;
 
 void main()
 {
-	const mat4 model = instances[gl_InstanceID].model;
+	const mat4 model = instances[gl_DrawID].model;
 	out_position = vec3(model * vec4(position, 1));
 	out_uv = uv;
 	out_normal = vec3(inverse(transpose(model)) * vec4(normal, 0));
-	out_albedo = instances[gl_InstanceID].albedo.rgb;
+	out_albedo = instances[gl_DrawID].albedo.rgb;
 	gl_Position = vec4(camera.proj * camera.view * vec4(out_position, 1));
 }

@@ -28,7 +28,7 @@ entity ecs::create_entity(const Components&... components)
     else
     {
         const component_base* css[]{static_cast<const component_base*>(&components)...};
-        id_t                  ids[]{Components::id...};
+        id_t                  ids[]{components.id...};
         return create_entity(css, ids, sizeof...(Components));
     }
 }
