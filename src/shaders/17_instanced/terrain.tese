@@ -21,8 +21,8 @@ out gl_PerVertex
 layout(location = 0) out vec3 position;
 layout(location = 1) out vec3 normal;
 
-const float chunk_size = 150.f;
-const float chunk_count = 15;
+const float chunk_size = 100.f;
+const float chunk_count = 50;
 
 float get_height(vec2 position)
 {

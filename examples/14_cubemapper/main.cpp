@@ -11,26 +11,20 @@ void executable::init(gfx::context_options& options)
 void executable::run()
 {
     gfx::hbuffer<float> time_buffer(1);
-
     gfx::binding_layout bindings;
     bindings.push(gfx::binding_type::uniform_buffer).push(gfx::binding_type::uniform_buffer);
-
     gfx::pipe_state::binding_layouts binding_state;
     binding_state.layouts.push_back(&bindings);
-
     gfx::binding_set set(bindings);
     set.bind(0, *camera_buffer);
     set.bind(1, time_buffer);
-
     gfx::pipe_state::depth_stencil depth;
     depth.depth_write_enable = false;
     depth.depth_test_enable  = true;
-
     gfx::pipe_state state;
     state.state_bindings      = &binding_state;
     state.state_depth_stencil = &depth;
     state.state_multisample   = &msaa_state;
-
     gfx::graphics_pipeline pipeline(state, pass_layout,
                                     {gfx::shader(gfx::shader_type::vert, "14_cubemapper/skybox.vert"),
                                      gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});

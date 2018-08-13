@@ -40,7 +40,7 @@ void main()
 	float angle = dot(normalize(uv), sundir);
 	result = mix(result, vec3(1.f), 0.5f*smoothstep(0.15f, 1.15f, angle));
 	result = mix(result, vec3(8.f), smoothstep(0.985f, 1.08f, angle));
-
+	
 	vec3 tc = normalize(uv);
 	tc.y *= 4.f;
 
@@ -65,7 +65,6 @@ void main()
 
 	result = vec3(mix(result, vec3(1.f), 0.7f * cl));
 	result = vec3(mix(result, mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f), mix(0, clx, cl)));
-
 	result = mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
 
 	color = vec4(result, 1);
@@ -81,7 +80,7 @@ vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
 
 float cnoise(vec3 P){
-	P += vec3(0.1f*time + campos.x * 0.01f, 0, 0.1f*time + campos.z * 0.01f);
+	P += vec3(0.1f*time + campos.x * 0.001f, 0, 0.1f*time + campos.z * 0.001f);
 
   vec3 Pi0 = floor(P); // Integer part for indexing
   vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1

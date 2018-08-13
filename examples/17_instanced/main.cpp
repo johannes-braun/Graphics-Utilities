@@ -5,7 +5,7 @@
 void executable::init(gfx::context_options& opt)
 {
     opt.window_title        = "[17] Instanced";
-    opt.debug               = true;
+    opt.debug               = false;
     opt.framebuffer_samples = gfx::sample_count::x8;
     opt.graphics_api        = gfx::gapi::vulkan;
     opt.max_framerate       = 10000.f;
@@ -30,6 +30,7 @@ struct instance_proto : gfx::drawcmd_indexed
     gfx::bounds3f   bounds;
     gfx::image      logo;
     gfx::image_view logo_view;
+	gfx::u32 usages = 0;
 };
 
 struct instance : gfx::drawcmd_indexed
@@ -45,6 +46,7 @@ struct instance : gfx::drawcmd_indexed
         base_index     = prototype.base_index;
         base_vertex    = prototype.base_vertex;
         base_instance  = prototype.base_instance;
+		bounds          = prototype.bounds;
         return *this;
     }
 };
@@ -73,6 +75,12 @@ struct speed_component : gfx::ecs::component<speed_component>
 
     glm::vec3 angular_velocity{0, 0, 0};
     glm::vec3 angular_acceleration{0, 0, 0};
+};
+
+struct camera_component : gfx::ecs::component<camera_component>
+{
+	gfx::projection projection{glm::radians(80.f), 100, 100, 0.1f, 1000.f, true, true};
+	bool is_main = true;
 };
 
 class movement_system : public gfx::ecs::system
@@ -127,15 +135,15 @@ public:
         const auto dir = normalize(tgt - tf.value.position);
 
         if (distance(tgt, tf.value.position) < 10.f)
-            tg.target.position = {500.f * dist(gen) - 250.f, 100, 500.f * dist(gen) - 250.f};
+            tg.target.position = {1000.f * dist(gen) - 500.f, 100, 1000.f * dist(gen) - 500.f};
         else
         {
             tf.value.rotation =
                 glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed * delta);
             sp.acceleration = in.prototype->acceleration * fwd;
             if (length(sp.velocity) > in.prototype->speed) sp.velocity = normalize(sp.velocity) * in.prototype->speed;
-            sp.acceleration -= 20.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.velocity);
-            sp.acceleration -= 20.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);
+            sp.acceleration -= 200.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.velocity);
+            sp.acceleration -= 200.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);
         }
     }
 
@@ -177,21 +185,21 @@ public:
             proto.bounds          = mesh.mesh.compute_bounds();
             combined += mesh.mesh;
         }
-        for (const auto& json : buildings) {
-            const auto name = json["name"].get<std::string>();
-            const auto path = json["mesh"].get<std::string>();
+		for (const auto& json : buildings) {
+			const auto name = json["name"].get<std::string>();
+			const auto path = json["mesh"].get<std::string>();
 			const auto logo = json["logo"].get<std::string>();
 
-            gfx::scene_file mesh(path);
-            mesh.mesh.collapse();
-            instance_proto& proto = _building_prototypes.emplace_back(mesh, gfx::image_file(logo, gfx::bits::b8, 4));
-            proto.name            = name;
-            proto.speed           = 0;
-            proto.base_vertex     = combined.vertices.size();
-            proto.base_index      = combined.indices.size();
-            proto.bounds          = mesh.mesh.compute_bounds();
-            combined += mesh.mesh;
-        }
+			gfx::scene_file mesh(path);
+			mesh.mesh.collapse();
+			instance_proto& proto = _building_prototypes.emplace_back(mesh, gfx::image_file(logo, gfx::bits::b8, 4));
+			proto.name            = name;
+			proto.speed           = 0;
+			proto.base_vertex     = combined.vertices.size();
+			proto.base_index      = combined.indices.size();
+			proto.bounds          = mesh.mesh.compute_bounds();
+			combined += mesh.mesh;
+		}
 
         _vbo = gfx::buffer<gfx::vertex3d>(gfx::buffer_usage::vertex, combined.vertices);
         _ibo = gfx::buffer<gfx::index32>(gfx::buffer_usage::index, combined.indices);
@@ -203,7 +211,7 @@ public:
     {
         cmd.bind_vertex_buffer(_vbo, 0);
         cmd.bind_index_buffer(_ibo, gfx::index_type::uint32);
-        cmd.draw_indirect_indexed(_instances);
+        cmd.draw_indirect_indexed(_instances, _instances.size());
     }
 
     void clear() { _instances.clear(); }
@@ -243,12 +251,16 @@ public:
     {
         add_component_type(instance_component::id);
         add_component_type(transform_component::id);
+		add_component_type(camera_component::id, gfx::ecs::component_flag::optional);
     }
 
     void update(double delta, gfx::ecs::component_base** components) const override
     {
         const auto& ic = components[0]->as<instance_component>();
         const auto& tf = components[1]->as<transform_component>();
+
+		if (components[2])
+			return;
 
         instance i;
         i        = *ic.prototype;
@@ -261,12 +273,48 @@ private:
     prototype_renderer& _renderer;
 };
 
-const float chunk_size  = 150.f;
-const float chunk_count = 15;
+class camera_system : public gfx::ecs::system
+{
+public:
+	camera_system()
+	{
+		add_component_type(camera_component::id);
+		add_component_type(transform_component::id);
+	}
+
+	void update(double delta, gfx::ecs::component_base** components) const override
+	{
+		auto& cam = components[0]->as<camera_component>();
+		const auto& tf = components[1]->as<transform_component>();
+
+		int w, h;
+		glfwGetFramebufferSize(gfx::context::current()->window(), &w, &h);
+
+		cam.projection.perspective().clip_near = 0.01f;
+		cam.projection.perspective().clip_far = 2500.f;
+		cam.projection.perspective().screen_width = w;
+		cam.projection.perspective().screen_height = h;
+		_camera.projection_mode = cam.projection;
+		_camera.transform_mode = tf.value;
+		_main_component = &cam;
+	}
+
+	const gfx::camera& camera() const noexcept { return _camera; }
+	camera_component* cam_component() const noexcept { return _main_component; }
+
+private:
+	mutable camera_component* _main_component;
+	mutable gfx::camera _camera;
+};
+
+const float chunk_size  = 100.f;
+const float chunk_count = 50;
 
 void executable::run()
 {
     gfx::ecs::ecs ecs;
+	camera.projection_mode.perspective().clip_near = 0.01f;
+	camera.projection_mode.perspective().clip_far = 2500.f;
 
     movement_system          movement;
     flying_in_circles_system circle_flyer;
@@ -277,7 +325,9 @@ void executable::run()
     prototype_renderer    renderer;
     gfx::ecs::system_list graphics_systems;
     prototype_system      proto_system(renderer);
+	camera_system		  cam_system;
     graphics_systems.add(proto_system);
+    graphics_systems.add(cam_system);
 
     gfx::himage        heightmap_local(gfx::r8unorm, "heightmap.png");
     gfx::image         heightmap(heightmap_local);
@@ -292,41 +342,47 @@ void executable::run()
 
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
-    std::vector<gfx::ecs::unique_entity>  entities;
+    std::vector<gfx::ecs::entity>  entities;
     const auto                            spawn_from_prototype = [&](const instance_proto* prototype, const glm::vec3 at) {
         instance_component inst;
         inst.albedo       = glm::vec3(dist(gen), dist(gen), dist(gen));
         inst.buffer_index = entities.size();
         inst.prototype    = prototype;
+		const_cast<instance_proto*>(prototype)->usages++;
         transform_component tf;
         tf.value = gfx::transform(at);
         target_component tgt;
         tgt.target = tf.value;
         speed_component sp;
-        entities.push_back(ecs.create_entity_unique(inst, tf, tgt, sp));
+		entities.push_back(ecs.create_entity(inst, tf, tgt, sp));
+		return entities.back();
     };
     const auto spawn_random_vehicle = [&]() {
-        spawn_from_prototype(&renderer.vehicle_prototypes()[std::clamp(size_t(dist(gen) * renderer.vehicle_prototypes().size()), 0ull,
+        return spawn_from_prototype(&renderer.vehicle_prototypes()[std::clamp(size_t(dist(gen) * renderer.vehicle_prototypes().size()), 0ull,
                                                                        renderer.vehicle_prototypes().size())],
                              glm::vec3(dist(gen), dist(gen), dist(gen)) * 50.f);
     };
 
-    for (int i = 0; i < 200; ++i) {
-        spawn_random_vehicle();
+    for (int i = 0; i < 1000; ++i) {
+		if (i == 0)
+			spawn_random_vehicle().add(camera_component{});
+		else
+			spawn_random_vehicle();
     }
 
-    const auto spawn_random_building = [&]() {
+   const auto spawn_random_building = [&]() {
         instance_component inst;
         inst.albedo       = glm::vec3(dist(gen), dist(gen), dist(gen));
         inst.buffer_index = entities.size();
         inst.prototype    = &renderer.building_prototypes()[std::clamp(size_t(dist(gen) * renderer.building_prototypes().size()), 0ull,
                                                                     renderer.building_prototypes().size())];
+		const_cast<instance_proto*>(inst.prototype)->usages++;
         transform_component tf;
         glm::vec2           loc = 1000.f * glm::vec2(dist(gen), dist(gen));
         tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + terrain_height(loc), loc.y));
-        entities.push_back(ecs.create_entity_unique(inst, tf));
+        entities.push_back(ecs.create_entity(inst, tf));
     };
-    for (int i = 0; i < 1500; ++i) {
+    for (int i = 0; i < 200; ++i) {
         spawn_random_building();
     }
 
@@ -408,18 +464,42 @@ void executable::run()
     };
     gfx::graphics_pipeline terrain_pipeline(terrain_state, pass_layout, terrain_shaders);
 
+
+	gfx::hbuffer<float> time_buffer{ 2.f };
+	gfx::binding_layout sky_bindings;
+	sky_bindings.push(gfx::binding_type::uniform_buffer).push(gfx::binding_type::uniform_buffer);
+	gfx::pipe_state::binding_layouts sky_binding_state;
+	sky_binding_state.layouts.push_back(&sky_bindings);
+	gfx::binding_set sky_set(sky_bindings);
+	sky_set.bind(0, *camera_buffer);
+	sky_set.bind(1, time_buffer);
+	gfx::pipe_state::depth_stencil sky_depth;
+	sky_depth.depth_write_enable = false;
+	sky_depth.depth_test_enable  = true;
+	gfx::pipe_state sky_state;
+	sky_state.state_bindings      = &sky_binding_state;
+	sky_state.state_depth_stencil = &sky_depth;
+	sky_state.state_multisample   = &msaa_state;
+	gfx::graphics_pipeline sky_pipeline(sky_state, pass_layout,
+		{gfx::shader(gfx::shader_type::vert, "14_cubemapper/skybox.vert"),
+		gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});
+
+
     gfx::binding_set terrain_set(terrain_bindings);
     terrain_set.bind(0, *camera_buffer);
     terrain_set.bind(1, heightmap_view, sampler);
 
     std::vector<gfx::binding_set> mesh_sets;
+	std::vector<gfx::buffer<instance>> _instance_buffers;
     mesh_sets.reserve(context->swapchain()->image_views().size());
     for (int i = 0; i < context->swapchain()->image_views().size(); ++i) {
         mesh_sets.emplace_back(mesh_bindings);
         mesh_sets.back().bind(0, *camera_buffer);
+		_instance_buffers.emplace_back(gfx::buffer_usage::indirect | gfx::buffer_usage::storage, 1);
+		mesh_sets.back().bind(1, _instance_buffers.back());
     }
-
-    while (frame()) {
+    
+	while (frame()) {
         ImGui::Begin("Settings");
         static int spawn_count = 1;
         ImGui::DragInt("Spawn Count", &spawn_count, 0.05f, 0, 1000);
@@ -428,6 +508,11 @@ void executable::run()
         }
         ImGui::Value("Instances", int(renderer.instances().size()));
         ImGui::Value("Framerate", 1.f / float(context->delta()));
+		if (ImGui::Button("Random cam"))
+		{
+			gfx::dlog << ecs.remove_components<camera_component>(cam_system.cam_component()->entity);
+			entities[int(dist(gen) * 500)].add(camera_component{});
+		}
 		ImGui::Separator();
 
         for(auto& proto : renderer.vehicle_prototypes())
@@ -436,6 +521,8 @@ void executable::run()
 			ImGui::Image(&proto.logo_view, ImVec2(64, 64));
 			ImGui::SameLine();
 			ImGui::Text(proto.name.c_str());
+			ImGui::SameLine();
+			ImGui::Value("usg: ", proto.usages);
 			ImGui::SameLine();
             if(ImGui::Button("Spawn"))
             {
@@ -446,18 +533,21 @@ void executable::run()
 
         ImGui::End();
 
-		camera.transform_mode.position.y = terrain_height({ camera.transform_mode.position.x, camera.transform_mode.position.z }) + 1.8f;
-		current_command->update_buffer(*camera_buffer, 0, camera.info());
+		/*camera.transform_mode.position.y = terrain_height({ camera.transform_mode.position.x, camera.transform_mode.position.z }) + 1.8f;*/
+		current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
 
         renderer.clear();
-        ecs.update(context->delta(), movement_systems);
+		ecs.update(context->delta(), movement_systems);
         ecs.update(context->delta(), graphics_systems);
         mesh_sets[context->swapchain()->current_image()].bind(1, renderer.instances());
-
+		
         current_command->bind_pipeline(cull_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
         current_command->dispatch((renderer.instances().size() + 31) / 32);
 
         current_command->begin_pass(*current_framebuffer);
+		current_command->bind_pipeline(sky_pipeline, { &sky_set });
+		current_command->draw(3);
+
         current_command->bind_pipeline(mesh_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
         current_command->render(renderer);
 

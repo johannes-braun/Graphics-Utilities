@@ -1,5 +1,13 @@
 [
   {
+    "name": "Sharkum U20",
+    "mesh": "plane6.dae",
+    "speed": 40,
+    "acceleration": 20,
+    "rotation_speed": 4,
+    "logo": "plane6.png"
+  },
+  {
     "name": "Planum 100",
     "mesh": "plane5.dae",
     "speed": 40,

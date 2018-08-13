@@ -84,16 +84,16 @@ template<typename From, typename To>
 using enable_if_copiable = std::enable_if_t<are_copyable<From, To>>;
 
 template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr);
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, const BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr);
 
 template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr);
+void buf_copy(BufDst& dst, const BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f = nullptr);
 
 template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr);
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, const BufSrc& src, size_t count, fence* f = nullptr);
 
 template<typename BufDst, typename BufSrc, typename = enable_if_copiable<BufSrc, BufDst>>
-void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f = nullptr);
+void buf_copy(BufDst& dst, const BufSrc& src, size_t count, fence* f = nullptr);
 
 class vertex_input;
 template<typename T>
@@ -135,7 +135,7 @@ public:
 
 protected:
 	template<typename BufDst, typename BufSrc, typename>
-	friend void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f);
+	friend void buf_copy(buf_copy_behavior behavior, BufDst& dst, const BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f);
 
 	void fill_from(const host_buffer<T>& buffer, difference_type src_offset, difference_type start, size_type count, fence* f = nullptr);
 	void fill_from(const device_buffer& buffer, difference_type src_offset, difference_type start, size_type count, fence* f = nullptr);

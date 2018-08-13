@@ -22,13 +22,19 @@ float dot2(vec3 a)
 
 void main()
 {
-	float sqrdist = distance(camera.pos, gl_in[gl_InvocationID].gl_Position.xyz);
-	int subdiv = int((100.f / sqrdist) * 128);
+	const int base_resolution = 128;
 
-	gl_TessLevelOuter[0] = subdiv;
-	gl_TessLevelOuter[1] = subdiv;
-	gl_TessLevelOuter[2] = subdiv;
-	gl_TessLevelOuter[3] = subdiv;
+	float sqrdist = distance(camera.pos, gl_in[gl_InvocationID].gl_Position.xyz);
+	int subdiv = int((130.f / sqrdist) * base_resolution);
+
+	if(gl_InvocationID == 0)
+	{
+		gl_TessLevelOuter[0] = 128;
+		gl_TessLevelOuter[1] = 128;
+		gl_TessLevelOuter[2] = 128;
+		gl_TessLevelOuter[3] = 128;
+	}
+
 	gl_TessLevelInner[0] = subdiv;
 	gl_TessLevelInner[1] = subdiv;
 

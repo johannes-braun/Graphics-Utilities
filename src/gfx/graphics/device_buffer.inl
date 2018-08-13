@@ -154,7 +154,7 @@ void device_buffer<T>::copy_to(const device_buffer& buffer, const difference_typ
 
 
 template<typename BufDst, typename BufSrc, typename>
-void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, const BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
 {
 	constexpr static const char* invalid_argument_message = "Selected copy range does not fit into destination buffer.";
 
@@ -215,18 +215,18 @@ void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count
 }
 
 template<typename BufDst, typename BufSrc, typename>
-void buf_copy(BufDst& dst, BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
+void buf_copy(BufDst& dst, const BufSrc& src, size_t count, ptrdiff_t src_offset, ptrdiff_t dst_offset, fence* f)
 {
 	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, src_offset, dst_offset, f);
 }
 template<typename BufDst, typename BufSrc, typename>
-void buf_copy(buf_copy_behavior behavior, BufDst& dst, BufSrc& src, size_t count, fence* f)
+void buf_copy(buf_copy_behavior behavior, BufDst& dst, const BufSrc& src, size_t count, fence* f)
 {
 	buf_copy(behavior, dst, src, count, 0, 0, f);
 }
 
 template<typename BufDst, typename BufSrc, typename>
-void buf_copy(BufDst& dst, BufSrc& src, size_t count, fence* f)
+void buf_copy(BufDst& dst, const BufSrc& src, size_t count, fence* f)
 {
 	buf_copy(buf_copy_behavior::resize_if_larger, dst, src, count, f);
 }

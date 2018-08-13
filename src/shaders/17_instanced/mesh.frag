@@ -1,5 +1,6 @@
 #version 460 core
 #include "../api.glsl"
+#include "sky.glsl"
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
@@ -23,5 +24,7 @@ void main()
 
 	const float ndotl = max(dot(light, normal), 0.f);
 
-	color = vec4(ndotl * albedo, 1);
+	color = vec4(ndotl * albedo + sky_noclouds(view, normal), 1);
+
+	color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(1500.f, 2500.f, distance(position, camera.pos)));
 }
