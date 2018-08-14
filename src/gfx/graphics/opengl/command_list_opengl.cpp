@@ -56,7 +56,16 @@ void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<r
 
     if (!render_area) render_area = {{0, 0}, {fbo.width(), fbo.height()}};
 
-    _queue.emplace_back([ fbo = _curr_framebuffer, render_area ] {
+    int fbc;
+    glGetIntegerv(GL_MAX_VIEWPORTS, &fbc);
+
+    _queue.emplace_back([ fbo = _curr_framebuffer, render_area, fbc, s = render_area->size() ] {
+        for (int i = 0; i < fbc; ++i) {
+            glViewportIndexedf(i, 0, 0, s.x, s.y);
+            glDepthRangeIndexed(i, 0.f, 1.f);
+            glScissorIndexed(i, 0, 0, s.x, s.y);
+        }
+
         static_cast<framebuffer_implementation*>(&*fbo->implementation())->begin();
 
         for (int i = 0; i < fbo->color_clear_values().size(); ++i) {
@@ -79,12 +88,14 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
     assert(_curr_framebuffer);
     _has_state     = true;
     _curr_pipeline = &p;
-    _queue.emplace_back([&, s = glm::vec2(_curr_framebuffer->width(), _curr_framebuffer->height()) ] {
-        for (int i = 0; i < 15; ++i) {
-            glViewportIndexedf(i, 0, 0, s.x, s.y);
-            glDepthRangeIndexed(i, 0.f, 1.f);
-            glScissorIndexed(i, 0, 0, s.x, s.y);
-        }
+	int fbc;
+	glGetIntegerv(GL_MAX_VIEWPORTS, &fbc);
+    _queue.emplace_back([&, fbc, s = glm::vec2(_curr_framebuffer->width(), _curr_framebuffer->height()) ] {
+		for (int i = 0; i < fbc; ++i) {
+			glViewportIndexedf(i, 0, 0, s.x, s.y);
+			glDepthRangeIndexed(i, 0.f, 1.f);
+			glScissorIndexed(i, 0, 0, s.x, s.y);
+		}
 
         static_cast<graphics_pipeline_implementation*>(&*p.implementation())->apply_all();
     });
@@ -257,11 +268,9 @@ void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, bind
 
 void commands_implementation::update_buffer(const handle& buffer, u32 offset, u32 size, const void* data)
 {
-	std::vector<u8> d(static_cast<const u8*>(data), static_cast<const u8*>(data) + size);
-	const auto h = std::any_cast<mygl::buffer>(buffer);
-	_queue.emplace_back([=, dat = std::move(d)] {
-		glNamedBufferSubData(h, offset, size, dat.data());
-	});
+    std::vector<u8> d(static_cast<const u8*>(data), static_cast<const u8*>(data) + size);
+    const auto      h = std::any_cast<mygl::buffer>(buffer);
+    _queue.emplace_back([ =, dat = std::move(d) ] { glNamedBufferSubData(h, offset, size, dat.data()); });
 }
 
 void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors)
