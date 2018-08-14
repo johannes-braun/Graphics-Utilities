@@ -77,7 +77,7 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     _ctx_impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));
 
 	if (!_render_fences.empty())
-		vkWaitForFences(_ctx_impl->device(), _render_fences.size(), _render_fences.data(), true, std::numeric_limits<uint64_t>::max());
+		vkWaitForFences(_ctx_impl->device(), _render_fences.size(), _render_fences.data(), true, default_fence_timeout);
 
 	vkDeviceWaitIdle(_ctx_impl->device());
 	this->~swapchain_implementation();

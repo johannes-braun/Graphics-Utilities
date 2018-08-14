@@ -11,6 +11,8 @@ namespace vulkan {
 class swapchain_implementation : public detail::swapchain_implementation
 {
 public:
+	constexpr static u64 default_fence_timeout = 16'000'000;
+
 	~swapchain_implementation() override;
 
     uint32_t                         current_image() const noexcept override;
