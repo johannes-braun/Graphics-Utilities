@@ -15,6 +15,8 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 } camera;
 
 layout(location = 0) out vec4 color;
+const float chunk_size = 16.f;
+const float chunk_count = 200;
 
 void main()
 {
@@ -25,6 +27,7 @@ void main()
 	const float ndotl = max(dot(light, normal), 0.f);
 
 	color = vec4(ndotl * albedo + sky_noclouds(view, normal), 1);
-
-	color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(1500.f, 2500.f, distance(position, camera.pos)));
+	
+	const float max_dist = chunk_size * chunk_count;
+	color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, distance(position, camera.pos)));
 }

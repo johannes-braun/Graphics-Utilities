@@ -10,8 +10,10 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 } camera;
 
 layout(loc_gl(0) loc_vk(0, 1)) uniform sampler2D heightmap;
+layout(loc_gl(1) loc_vk(1, 0)) uniform sampler2D bumpmap;
 
 layout(quads, equal_spacing) in;
+layout(location = 0) in vec2 uv[];
 
 out gl_PerVertex
 {
@@ -20,15 +22,16 @@ out gl_PerVertex
 
 layout(location = 0) out vec3 position;
 layout(location = 1) out vec3 normal;
+layout(location = 2) out vec2 out_uv;
 
-const float chunk_size = 100.f;
-const float chunk_count = 50;
+const float chunk_size = 16.f;
+const float chunk_count = 200;
 
 float get_height(vec2 position)
 {
 	position += vec2(chunk_size * chunk_count) / 2.f;
 	position /= chunk_size * chunk_count;
-	return 220 * pow(texture(heightmap, position).r, 1);
+	return (220 * pow(texture(heightmap, position).r, 1));
 }
 
 vec4 get_position(vec2 off)
@@ -42,7 +45,7 @@ vec4 get_position(vec2 off)
 
 void main()
 {
-	const vec4 p0 = get_position(vec2(0));
+	vec4 p0 = get_position(vec2(0));
 	const float eps = 5.f;
 	const vec4 dp0 = get_position(vec2(-eps, -eps));
 	const vec4 dp1 = get_position(vec2(-eps, eps));
@@ -52,6 +55,10 @@ void main()
 	const vec3 normal_0 = cross(dp2.xyz - dp0.xyz, dp3.xyz - dp1.xyz);
 	normal = normal_0;
 	position = p0.xyz;
+
+	const vec2 uv_00_10 = mix(uv[0], uv[3], gl_TessCoord.x);
+	const vec2 uv_01_11 = mix(uv[1], uv[2], gl_TessCoord.x);
+	out_uv = mix(uv_00_10, uv_01_11, gl_TessCoord.y);
 
 	gl_Position = camera.proj * camera.view * p0;
 }

@@ -307,8 +307,8 @@ private:
 	mutable gfx::camera _camera;
 };
 
-const float chunk_size  = 100.f;
-const float chunk_count = 50;
+const float chunk_size = 16.f;
+const float chunk_count = 200;
 
 void executable::run()
 {
@@ -332,7 +332,9 @@ void executable::run()
     gfx::himage        heightmap_local(gfx::r8unorm, "heightmap.png");
     gfx::image         heightmap(heightmap_local);
     const auto         heightmap_view = heightmap.view(gfx::imgv_type::image2d);
-    const gfx::sampler sampler;
+    gfx::sampler sampler;
+	sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::repeat);
+	sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::repeat);
 
     const auto terrain_height = [&](glm::vec2 xz) {
         xz += glm::vec2(chunk_size * chunk_count) / 2.f;
@@ -363,7 +365,7 @@ void executable::run()
                              glm::vec3(dist(gen), dist(gen), dist(gen)) * 50.f);
     };
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 400; ++i) {
 		if (i == 0)
 			spawn_random_vehicle().add(camera_component{});
 		else
@@ -382,7 +384,7 @@ void executable::run()
         tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + terrain_height(loc), loc.y));
         entities.push_back(ecs.create_entity(inst, tf));
     };
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < 100; ++i) {
         spawn_random_building();
     }
 
@@ -436,8 +438,11 @@ void executable::run()
 
     gfx::binding_layout terrain_bindings;
     terrain_bindings.push(gfx::binding_type::uniform_buffer).push(gfx::binding_type::sampled_image);
+	gfx::binding_layout terrain_style_bindings;
+	terrain_style_bindings.push(gfx::binding_type::sampled_image).push(gfx::binding_type::sampled_image);
     gfx::pipe_state::binding_layouts terrain_layouts;
     terrain_layouts.layouts.push_back(&terrain_bindings);
+    terrain_layouts.layouts.push_back(&terrain_style_bindings);
     gfx::pipe_state::vertex_input terrain_input;
     terrain_input.attributes.emplace_back(0, 0, gfx::rg32f, 0);
     terrain_input.attributes.emplace_back(1, 1, gfx::rg32f, offsetof(terrain_chunk, position));
@@ -485,21 +490,40 @@ void executable::run()
 		gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});
 
 
+	gfx::image& terrain_bump = res.images_ldr["Rock_023_DISP.png"];
+	gfx::image_view terrain_bump_view = terrain_bump.view(gfx::imgv_type::image2d);
+	gfx::image& terrain_color = res.images_ldr["Rock_023_COLOR.jpg"];
+	gfx::image_view terrain_color_view = terrain_color.view(gfx::imgv_type::image2d);
+
     gfx::binding_set terrain_set(terrain_bindings);
     terrain_set.bind(0, *camera_buffer);
     terrain_set.bind(1, heightmap_view, sampler);
+	gfx::binding_set terrain_style_set(terrain_style_bindings);
+	terrain_style_set.bind(0, terrain_bump_view, sampler);
+	terrain_style_set.bind(1, terrain_color_view, sampler);
 
     std::vector<gfx::binding_set> mesh_sets;
-	std::vector<gfx::buffer<instance>> _instance_buffers;
     mesh_sets.reserve(context->swapchain()->image_views().size());
     for (int i = 0; i < context->swapchain()->image_views().size(); ++i) {
         mesh_sets.emplace_back(mesh_bindings);
         mesh_sets.back().bind(0, *camera_buffer);
-		_instance_buffers.emplace_back(gfx::buffer_usage::indirect | gfx::buffer_usage::storage, 1);
-		mesh_sets.back().bind(1, _instance_buffers.back());
     }
     
+
+	int fc = 0;
+	double t = 0;
+	double ftime = 1.f;
 	while (frame()) {
+		++fc;
+		t += context->delta();
+
+		if (t > 1)
+		{
+			ftime = t / fc;
+			t = 0.0;
+			fc = 0;
+		}
+
         ImGui::Begin("Settings");
         static int spawn_count = 1;
         ImGui::DragInt("Spawn Count", &spawn_count, 0.05f, 0, 1000);
@@ -507,7 +531,7 @@ void executable::run()
             for (int i = 0; i < spawn_count; ++i) spawn_random_vehicle();
         }
         ImGui::Value("Instances", int(renderer.instances().size()));
-        ImGui::Value("Framerate", 1.f / float(context->delta()));
+        ImGui::Value("Framerate", 1.f / float(ftime));
 		if (ImGui::Button("Random cam"))
 		{
 			gfx::dlog << ecs.remove_components<camera_component>(cam_system.cam_component()->entity);
@@ -534,12 +558,13 @@ void executable::run()
         ImGui::End();
 
 		/*camera.transform_mode.position.y = terrain_height({ camera.transform_mode.position.x, camera.transform_mode.position.z }) + 1.8f;*/
-		current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
 
         renderer.clear();
 		ecs.update(context->delta(), movement_systems);
         ecs.update(context->delta(), graphics_systems);
         mesh_sets[context->swapchain()->current_image()].bind(1, renderer.instances());
+
+		//current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
 		
         current_command->bind_pipeline(cull_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
         current_command->dispatch((renderer.instances().size() + 31) / 32);
@@ -551,7 +576,7 @@ void executable::run()
         current_command->bind_pipeline(mesh_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
         current_command->render(renderer);
 
-        current_command->bind_pipeline(terrain_pipeline, {&terrain_set});
+        current_command->bind_pipeline(terrain_pipeline, {&terrain_set, &terrain_style_set});
         current_command->bind_vertex_buffer(chunk, 0);
         current_command->bind_vertex_buffer(chunks, 1);
         current_command->draw({gfx::u32(chunk.size()), gfx::u32(chunks.size())});
