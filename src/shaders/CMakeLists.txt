@@ -15,8 +15,6 @@ macro(compile_spirv var platform)
 		DEPENDS ${VAR_IN})
 
 	list(APPEND SPIRV_${platform} ${VAR_OUT})
-
-	message(${platform} -- ${VAR_OUT})
 endmacro()
 
 macro(create_shaders_target target_name)

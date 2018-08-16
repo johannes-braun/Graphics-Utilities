@@ -11,8 +11,6 @@ target_include_directories(gfx
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
 )
 
-message(${CMAKE_CURRENT_BINARY_DIR})
-
 target_compile_features(gfx PUBLIC cxx_std_17)
 target_link_libraries(gfx
 	PUBLIC 

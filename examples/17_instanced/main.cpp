@@ -77,6 +77,12 @@ struct speed_component : gfx::ecs::component<speed_component>
     glm::vec3 angular_acceleration{0, 0, 0};
 };
 
+struct sphere_collider_component : gfx::ecs::component<sphere_collider_component>
+{
+	float radius = 1.f;
+	float bounciness = 0.4f;
+};
+
 struct camera_component : gfx::ecs::component<camera_component>
 {
 	gfx::projection projection{glm::radians(80.f), 100, 100, 0.1f, 1000.f, true, true};
@@ -112,10 +118,40 @@ private:
     mutable std::uniform_real_distribution<float> dist;
 };
 
+const float chunk_size = 16.f;
+const float chunk_count = 200;
+class terrain
+{
+public:
+	terrain(const std::filesystem::path& path)
+		: _heightmap_local(gfx::r8unorm, path), _heightmap(_heightmap_local), _heightmap_view(gfx::imgv_type::image2d, _heightmap)
+	{
+		_sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::mirror_repeat);
+		_sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::mirror_repeat);
+	}
+
+	const auto terrain_height(glm::vec2 xz) {
+		xz += glm::vec2(chunk_size * chunk_count) / 2.f;
+		xz /= chunk_size * chunk_count;
+		return 220 * _heightmap_local.load_bilinear(glm::vec3(xz * glm::vec2(_heightmap_local.extents().vec), 0)).r;
+	};
+
+	const gfx::image_view& map_view() const noexcept { return _heightmap_view; }
+	const gfx::sampler& sampler() const noexcept { return _sampler; }
+
+
+private:
+	gfx::himage        _heightmap_local;
+	gfx::image         _heightmap;
+	gfx::image_view         _heightmap_view;
+	gfx::sampler _sampler;
+};
+
 class flying_in_circles_system : public gfx::ecs::system
 {
 public:
-    flying_in_circles_system()
+    flying_in_circles_system(terrain& t)
+		: _terrain(t)
     {
         add_component_type(transform_component::id);
         add_component_type(speed_component::id);
@@ -134,8 +170,11 @@ public:
         const auto tgt = tg.target.position;
         const auto dir = normalize(tgt - tf.value.position);
 
-        if (distance(tgt, tf.value.position) < 10.f)
-            tg.target.position = {1000.f * dist(gen) - 500.f, 100, 1000.f * dist(gen) - 500.f};
+		if (distance(tgt, tf.value.position) < 10.f)
+		{
+			const glm::vec2 p (1000.f * dist(gen) - 500.f, 1000.f * dist(gen) - 500.f);
+			tg.target.position ={ p.x, _terrain.terrain_height(p) + 10.f, p.y };
+		}
         else
         {
             tf.value.rotation =
@@ -148,6 +187,7 @@ public:
     }
 
 private:
+	terrain& _terrain;
     mutable std::mt19937                          gen;
     mutable std::uniform_real_distribution<float> dist;
 };
@@ -307,8 +347,89 @@ private:
 	mutable gfx::camera _camera;
 };
 
-const float chunk_size = 16.f;
-const float chunk_count = 200;
+class collision_resolver
+{
+public:
+	collision_resolver(terrain& t)
+		: _terrain(t)
+	{
+
+	}
+
+	void clear()
+	{
+		_colliders.clear();
+	}
+
+	void resolve(transform_component& tc, speed_component& sc, sphere_collider_component& scc)
+	{
+		const auto th = _terrain.terrain_height(glm::vec2(tc.value.position.x, tc.value.position.z));
+		if (tc.value.position.y - scc.radius < th)
+		{
+			tc.value.position.y = th + scc.radius;
+			const float eps = 1.f;
+			const auto get_position = [&] (const glm::vec2& v) {
+				return glm::vec3(v.x, _terrain.terrain_height(v), v.y);
+			};
+			const glm::vec3 dp0 = get_position(glm::vec2(-eps, -eps));
+			const glm::vec3 dp1 = get_position(glm::vec2(-eps, eps));
+			const glm::vec3 dp2 = get_position(glm::vec2(eps, eps));
+			const glm::vec3 dp3 = get_position(glm::vec2(eps, -eps));
+			const glm::vec3 normal_0 = normalize(cross(dp2 - dp0, dp3 - dp1));
+
+			const glm::vec3 ref = glm::reflect(sc.velocity, normal_0);
+			sc.velocity = scc.bounciness * ref + 8.f * normal_0; 
+		}
+
+#pragma omp parallel for
+		for (int i=0; i<_colliders.size(); ++i)
+		{
+			auto& t_tc = *std::get<transform_component*>(_colliders[i]);
+			auto& t_sc = *std::get<speed_component*>(_colliders[i]);
+			auto& t_scc = *std::get<sphere_collider_component*>(_colliders[i]);
+
+			if (distance(tc.value.position, t_tc.value.position) < (scc.radius + t_scc.radius))
+			{
+				const glm::vec3 normal = normalize(t_tc.value.position - tc.value.position);
+				const glm::vec3 ref = glm::reflect(sc.velocity, normal);
+				const glm::vec3 t_ref = glm::reflect(t_sc.velocity, -normal);
+
+				sc.velocity = scc.bounciness * ref + 0.1f * normal; 
+				t_sc.velocity = t_scc.bounciness * t_ref - 0.1f * normal;
+
+				tc.value.position = t_tc.value.position - (scc.radius + t_scc.radius) * normal;
+			}
+		}
+		_colliders.emplace_back(&tc, &sc, &scc);
+	}
+
+private:
+	std::vector<std::tuple<transform_component*, speed_component*, sphere_collider_component*>> _colliders;
+	terrain& _terrain;
+};
+
+class collision_system : public gfx::ecs::system
+{
+public:
+	collision_system(collision_resolver& resolver)
+		: _resolver(resolver)
+	{
+		add_component_type(transform_component::id);
+		add_component_type(speed_component::id);
+		add_component_type(sphere_collider_component::id);
+	}
+
+	void update(double delta, gfx::ecs::component_base** components) const override
+	{
+		auto& tc = components[0]->as<transform_component>();
+		auto& sc = components[1]->as<speed_component>();
+		auto& scc = components[2]->as<sphere_collider_component>();
+		_resolver.resolve(tc, sc, scc);
+	}
+
+private:
+	collision_resolver& _resolver;
+};
 
 void executable::run()
 {
@@ -316,11 +437,16 @@ void executable::run()
 	camera.projection_mode.perspective().clip_near = 0.01f;
 	camera.projection_mode.perspective().clip_far = 2500.f;
 
+	terrain main_terrain("heightmap.png");
+	collision_resolver coll_resolver(main_terrain);
+
     movement_system          movement;
-    flying_in_circles_system circle_flyer;
+    flying_in_circles_system circle_flyer(main_terrain);
+	collision_system coll_system(coll_resolver);
     gfx::ecs::system_list    movement_systems;
     movement_systems.add(movement);
     movement_systems.add(circle_flyer);
+    movement_systems.add(coll_system);
 
     prototype_renderer    renderer;
     gfx::ecs::system_list graphics_systems;
@@ -329,19 +455,9 @@ void executable::run()
     graphics_systems.add(proto_system);
     graphics_systems.add(cam_system);
 
-    gfx::himage        heightmap_local(gfx::r8unorm, "heightmap.png");
-    gfx::image         heightmap(heightmap_local);
-    const auto         heightmap_view = heightmap.view(gfx::imgv_type::image2d);
-    gfx::sampler sampler;
+	gfx::sampler sampler;
 	sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::repeat);
 	sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::repeat);
-
-    const auto terrain_height = [&](glm::vec2 xz) {
-        xz += glm::vec2(chunk_size * chunk_count) / 2.f;
-        xz /= chunk_size * chunk_count;
-        return 220 * heightmap_local.load_bilinear(glm::vec3(xz * glm::vec2(heightmap_local.extents().vec), 0)).r;
-    };
-
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
     std::vector<gfx::ecs::entity>  entities;
@@ -356,7 +472,9 @@ void executable::run()
         target_component tgt;
         tgt.target = tf.value;
         speed_component sp;
-		entities.push_back(ecs.create_entity(inst, tf, tgt, sp));
+		sphere_collider_component collider;
+		collider.radius = 2.f;
+		entities.push_back(ecs.create_entity(inst, tf, tgt, sp, collider));
 		return entities.back();
     };
     const auto spawn_random_vehicle = [&]() {
@@ -365,7 +483,7 @@ void executable::run()
                              glm::vec3(dist(gen), dist(gen), dist(gen)) * 50.f);
     };
 
-    for (int i = 0; i < 400; ++i) {
+    for (int i = 0; i < 500; ++i) {
 		if (i == 0)
 			spawn_random_vehicle().add(camera_component{});
 		else
@@ -381,10 +499,10 @@ void executable::run()
 		const_cast<instance_proto*>(inst.prototype)->usages++;
         transform_component tf;
         glm::vec2           loc = 1000.f * glm::vec2(dist(gen), dist(gen));
-        tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + terrain_height(loc), loc.y));
+        tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + main_terrain.terrain_height(loc), loc.y));
         entities.push_back(ecs.create_entity(inst, tf));
     };
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 50; ++i) {
         spawn_random_building();
     }
 
@@ -497,7 +615,7 @@ void executable::run()
 
     gfx::binding_set terrain_set(terrain_bindings);
     terrain_set.bind(0, *camera_buffer);
-    terrain_set.bind(1, heightmap_view, sampler);
+    terrain_set.bind(1, main_terrain.map_view(), main_terrain.sampler());
 	gfx::binding_set terrain_style_set(terrain_style_bindings);
 	terrain_style_set.bind(0, terrain_bump_view, sampler);
 	terrain_style_set.bind(1, terrain_color_view, sampler);
@@ -508,7 +626,6 @@ void executable::run()
         mesh_sets.emplace_back(mesh_bindings);
         mesh_sets.back().bind(0, *camera_buffer);
     }
-    
 
 	int fc = 0;
 	double t = 0;
@@ -524,15 +641,18 @@ void executable::run()
 			fc = 0;
 		}
 
+		static int spawn_count = 1;
+		static bool enable_following_camera = false;
+
         ImGui::Begin("Settings");
-        static int spawn_count = 1;
         ImGui::DragInt("Spawn Count", &spawn_count, 0.05f, 0, 1000);
         if (ImGui::Button("Spawn Random")) {
             for (int i = 0; i < spawn_count; ++i) spawn_random_vehicle();
         }
         ImGui::Value("Instances", int(renderer.instances().size()));
         ImGui::Value("Framerate", 1.f / float(ftime));
-		if (ImGui::Button("Random cam"))
+		ImGui::Checkbox("Follow any", &enable_following_camera);
+		if (enable_following_camera && ImGui::Button("Random cam"))
 		{
 			gfx::dlog << ecs.remove_components<camera_component>(cam_system.cam_component()->entity);
 			entities[int(dist(gen) * 500)].add(camera_component{});
@@ -560,11 +680,13 @@ void executable::run()
 		/*camera.transform_mode.position.y = terrain_height({ camera.transform_mode.position.x, camera.transform_mode.position.z }) + 1.8f;*/
 
         renderer.clear();
+		coll_resolver.clear();
 		ecs.update(context->delta(), movement_systems);
         ecs.update(context->delta(), graphics_systems);
         mesh_sets[context->swapchain()->current_image()].bind(1, renderer.instances());
 
-		//current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
+		if(enable_following_camera)
+			current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
 		
         current_command->bind_pipeline(cull_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
         current_command->dispatch((renderer.instances().size() + 31) / 32);
