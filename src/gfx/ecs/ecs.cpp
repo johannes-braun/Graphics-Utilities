@@ -75,7 +75,6 @@ void ecs::update(double delta, system_list& list)
 {
     std::vector<component_base*>         multi_components;
     std::vector<std::vector<std::byte>*> component_arrays;
-    #pragma omp parallel for schedule(dynamic)
     for (int64_t                         i               = 0; i < static_cast<int64_t>(list.size()); ++i) {
         const auto&                      component_types = list[static_cast<uint32_t>(i)].types();
         if (component_types.size() == 1) {
@@ -110,7 +109,7 @@ void ecs::delete_component(id_t id, size_t index)
     memcpy(dst, src, size);
 
     auto& components = as_entity(src->entity);
-    if (const auto it = std::find_if(std::execution::par, components.begin(), components.end(),
+    if (const auto it = std::find_if(std::execution::seq, components.begin(), components.end(),
                                      [&](const auto& p) { return p.first == id && p.second == source_index; });
         it != components.end())
     {
@@ -124,7 +123,7 @@ bool ecs::remove_component_impl(entity_handle e, id_t component_id)
 {
     auto& components = as_entity(e);
     if (const auto it =
-            std::find_if(std::execution::par, components.begin(), components.end(), [&](const auto& p) { return p.first == component_id; });
+            std::find_if(std::execution::seq, components.begin(), components.end(), [&](const auto& p) { return p.first == component_id; });
         it != components.end())
     {
         auto src_index = components.size() - 1;
@@ -148,7 +147,7 @@ component_base* ecs::get_component_impl(entity_handle e, std::vector<std::byte>&
 {
     auto& components = as_entity(e);
     if (const auto it =
-            std::find_if(std::execution::par, components.begin(), components.end(), [&](const auto& p) { return p.first == component_id; });
+            std::find_if(std::execution::seq, components.begin(), components.end(), [&](const auto& p) { return p.first == component_id; });
         it != components.end())
     {
         return reinterpret_cast<component_base*>(&carr[it->second]);
@@ -167,7 +166,7 @@ void ecs::update_multi_system(system_base& system, double delta, const std::vect
 
     const auto min_index = [&]() -> ptrdiff_t {
         const auto d = std::distance(
-            types.begin(), std::min_element(std::execution::par, types.begin(), types.end(), [&](const id_t& a, const id_t& b) {
+            types.begin(), std::min_element(std::execution::seq, types.begin(), types.end(), [&](const id_t& a, const id_t& b) {
                 const auto sa    = component_base::type_size(a);
                 const auto sb    = component_base::type_size(b);
                 const auto a_opt = (cflags[std::distance(types.data(), &a)] & component_flag::optional) == component_flag::optional;

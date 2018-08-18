@@ -26,8 +26,8 @@ void main()
 
 	const float ndotl = max(dot(light, normal), 0.f);
 
-	color = vec4(ndotl * albedo + sky_noclouds(view, normal), 1);
+	color = vec4(ndotl * albedo/* + sky_noclouds(view, normal)*/, 1);
 	
-	const float max_dist = chunk_size * chunk_count;
-	color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, distance(position, camera.pos)));
+	//const float max_dist = chunk_size * chunk_count;
+	//color = mix(color, vec4(sky_noclouds(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, distance(position, camera.pos)));
 }

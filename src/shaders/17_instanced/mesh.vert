@@ -27,7 +27,7 @@ struct instance
 	vec4 bmax;
 };
 
-layout(loc_gl(0) loc_vk(0, 1), std430) restrict buffer Instances
+layout(loc_gl(0) loc_vk(0, 1), std430) restrict readonly buffer Instances
 {
 	instance instances[];
 };
@@ -44,7 +44,6 @@ layout(location = 3) out vec3 out_albedo;
 
 void main()
 {
-	instances[gl_DrawID].did = gl_DrawID;
 	const mat4 model = instances[gl_DrawID].model;
 	out_position = vec3(model * vec4(position, 1));
 	out_uv = uv;

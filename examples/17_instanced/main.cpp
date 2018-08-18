@@ -1,6 +1,7 @@
 #include <executable.hpp>
 #include <gfx/file/json.hpp>
 #include <random>
+#include <chrono>
 
 void executable::init(gfx::context_options& opt)
 {
@@ -54,7 +55,6 @@ struct instance : gfx::drawcmd_indexed
 struct instance_component : gfx::ecs::component<instance_component>
 {
     glm::vec3             albedo;
-    int                   buffer_index;
     const instance_proto* prototype;
 };
 
@@ -70,11 +70,11 @@ struct target_component : gfx::ecs::component<target_component>
 
 struct speed_component : gfx::ecs::component<speed_component>
 {
-    glm::vec3 velocity{0, 0, 0};
-    glm::vec3 acceleration{0, 0, 0};
-
-    glm::vec3 angular_velocity{0, 0, 0};
-    glm::vec3 angular_acceleration{0, 0, 0};
+    glm::vec3 impulse{0, 0, 0};
+    glm::vec3 force{0, 0, 0};
+	glm::vec3 rotation_impulse {0, 0, 0};
+    glm::vec3 torque {0, 0, 0};
+    glm::vec3 torque_acceleration{0, 0, 0};
 };
 
 struct sphere_collider_component : gfx::ecs::component<sphere_collider_component>
@@ -100,17 +100,51 @@ public:
 
     void update(double delta, gfx::ecs::component_base** components) const override
     {
-        constexpr float movement_drag = 0.001f;
-        constexpr float rotation_drag = 0.001f;
-
         auto& tf = components[0]->as<transform_component>();
         auto& sp = components[1]->as<speed_component>();
 
-        sp.velocity = (1 - movement_drag) * sp.velocity + sp.acceleration * delta;
+		const auto sphere_radius = 1.f;
+		const auto sphere_moment = 2.f/5.f * sphere_radius * sphere_radius;
+		const auto moment = sphere_moment;
+
+		const auto mass = 10.f;
+		const auto weighted_moment = mass * moment;
+
+
+
+	/*	if ((type & RigidBodyTypeFlagBits::eDynamic) != RigidBodyTypeFlagBits::eDynamic)
+			return;
+
+		const auto dt = scene()->fixed_time_step;*/
+		const float dt = delta;
+		const auto gravity = glm::vec3(0, -9.81f, 0);
+
+		sp.impulse += (sp.force + gravity * mass) * dt;
+
+		if (isnan(sp.impulse.x))
+			gfx::elog << "nan";
+
+		tf.value.position += sp.impulse / mass * dt;
+        
+		sp.rotation_impulse += (sp.torque + sp.torque_acceleration) * dt;
+		tf.value.rotation = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.value.rotation;
+
+		sp.torque = glm::vec3(0.f);
+		sp.torque_acceleration = glm::vec3(0.f);
+		//m_did_collide = false;
+
+
+
+        constexpr float movement_drag = 0.001f;
+        constexpr float rotation_drag = 0.001f;
+
+
+        /*sp.velocity = (1 - movement_drag) * sp.velocity + sp.acceleration * delta;
         tf.value.position += sp.velocity * delta;
 
-        sp.angular_velocity = glm::mod((1 - rotation_drag) * sp.angular_velocity + sp.angular_acceleration * delta, glm::radians(360.f));
-        tf.value.rotation *= glm::quat(sp.angular_velocity * delta);
+
+        sp.angular_velocity = slerp((1 - rotation_drag) * sp.angular_velocity, sp.angular_acceleration * sp.angular_velocity, float(delta));
+		tf.value.rotation = slerp(tf.value.rotation, sp.angular_velocity * tf.value.rotation, float(delta));*/
     }
 
 private:
@@ -172,17 +206,17 @@ public:
 
 		if (distance(tgt, tf.value.position) < 10.f)
 		{
-			const glm::vec2 p (1000.f * dist(gen) - 500.f, 1000.f * dist(gen) - 500.f);
+			const glm::vec2 p (2000.f * dist(gen) - 1000.f, 2000.f * dist(gen) - 1000.f);
 			tg.target.position ={ p.x, _terrain.terrain_height(p) + 10.f, p.y };
 		}
         else
         {
-            tf.value.rotation =
+           /* tf.value.rotation =
                 glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed * delta);
             sp.acceleration = in.prototype->acceleration * fwd;
             if (length(sp.velocity) > in.prototype->speed) sp.velocity = normalize(sp.velocity) * in.prototype->speed;
             sp.acceleration -= 200.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.velocity);
-            sp.acceleration -= 200.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);
+            sp.acceleration -= 200.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);*/
         }
     }
 
@@ -192,26 +226,74 @@ private:
     mutable std::uniform_real_distribution<float> dist;
 };
 
+class plane_movement_system : public gfx::ecs::system
+{
+public:
+	plane_movement_system(terrain& t)
+		: _terrain(t)
+	{
+		add_component_type(transform_component::id);
+		add_component_type(speed_component::id);
+		add_component_type(instance_component::id);
+		add_component_type(camera_component::id, gfx::ecs::component_flag::optional);
+	}
+
+	void update(double delta, gfx::ecs::component_base** components) const override
+	{
+		auto& tf = components[0]->as<transform_component>();
+		auto& sp = components[1]->as<speed_component>();
+		auto& in = components[2]->as<instance_component>();
+		auto* cam = static_cast<camera_component*>(components[3]);
+
+		const float mass = 10.f;
+        if(cam)
+        {
+			const auto& context = gfx::context::current();
+			const int thrust = (glfwGetKey(context->window(), GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_Q) == GLFW_PRESS);
+			const int v_tilt = (glfwGetKey(context->window(), GLFW_KEY_S) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_W) == GLFW_PRESS);
+			const int h_tilt = (glfwGetKey(context->window(), GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_A) == GLFW_PRESS);
+            
+			//sp.force = 20.f*in.prototype->acceleration * thrust * tf.value.forward();
+			//glm::quat rv(in.prototype->rotation_speed * v_tilt * tf.value.left());
+
+			//sp.torque_acceleration = in.prototype->rotation_speed * h_tilt * glm::vec3(0, 1, 0);
+
+			sp.impulse = glm::mix(sp.impulse, sp.impulse + 10.f * thrust * tf.value.forward(), float(delta) * in.prototype->acceleration);
+			tf.value.rotation = glm::slerp(tf.value.rotation, glm::angleAxis<float>(h_tilt, glm::vec3(0, -1, 0)) * tf.value.rotation, float(delta));
+			tf.value.rotation = glm::slerp(tf.value.rotation, tf.value.rotation * glm::angleAxis<float>(v_tilt, glm::vec3(1, 0, 0)), float(delta));
+        }
+
+		if (sp.impulse != glm::vec3(0))
+		{
+			const auto gravity = glm::vec3(0, 9.81f, 0);
+			sp.force = glm::min((cam ? sp.force : glm::vec3(0)) + 0.0001f * glm::length(sp.impulse) / mass / mass * glm::max(glm::dot(tf.value.forward(), sp.impulse), 0.f) * tf.value.up(), mass * gravity);
+		}
+	}
+
+private:
+	terrain& _terrain;
+};
+
 class prototype_renderer
 {
 public:
     prototype_renderer()
     {
-        std::ifstream  protos_file(gfx::file("protos.json"));
+		const std::filesystem::path protos_path = gfx::file("proto/protos.json");
+		const auto root = protos_path.parent_path();
+
+        std::ifstream  protos_file(protos_path);
         nlohmann::json protos;
         protos_file >> protos;
-        std::ifstream  buildings_file(gfx::file("buildings.json"));
-        nlohmann::json buildings;
-        buildings_file >> buildings;
 
         gfx::mesh3d combined;
-        for (const auto& json : protos) {
+        for (const auto& json : protos["vehicles"]) {
             const auto name           = json["name"].get<std::string>();
-            const auto path           = json["mesh"].get<std::string>();
+            const auto path           = root/json["mesh"].get<std::string>();
             const auto speed          = json["speed"].get<float>();
             const auto acceleration   = json["acceleration"].get<float>();
-            const auto rotation_speed = json["rotation_speed"].get<float>();
-			const auto logo = json["logo"].get<std::string>();
+            const auto rotation_speed = json["rotspeed"].get<float>();
+			const auto logo = root/json["logo"].get<std::string>();
 
             gfx::scene_file mesh(path);
             mesh.mesh.collapse();
@@ -225,10 +307,10 @@ public:
             proto.bounds          = mesh.mesh.compute_bounds();
             combined += mesh.mesh;
         }
-		for (const auto& json : buildings) {
+		for (const auto& json : protos["buildings"]) {
 			const auto name = json["name"].get<std::string>();
-			const auto path = json["mesh"].get<std::string>();
-			const auto logo = json["logo"].get<std::string>();
+			const auto path = root/json["mesh"].get<std::string>();
+			const auto logo = root/json["logo"].get<std::string>();
 
 			gfx::scene_file mesh(path);
 			mesh.mesh.collapse();
@@ -351,14 +433,14 @@ class collision_resolver
 {
 public:
 	collision_resolver(terrain& t)
-		: _terrain(t)
+		: _terrain(t), _colliders(chunk_count * chunk_count)
 	{
-
 	}
 
 	void clear()
 	{
-		_colliders.clear();
+        for(auto& c : _colliders)
+		    c.clear();
 	}
 
 	void resolve(transform_component& tc, speed_component& sc, sphere_collider_component& scc)
@@ -377,34 +459,47 @@ public:
 			const glm::vec3 dp3 = get_position(glm::vec2(eps, -eps));
 			const glm::vec3 normal_0 = normalize(cross(dp2 - dp0, dp3 - dp1));
 
-			const glm::vec3 ref = glm::reflect(sc.velocity, normal_0);
-			sc.velocity = scc.bounciness * ref + 8.f * normal_0; 
+			const glm::vec3 ref = glm::reflect(sc.impulse, normal_0);
+			sc.impulse = scc.bounciness * ref + 8.f * normal_0;
 		}
 
-#pragma omp parallel for
-		for (int i=0; i<_colliders.size(); ++i)
+		const int cx = std::clamp<int>((tc.value.position.x + 0.5f*(chunk_size * chunk_count)) / chunk_size, 0, chunk_count-1);
+		const int cz = std::clamp<int>((tc.value.position.z + 0.5f*(chunk_size * chunk_count)) / chunk_size, 0, chunk_count-1);
+		const int chunk = cx + chunk_count * cz;
+	    
+	    for (int i=0; i<_colliders[chunk].size(); ++i)
 		{
-			auto& t_tc = *std::get<transform_component*>(_colliders[i]);
-			auto& t_sc = *std::get<speed_component*>(_colliders[i]);
-			auto& t_scc = *std::get<sphere_collider_component*>(_colliders[i]);
+			auto& t_tc = *std::get<transform_component*>(_colliders[chunk][i]);
+			auto& t_sc = *std::get<speed_component*>(_colliders[chunk][i]);
+			auto& t_scc = *std::get<sphere_collider_component*>(_colliders[chunk][i]);
 
 			if (distance(tc.value.position, t_tc.value.position) < (scc.radius + t_scc.radius))
 			{
 				const glm::vec3 normal = normalize(t_tc.value.position - tc.value.position);
-				const glm::vec3 ref = glm::reflect(sc.velocity, normal);
-				const glm::vec3 t_ref = glm::reflect(t_sc.velocity, -normal);
+				const glm::vec3 ref = glm::reflect(sc.impulse, normal);
+				const glm::vec3 t_ref = glm::reflect(t_sc.impulse, -normal);
 
-				sc.velocity = scc.bounciness * ref + 0.1f * normal; 
-				t_sc.velocity = t_scc.bounciness * t_ref - 0.1f * normal;
+				sc.impulse = scc.bounciness * ref + 0.1f * normal; 
+				t_sc.impulse = t_scc.bounciness * t_ref - 0.1f * normal;
 
 				tc.value.position = t_tc.value.position - (scc.radius + t_scc.radius) * normal;
 			}
 		}
-		_colliders.emplace_back(&tc, &sc, &scc);
+
+        for(int i=-1; i <= 1; ++i)
+        {
+            for(int j = -1; j <= 1; ++j)
+            {
+				const int acx = std::clamp<int>(cx + i, 0, chunk_count-1);
+				const int acz = std::clamp<int>(cz+j, 0, chunk_count-1);
+				const int achunk = acx + chunk_count * acz;
+				_colliders[achunk].emplace_back(&tc, &sc, &scc);
+            }
+        }
 	}
 
 private:
-	std::vector<std::tuple<transform_component*, speed_component*, sphere_collider_component*>> _colliders;
+	std::vector<std::vector<std::tuple<transform_component*, speed_component*, sphere_collider_component*>>> _colliders;
 	terrain& _terrain;
 };
 
@@ -441,11 +536,11 @@ void executable::run()
 	collision_resolver coll_resolver(main_terrain);
 
     movement_system          movement;
-    flying_in_circles_system circle_flyer(main_terrain);
+	plane_movement_system plane_system(main_terrain);
 	collision_system coll_system(coll_resolver);
     gfx::ecs::system_list    movement_systems;
     movement_systems.add(movement);
-    movement_systems.add(circle_flyer);
+    movement_systems.add(plane_system);
     movement_systems.add(coll_system);
 
     prototype_renderer    renderer;
@@ -464,7 +559,6 @@ void executable::run()
     const auto                            spawn_from_prototype = [&](const instance_proto* prototype, const glm::vec3 at) {
         instance_component inst;
         inst.albedo       = glm::vec3(dist(gen), dist(gen), dist(gen));
-        inst.buffer_index = entities.size();
         inst.prototype    = prototype;
 		const_cast<instance_proto*>(prototype)->usages++;
         transform_component tf;
@@ -480,10 +574,10 @@ void executable::run()
     const auto spawn_random_vehicle = [&]() {
         return spawn_from_prototype(&renderer.vehicle_prototypes()[std::clamp(size_t(dist(gen) * renderer.vehicle_prototypes().size()), 0ull,
                                                                        renderer.vehicle_prototypes().size())],
-                             glm::vec3(dist(gen), dist(gen), dist(gen)) * 50.f);
+                             glm::vec3(dist(gen), dist(gen), dist(gen)) * 1500.f);
     };
 
-    for (int i = 0; i < 500; ++i) {
+    for (int i = 0; i < 33; ++i) {
 		if (i == 0)
 			spawn_random_vehicle().add(camera_component{});
 		else
@@ -493,7 +587,6 @@ void executable::run()
    const auto spawn_random_building = [&]() {
         instance_component inst;
         inst.albedo       = glm::vec3(dist(gen), dist(gen), dist(gen));
-        inst.buffer_index = entities.size();
         inst.prototype    = &renderer.building_prototypes()[std::clamp(size_t(dist(gen) * renderer.building_prototypes().size()), 0ull,
                                                                     renderer.building_prototypes().size())];
 		const_cast<instance_proto*>(inst.prototype)->usages++;
@@ -502,7 +595,7 @@ void executable::run()
         tf.value                = gfx::transform(glm::vec3(loc.x, 5.f + main_terrain.terrain_height(loc), loc.y));
         entities.push_back(ecs.create_entity(inst, tf));
     };
-    for (int i = 0; i < 50; ++i) {
+    for (int i = 0; i < 33; ++i) {
         spawn_random_building();
     }
 
@@ -651,11 +744,12 @@ void executable::run()
         }
         ImGui::Value("Instances", int(renderer.instances().size()));
         ImGui::Value("Framerate", 1.f / float(ftime));
+		ImGui::Value("Frametime (ms)", float(ftime*1000.0));
 		ImGui::Checkbox("Follow any", &enable_following_camera);
 		if (enable_following_camera && ImGui::Button("Random cam"))
 		{
 			gfx::dlog << ecs.remove_components<camera_component>(cam_system.cam_component()->entity);
-			entities[int(dist(gen) * 500)].add(camera_component{});
+			entities[int(dist(gen) * entities.size())].add(camera_component{});
 		}
 		ImGui::Separator();
 
@@ -682,7 +776,9 @@ void executable::run()
         renderer.clear();
 		coll_resolver.clear();
 		ecs.update(context->delta(), movement_systems);
+		//const auto c = std::chrono::steady_clock::now();
         ecs.update(context->delta(), graphics_systems);
+		//gfx::ilog << (std::chrono::steady_clock::now() - c).count();
         mesh_sets[context->swapchain()->current_image()].bind(1, renderer.instances());
 
 		if(enable_following_camera)
@@ -692,16 +788,16 @@ void executable::run()
         current_command->dispatch((renderer.instances().size() + 31) / 32);
 
         current_command->begin_pass(*current_framebuffer);
-		current_command->bind_pipeline(sky_pipeline, { &sky_set });
-		current_command->draw(3);
+		/*current_command->bind_pipeline(sky_pipeline, { &sky_set });
+		current_command->draw(3);*/
 
         current_command->bind_pipeline(mesh_pipeline, {&mesh_sets[context->swapchain()->current_image()]});
         current_command->render(renderer);
 
-        current_command->bind_pipeline(terrain_pipeline, {&terrain_set, &terrain_style_set});
+		current_command->bind_pipeline(terrain_pipeline, {&terrain_set, &terrain_style_set});
         current_command->bind_vertex_buffer(chunk, 0);
         current_command->bind_vertex_buffer(chunks, 1);
-        current_command->draw({gfx::u32(chunk.size()), gfx::u32(chunks.size())});
+        current_command->draw({gfx::u32(chunk.size()), gfx::u32(chunks.size())});/* */
 
         current_command->end_pass();
     }

@@ -45,7 +45,7 @@ float get_height(vec2 position)
 
 void main()
 {
-	const int base_resolution = 32;
+	const int base_resolution = 64;
 
 	if(valid[0] == 1)
 	{
