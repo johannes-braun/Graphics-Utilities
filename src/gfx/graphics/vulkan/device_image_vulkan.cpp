@@ -127,7 +127,8 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
     case d24unorms8ui:
     case d32fs8ui:
 		assert(as_attachment);
-        img_create.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		img_create.usage = (as_attachment ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0) |
+			VK_IMAGE_USAGE_SAMPLED_BIT;
         break;
     default:
         img_create.usage = (as_attachment ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : 0) |

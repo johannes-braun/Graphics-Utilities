@@ -37,17 +37,8 @@ out gl_PerVertex
 	vec4 gl_Position;
 };
 
-layout(location = 0) out vec3 out_position;
-layout(location = 1) out vec2 out_uv;
-layout(location = 2) out vec3 out_normal;
-layout(location = 3) out vec3 out_albedo;
-
 void main()
 {
 	const mat4 model = instances[gl_DrawID].model;
-	out_position = vec3(model * vec4(position, 1));
-	out_uv = uv;
-	out_normal = vec3(inverse(transpose(model)) * vec4(normal, 0));
-	out_albedo = instances[gl_DrawID].albedo.rgb;
-	gl_Position = vec4(camera.proj * camera.view * vec4(out_position, 1));
+	gl_Position = vec4(camera.proj * camera.view * model * vec4(position, 1));
 }

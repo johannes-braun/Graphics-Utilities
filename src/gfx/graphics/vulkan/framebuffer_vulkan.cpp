@@ -56,7 +56,7 @@ void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const
     {
         att.format      = v1::vulkan::get_format(layout.depth_attachment_format());
         att.samples     = VkSampleCountFlagBits(layout.samples());
-        att.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		att.finalLayout = VK_IMAGE_LAYOUT_GENERAL;// VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         _attachment_descriptions.push_back(att);
     }
 

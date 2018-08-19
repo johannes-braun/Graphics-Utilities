@@ -23,7 +23,7 @@ struct instance
 	vec4 bounds[2];
 };
 
-layout(loc_gl(0) loc_vk(0, 1), std430) restrict buffer Instances
+layout(loc_gl(0) loc_vk(1, 0), std430) restrict buffer Instances
 {
 	instance instances[];
 };

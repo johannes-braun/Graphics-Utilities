@@ -9,34 +9,51 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 } camera;
 
 layout(location = 0) in vec2 position;
-layout(location = 1) in vec2 chunk_position;
 
 out gl_PerVertex
 {
 	vec4 gl_Position;
 };
 
-const float chunk_size = 16.f;
-const float chunk_count = 200;
-layout(location = 0) flat out int valid;
+layout(loc_gl(1) loc_vk(1, 2)) uniform TerrainInfo
+{
+	float           chunk_size;
+	int             chunk_count;
+};
 layout(loc_gl(0) loc_vk(0, 1)) uniform sampler2D heightmap;
 
 float get_height(vec2 position)
 {
-	position += vec2(chunk_size * chunk_count) / 2.f;
-	position /= chunk_size * chunk_count;
+	//position += vec2(chunk_size * chunk_count);
+	position /= 500.f;
 	return 220 * pow(texture(heightmap, position).r, 1);
 }
+
+layout(location = 0) out vec3 out_position;
+layout(location = 1) flat out vec3 out_normal;
+layout(location = 2) out vec2 out_uv;
 
 void main()
 {
 	const vec2 chunk_extents = vec2(chunk_size * chunk_count);
 	const vec2 cam_chunk = ivec2(camera.pos.xz / chunk_size) * chunk_size;
 
-	vec2 cp = cam_chunk + chunk_position + chunk_size*0.5f;
-	vec4 sscp = camera.proj * camera.view * vec4(cp.x, get_height(cp), cp.y, 1);
+	vec2 cp = cam_chunk + position + chunk_size*0.5f;
+	
+	const vec2 uvx = vec2(cam_chunk.x + position.x, cam_chunk.y + position.y);
 
-	valid = 1;//int(!(any(greaterThan(sscp.xy / sscp.ww, vec2(1.5f))) || any(lessThan(sscp.xy / sscp.ww, -vec2(1.5f)))));
+	#define get_position(Off) (vec4(uvx.x + (Off.x), get_height(uvx + Off), uvx.y + (Off.y), 0))
 
-	gl_Position = vec4(cam_chunk.x + chunk_position.x + position.x, 0, cam_chunk.y + chunk_position.y + position.y, 1);
+	const float eps = 10.f;
+	const vec4 dp0 = get_position(vec2(-eps, -eps));
+	const vec4 dp1 = get_position(vec2(-eps, eps));
+	const vec4 dp2 = get_position(vec2(eps, eps));
+	const vec4 dp3 = get_position(vec2(eps, -eps));
+
+	const vec3 normal_0 = cross(dp2.xyz - dp0.xyz, dp3.xyz - dp1.xyz);
+
+	out_position = vec3(uvx.x, get_height(uvx), uvx.y);
+	out_uv = uvx;
+	out_normal = normal_0;
+	gl_Position = camera.proj * camera.view * vec4(out_position, 1);
 }

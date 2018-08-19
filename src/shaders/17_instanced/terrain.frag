@@ -11,14 +11,25 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 
 layout(loc_gl(1) loc_vk(1, 0)) uniform sampler2D bumpmap;
 layout(loc_gl(2) loc_vk(1, 1)) uniform sampler2D colormap;
+layout(loc_gl(1) loc_vk(1, 2)) uniform TerrainInfo
+{
+	float           chunk_size;
+	int             chunk_count;
+};
+
+layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2DShadow shadowmap;
+layout(loc_gl(2) loc_vk(2, 1)) uniform ShadowCamera
+{
+	mat4 view;
+	mat4 proj;
+	vec3 pos;
+} shadow_camera;
 
 layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 normal_u;
+layout(location = 1) flat in vec3 normal_u;
 layout(location = 2) in vec2 uv;
 
 layout(location = 0) out vec4 color;
-const float chunk_size = 16.f;
-const float chunk_count = 200;
 
 mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv)
 {
@@ -59,11 +70,49 @@ vec3 from_bump(vec3 surf_pos, vec3 surf_norm, vec2 uv, vec3 view_dir, sampler2D 
     return tbn * normalize(cross(vec3(2, 0, h[0] - h[1]), vec3(0, 2, h[2] - h[3])));
 }
 
+vec3 get_pos(mat4 mat, vec3 pos)
+{
+    vec4 map_pos = mat * vec4(pos, 1);
+    map_pos /= map_pos.w;
+    map_pos.xy = 0.5f * map_pos.xy + 0.5f;
+    return map_pos.xyz;
+}
+
+float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 light_dir){
+
+    vec2 tex_size = textureSize(map, 0);
+
+    vec3 map_pos = get_pos(mat, pos + 0.1f * normal);
+
+    float shadow = 0.f;
+    vec2 inv_size = 1/max(tex_size, vec2(1, 1));
+    const int size = 7;
+    const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
+    float slope = 0.3f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
+
+    for(int i=0; i<size*size; ++i)
+    {
+        const int x = (i % size - (size >> 1)-1);
+        const int y = (i / size - (size >> 1)-1);
+        const vec2 offset = vec2(x, y) * inv_size;
+
+        const float eps = 0.0002 * slope;
+        const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
+        const float depth = 1-texture(map, vec3(uv, map_pos.z + eps)).r;
+
+        shadow += depth;
+    }
+    return /*max(dot(normal, light_dir),0) */ shadow / (size*size);
+}
+
 void main()
 {
 	const vec3 base_normal = normalize(normal_u);
 	const vec3 view   = normalize(position - camera.pos);
 	const float cam_dist = distance(position, camera.pos);
+
+//	color = vec4(base_normal, 1);
+//	return;
 
 	vec3 normals[4];
 	normals[0] = from_bump(position, base_normal, uv, view, bumpmap, 0.01f);
@@ -83,14 +132,16 @@ void main()
 	const vec3 normal = normalize(normals[index]);
 	const vec3 albedo = colors[index];
 
-	const vec3 light  = normalize(vec3(4, 4, 4));
+	const vec3 light  = normalize(position-shadow_camera.pos);
 	const float ndotl = max(dot(light, normal), 0.f);
 	const float ndotv = max(dot(-view, normal), 0.f);
 
 	const float f0 = pow((1+1.5f) / (1-1.5f), 2);
 	const float fres = f0 + (1-f0)* (1-pow(ndotv, 5));
 
-	color = vec4(ndotl * albedo + sky_noclouds(view, normal), 1);
+	float s = shadow(shadowmap, shadow_camera.proj * shadow_camera.view, position, normal, light);
+
+	color = vec4(s * ndotl * albedo + sky_noclouds(view, normal), 1);
 
 	//const float max_dist = chunk_size * chunk_count;
 	//color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, cam_dist));
