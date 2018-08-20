@@ -17,16 +17,20 @@ layout(loc_gl(1) loc_vk(1, 2)) uniform TerrainInfo
 	int             chunk_count;
 };
 
-layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2DShadow shadowmap;
-layout(loc_gl(2) loc_vk(2, 1)) uniform ShadowCamera
+layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2DArrayShadow shadowmap;
+struct shadow_cam_data
 {
 	mat4 view;
 	mat4 proj;
 	vec3 pos;
+};
+layout(loc_gl(2) loc_vk(2, 1)) uniform ShadowCamera
+{
+	shadow_cam_data data[256];
 } shadow_camera;
 
 layout(location = 0) in vec3 position;
-layout(location = 1) flat in vec3 normal_u;
+layout(location = 1) in vec3 normal_u;
 layout(location = 2) in vec2 uv;
 
 layout(location = 0) out vec4 color;
@@ -78,17 +82,30 @@ vec3 get_pos(mat4 mat, vec3 pos)
     return map_pos.xyz;
 }
 
-float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 light_dir){
+int get_layer(float dist)
+{
+	ivec3 ts = textureSize(shadowmap, 0);
+	float layers = ts.z;
+	const int l = int(log2(int(dist / 5)));
+	if(l >= layers) return -1;
+	return l;
+}
 
-    vec2 tex_size = textureSize(map, 0);
+float shadow(in sampler2DArrayShadow map, in mat4 mat, vec3 pos, float dist, vec3 normal, vec3 light_dir){
 
-    vec3 map_pos = get_pos(mat, pos + 0.1f * normal);
+	ivec3 ts = textureSize(map, 0);
+    vec2 tex_size = ts.xy;
+	float layers = ts.z;
+
+    vec3 map_pos = get_pos(mat, pos + 0.5f * normal);
 
     float shadow = 0.f;
     vec2 inv_size = 1/max(tex_size, vec2(1, 1));
-    const int size = 7;
+    const int size = 3;
     const vec2 frc = fract(map_pos.xy * tex_size + 0.5f).xy;
     float slope = 0.3f+clamp(tan(acos(dot(light_dir,normal))), -1, 1);
+
+	const int layer = get_layer(dist);
 
     for(int i=0; i<size*size; ++i)
     {
@@ -98,7 +115,7 @@ float shadow(in sampler2DShadow map, in mat4 mat, vec3 pos, vec3 normal, vec3 li
 
         const float eps = 0.0002 * slope;
         const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
-        const float depth = 1-texture(map, vec3(uv, map_pos.z + eps)).r;
+        const float depth = 1-texture(map, vec4(uv, layer, map_pos.z + eps)).r;
 
         shadow += depth;
     }
@@ -132,17 +149,21 @@ void main()
 	const vec3 normal = normalize(normals[index]);
 	const vec3 albedo = colors[index];
 
-	const vec3 light  = normalize(position-shadow_camera.pos);
+	const vec3 light  = normalize(position-shadow_camera.data[0].pos);
 	const float ndotl = max(dot(light, normal), 0.f);
 	const float ndotv = max(dot(-view, normal), 0.f);
 
 	const float f0 = pow((1+1.5f) / (1-1.5f), 2);
 	const float fres = f0 + (1-f0)* (1-pow(ndotv, 5));
 
-	float s = shadow(shadowmap, shadow_camera.proj * shadow_camera.view, position, normal, light);
+	float s = 1;
+	const float cam_distxz = distance(position.xz, camera.pos.xz);
+	const int layer = get_layer(cam_distxz);
+	if(layer != -1)
+		s = shadow(shadowmap, shadow_camera.data[layer].proj * shadow_camera.data[layer].view, position, cam_distxz, normal, light);
 
 	color = vec4(s * ndotl * albedo + sky_noclouds(view, normal), 1);
-
-	//const float max_dist = chunk_size * chunk_count;
-	//color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, cam_dist));
+	
+	const float max_dist = chunk_size * chunk_count;
+	color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, cam_dist));
 }

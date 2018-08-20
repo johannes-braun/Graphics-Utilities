@@ -26,11 +26,11 @@ float get_height(vec2 position)
 {
 	//position += vec2(chunk_size * chunk_count);
 	position /= 500.f;
-	return 220 * pow(texture(heightmap, position).r, 1);
+	return 80 * pow(texture(heightmap, position).r, 1);
 }
 
 layout(location = 0) out vec3 out_position;
-layout(location = 1) flat out vec3 out_normal;
+layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec2 out_uv;
 
 void main()
