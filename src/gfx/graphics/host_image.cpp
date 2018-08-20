@@ -119,8 +119,9 @@ glm::vec4 host_image::load_bilinear(const glm::vec3& pixel) const
     return mix(m0yz, m1yz, frac.x);
 }
 
-glm::vec4 host_image::load(const glm::uvec3& pixel) const
+glm::vec4 host_image::load(glm::uvec3 pixel) const
 {
+	pixel = _extent.clamp(pixel);
     const size_t index = (_extent.width * _extent.height * pixel.z + _extent.width * pixel.y + pixel.x) * _storage_element_size;
 
     switch (_format)

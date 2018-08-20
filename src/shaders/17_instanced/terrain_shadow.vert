@@ -24,7 +24,7 @@ layout(loc_gl(1) loc_vk(1, 2)) uniform TerrainInfo
 
 float get_height(vec2 position)
 {
-	position /= 500.f;
+	position /=1500.f;
 	return 80 * pow(texture(heightmap, position).r, 1);
 }
 

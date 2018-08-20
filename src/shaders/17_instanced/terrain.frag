@@ -86,7 +86,7 @@ int get_layer(float dist)
 {
 	ivec3 ts = textureSize(shadowmap, 0);
 	float layers = ts.z;
-	const int l = int(log2(int(dist / 5)));
+	const int l = int(log2(int(dist / 20)));
 	if(l >= layers) return -1;
 	return l;
 }
@@ -115,7 +115,7 @@ float shadow(in sampler2DArrayShadow map, in mat4 mat, vec3 pos, float dist, vec
 
         const float eps = 0.0002 * slope;
         const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
-        const float depth = 1-texture(map, vec4(uv, layer, map_pos.z + eps)).r;
+        const float depth = 1-texture(map, vec4(get_uv(uv), layer, map_pos.z + eps)).r;
 
         shadow += depth;
     }
@@ -130,7 +130,7 @@ void main()
 
 //	color = vec4(base_normal, 1);
 //	return;
-
+//
 	vec3 normals[4];
 	normals[0] = from_bump(position, base_normal, uv, view, bumpmap, 0.01f);
 	for(int i=1; i < normals.length(); ++i)
@@ -162,8 +162,8 @@ void main()
 	if(layer != -1)
 		s = shadow(shadowmap, shadow_camera.data[layer].proj * shadow_camera.data[layer].view, position, cam_distxz, normal, light);
 
-	color = vec4(s * ndotl * albedo + sky_noclouds(view, normal), 1);
+	color = vec4(s * ndotl * albedo, 1);
 	
 	const float max_dist = chunk_size * chunk_count;
-	color = mix(color, vec4(sky(view, camera.pos), 1), smoothstep(max_dist / 4.f, max_dist/2.f, cam_dist));
+	color = mix(color, vec4(sky_noclouds(view, camera.pos), 1), smoothstep(max_dist / 2.5f, max_dist/2.f, cam_dist));
 }

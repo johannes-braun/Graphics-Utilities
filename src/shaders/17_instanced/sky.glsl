@@ -70,7 +70,6 @@ vec3 sky_noclouds(vec3 uv, vec3 cam)
 
 	vec3 sundir = normalize(vec3(sx, sy, sz));
 	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
-	return (mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f)) / 3.14159265359f;
 
 	result = mix(bottom, mix(eve, top, up_angle_sun), smoothstep(-0.4f, 0.1f, up_angle));
 
@@ -81,12 +80,43 @@ vec3 sky_noclouds(vec3 uv, vec3 cam)
 	vec3 tc = normalize(uv);
 	tc.y *= 4.f;
 
-	float cl = 0;
-	float clx = 0;
-
+	float cl = 0.f;
+	float clx = 0.f;
 	result = vec3(mix(result, vec3(1.f), 0.7f * cl));
 	result = vec3(mix(result, mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f), mix(0, clx, cl)));
-	return mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
+	result = mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
+	return result;
+//	vec3 bottom = vec3(0.2f);
+//	vec3 top = vec3(0.3f, 0.5f, 1.f);
+//	vec3 eve = vec3(0.9f, 0.5f, 0.1f);
+//
+//	float up_angle = dot(normalize(uv), normalize(vec3(0,1,0)));
+//
+//	vec3 result = bottom;
+//
+//	float sy = 1.1f + 0.5f * sin(time);
+//	float sx = sin(time*0.1f) *1;
+//	float sz = cos(time*0.1f) * 1;
+//
+//	vec3 sundir = normalize(vec3(sx, sy, sz));
+//	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
+//	return (mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f)) / 3.14159265359f;
+//
+//	result = mix(bottom, mix(eve, top, up_angle_sun), smoothstep(-0.4f, 0.1f, up_angle));
+//
+//	float angle = dot(normalize(uv), sundir);
+//	result = mix(result, vec3(1.f), 0.5f*smoothstep(0.15f, 1.15f, angle));
+//	result = mix(result, vec3(8.f), smoothstep(0.985f, 1.08f, angle));
+//	
+//	vec3 tc = normalize(uv);
+//	tc.y *= 4.f;
+//
+//	float cl = 0;
+//	float clx = 0;
+//
+//	result = vec3(mix(result, vec3(1.f), 0.7f * cl));
+//	result = vec3(mix(result, mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f), mix(0, clx, cl)));
+//	return mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
 }
 
 

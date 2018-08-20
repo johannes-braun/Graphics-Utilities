@@ -125,7 +125,7 @@ public:
         for (auto i = 0u; i < _extent.count(); ++i) f(_extent.subpixel(i));
     }
 
-    glm::vec4  load(const glm::uvec3& pixel) const;
+    glm::vec4  load(glm::uvec3 pixel) const;
     glm::vec4  load_bilinear(const glm::vec3& pixel) const;
     glm::uvec4 loadu(const glm::uvec3& pixel) const;
     glm::ivec4 loadi(const glm::uvec3& pixel) const;

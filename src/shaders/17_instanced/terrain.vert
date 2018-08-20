@@ -25,7 +25,7 @@ layout(loc_gl(0) loc_vk(0, 1)) uniform sampler2D heightmap;
 float get_height(vec2 position)
 {
 	//position += vec2(chunk_size * chunk_count);
-	position /= 500.f;
+	position /= 1500.f;
 	return 80 * pow(texture(heightmap, position).r, 1);
 }
 

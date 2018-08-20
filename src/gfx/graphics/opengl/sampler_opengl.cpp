@@ -125,7 +125,7 @@ void sampler_implementation::set_anisotropy(bool enable, float value)
 
 void sampler_implementation::set_compare(bool enable, compare_op op)
 {
-    glSamplerParameteri(_handle, GL_TEXTURE_COMPARE_MODE, enable ? GL_NONE : GL_COMPARE_REF_TO_TEXTURE);
+    glSamplerParameteri(_handle, GL_TEXTURE_COMPARE_MODE, enable ? GL_COMPARE_REF_TO_TEXTURE : GL_NONE);
     switch (op)
     {
     case compare_op::never: glSamplerParameteri(_handle, GL_TEXTURE_COMPARE_FUNC, GL_NEVER); break;
