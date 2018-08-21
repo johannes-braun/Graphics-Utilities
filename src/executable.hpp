@@ -52,7 +52,7 @@ struct executable
 		gui       = std::make_unique<gfx::gui>();
 		logo      = std::make_unique<gfx::image>(gfx::himage(gfx::rgba8unorm, "ui/logo_next.png"));
 		logo_view = std::make_unique<gfx::image_view>(gfx::imgv_type::image2d, *logo);
-		camera_buffer = std::make_unique<gfx::buffer<gfx::camera::data>>(gfx::buffer_usage::uniform, 1);
+		camera_buffer = std::make_unique<gfx::hbuffer<gfx::camera::data>>(1);
 	}
 
 	bool frame()
@@ -122,7 +122,7 @@ struct executable
 
 	gfx::camera camera;
 	gfx::camera_controller          controller;
-	std::unique_ptr<gfx::buffer<gfx::camera::data>> camera_buffer;
+	std::unique_ptr<gfx::hbuffer<gfx::camera::data>> camera_buffer;
 };
 
 #ifndef GFX_EXECUTABLE_NO_MAIN

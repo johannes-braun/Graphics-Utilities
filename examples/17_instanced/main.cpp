@@ -79,8 +79,8 @@ struct speed_component : gfx::ecs::component<speed_component>
 
 struct sphere_collider_component : gfx::ecs::component<sphere_collider_component>
 {
-    float radius     = 1.f;
-    float bounciness = 0.4f;
+    float radius     = 0.3f;
+    float bounciness = 0.8f;
 };
 
 struct camera_component : gfx::ecs::component<camera_component>
@@ -103,7 +103,7 @@ public:
         auto& tf = components[0]->as<transform_component>();
         auto& sp = components[1]->as<speed_component>();
 
-        const auto sphere_radius = 1.f;
+        const auto sphere_radius = 0.3f;
         const auto sphere_moment = 2.f / 5.f * sphere_radius * sphere_radius;
         const auto moment        = sphere_moment;
 
@@ -118,13 +118,13 @@ public:
         const float dt      = delta;
         const auto  gravity = glm::vec3(0, -9.81f, 0);
 
-        sp.impulse += (sp.force + gravity * mass) * dt;
+        sp.impulse = 0.999f * sp.impulse + (sp.force + gravity * mass) * dt;
 
         // if (isnan(sp.impulse.x)) gfx::elog << "nan";
 
         tf.value.position += sp.impulse / mass * dt;
 
-        sp.rotation_impulse += (sp.torque + sp.torque_acceleration) * dt;
+        sp.rotation_impulse = 0.999f * sp.rotation_impulse + (sp.torque + sp.torque_acceleration) * dt;
         tf.value.rotation = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.value.rotation;
 
         sp.torque              = glm::vec3(0.f);
@@ -474,21 +474,20 @@ public:
             const glm::vec3 normal_0     = normalize(cross(dp2 - dp0, dp3 - dp1));
 
             const glm::vec3 ref = glm::reflect(sc.impulse, normal_0);
-            sc.impulse          = scc.bounciness * ref + 8.f * normal_0;
+            sc.impulse          = scc.bounciness * ref;
         }
 
         const auto chunk_count = _terrain.chunk_count();
         const auto chunk_size  = _terrain.chunk_size();
 
-		const int cx = 15.f * (tc.value.position.x) / 1500.f;
-		const int cz = 15.f * (tc.value.position.z) / 1500.f;
+        const int cx = 15.f * (tc.value.position.x) / 1500.f;
+        const int cz = 15.f * (tc.value.position.z) / 1500.f;
 
-		if (cx < 0 || cx >= chunk_count || cz < 0 || cz >= chunk_count)
-			return;
+        if (cx < 0 || cx >= chunk_count || cz < 0 || cz >= chunk_count) return;
 
         const int chunk = cx + chunk_count * cz;
 
-		auto& colliders = _colliders[chunk];
+        auto& colliders = _colliders[chunk];
         for (const auto c : colliders) {
             auto& t_tc  = *std::get<transform_component*>(c);
             auto& t_sc  = *std::get<speed_component*>(c);
@@ -499,8 +498,8 @@ public:
                 const glm::vec3 ref    = glm::reflect(sc.impulse, normal);
                 const glm::vec3 t_ref  = glm::reflect(t_sc.impulse, -normal);
 
-                sc.impulse   = scc.bounciness * ref + 0.1f * normal;
-                t_sc.impulse = t_scc.bounciness * t_ref - 0.1f * normal;
+                sc.impulse   = scc.bounciness * ref;
+                t_sc.impulse = t_scc.bounciness * t_ref;
 
                 tc.value.position = t_tc.value.position - (scc.radius + t_scc.radius) * normal;
             }
@@ -509,7 +508,7 @@ public:
         for (int i = std::clamp<int>(cx - 1, 0, chunk_count - 1); i <= std::clamp<int>(cx + 1, 0, chunk_count - 1); ++i) {
             for (int j = std::clamp<int>(cz - 1, 0, chunk_count - 1); j <= std::clamp<int>(cz + 1, 0, chunk_count - 1); ++j) {
                 const int achunk = i + chunk_count * j;
-				colliders.emplace_back(&tc, &sc, &scc);
+                colliders.emplace_back(&tc, &sc, &scc);
             }
         }
     }
@@ -582,7 +581,7 @@ void executable::run()
         tgt.target = tf.value;
         speed_component           sp;
         sphere_collider_component collider;
-        collider.radius = 2.f;
+        collider.radius = 0.4f;
         entities.push_back(ecs.create_entity(inst, tf, tgt, sp, collider));
         return entities.back();
     };
@@ -624,8 +623,8 @@ void executable::run()
     camera_bindings.push(gfx::binding_type::uniform_buffer);
     gfx::binding_layout mesh_bindings;
     mesh_bindings.push(gfx::binding_type::storage_buffer);
-	gfx::binding_layout shadow_bindings;
-	shadow_bindings.push(gfx::binding_type::sampled_image).push(gfx::binding_type::uniform_buffer);
+    gfx::binding_layout shadow_bindings;
+    shadow_bindings.push(gfx::binding_type::sampled_image).push(gfx::binding_type::uniform_buffer);
     gfx::pipe_state::binding_layouts layouts;
     layouts.layouts.push_back(&camera_bindings);
     layouts.layouts.push_back(&mesh_bindings);
@@ -675,8 +674,8 @@ void executable::run()
     }
     gfx::buffer<terrain_chunk> chunks(gfx::buffer_usage::vertex, chunks_local);
 
-	gfx::renderpass_layout shadow_pass;
-	shadow_pass.set_depth_stencil_attachment(gfx::d32f);
+    gfx::renderpass_layout shadow_pass;
+    shadow_pass.set_depth_stencil_attachment(gfx::d32f);
 
     gfx::binding_layout terrain_bindings;
     terrain_bindings.push(gfx::binding_type::uniform_buffer).push(gfx::binding_type::sampled_image);
@@ -702,19 +701,25 @@ void executable::run()
     terrain_state.state_input_assembly = &terrain_assembly;
     terrain_state.state_bindings       = &terrain_layouts;
 
-    const auto terrain_shaders_shadow         = {
+	terrain_rasterizer.depth_bias_enable = true;
+	terrain_rasterizer.depth_bias_constant_factor = -8.f;
+	terrain_rasterizer.depth_bias_slope_factor = -8.f;
+
+    const auto terrain_shaders_shadow = {
         gfx::shader(gfx::shader_type::vert, "17_instanced/terrain_shadow.vert"),
         gfx::shader(gfx::shader_type::frag, "17_instanced/mesh_shadow.frag"),
     };
     gfx::graphics_pipeline terrain_pipeline_shadow(terrain_state, shadow_pass, terrain_shaders_shadow);
 
-    const auto terrain_shaders         = {
+	terrain_rasterizer.depth_bias_enable = false;
+
+    const auto terrain_shaders = {
         gfx::shader(gfx::shader_type::vert, "17_instanced/terrain.vert"),
         gfx::shader(gfx::shader_type::frag, "17_instanced/terrain.frag"),
     };
-	terrain_state.state_multisample    = &msaa_state;
+    terrain_state.state_multisample = &msaa_state;
     terrain_layouts.layouts.push_back(&terrain_shadow_bindings);
-	terrain_rasterizer.cull = gfx::cull_mode::back;
+    terrain_rasterizer.cull = gfx::cull_mode::back;
     gfx::graphics_pipeline terrain_pipeline(terrain_state, pass_layout, terrain_shaders);
 
 
@@ -733,60 +738,64 @@ void executable::run()
     sky_state.state_bindings      = &sky_binding_state;
     sky_state.state_depth_stencil = &sky_depth;
     sky_state.state_multisample   = &msaa_state;
-    gfx::graphics_pipeline sky_pipeline(sky_state, pass_layout,
-                                        {gfx::shader(gfx::shader_type::vert, "17_instanced/skybox.vert"),
-                                         gfx::shader(gfx::shader_type::frag, "17_instanced/skybox.frag")});
+    gfx::graphics_pipeline sky_pipeline(
+        sky_state, pass_layout,
+        {gfx::shader(gfx::shader_type::vert, "17_instanced/skybox.vert"), gfx::shader(gfx::shader_type::frag, "17_instanced/skybox.frag")});
 
 
-	const int shadow_map_count = 4;
-    gfx::image       shadow_map(gfx::img_type::attachment, gfx::d32f, gfx::extent(1024, 1024, shadow_map_count), 1);
-    gfx::image_view  shadow_map_view(gfx::imgv_type::image2d_array, shadow_map);
+    const int       shadow_map_count = 5;
+    gfx::image      shadow_map(gfx::img_type::attachment, gfx::d32f, gfx::extent(1024, 1024, shadow_map_count), 1);
+    gfx::image_view shadow_map_view(gfx::imgv_type::image2d_array, shadow_map);
 
-	std::vector<gfx::framebuffer> shadow_map_framebuffers;
-	std::vector<gfx::image_view> shadow_map_attachments;
-	for (int i=0; i<shadow_map_count; ++i)
-	{
-		shadow_map_framebuffers.emplace_back(shadow_map.extents().width, shadow_map.extents().height, 1, shadow_pass);
-		auto& view = shadow_map_attachments.emplace_back(gfx::imgv_type::image2d, gfx::d32f, shadow_map, 0, 1, i, 1);
-		shadow_map_framebuffers[i].attach(gfx::attachment::depth_stencil, 0, view, gfx::depth_stencil());
-	}
+    std::vector<gfx::framebuffer> shadow_map_framebuffers;
+    std::vector<gfx::image_view>  shadow_map_attachments;
+    for (int i = 0; i < shadow_map_count; ++i) {
+        shadow_map_framebuffers.emplace_back(shadow_map.extents().width, shadow_map.extents().height, 1, shadow_pass);
+        auto& view = shadow_map_attachments.emplace_back(gfx::imgv_type::image2d, gfx::d32f, shadow_map, 0, 1, i, 1);
+        shadow_map_framebuffers[i].attach(gfx::attachment::depth_stencil, 0, view, gfx::depth_stencil());
+    }
 
     raster.cull                  = gfx::cull_mode::none;
     mesh_state.state_multisample = nullptr;
+	raster.depth_bias_enable = true;
+	raster.depth_bias_constant_factor = -1.f;
+	raster.depth_bias_slope_factor = -1.f;
     const auto shadow_shaders    = {
         gfx::shader(gfx::shader_type::vert, "17_instanced/mesh_shadow.vert"),
         gfx::shader(gfx::shader_type::frag, "17_instanced/mesh_shadow.frag"),
     };
     gfx::graphics_pipeline shadow_mesh_pipeline(mesh_state, shadow_pass, shadow_shaders);
 
-    const float vps              = 80.f;
-	std::vector<gfx::camera> light_cameras(shadow_map_count);
-	std::vector<gfx::camera::data> cam_infos(shadow_map_count);
+    const float                    vps = 80.f;
+    std::vector<gfx::camera>       light_cameras(shadow_map_count);
+    std::vector<gfx::camera::data> cam_infos(shadow_map_count);
     for (int i = 0; i < std::size(light_cameras); ++i) {
-		light_cameras[i] = camera;
-        light_cameras[i].transform_mode.position = glm::vec3(100, -350, 100);
+        light_cameras[i]                         = camera;
+        light_cameras[i].transform_mode.position = glm::vec3(100, -150, 100);
         light_cameras[i].transform_mode.rotation =
             glm::quatLookAt(normalize(glm::vec3(0) - light_cameras[i].transform_mode.position), glm::vec3(0, 1, 0));
-        const float vpss                 = vps * (1 << i);
-        light_cameras[i].projection_mode = gfx::projection(-vpss * 0.5f, vpss * 0.5f, -vpss * 0.5f, vpss * 0.5f, -main_terrain.chunk_size() * main_terrain.chunk_count(), main_terrain.chunk_size() * main_terrain.chunk_count());
-		cam_infos[i] = light_cameras[i].info();
+        const float vpss = vps * (1 << i);
+        light_cameras[i].projection_mode =
+            gfx::projection(-vpss * 0.5f, vpss * 0.5f, -vpss * 0.5f, vpss * 0.5f, -main_terrain.chunk_size() * main_terrain.chunk_count(),
+                            main_terrain.chunk_size() * main_terrain.chunk_count());
+        cam_infos[i] = light_cameras[i].info();
     }
     gfx::buffer<gfx::camera::data> light_camera_data(gfx::buffer_usage::uniform, cam_infos);
-    
-	std::vector<gfx::binding_set>               light_camera_sets;
-	std::vector<gfx::binding_set>               light_camera_terrain_sets;
-	for (int i = 0; i < std::size(light_cameras); ++i) {
-		light_camera_sets.emplace_back(camera_bindings).bind(0, 0, light_camera_data, 1, 0*i);
-		auto& s = light_camera_terrain_sets.emplace_back(terrain_bindings);
-		s.bind(0, 0, light_camera_data, 1, 0*i);
-		s.bind(1, main_terrain.map_view(), main_terrain.sampler());
-	}
+
+    std::vector<gfx::binding_set> light_camera_sets;
+    std::vector<gfx::binding_set> light_camera_terrain_sets;
+    for (int i = 0; i < std::size(light_cameras); ++i) {
+        light_camera_sets.emplace_back(camera_bindings).bind(0, 0, light_camera_data, 1, 0 * i);
+        auto& s = light_camera_terrain_sets.emplace_back(terrain_bindings);
+        s.bind(0, 0, light_camera_data, 1, 0 * i);
+        s.bind(1, main_terrain.map_view(), main_terrain.sampler());
+    }
 
     gfx::sampler shadow_sampler;
-    shadow_sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::clamp_to_border);
-    shadow_sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::clamp_to_border);
-    shadow_sampler.set_border(gfx::border_color::float_opaque_black);
+    shadow_sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::clamp_to_edge);
+    shadow_sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::clamp_to_edge);
     shadow_sampler.set_compare(true, gfx::compare_op::less_or_equal);
+	shadow_sampler.set_anisotropy(false, 0.f);
 
     gfx::image&     terrain_bump       = res.images_ldr["Rock_023_DISP.png"];
     gfx::image_view terrain_bump_view  = terrain_bump.view(gfx::imgv_type::image2d);
@@ -804,13 +813,13 @@ void executable::run()
     terrain_shadow_set.bind(0, shadow_map_view, shadow_sampler);
     terrain_shadow_set.bind(1, light_camera_data);
 
-	std::vector<gfx::buffer<instance>> instance_buffers;
-    std::vector<gfx::binding_set> mesh_sets;
+    std::vector<gfx::buffer<instance>> instance_buffers;
+    std::vector<gfx::binding_set>      mesh_sets;
     mesh_sets.reserve(context->swapchain()->image_views().size());
     for (int i = 0; i < context->swapchain()->image_views().size(); ++i) {
         mesh_sets.emplace_back(mesh_bindings);
-		instance_buffers.emplace_back(gfx::buffer_usage::indirect | gfx::buffer_usage::storage, 1);
-		mesh_sets[i].bind(0, instance_buffers.back());
+        instance_buffers.emplace_back(gfx::buffer_usage::indirect | gfx::buffer_usage::storage, 1);
+        mesh_sets[i].bind(0, instance_buffers.back());
     }
     gfx::binding_set main_camera_set(camera_bindings);
     main_camera_set.bind(0, *camera_buffer);
@@ -869,8 +878,8 @@ void executable::run()
         coll_resolver.clear();
         ecs.update(context->delta(), movement_systems);
         ecs.update(context->delta(), graphics_systems);
-		gfx::buf_copy(instance_buffers[context->swapchain()->current_image()], renderer.instances(), renderer.instances().size());
-		mesh_sets[context->swapchain()->current_image()].bind(0, instance_buffers[context->swapchain()->current_image()]);
+        gfx::buf_copy(instance_buffers[context->swapchain()->current_image()], renderer.instances(), renderer.instances().size());
+        mesh_sets[context->swapchain()->current_image()].bind(0, instance_buffers[context->swapchain()->current_image()]);
 
         camera.transform_mode.position.y =
             main_terrain.terrain_height({camera.transform_mode.position.x, camera.transform_mode.position.z}) + 1.8f;
@@ -881,37 +890,39 @@ void executable::run()
         for (int i = 0; i < std::size(light_cameras); ++i) {
             const float vpss = vps * (1 << i);
 
-			glm::vec3 campos = camera.transform_mode.position;
-			campos.y = main_terrain.terrain_height({ campos.x, campos.z });
+            glm::vec3 campos = camera.transform_mode.position;
+            campos.y         = main_terrain.terrain_height({campos.x, campos.z});
             light_cameras[i].transform_mode.position =
-                (glm::vec3(glm::ivec3(shadow_map.extents().width * campos / vpss)) / shadow_map.extents().width * vpss)
+                (glm::vec3(glm::ivec3(campos * vpss / shadow_map.extents().width)) * shadow_map.extents().width / vpss)
                 + 500.f * (light_cameras[i].transform_mode.rotation * glm::vec3(0, 0, 1));
 
             auto lci       = light_cameras[i].info();
             lci.projection = lci.projection;
             current_command->update_buffer(light_camera_data, 0, lci);
-			cam_infos[i] = lci;
+            cam_infos[i] = lci;
 
-			current_command->bind_pipeline(cull_pipeline, {&light_camera_sets[i], &mesh_sets[context->swapchain()->current_image()]});
-			current_command->dispatch((renderer.instances().size() + 31) / 32);
-			current_command->begin_pass(shadow_map_framebuffers[i]);
-			current_command->bind_pipeline(shadow_mesh_pipeline, {&light_camera_sets[i], &mesh_sets[context->swapchain()->current_image()]});
-			current_command->render(renderer);
-			
-			current_command->bind_pipeline(terrain_pipeline_shadow, {&light_camera_terrain_sets[i], &terrain_style_set});
-			current_command->bind_vertex_buffer(chunks, 0);
-			current_command->draw({gfx::u32(chunks.size())});
+            current_command->bind_pipeline(cull_pipeline, {&light_camera_sets[i], &mesh_sets[context->swapchain()->current_image()]});
+            current_command->dispatch((renderer.instances().size() + 31) / 32);
+            current_command->begin_pass(shadow_map_framebuffers[i]);
+            current_command->bind_pipeline(shadow_mesh_pipeline,
+                                           {&light_camera_sets[i], &mesh_sets[context->swapchain()->current_image()]});
+            current_command->render(renderer);
 
-			current_command->end_pass();
+            current_command->bind_pipeline(terrain_pipeline_shadow, {&light_camera_terrain_sets[i], &terrain_style_set});
+            current_command->bind_vertex_buffer(chunks, 0);
+            current_command->draw({gfx::u32(chunks.size())});
+
+            current_command->end_pass();
         }
-		current_command->update_buffer(light_camera_data, 0, cam_infos.size(), cam_infos.data());
+        current_command->update_buffer(light_camera_data, 0, cam_infos.size(), cam_infos.data());
 
-         current_command->bind_pipeline(cull_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()]});
-         current_command->dispatch((renderer.instances().size() + 31) / 32);
+        current_command->bind_pipeline(cull_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()]});
+        current_command->dispatch((renderer.instances().size() + 31) / 32);
         current_command->begin_pass(*current_framebuffer);
-        current_command->bind_pipeline(sky_pipeline, { &sky_set });
+        current_command->bind_pipeline(sky_pipeline, {&sky_set});
         current_command->draw(3);
-        current_command->bind_pipeline(mesh_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()], &terrain_shadow_set});
+        current_command->bind_pipeline(mesh_pipeline,
+                                       {&main_camera_set, &mesh_sets[context->swapchain()->current_image()], &terrain_shadow_set});
         current_command->render(renderer);
         current_command->bind_pipeline(terrain_pipeline, {&terrain_set, &terrain_style_set, &terrain_shadow_set});
         current_command->bind_vertex_buffer(chunks, 0);
