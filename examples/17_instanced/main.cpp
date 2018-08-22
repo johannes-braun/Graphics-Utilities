@@ -32,6 +32,24 @@ struct instance_proto : gfx::drawcmd_indexed
     gfx::image      logo;
     gfx::image_view logo_view;
     gfx::u32        usages = 0;
+	int missile_id = -1;
+};
+
+struct instance_proto_nologo : gfx::drawcmd_indexed
+{
+    instance_proto_nologo(const gfx::scene_file& file)
+          : gfx::drawcmd_indexed(file.mesh.indices.size())
+          , vertex_count(file.mesh.vertices.size())
+          , transform(glm::rotate(glm::radians(90.f), glm::vec3(1, 0, 0)))
+    {}
+
+    std::string   name;
+    float         speed          = 1.f;
+    float         rotation_speed = 1.f;
+    gfx::u32      vertex_count   = 0;
+    glm::mat4     transform;
+    gfx::bounds3f bounds;
+    gfx::u32      usages = 0;
 };
 
 struct instance : gfx::drawcmd_indexed
@@ -50,12 +68,29 @@ struct instance : gfx::drawcmd_indexed
         bounds         = prototype.bounds;
         return *this;
     }
+
+    instance& operator=(const instance_proto_nologo& prototype)
+    {
+        index_count    = prototype.index_count;
+        instance_count = prototype.instance_count;
+        base_index     = prototype.base_index;
+        base_vertex    = prototype.base_vertex;
+        base_instance  = prototype.base_instance;
+        bounds         = prototype.bounds;
+        return *this;
+    }
 };
 
 struct instance_component : gfx::ecs::component<instance_component>
 {
     glm::vec3             albedo;
     const instance_proto* prototype;
+};
+
+struct instance_component_nologo : gfx::ecs::component<instance_component_nologo>
+{
+    glm::vec3                    albedo;
+    const instance_proto_nologo* prototype;
 };
 
 struct transform_component : gfx::ecs::component<transform_component>
@@ -81,12 +116,37 @@ struct sphere_collider_component : gfx::ecs::component<sphere_collider_component
 {
     float radius     = 0.3f;
     float bounciness = 0.8f;
+	bool did_collide = false;
 };
 
 struct camera_component : gfx::ecs::component<camera_component>
 {
     gfx::projection projection{glm::radians(80.f), 100, 100, 0.1f, 1000.f, true, true};
     bool            is_main = true;
+};
+
+struct control_component : gfx::ecs::component<control_component>
+{
+    float axis_vert   = 0;
+    float axis_horz   = 0;
+    float axis_thrust = 0;
+	bool shoot = false;
+	std::chrono::nanoseconds timeout = std::chrono::nanoseconds(120'000'000);
+	std::chrono::time_point<std::chrono::steady_clock> shoot_time;
+
+    float smooth_axis_vert = 0;
+    float smooth_axis_horz = 0;
+};
+
+struct missile_component : gfx::ecs::component<missile_component>
+{
+	float gravity = 1.f;
+};
+
+struct plane_component : gfx::ecs::component<plane_component>
+{
+    std::chrono::time_point<std::chrono::steady_clock> time_tilt_zero;
+    bool                                               set_time_since_tilt_zero = false;
 };
 
 class movement_system : public gfx::ecs::system
@@ -110,30 +170,29 @@ public:
         const auto mass            = 10.f;
         const auto weighted_moment = mass * moment;
 
+        constexpr float movement_drag = 0;
+        constexpr float rotation_drag = 0;
+
 
         /*	if ((type & RigidBodyTypeFlagBits::eDynamic) != RigidBodyTypeFlagBits::eDynamic)
                 return;
 
             const auto dt = scene()->fixed_time_step;*/
         const float dt      = delta;
-        const auto  gravity = glm::vec3(0, -9.81f, 0);
+        const auto  gravity = 0.f;    // glm::vec3(0, -9.81f, 0);
 
-        sp.impulse = 0.999f * sp.impulse + (sp.force + gravity * mass) * dt;
+        sp.impulse = (1.f - movement_drag) * sp.impulse + (sp.force + gravity * mass) * dt;
 
         // if (isnan(sp.impulse.x)) gfx::elog << "nan";
 
         tf.value.position += sp.impulse / mass * dt;
 
-        sp.rotation_impulse = 0.999f * sp.rotation_impulse + (sp.torque + sp.torque_acceleration) * dt;
-        tf.value.rotation = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.value.rotation;
+        sp.rotation_impulse = (1.f - rotation_drag) * sp.rotation_impulse + (sp.torque + sp.torque_acceleration) * dt;
+        tf.value.rotation   = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.value.rotation;
 
         sp.torque              = glm::vec3(0.f);
         sp.torque_acceleration = glm::vec3(0.f);
         // m_did_collide = false;
-
-
-        constexpr float movement_drag = 0.001f;
-        constexpr float rotation_drag = 0.001f;
 
 
         /*sp.velocity = (1 - movement_drag) * sp.velocity + sp.acceleration * delta;
@@ -233,12 +292,12 @@ public:
         }
         else
         {
-            /* tf.value.rotation =
-                 glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed * delta);
-             sp.acceleration = in.prototype->acceleration * fwd;
-             if (length(sp.velocity) > in.prototype->speed) sp.velocity = normalize(sp.velocity) * in.prototype->speed;
-             sp.acceleration -= 200.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.velocity);
-             sp.acceleration -= 200.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.velocity);*/
+            // tf.value.rotation =
+            //    glm::slerp<float>(tf.value.rotation, glm::quatLookAt(dir, glm::vec3(0, 1, 0)), in.prototype->rotation_speed * delta);
+            // sp.force = in.prototype->acceleration * fwd;
+            // if (length(sp.impulse  / 10.f) > in.prototype->speed) sp.impulse = normalize(sp.impulse) * 10.f * in.prototype->speed;
+            // sp.force -= 200.f * (-(dot(tf.value.left(), dir))) * tf.value.left() * delta * length(sp.impulse);
+            // sp.force -= 200.f * (-(dot(tf.value.up(), dir))) * tf.value.up() * delta * length(sp.impulse);
         }
     }
 
@@ -248,52 +307,57 @@ private:
     mutable std::uniform_real_distribution<float> dist;
 };
 
-class plane_movement_system : public gfx::ecs::system
+class owner_system : public gfx::ecs::system
 {
 public:
-    plane_movement_system(terrain& t) : _terrain(t)
+    owner_system()
     {
-        add_component_type(transform_component::id);
-        add_component_type(speed_component::id);
-        add_component_type(instance_component::id);
-        add_component_type(camera_component::id, gfx::ecs::component_flag::optional);
+        add_component_type(camera_component::id);
+        add_component_type(control_component::id);
     }
 
     void update(double delta, gfx::ecs::component_base** components) const override
     {
-        auto& tf  = components[0]->as<transform_component>();
-        auto& sp  = components[1]->as<speed_component>();
-        auto& in  = components[2]->as<instance_component>();
-        auto* cam = static_cast<camera_component*>(components[3]);
+        auto&       ctrl    = components[1]->as<control_component>();
+        const auto& context = gfx::context::current();
+        ctrl.axis_thrust =
+            (glfwGetKey(context->window(), GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_Q) == GLFW_PRESS);
+        ctrl.axis_vert =
+            (glfwGetKey(context->window(), GLFW_KEY_S) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_W) == GLFW_PRESS);
+        ctrl.axis_horz =
+            (glfwGetKey(context->window(), GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_A) == GLFW_PRESS);
 
-        const float mass = 10.f;
-        if (cam) {
-            const auto& context = gfx::context::current();
-            const int   thrust =
-                (glfwGetKey(context->window(), GLFW_KEY_E) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_Q) == GLFW_PRESS);
-            const int v_tilt =
-                (glfwGetKey(context->window(), GLFW_KEY_S) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_W) == GLFW_PRESS);
-            const int h_tilt =
-                (glfwGetKey(context->window(), GLFW_KEY_D) == GLFW_PRESS) - (glfwGetKey(context->window(), GLFW_KEY_A) == GLFW_PRESS);
-
-            sp.impulse = glm::mix(sp.impulse, sp.impulse + 10.f * thrust * tf.value.forward(), float(delta) * in.prototype->acceleration);
-            tf.value.rotation =
-                glm::slerp(tf.value.rotation, glm::angleAxis<float>(h_tilt, glm::vec3(0, -1, 0)) * tf.value.rotation, float(delta));
-            tf.value.rotation =
-                glm::slerp(tf.value.rotation, tf.value.rotation * glm::angleAxis<float>(v_tilt, glm::vec3(1, 0, 0)), float(delta));
+        if (!_cur_controlled && glfwGetInputMode(context->window(), GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+            _cur_controlled = true;
+            double x, y;
+            glfwGetCursorPos(context->window(), &x, &y);
+            _last_cur = {float(x), float(y)};
+        }
+        else if (glfwGetInputMode(context->window(), GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
+        {
+            _cur_controlled = false;
         }
 
-        if (sp.impulse != glm::vec3(0)) {
-            const auto gravity = glm::vec3(0, 9.81f, 0);
-            sp.force           = glm::min((cam ? sp.force : glm::vec3(0))
-                                    + 0.0001f * glm::length(sp.impulse) / mass / mass
-                                          * glm::max(glm::dot(tf.value.forward(), sp.impulse), 0.f) * tf.value.up(),
-                                mass * gravity);
+		ctrl.shoot = glfwGetKey(context->window(), GLFW_KEY_SPACE) == GLFW_PRESS || glfwGetMouseButton(context->window(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
+        if (_cur_controlled) {
+            double x, y;
+            glfwGetCursorPos(context->window(), &x, &y);
+            glm::vec2 cur{float(x), float(y)};
+            ctrl.axis_vert = glm::clamp(
+                ctrl.axis_vert + 2.f * (glm::smoothstep(0.f, -1.f, cur.y - _last_cur.y) - glm::smoothstep(0.f, 1.f, cur.y - _last_cur.y)),
+                -2.f, 2.f);
+            ctrl.axis_horz = glm::clamp(
+                ctrl.axis_horz + 2.f * (glm::smoothstep(0.f, 4.f, cur.x - _last_cur.x) - glm::smoothstep(0.f, -4.f, cur.x - _last_cur.x)),
+                -2.f, 2.f);
+
+            _last_cur = cur;
         }
     }
 
 private:
-    terrain& _terrain;
+    mutable glm::vec2 _last_cur;
+    mutable bool      _cur_controlled = false;
 };
 
 class prototype_renderer
@@ -319,14 +383,27 @@ public:
 
             gfx::scene_file mesh(path);
             mesh.mesh.collapse();
-            instance_proto& proto = _vehicle_prototypes.emplace_back(mesh, gfx::image_file(logo, gfx::bits::b8, 4));
-            proto.name            = name;
-            proto.speed           = speed;
-            proto.acceleration    = acceleration;
-            proto.rotation_speed  = rotation_speed;
-            proto.base_vertex     = combined.vertices.size();
-            proto.base_index      = combined.indices.size();
-            proto.bounds          = mesh.mesh.compute_bounds();
+            instance_proto& protox = _vehicle_prototypes.emplace_back(mesh, gfx::image_file(logo, gfx::bits::b8, 4));
+            if (json.count("missile") != 0) {
+                gfx::scene_file mesh(root / json["missile"]["mesh"].get<std::string>());
+                mesh.mesh.collapse();
+                instance_proto_nologo& proto = _missile_prototypes.emplace_back(mesh);
+                proto.name                   = name;
+                proto.speed                  = speed;
+                proto.rotation_speed         = rotation_speed;
+                proto.base_vertex            = combined.vertices.size();
+                proto.base_index             = combined.indices.size();
+                proto.bounds                 = mesh.mesh.compute_bounds();
+                combined += mesh.mesh;
+				protox.missile_id = _missile_prototypes.size()-1;
+            }
+            protox.name            = name;
+            protox.speed           = speed;
+            protox.acceleration    = acceleration;
+            protox.rotation_speed  = rotation_speed;
+            protox.base_vertex     = combined.vertices.size();
+            protox.base_index      = combined.indices.size();
+            protox.bounds          = mesh.mesh.compute_bounds();
             combined += mesh.mesh;
         }
         for (const auto& json : protos["buildings"]) {
@@ -376,16 +453,18 @@ public:
         }
         return nullptr;
     }
-    const std::vector<instance_proto>& vehicle_prototypes() const noexcept { return _vehicle_prototypes; }
-    const std::vector<instance_proto>& building_prototypes() const noexcept { return _building_prototypes; }
-    const gfx::hbuffer<instance>&      instances() const noexcept { return _instances; };
+    const std::vector<instance_proto>&        vehicle_prototypes() const noexcept { return _vehicle_prototypes; }
+    const std::vector<instance_proto>&        building_prototypes() const noexcept { return _building_prototypes; }
+    const std::vector<instance_proto_nologo>& missile_prototypes() const noexcept { return _missile_prototypes; }
+    const gfx::hbuffer<instance>&             instances() const noexcept { return _instances; };
 
 private:
-    std::vector<instance_proto> _vehicle_prototypes;
-    std::vector<instance_proto> _building_prototypes;
-    gfx::buffer<gfx::vertex3d>  _vbo{gfx::buffer_usage::vertex};
-    gfx::buffer<gfx::index32>   _ibo{gfx::buffer_usage::index};
-    gfx::hbuffer<instance>      _instances;
+    std::vector<instance_proto>        _vehicle_prototypes;
+    std::vector<instance_proto_nologo> _missile_prototypes;
+    std::vector<instance_proto>        _building_prototypes;
+    gfx::buffer<gfx::vertex3d>         _vbo{gfx::buffer_usage::vertex};
+    gfx::buffer<gfx::index32>          _ibo{gfx::buffer_usage::index};
+    gfx::hbuffer<instance>             _instances;
 };
 
 class prototype_system : public gfx::ecs::system
@@ -393,27 +472,125 @@ class prototype_system : public gfx::ecs::system
 public:
     prototype_system(prototype_renderer& r) : _renderer(r)
     {
-        add_component_type(instance_component::id);
+        add_component_type(instance_component::id, gfx::ecs::component_flag::optional);
+        add_component_type(instance_component_nologo::id, gfx::ecs::component_flag::optional);
         add_component_type(transform_component::id);
         add_component_type(camera_component::id, gfx::ecs::component_flag::optional);
     }
 
     void update(double delta, gfx::ecs::component_base** components) const override
     {
-        const auto& ic = components[0]->as<instance_component>();
-        const auto& tf = components[1]->as<transform_component>();
+        const auto* ic  = components[0] ? components[0]->as_ptr<instance_component>() : nullptr;
+        const auto* icn = components[1]->as_ptr<instance_component_nologo>();
+        const auto& tf  = components[2]->as<transform_component>();
 
-        if (components[2]) return;
+        assert(ic || icn);
+        if (components[3]) return;
 
         instance i;
-        i        = *ic.prototype;
-        i.albedo = glm::vec4(ic.albedo, 1);
-        i.matrix = tf.value * ic.prototype->transform;
+        if (ic != nullptr)
+            i = *ic->prototype;
+        else
+            i = *icn->prototype;
+        i.albedo = glm::vec4(ic ? ic->albedo : icn->albedo, 1);
+        i.matrix = tf.value * (ic ? ic->prototype->transform : icn->prototype->transform);
         _renderer.submit(i);
     }
 
 private:
     prototype_renderer& _renderer;
+};
+
+
+class plane_movement_system : public gfx::ecs::system
+{
+public:
+	plane_movement_system(gfx::ecs::ecs& ecs, std::vector<gfx::ecs::entity>& entities, prototype_renderer& renderer, terrain& t) : _ecs(ecs), _entities(entities), _renderer(renderer), _terrain(t)
+	{
+		add_component_type(transform_component::id);
+		add_component_type(speed_component::id);
+		add_component_type(instance_component::id);
+		add_component_type(control_component::id);
+		add_component_type(plane_component::id);
+	}
+
+	void update(double delta, gfx::ecs::component_base** components) const override
+	{
+		auto& tf   = components[0]->as<transform_component>();
+		auto& sp   = components[1]->as<speed_component>();
+		auto& in   = components[2]->as<instance_component>();
+		auto& ctrl = components[3]->as<control_component>();
+		auto& pln = components[4]->as<plane_component>();
+
+		const float mass    = 10.f;
+		const auto& context = gfx::context::current();
+		const int   thrust  = ctrl.axis_thrust;
+		float       v_tilt  = ctrl.axis_vert;
+		float       h_tilt  = ctrl.axis_horz;
+
+		if (tf.value.position.y > 120.f) {
+			v_tilt = glm::min(v_tilt, 0.f);
+		}
+
+		ctrl.smooth_axis_vert = glm::mix(ctrl.smooth_axis_vert, v_tilt, 2.f * float(delta));
+		ctrl.smooth_axis_horz = glm::mix(ctrl.smooth_axis_horz, h_tilt, 2.f * float(delta));
+
+		sp.impulse = glm::mix(sp.impulse, sp.impulse + mass * thrust * tf.value.forward(), float(delta) * in.prototype->acceleration);
+		sp.impulse =
+			glm::mix(sp.impulse, glm::clamp(length(sp.impulse), 0.f, mass * in.prototype->speed) * tf.value.forward(), 3.f * float(delta));
+
+		tf.value.rotation =
+			glm::slerp(tf.value.rotation, glm::angleAxis<float>(ctrl.smooth_axis_horz, glm::vec3(0, -1, 0)) * tf.value.rotation,
+				glm::radians(in.prototype->rotation_speed * float(delta)));
+		tf.value.rotation =
+			glm::slerp(tf.value.rotation, tf.value.rotation * glm::angleAxis<float>(ctrl.smooth_axis_vert, glm::vec3(1, 0, 0)),
+				glm::radians(in.prototype->rotation_speed * 0.6f * float(delta)));
+
+		if (ctrl.shoot && (std::chrono::steady_clock::now() - ctrl.shoot_time > ctrl.timeout) && in.prototype->missile_id != -1)
+		{
+			ctrl.shoot_time = std::chrono::steady_clock::now();
+			ctrl.shoot = false;
+			instance_component_nologo inst;
+			inst.albedo    = glm::vec3(1, 1, 1);
+			inst.prototype = &_renderer.missile_prototypes()[in.prototype->missile_id];
+			transform_component ttf;
+
+			glm::vec3 off = 0.6f * tf.value.left();
+			ttf.value = gfx::transform(tf.value.position + 1.5f * tf.value.forward() + 0.6f * tf.value.down() + off);
+			speed_component           tsp;
+			tsp.impulse = sp.impulse + tf.value.forward() * 230.f;
+			sphere_collider_component collider;
+			collider.radius = 0.4f;
+			missile_component mis;
+			_entities.push_back(_ecs.create_entity(inst, ttf, tsp, collider, mis));
+
+			ttf.value = gfx::transform(tf.value.position + 1.5f * tf.value.forward() + 0.5f * tf.value.down() - off);
+			_entities.push_back(_ecs.create_entity(inst, ttf, tsp, collider, mis));
+		}
+
+		if (abs(h_tilt) < 0.01f) {
+			if (!pln.set_time_since_tilt_zero) pln.time_tilt_zero = std::chrono::steady_clock::now();
+			pln.set_time_since_tilt_zero = true;
+		}
+		else
+		{
+			pln.set_time_since_tilt_zero = false;
+		}
+
+		using namespace std::chrono_literals;
+		if (pln.set_time_since_tilt_zero && (std::chrono::steady_clock::now() -pln.time_tilt_zero) >= 1s) {
+			const auto rot = glm::rotation(
+				tf.value.forward(), normalize(tf.value.forward() - glm::vec3(0, 1, 0) * glm::dot(tf.value.forward(), glm::vec3(0, 1, 0))));
+			tf.value.rotation =
+				glm::slerp(tf.value.rotation, rot * tf.value.rotation, glm::radians(in.prototype->rotation_speed * float(delta)));
+		}
+	}
+
+private:
+	gfx::ecs::ecs& _ecs;
+	std::vector<gfx::ecs::entity>& _entities;
+	prototype_renderer& _renderer;
+	terrain& _terrain;
 };
 
 class camera_system : public gfx::ecs::system
@@ -457,11 +634,13 @@ public:
 
     void clear()
     {
-        for (auto& c : _colliders) c.clear();
+		_colliders.clear();
+        //for (auto& c : _colliders) c.clear();
     }
 
     void resolve(transform_component& tc, speed_component& sc, sphere_collider_component& scc)
     {
+		scc.did_collide = false;
         const auto th = _terrain.terrain_height(glm::vec2(tc.value.position.x, tc.value.position.z));
         if (tc.value.position.y - scc.radius < th) {
             tc.value.position.y          = th + scc.radius;
@@ -475,6 +654,8 @@ public:
 
             const glm::vec3 ref = glm::reflect(sc.impulse, normal_0);
             sc.impulse          = scc.bounciness * ref;
+
+			scc.did_collide = true;
         }
 
         const auto chunk_count = _terrain.chunk_count();
@@ -483,11 +664,11 @@ public:
         const int cx = 15.f * (tc.value.position.x) / 1500.f;
         const int cz = 15.f * (tc.value.position.z) / 1500.f;
 
-        if (cx < 0 || cx >= chunk_count || cz < 0 || cz >= chunk_count) return;
+       // if (cx < 0 || cx >= chunk_count || cz < 0 || cz >= chunk_count) return;
 
-        const int chunk = cx + chunk_count * cz;
+      //  const int chunk = cx + chunk_count * cz;
 
-        auto& colliders = _colliders[chunk];
+        auto& colliders = _colliders/*[chunk]*/;
         for (const auto c : colliders) {
             auto& t_tc  = *std::get<transform_component*>(c);
             auto& t_sc  = *std::get<speed_component*>(c);
@@ -502,20 +683,22 @@ public:
                 t_sc.impulse = t_scc.bounciness * t_ref;
 
                 tc.value.position = t_tc.value.position - (scc.radius + t_scc.radius) * normal;
+				scc.did_collide = true;
+				t_scc.did_collide = true;
             }
         }
 
-        for (int i = std::clamp<int>(cx - 1, 0, chunk_count - 1); i <= std::clamp<int>(cx + 1, 0, chunk_count - 1); ++i) {
-            for (int j = std::clamp<int>(cz - 1, 0, chunk_count - 1); j <= std::clamp<int>(cz + 1, 0, chunk_count - 1); ++j) {
-                const int achunk = i + chunk_count * j;
+        //for (int i = std::clamp<int>(cx - 1, 0, chunk_count - 1); i <= std::clamp<int>(cx + 1, 0, chunk_count - 1); ++i) {
+        //    for (int j = std::clamp<int>(cz - 1, 0, chunk_count - 1); j <= std::clamp<int>(cz + 1, 0, chunk_count - 1); ++j) {
+        //        const int achunk = i + chunk_count * j;
                 colliders.emplace_back(&tc, &sc, &scc);
-            }
-        }
+        //    }
+        //}
     }
 
 private:
     terrain&                                                                                                 _terrain;
-    std::vector<std::vector<std::tuple<transform_component*, speed_component*, sphere_collider_component*>>> _colliders;
+    /*std::vector<*/std::vector<std::tuple<transform_component*, speed_component*, sphere_collider_component*>> /*>*/ _colliders;
 };
 
 class collision_system : public gfx::ecs::system
@@ -540,37 +723,98 @@ private:
     collision_resolver& _resolver;
 };
 
+class missile_system : public gfx::ecs::system
+{
+public:
+	missile_system(gfx::ecs::ecs& ecs, std::vector<gfx::ecs::entity>& entities, prototype_renderer& renderer) : _ecs(ecs), _entities(entities), _renderer(renderer)
+	{
+		add_component_type(transform_component::id);
+		add_component_type(speed_component::id);
+		add_component_type(missile_component::id);
+		add_component_type(sphere_collider_component::id);
+	}
+
+	void update(double delta, gfx::ecs::component_base** components) const override
+	{
+		auto& tc  = components[0]->as<transform_component>();
+		auto& sc  = components[1]->as<speed_component>();
+		auto& mis = components[2]->as<missile_component>();
+		auto& scc = components[3]->as<sphere_collider_component>();
+
+		glm::vec3 gravity(0, -mis.gravity * 9.81f, 0);
+
+		if (scc.did_collide)
+		{
+			auto it = std::find_if(_entities.begin(), _entities.end(), [&] (const auto& e) {
+				return scc.entity == e;
+			});
+			_ecs.delete_entity(*it);
+			_entities.erase(it);
+			return;
+		}
+
+		sc.force = gravity;
+		glm::vec3 imp = sc.impulse;
+		if (glm::length2(imp) == 0)
+			imp = glm::vec3(0, 0, 1);
+		tc.value.rotation = glm::quatLookAt(glm::normalize(sc.impulse), glm::vec3(0, 1, 0));
+	}
+
+private:
+	gfx::ecs::ecs& _ecs;
+	std::vector<gfx::ecs::entity>& _entities; 
+	prototype_renderer& _renderer;
+};
+
 void executable::run()
 {
     gfx::ecs::ecs ecs;
     camera.projection_mode.perspective().clip_near = 0.01f;
     camera.projection_mode.perspective().clip_far  = 400.f;
+	std::vector<gfx::ecs::entity>         entities;
 
     terrain            main_terrain("heightmap.png", 2.f, 400);
     collision_resolver coll_resolver(main_terrain);
+	prototype_renderer    renderer;
 
     movement_system       movement;
-    plane_movement_system plane_system(main_terrain);
+    plane_movement_system plane_system(ecs, entities, renderer, main_terrain);
     collision_system      coll_system(coll_resolver);
+	missile_system miss_system(ecs, entities, renderer);
     gfx::ecs::system_list movement_systems;
     movement_systems.add(movement);
     movement_systems.add(plane_system);
     movement_systems.add(coll_system);
+	movement_systems.add(miss_system);
 
-    prototype_renderer    renderer;
     gfx::ecs::system_list graphics_systems;
     prototype_system      proto_system(renderer);
     camera_system         cam_system;
+    owner_system          own_system;
     graphics_systems.add(proto_system);
     graphics_systems.add(cam_system);
+    graphics_systems.add(own_system);
 
     gfx::sampler sampler;
     sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::repeat);
     sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::repeat);
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
-    std::vector<gfx::ecs::entity>         entities;
-    const auto                            spawn_from_prototype = [&](const instance_proto* prototype, const glm::vec3 at) {
+    const auto                            spawn_missile = [&](const instance_proto_nologo* prototype, const glm::vec3 at) {
+        instance_component_nologo inst;
+        inst.albedo    = glm::vec3(dist(gen), dist(gen), dist(gen));
+        inst.prototype = prototype;
+        transform_component tf;
+        tf.value = gfx::transform(at);
+        speed_component           sp;
+		sp.impulse = glm::vec3(0, 0, 203.f);
+        sphere_collider_component collider;
+        collider.radius = 0.4f;
+		missile_component mis;
+        entities.push_back(ecs.create_entity(inst, tf, sp, collider, mis));
+        return entities.back();
+    };
+    const auto spawn_from_prototype = [&](const instance_proto* prototype, const glm::vec3 at) {
         instance_component inst;
         inst.albedo    = glm::vec3(dist(gen), dist(gen), dist(gen));
         inst.prototype = prototype;
@@ -581,14 +825,18 @@ void executable::run()
         tgt.target = tf.value;
         speed_component           sp;
         sphere_collider_component collider;
-        collider.radius = 0.4f;
-        entities.push_back(ecs.create_entity(inst, tf, tgt, sp, collider));
+        collider.radius = 0.5f;
+        control_component controls;
+		plane_component pc;
+        entities.push_back(ecs.create_entity(inst, tf, tgt, sp, collider, controls, pc));
         return entities.back();
     };
     const auto spawn_random_vehicle = [&]() {
+
+        glm::vec2 gg(dist(gen) * 1000.f - 500.f, dist(gen) * 1000.f - 500.f);
         return spawn_from_prototype(&renderer.vehicle_prototypes()[std::clamp(size_t(dist(gen) * renderer.vehicle_prototypes().size()),
                                                                               0ull, renderer.vehicle_prototypes().size())],
-                                    glm::vec3(dist(gen), dist(gen), dist(gen)) * 1500.f);
+                                    glm::vec3(gg.x, main_terrain.terrain_height(gg) + 30.f + dist(gen) * 30.f, gg.y));
     };
 
     for (int i = 0; i < 100; ++i) {
@@ -596,6 +844,11 @@ void executable::run()
             spawn_random_vehicle().add(camera_component{});
         else
             spawn_random_vehicle();
+
+		glm::vec2 gg(dist(gen) * 1000.f - 500.f, dist(gen) * 1000.f - 500.f);
+		spawn_missile(&renderer.missile_prototypes()[std::clamp(size_t(dist(gen) * renderer.missile_prototypes().size()),
+			0ull, renderer.missile_prototypes().size())],
+			glm::vec3(gg.x, main_terrain.terrain_height(gg) + 30.f + dist(gen) * 30.f, gg.y));
     }
 
     const auto spawn_random_building = [&]() {
@@ -701,9 +954,9 @@ void executable::run()
     terrain_state.state_input_assembly = &terrain_assembly;
     terrain_state.state_bindings       = &terrain_layouts;
 
-	terrain_rasterizer.depth_bias_enable = true;
-	terrain_rasterizer.depth_bias_constant_factor = -8.f;
-	terrain_rasterizer.depth_bias_slope_factor = -8.f;
+    terrain_rasterizer.depth_bias_enable          = true;
+    terrain_rasterizer.depth_bias_constant_factor = -8.f;
+    terrain_rasterizer.depth_bias_slope_factor    = -8.f;
 
     const auto terrain_shaders_shadow = {
         gfx::shader(gfx::shader_type::vert, "17_instanced/terrain_shadow.vert"),
@@ -711,7 +964,7 @@ void executable::run()
     };
     gfx::graphics_pipeline terrain_pipeline_shadow(terrain_state, shadow_pass, terrain_shaders_shadow);
 
-	terrain_rasterizer.depth_bias_enable = false;
+    terrain_rasterizer.depth_bias_enable = false;
 
     const auto terrain_shaders = {
         gfx::shader(gfx::shader_type::vert, "17_instanced/terrain.vert"),
@@ -755,12 +1008,12 @@ void executable::run()
         shadow_map_framebuffers[i].attach(gfx::attachment::depth_stencil, 0, view, gfx::depth_stencil());
     }
 
-    raster.cull                  = gfx::cull_mode::none;
-    mesh_state.state_multisample = nullptr;
-	raster.depth_bias_enable = true;
-	raster.depth_bias_constant_factor = -1.f;
-	raster.depth_bias_slope_factor = -1.f;
-    const auto shadow_shaders    = {
+    raster.cull                       = gfx::cull_mode::none;
+    mesh_state.state_multisample      = nullptr;
+    raster.depth_bias_enable          = true;
+    raster.depth_bias_constant_factor = -1.f;
+    raster.depth_bias_slope_factor    = -1.f;
+    const auto shadow_shaders         = {
         gfx::shader(gfx::shader_type::vert, "17_instanced/mesh_shadow.vert"),
         gfx::shader(gfx::shader_type::frag, "17_instanced/mesh_shadow.frag"),
     };
@@ -795,7 +1048,7 @@ void executable::run()
     shadow_sampler.set_wrap(gfx::wrap::u, gfx::wrap_mode::clamp_to_edge);
     shadow_sampler.set_wrap(gfx::wrap::v, gfx::wrap_mode::clamp_to_edge);
     shadow_sampler.set_compare(true, gfx::compare_op::less_or_equal);
-	shadow_sampler.set_anisotropy(false, 0.f);
+    shadow_sampler.set_anisotropy(false, 0.f);
 
     gfx::image&     terrain_bump       = res.images_ldr["Rock_023_DISP.png"];
     gfx::image_view terrain_bump_view  = terrain_bump.view(gfx::imgv_type::image2d);
@@ -882,9 +1135,12 @@ void executable::run()
         mesh_sets[context->swapchain()->current_image()].bind(0, instance_buffers[context->swapchain()->current_image()]);
 
         camera.transform_mode.position.y =
-            main_terrain.terrain_height({camera.transform_mode.position.x, camera.transform_mode.position.z}) + 1.8f;
+            main_terrain.terrain_height({camera.transform_mode.position.x, camera.transform_mode.position.z}) + 150.8f;
         current_command->update_buffer(*camera_buffer, 0, camera.info());
-        if (enable_following_camera) current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
+        if (enable_following_camera) {
+            current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
+            camera = cam_system.camera();
+        }
         if (show_light_cam) current_command->update_buffer(*camera_buffer, 0, light_cameras[1].info());
 
         for (int i = 0; i < std::size(light_cameras); ++i) {

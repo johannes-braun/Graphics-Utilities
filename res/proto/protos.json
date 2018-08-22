@@ -4,17 +4,20 @@
       "name": "Serp",
       "mesh": "serp.dae",
       "speed": 40,
-      "acceleration": 20,
-      "rotspeed": 4,
+      "acceleration": 60,
+      "rotspeed": 220,
       "logo": "serp_logo.png"
     },
     {
       "name": "Tech K60",
       "mesh": "techplane.dae",
-      "speed": 80,
-      "acceleration": 30,
-      "rotspeed": 2,
-      "logo": "techplane_logo.png"
+      "speed": 50,
+      "acceleration": 20,
+      "rotspeed": 160,
+      "logo": "techplane_logo.png",
+      "missile": {
+        "mesh": "missile.dae"
+      }
     }
   ],
   "buildings": [

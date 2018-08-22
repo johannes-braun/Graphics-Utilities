@@ -33,6 +33,16 @@ struct component_base
     {
         return static_cast<const std::decay_t<T>&>(*this);
     }
+	template<typename T>
+	T* as_ptr()
+	{
+		return static_cast<std::decay_t<T>*>(this);
+	}
+	template<typename T>
+	const T* as_ptr() const
+	{
+		return static_cast<const std::decay_t<T>*>(this);
+	}
 
 protected:
     static id_t register_type(component_creator_fun create, component_deleter_fun deleter, size_t size)
