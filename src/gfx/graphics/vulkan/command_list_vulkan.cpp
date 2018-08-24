@@ -375,6 +375,15 @@ void commands_implementation::update_buffer(const handle& buffer, u32 offset, u3
 	vkCmdUpdateBuffer(_cmd, std::any_cast<VkBuffer>(buffer), offset, size, data);
 }
 
+void commands_implementation::copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size)
+{
+	init<VkBufferCopy> copy;
+	copy.size = size;
+	copy.dstOffset = dest_offset;
+	copy.srcOffset = src_offset;
+	vkCmdCopyBuffer(_cmd, std::any_cast<VkBuffer>(src), std::any_cast<VkBuffer>(dest), 1, &copy);
+}
+
 }    // namespace vulkan
 }    // namespace v1
 }    // namespace gfx

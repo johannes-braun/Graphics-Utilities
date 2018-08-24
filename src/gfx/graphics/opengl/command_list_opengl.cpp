@@ -291,6 +291,13 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
     });
 }
 
+void commands_implementation::copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size)
+{
+	_queue.emplace_back([=, read = std::any_cast<mygl::buffer>(src), write = std::any_cast<mygl::buffer>(dest)] {
+		glCopyNamedBufferSubData(read, write, src_offset, dest_offset, size);
+	});
+}
+
 }    // namespace opengl
 }    // namespace v1
 }    // namespace gfx

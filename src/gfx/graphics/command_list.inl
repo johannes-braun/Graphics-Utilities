@@ -68,5 +68,17 @@ namespace v1 {
 	{
 		update_buffer(buffer, offset, 1, &data);
 	}
+	
+	template<template<typename> typename BufferA, template<typename> typename BufferB, typename T, typename>
+	void commands::copy_buffer(const BufferA<T>& dest, u32 dest_offset, const BufferB<T>& src, u32 src_offset, u32 count) const
+	{
+		implementation()->copy_buffer(dest.api_handle(), dest_offset * sizeof(T), src.api_handle(), src_offset * sizeof(T), count * sizeof(T));
+	}
+
+	template<template<typename> typename BufferA, template<typename> typename BufferB, typename T, typename>
+	void commands::copy_buffer(const BufferA<T>& dest, const BufferB<T>& src, u32 count) const
+	{
+		copy_buffer(dest, 0, src, 0, count);
+	}
 }
 }    // namespace gfx

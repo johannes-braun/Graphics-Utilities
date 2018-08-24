@@ -37,6 +37,7 @@ public:
 
     void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)override ;
 	void update_buffer(const handle& buffer, u32 offset, u32 size, const void* data) override;
+	void copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size) override;
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors)  override;
 
 private:

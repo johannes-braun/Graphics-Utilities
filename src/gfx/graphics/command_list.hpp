@@ -79,6 +79,7 @@ public:
 
     virtual void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) = 0;
 	virtual void update_buffer(const handle& buffer, u32 offset, u32 size, const void* data) = 0;
+	virtual void copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size) = 0;
 
     virtual void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors) = 0;
 
@@ -136,6 +137,11 @@ public:
     void update_buffer(const Buffer<T>& buffer, u32 offset, u32 count, const T* data) const;
 	template<template<typename> typename Buffer, typename T, typename = std::enable_if_t<is_buffer<Buffer<T>>>>
     void update_buffer(const Buffer<T>& buffer, u32 offset, const T& data) const;
+
+	template<template<typename> typename BufferA, template<typename> typename BufferB, typename T, typename = std::enable_if_t<is_buffer<BufferA<T>> && is_buffer<BufferB<T>>>>
+	void copy_buffer(const BufferA<T>& dest, u32 dest_offset, const BufferB<T>& src, u32 src_offset, u32 count) const;
+	template<template<typename> typename BufferA, template<typename> typename BufferB, typename T, typename = std::enable_if_t<is_buffer<BufferA<T>> && is_buffer<BufferB<T>>>>
+	void copy_buffer(const BufferA<T>& dest, const BufferB<T>& src, u32 count) const;
 
 	template<typename T, typename = decltype(std::declval<T>().render(std::declval<commands&>()))>
 	auto render(T& obj);
