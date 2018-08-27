@@ -18,6 +18,7 @@ std::unique_ptr<detail::image_view_implementation> detail::image_view_implementa
 
 image_view::image_view(imgv_type type, format format, const device_image& image, uint32_t base_mip, uint32_t mip_count, uint32_t base_layer,
                        uint32_t layer_count)
+	: _type(type), _format(format), _base_mip(base_mip), _mip_count(mip_count), _base_layer(base_layer), _layer_count(layer_count)
 {
     implementation()->initialize(type, format, image, base_mip, mip_count, base_layer, layer_count);
 }

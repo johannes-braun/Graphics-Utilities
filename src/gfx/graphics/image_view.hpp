@@ -42,6 +42,21 @@ public:
                uint32_t layer_count);
     image_view(imgv_type type, const device_image& image);
     image_view(imgv_type type, const device_image::img_reference& image, uint32_t levels = 1, uint32_t layers = 1);
+
+	imgv_type type() const noexcept { return _type; }
+	format pixel_format() const noexcept { return _format; }
+	uint32_t base_mip() const noexcept { return _base_mip; }
+	uint32_t mip_count() const noexcept { return _mip_count; }
+	uint32_t base_layer() const noexcept { return _base_layer; }
+	uint32_t layer_count() const noexcept { return _layer_count; }
+
+private:
+	imgv_type _type;
+    format _format;
+	uint32_t _base_mip;
+	uint32_t _mip_count;
+	uint32_t _base_layer;
+	uint32_t _layer_count;
 };
 }    // namespace v1
 }    // namespace gfx
