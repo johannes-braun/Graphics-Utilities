@@ -39,7 +39,7 @@ void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const
         att.samples = VkSampleCountFlagBits(layout.samples());
         _attachment_descriptions.push_back(att);
 
-        att_ref.attachment = _attachment_descriptions.size() - 1;
+        att_ref.attachment = static_cast<u32>(_attachment_descriptions.size() - 1);
         _color_attachment_refs.push_back(att_ref);
 
         if (u32(layout.samples()) > 1)
@@ -47,7 +47,7 @@ void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const
             att.format  = v1::vulkan::get_format(layout.color_attachment_formats()[i].second);
             att.samples = VK_SAMPLE_COUNT_1_BIT;
             _attachment_descriptions.push_back(att);
-            att_ref.attachment = _attachment_descriptions.size() - 1;
+            att_ref.attachment = static_cast<u32>(_attachment_descriptions.size() - 1);
             _resolve_attachment_refs.push_back(att_ref);
         }
     }
@@ -60,15 +60,15 @@ void framebuffer_implementation::create(u32 width, u32 height, u32 layers, const
         _attachment_descriptions.push_back(att);
     }
 
-    att_ref.attachment            = _attachment_descriptions.size() - 1;
+    att_ref.attachment            = static_cast<u32>(_attachment_descriptions.size() - 1);
     att_ref.layout                = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     _depth_stencil_attachment_ref = att_ref;
-    _subpass.colorAttachmentCount = _color_attachment_refs.size();
+    _subpass.colorAttachmentCount = static_cast<u32>(_color_attachment_refs.size());
     _subpass.pColorAttachments    = _color_attachment_refs.data();
     if (u32(layout.samples()) > 1) _subpass.pResolveAttachments = _resolve_attachment_refs.data();
     if (layout.depth_attachment_format() != format::unspecified) { _subpass.pDepthStencilAttachment = &_depth_stencil_attachment_ref; }
 
-    _rpcreate.attachmentCount = _attachment_descriptions.size();
+    _rpcreate.attachmentCount = static_cast<u32>(_attachment_descriptions.size());
     _rpcreate.pAttachments    = _attachment_descriptions.data();
     _rpcreate.subpassCount    = 1;
     _rpcreate.pSubpasses      = &_subpass;
@@ -225,7 +225,7 @@ const VkRenderPassBeginInfo& framebuffer_implementation::begin_info()
         _invalid = false;
         check_result(vkCreateRenderPass(_device, &_rpcreate, nullptr, &_pass));
         _fbcreate.renderPass      = _pass;
-        _fbcreate.attachmentCount = _attachments.size();
+        _fbcreate.attachmentCount = static_cast<u32>(_attachments.size());
         _fbcreate.pAttachments    = _attachments.data();
 
         check_result(vkCreateFramebuffer(_device, &_fbcreate, nullptr, &_fbo));

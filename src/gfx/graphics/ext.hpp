@@ -1,11 +1,5 @@
 #pragma once
 
-#include "opengl/ext_opengl.hpp"
-
-namespace gfx
-{
-    inline namespace v1
-    {
-        // Nothing to find here. Yet.
-    }
-}
+#ifdef GFX_GL_bindless
+#include "opengl/bindless.hpp"
+#endif

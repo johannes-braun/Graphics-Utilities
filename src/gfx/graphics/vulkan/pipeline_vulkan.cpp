@@ -27,7 +27,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
     if (state.state_bindings) {
         for (auto& bl : state.state_bindings->layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
     }
-    pl_info.setLayoutCount = layouts.size();
+    pl_info.setLayoutCount = static_cast<u32>(layouts.size());
     pl_info.pSetLayouts    = layouts.data();
 	check_result(vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout));
 
@@ -64,7 +64,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
         stages.push_back(st);
     }
     pp_info.pStages    = stages.data();
-    pp_info.stageCount = stages.size();
+    pp_info.stageCount = static_cast<u32>(stages.size());
 
 
     init<VkRenderPassCreateInfo> rpc{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
@@ -87,14 +87,14 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
         att.samples = VkSampleCountFlagBits(renderpass.samples());
         attachments.push_back(att);
 
-        att_ref.attachment = attachments.size() - 1;
+        att_ref.attachment = static_cast<u32>(attachments.size() - 1);
         color_attachment_refs.push_back(att_ref);
 
         if (u32(renderpass.samples()) > 1) {
             att.format  = get_format(renderpass.color_attachment_formats()[i].second);
             att.samples = VK_SAMPLE_COUNT_1_BIT;
             attachments.push_back(att);
-            att_ref.attachment = attachments.size() - 1;
+            att_ref.attachment = static_cast<u32>(attachments.size() - 1);
             resolve_attachment_refs.push_back(att_ref);
         }
     }
@@ -106,9 +106,9 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
 		att.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		attachments.push_back(att);
 	}
-    att_ref.attachment           = attachments.size() - 1;
+    att_ref.attachment           = static_cast<u32>(attachments.size() - 1);
     att_ref.layout               = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    subpass.colorAttachmentCount = color_attachment_refs.size();
+    subpass.colorAttachmentCount = static_cast<u32>(color_attachment_refs.size());
     subpass.pColorAttachments    = color_attachment_refs.data();
     if (u32(renderpass.samples()) > 1) subpass.pResolveAttachments = resolve_attachment_refs.data();
 
@@ -116,7 +116,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
 	{
 		subpass.pDepthStencilAttachment = &att_ref;
 	}
-    rpc.attachmentCount = attachments.size();
+    rpc.attachmentCount = static_cast<u32>(attachments.size());
     rpc.pAttachments    = attachments.data();
     rpc.subpassCount    = 1;
     rpc.pSubpasses      = &subpass;
@@ -146,7 +146,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
             attr.location = d.location;
             attr.format   = get_format(d.fmt);
             attr.binding  = d.binding;
-            attr.offset   = d.offset;
+            attr.offset   = static_cast<u32>(d.offset);
             attr_desc.push_back(attr);
         }
         for (auto& b : state.state_vertex_input->bindings) {
@@ -160,14 +160,14 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
                 }
                 return VK_VERTEX_INPUT_RATE_VERTEX;
             }();
-            bind.stride = b.stride;
+            bind.stride = static_cast<u32>(b.stride);
             bind_desc.push_back(bind);
         }
     }
     vert_inp.pVertexAttributeDescriptions    = attr_desc.data();
-    vert_inp.vertexAttributeDescriptionCount = attr_desc.size();
+    vert_inp.vertexAttributeDescriptionCount = static_cast<u32>(attr_desc.size());
     vert_inp.pVertexBindingDescriptions      = bind_desc.data();
-    vert_inp.vertexBindingDescriptionCount   = bind_desc.size();
+    vert_inp.vertexBindingDescriptionCount   = static_cast<u32>(bind_desc.size());
     pp_info.pVertexInputState                = &vert_inp;
 
     init<VkPipelineInputAssemblyStateCreateInfo> inp_ass{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
@@ -272,7 +272,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
             s.offset.x      = sc.min.x;
             s.offset.y      = sc.min.y;
         }
-        vps.scissorCount = scissors.size();
+        vps.scissorCount = static_cast<u32>(scissors.size());
         vps.pScissors    = scissors.data();
     }
     if (vpp->viewports.empty()) {
@@ -291,13 +291,13 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
             v.minDepth    = sc.min_depth;
             v.maxDepth    = sc.max_depth;
         }
-        vps.viewportCount = viewports.size();
+        vps.viewportCount = static_cast<u32>(viewports.size());
         vps.pViewports    = viewports.data();
     }
     pp_info.pViewportState = &vps;
 
     init<VkPipelineDynamicStateCreateInfo> dyn{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
-    dyn.dynamicStateCount = dyn_states.size();
+    dyn.dynamicStateCount = static_cast<u32>(dyn_states.size());
     dyn.pDynamicStates    = dyn_states.data();
 	if (!dyn_states.empty())
 	{
@@ -483,7 +483,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
 
     if (blatt.size() < renderpass.color_attachment_formats().size()) {
         pipe_state::blend_attachment def;
-        for (int i = blatt.size(); i < (renderpass.color_attachment_formats().size() - blatt.size()); ++i) {
+        for (int i = static_cast<i32>(blatt.size()); i < static_cast<i32>(renderpass.color_attachment_formats().size() - blatt.size()); ++i) {
             init<VkPipelineColorBlendAttachmentState> t;
 
             t.srcColorBlendFactor = mk_fac(def.srcColorBlendFactor);
@@ -498,7 +498,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
             blatt.emplace_back(t);
         }
     }
-    bls.attachmentCount = blatt.size();
+    bls.attachmentCount = static_cast<u32>(blatt.size());
     bls.pAttachments    = blatt.data();
 
     pp_info.pColorBlendState = &bls;
@@ -531,7 +531,7 @@ void compute_pipeline_implementation::initialize(const pipe_state::binding_layou
 
     std::vector<VkDescriptorSetLayout> layouts;
     for (auto& bl : layout.layouts) layouts.push_back(handle_cast<VkDescriptorSetLayout>(*bl));
-    pl_info.setLayoutCount = layouts.size();
+    pl_info.setLayoutCount = static_cast<u32>(layouts.size());
     pl_info.pSetLayouts    = layouts.data();
 	check_result(vkCreatePipelineLayout(_device, &pl_info, nullptr, &_layout));
 

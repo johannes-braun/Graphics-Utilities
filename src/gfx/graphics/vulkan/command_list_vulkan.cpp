@@ -135,7 +135,7 @@ void commands_implementation::bind_pipeline(const compute_pipeline& p, std::init
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
         vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                static_cast<compute_pipeline_implementation*>(&*p.implementation())->layout(), 0, std::size(bindings),
+                                static_cast<compute_pipeline_implementation*>(&*p.implementation())->layout(), 0, static_cast<u32>(std::size(bindings)),
                                 _sets.data() + offset, 0, nullptr);
     }
 }
@@ -148,11 +148,11 @@ void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<r
     VkRenderPassBeginInfo begin = static_cast<framebuffer_implementation*>(&*fbo.implementation())->begin_info();
     if (!render_area) render_area = rect2f(glm::vec2(0, 0), glm::vec2(fbo.width(), fbo.height()));
     const auto ras            = render_area->size();
-    begin.renderArea.offset.x = render_area->min.x;
-    begin.renderArea.offset.y = render_area->min.y;
+    begin.renderArea.offset.x = static_cast<i32>(render_area->min.x);
+    begin.renderArea.offset.y = static_cast<i32>(render_area->min.y);
 
-    begin.renderArea.extent.width  = ras.x;
-    begin.renderArea.extent.height = ras.y;
+    begin.renderArea.extent.width  = static_cast<u32>(ras.x);
+    begin.renderArea.extent.height = static_cast<u32>(ras.y);
     _last_render_area              = begin.renderArea;
     vkCmdBeginRenderPass(_cmd, &begin, VK_SUBPASS_CONTENTS_INLINE);
 }
@@ -169,7 +169,7 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
         vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                static_cast<graphics_pipeline_implementation*>(&*p.implementation())->layout(), 0, std::size(bindings),
+                                static_cast<graphics_pipeline_implementation*>(&*p.implementation())->layout(), 0, static_cast<u32>(std::size(bindings)),
                                 _sets.data() + offset, 0, nullptr);
     }
 
@@ -178,8 +178,8 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
     // bind default viewports and scissors
     if (impl->dynamic_viewports()) {
         VkViewport vps{0};
-        vps.width    = _last_render_area.extent.width;
-        vps.height   = _last_render_area.extent.height;
+        vps.width    = static_cast<float>(_last_render_area.extent.width);
+        vps.height   = static_cast<float>(_last_render_area.extent.height);
         vps.maxDepth = 1.f;
         vps.minDepth = 0.f;
         vkCmdSetViewport(_cmd, 0, 1, &vps);
@@ -350,10 +350,10 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
     for (int i = 0; i < vp.size(); ++i) {
         if (!sci.empty()) {
             auto size            = scissors[i].size();
-            sci[i].extent.width  = size.x;
-            sci[i].extent.height = size.y;
-            sci[i].offset.x      = scissors[i].min.x;
-            sci[i].offset.y      = scissors[i].min.y;
+            sci[i].extent.width  = static_cast<u32>(size.x);
+            sci[i].extent.height = static_cast<u32>(size.y);
+            sci[i].offset.x      = static_cast<i32>(scissors[i].min.x);
+            sci[i].offset.y      = static_cast<i32>(scissors[i].min.y);
         }
 
         vps[i].width    = vp[i].width;
@@ -364,9 +364,9 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
         vps[i].maxDepth = vp[i].max_depth;
     }
 
-    vkCmdSetViewport(_cmd, first, vps.size(), vps.data());
+    vkCmdSetViewport(_cmd, first, static_cast<u32>(vps.size()), vps.data());
     if (!sci.empty()) {
-        vkCmdSetScissor(_cmd, first, sci.size(), sci.data());
+        vkCmdSetScissor(_cmd, first, static_cast<u32>(sci.size()), sci.data());
     }
 }
 

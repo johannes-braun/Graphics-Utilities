@@ -63,7 +63,7 @@ void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<r
         for (int i = 0; i < fbc; ++i) {
             glViewportIndexedf(i, 0, 0, s.x, s.y);
             glDepthRangeIndexed(i, 0.f, 1.f);
-            glScissorIndexed(i, 0, 0, s.x, s.y);
+            glScissorIndexed(i, 0, 0, static_cast<i32>(s.x), static_cast<i32>(s.y));
         }
 
         static_cast<framebuffer_implementation*>(&*fbo->implementation())->begin();
@@ -94,7 +94,7 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
 		for (int i = 0; i < fbc; ++i) {
 			glViewportIndexedf(i, 0, 0, s.x, s.y);
 			glDepthRangeIndexed(i, 0.f, 1.f);
-			glScissorIndexed(i, 0, 0, s.x, s.y);
+			glScissorIndexed(i, 0, 0, static_cast<i32>(s.x), static_cast<i32>(s.y));
 		}
 
         static_cast<graphics_pipeline_implementation*>(&*p.implementation())->apply_all();
@@ -151,7 +151,7 @@ void commands_implementation::bind_vertex_buffer(const handle& buffer, u32 bindi
 {
     const mygl::buffer buf = std::any_cast<mygl::buffer>(buffer);
     const auto strd = static_cast<graphics_pipeline_implementation*>(&*_curr_pipeline->implementation())->binding_strides().at(binding);
-    _queue.emplace_back([=] { glBindVertexBuffer(binding, buf, offset, strd); });
+    _queue.emplace_back([=] { glBindVertexBuffer(binding, buf, offset, static_cast<i32>(strd)); });
 }
 
 void commands_implementation::bind_index_buffer(const handle& buffer, index_type index, i64 offset)
@@ -195,7 +195,7 @@ void commands_implementation::push_binding(u32 set, u32 b, u32 arr_element, bind
     const auto& ps = static_cast<graphics_pipeline_implementation*>(&*_curr_pipeline->implementation())->proxy_sets();
 
     u32 set_offset = 0;
-    for (int i = 0; i < set; ++i) {
+    for (int i = 0; i < static_cast<i32>(set); ++i) {
         set_offset += static_cast<binding_set_implementation*>(&*ps[i].implementation())->count(type);
     }
 
@@ -285,7 +285,7 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
             glDepthRangeIndexed(i + first, vps[i].min_depth, vps[i].max_depth);
             if (!scs.empty()) {
                 const auto s = scs[i].size();
-                glScissorIndexed(i + first, scs[i].min.x, h - scs[i].max.y, s.x, s.y);
+                glScissorIndexed(i + first, static_cast<i32>(scs[i].min.x), static_cast<i32>(h - scs[i].max.y), static_cast<i32>(s.x), static_cast<i32>(s.y));
             }
         }
     });

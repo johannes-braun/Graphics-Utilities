@@ -27,7 +27,7 @@ void swapchain_implementation::present()
     if (!_context.expired() && p) {
 
         const auto ext = _images[_current_image].extents();
-		glViewportIndexedf(0, 0, 0, ext.width, ext.height);
+		glViewportIndexedf(0, 0, 0, static_cast<float>(ext.width), static_cast<float>(ext.height));
 		glDepthRangeIndexed(0, 0.f, 1.f);
 		glScissorIndexed(0, 0, 0, ext.width, ext.height);
         glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
@@ -48,7 +48,7 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     _images.clear();
     _image_views.clear();
     _blit_helpers.clear();
-    for (int i = 0; i < _image_count; ++i) {
+    for (int i = 0; i < static_cast<i32>(_image_count); ++i) {
         _images.emplace_back(img_type::image2d, rgba8unorm, extent(width, height, 1), 1);
         _image_views.emplace_back(imgv_type::image2d, _images[i]);
         _blit_helpers.emplace_back(width, height, 1, _blit_helper_layout);

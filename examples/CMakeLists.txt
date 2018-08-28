@@ -1,6 +1,11 @@
 function(mark_as_executable exe_name)
     file(GLOB CPPS ${exe_name}/*.cpp)
-    add_executable(${exe_name} ${CPPS})
+
+	if(NOT TARGET ${exe_name})
+		add_executable(${exe_name})
+	endif()
+	target_sources(${exe_name} PUBLIC ${CPPS})
+
     if(WIN32)
         target_sources(${exe_name} PUBLIC res/app.rc)
     endif()
@@ -28,7 +33,8 @@ function(mark_as_executable exe_name)
             $<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:glfw>
     )
 
-	if(TARGET shaders_${exe_name})
+	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
+		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ${exe_name}__shaders)
 		add_dependencies(${exe_name} shaders_${exe_name})
 		message("Target found: shaders_${exe_name}")
 	endif()

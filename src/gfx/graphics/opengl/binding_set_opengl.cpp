@@ -114,15 +114,15 @@ std::function<void()> binding_set_implementation::bind_all(u32& ssb_offset, u32&
 			sb[i].size != 0 ? glBindBufferRange(GL_SHADER_STORAGE_BUFFER, sbo + i, sb[i].buf, sb[i].offset, sb[i].size) : glBindBufferBase(GL_SHADER_STORAGE_BUFFER, sbo + i, sb[i].buf);
 		for(int i=0; i<ub.size(); ++i)
 			ub[i].size != 0 ? glBindBufferRange(GL_UNIFORM_BUFFER, ubo + i, ub[i].buf, ub[i].offset, ub[i].size) : glBindBufferBase(GL_UNIFORM_BUFFER, ubo + i, ub[i].buf);
-		glBindImageTextures(sio, si.size(), si.data());
+		glBindImageTextures(sio, static_cast<u32>(si.size()), si.data());
 
-		glBindSamplers(texo, smp.size(), smp.data());
-		glBindTextures(texo, tex.size(), tex.data());
+		glBindSamplers(texo, static_cast<u32>(smp.size()), smp.data());
+		glBindTextures(texo, static_cast<u32>(tex.size()), tex.data());
 	};
-	ssb_offset += _storage_buffers.size();
-	ub_offset += _uniform_buffers.size();
-	img_offset += _storage_images.size();
-	tex_offset += _sampled_images.size();
+	ssb_offset += static_cast<u32>(_storage_buffers.size());
+	ub_offset += static_cast<u32>(_uniform_buffers.size());
+	img_offset += static_cast<u32>(_storage_images.size());
+	tex_offset += static_cast<u32>(_sampled_images.size());
 	return lbd;
 }
 std::function<void()> bind_sets(std::initializer_list<binding_set*> sets)

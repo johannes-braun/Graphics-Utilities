@@ -76,7 +76,7 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
 
     std::vector<VkFence> fences{_transfer_fences[_current_cmd]};
     if (f) fences.push_back(handle_cast<VkFence>(*f));
-	check_result(vkWaitForFences(_device, fences.size(), fences.data(), true, std::numeric_limits<uint64_t>::max()));
+	check_result(vkWaitForFences(_device, static_cast<u32>(fences.size()), fences.data(), true, std::numeric_limits<uint64_t>::max()));
 	check_result(vkResetFences(_device, 1, &fences.back()));
     init<VkCommandBufferBeginInfo> begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -201,7 +201,7 @@ device_buffer_implementation::~device_buffer_implementation()
     if (_buffer && _allocation) vmaDestroyBuffer(_allocator, _buffer, _allocation);
 
     if (_device && !_transfer_commands.empty())
-        vkFreeCommandBuffers(_device, _command_pool, _transfer_commands.size(), _transfer_commands.data());
+        vkFreeCommandBuffers(_device, _command_pool, static_cast<u32>(_transfer_commands.size()), _transfer_commands.data());
     for (auto& f : _transfer_fences) vkDestroyFence(_device, f, nullptr);
 }
 }    // namespace vulkan

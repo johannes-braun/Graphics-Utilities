@@ -43,7 +43,7 @@ void swapchain_implementation::present()
 		submit.commandBufferCount = 1;
 		submit.pCommandBuffers = &_primary_command_buffers[_current_image];
         submit.pWaitSemaphores      = std::data(wait_semaphores);
-        submit.waitSemaphoreCount   = std::size(wait_semaphores);
+        submit.waitSemaphoreCount   = static_cast<u32>(std::size(wait_semaphores));
         submit.pSignalSemaphores    = &_render_semaphore;
         submit.signalSemaphoreCount = 1;
         submit.pWaitDstStageMask    = std::data(wait_masks);
@@ -77,7 +77,7 @@ void swapchain_implementation::resize(uint32_t width, uint32_t height)
     _ctx_impl = static_cast<context_implementation*>(std::any_cast<detail::context_implementation*>(ctx->implementation()));
 
 	if (!_render_fences.empty())
-		vkWaitForFences(_ctx_impl->device(), _render_fences.size(), _render_fences.data(), true, default_fence_timeout);
+		vkWaitForFences(_ctx_impl->device(), static_cast<u32>(_render_fences.size()), _render_fences.data(), true, default_fence_timeout);
 
 	vkDeviceWaitIdle(_ctx_impl->device());
 	this->~swapchain_implementation();
@@ -184,7 +184,7 @@ swapchain_implementation::~swapchain_implementation()
 		vkDestroyFence(_device, f, nullptr);
 
     if (_device && !_primary_command_buffers.empty())
-        vkFreeCommandBuffers(_device, _command_pool, _primary_command_buffers.size(), _primary_command_buffers.data());
+        vkFreeCommandBuffers(_device, _command_pool, static_cast<u32>(_primary_command_buffers.size()), _primary_command_buffers.data());
 
     if (_present_semaphore) vkDestroySemaphore(_device, _present_semaphore, nullptr);
     if (_render_semaphore) vkDestroySemaphore(_device, _render_semaphore, nullptr);

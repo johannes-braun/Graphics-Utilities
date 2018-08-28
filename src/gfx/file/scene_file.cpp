@@ -90,8 +90,8 @@ scene_file::scene_file(const files::path& path) : file(path)
         }
 
 		auto& geo = current_mesh.geometries.emplace_back();
-		geo.index_count = current_mesh.indices.size();
-		geo.vertex_count = current_mesh.vertices.size();
+		geo.index_count = static_cast<u32>(current_mesh.indices.size());
+		geo.vertex_count = static_cast<u32>(current_mesh.vertices.size());
 		mesh += current_mesh;
         mesh_material_indices[&mesh.geometries.back()] = ai_mesh->mMaterialIndex;
     }

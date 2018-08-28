@@ -15,7 +15,7 @@ void binding_layout_implementation::push(binding_type type, u32 array_size)
 		return _binding_counts[t].back().begin + _binding_counts[t].back().count;
 	}();
 
-	_items.push_back(_binding_counts[t].size());
+	_items.push_back(static_cast<u32>(_binding_counts[t].size()));
 	range& r = _binding_counts[t].emplace_back();
 	r.count = array_size;
 	r.begin = base;

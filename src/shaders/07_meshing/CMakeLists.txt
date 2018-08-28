@@ -1,15 +1,3 @@
-compile_spirv(mesh.frag opengl)
-compile_spirv(mesh.vert opengl)
-compile_spirv(outline.frag opengl)
-compile_spirv(outline.vert opengl)
-compile_spirv(points.frag opengl)
-compile_spirv(points.vert opengl)
-
-compile_spirv(mesh.frag vulkan)
-compile_spirv(mesh.vert vulkan)
-compile_spirv(outline.frag vulkan)
-compile_spirv(outline.vert vulkan)
-compile_spirv(points.frag vulkan)
-compile_spirv(points.vert vulkan)
-
-create_shaders_target(shaders_07_meshing)
+compile_spirv_all(opengl)
+compile_spirv_all(vulkan)
+create_shaders_target()
