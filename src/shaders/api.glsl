@@ -11,7 +11,12 @@
 #else
 #define loc_gl(N) binding = N
 #define loc_vk(S, N) 
-#define get_uv(UV) (vec2(UV.x, 1-UV.y))
+
+vec2 get_uv(const in vec2 u)
+{
+	return vec2(u.x, 1.0-u.y);
+}
+
 #endif
 
 #endif //API_GLSL

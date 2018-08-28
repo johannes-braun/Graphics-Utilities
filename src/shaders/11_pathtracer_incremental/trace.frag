@@ -104,12 +104,12 @@ void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_co
     float roughness = 0.25f;
     float alpha2    = roughness * roughness;
 
-#define DIFFUSE 0
+#define DIFFUSE 1
 #if DIFFUSE
     vec3 msnormal = bsdf_local_to_world(sample_cosine_hemisphere(random_value), normal);
     direction     = msnormal;
     origin        = position + direction * 1e-3f;
-    bounce_color *= abs(dot(direction, normal)) * vec4(0.8f, 0.4f, 0.2f, 1);
+    bounce_color *= abs(dot(direction, normal)) * vec4(1);// vec4(0.8f, 0.4f, 0.2f, 1);
 #else
     vec3 msnormal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), normal);
     direction     = reflect(direction.xyz, msnormal);
@@ -129,10 +129,7 @@ void main()
     vec2 random_value =
         random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (img_size.x * img_size.y),
                              1.f / (img_size.x * img_size.y));
-	vec2 uv = vec2(((pixel + random_value) / vec2(img_size)) * 2 - 1);
-	#ifndef VULKAN
-	uv.y = -uv.y;
-	#endif
+	vec2 uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
     vec3 precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
 
     uvec2 c_counters      = reset != 0 ? imageLoad(counter_cache, pixel).xy : uvec2(0);
@@ -151,10 +148,7 @@ void main()
             random_value      = random_hammersley_2d(int(next_random() * img_size.x * img_size.y)
                                                     % (img_size.x * img_size.y),
                                                 1.f / (img_size.x * img_size.y));
-			uv = vec2(((pixel + random_value) / vec2(img_size)) * 2 - 1);
-			#ifndef VULKAN
-			uv.y = -uv.y;
-			#endif
+			uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
 			precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
             c_bounce          = vec4(1);
             c_direction       = vec4(precalc_direction, 0);
@@ -185,7 +179,6 @@ void main()
             {
                 c_counters.y;
                 c_accumulation += clamp(c_bounce, 0, 10);
-                c_bounce     = vec4(0);
                 c_counters.x = 0;
             }
             c_display_color = (c_accumulation + c_bounce / den) / (c_counters.y + 1);
@@ -194,10 +187,8 @@ void main()
         {
 			#define sample_env() texture(cubemap, c_direction.xyz)
 			//#define sample_env() vec4(0.2f)
-
             ++c_counters.y;
             c_accumulation += clamp(c_bounce * sample_env(), 0, 10);
-            c_bounce        = vec4(0);
             c_counters.x    = 0;
             c_display_color = (c_accumulation + c_bounce / (c_counters.x + 1)) / (c_counters.y + 1);
         }
@@ -205,6 +196,9 @@ void main()
     // WRITE ----------------------------------------
 
     color_output = c_display_color;
+	color_output = 1.f - exp(-color_output * 1.0f);
+	color_output = pow(color_output, vec4(1.f / 1.8f));
+
     imageStore(counter_cache, pixel, uvec4(c_counters, 0, 0));
     imageStore(accumulation_cache, pixel, c_accumulation);
     imageStore(bounce_cache, pixel, c_bounce);

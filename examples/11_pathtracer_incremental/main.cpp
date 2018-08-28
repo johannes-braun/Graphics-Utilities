@@ -62,8 +62,8 @@ void executable::run()
 		gfx::shader(gfx::shader_type::frag, "11_pathtracer_incremental/trace.frag")
 	});
 
-    gfx::scene_file& scene1      = res.scenes["bunny.dae"];
-	gfx::scene_file& scene2      = res.scenes["monkey.dae"];
+    gfx::scene_file& scene1      = res.scenes["wall.dae"];
+	gfx::scene_file& scene2      = res.scenes["proto/serp.dae"];
 	gfx::mesh3d      scene_mesh = scene1.mesh + scene2.mesh;
     scene_mesh.collapse();
 
