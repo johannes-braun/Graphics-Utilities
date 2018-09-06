@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <vector>
 
-namespace gfx::ecs
-{
+namespace gfx {
+inline namespace v1 {
+namespace ecs {
 enum class id_t : uint64_t
 {
 };
@@ -33,16 +34,16 @@ struct component_base
     {
         return static_cast<const std::decay_t<T>&>(*this);
     }
-	template<typename T>
-	T* as_ptr()
-	{
-		return static_cast<std::decay_t<T>*>(this);
-	}
-	template<typename T>
-	const T* as_ptr() const
-	{
-		return static_cast<const std::decay_t<T>*>(this);
-	}
+    template<typename T>
+    T* as_ptr()
+    {
+        return static_cast<std::decay_t<T>*>(this);
+    }
+    template<typename T>
+    const T* as_ptr() const
+    {
+        return static_cast<const std::decay_t<T>*>(this);
+    }
 
 protected:
     static id_t register_type(component_creator_fun create, component_deleter_fun deleter, size_t size)
@@ -98,4 +99,6 @@ const component_creator_fun component<T>::creator = create<T>;
 template<typename T>
 const component_deleter_fun component<T>::deleter = destroy<T>;
 
-}    // namespace gfx::ecs
+}    // namespace ecs
+}    // namespace v1
+}    // namespace gfx

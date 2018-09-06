@@ -1,6 +1,5 @@
 #define GFX_EXPOSE_APIS
 #include <gfx/gfx.hpp>
-#include <memory>
 #include <opengl/opengl.hpp>
 #include <random>
 #include "gfx/res.hpp"

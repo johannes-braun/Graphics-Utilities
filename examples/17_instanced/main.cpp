@@ -3,6 +3,10 @@
 #include <gfx/file/json.hpp>
 #include <random>
 
+#include "proto/prototype.hpp"
+#include "movement.hpp"
+#include "interaction.hpp"
+
 void executable::init(gfx::context_options& opt)
 {
     opt.window_title        = "[17] Instanced";
@@ -93,23 +97,9 @@ struct instance_component_nologo : gfx::ecs::component<instance_component_nologo
     const instance_proto_nologo* prototype;
 };
 
-struct transform_component : gfx::ecs::component<transform_component>
-{
-    gfx::transform value;
-};
-
 struct target_component : gfx::ecs::component<target_component>
 {
     gfx::transform target;
-};
-
-struct speed_component : gfx::ecs::component<speed_component>
-{
-    glm::vec3 impulse{0, 0, 0};
-    glm::vec3 force{0, 0, 0};
-    glm::vec3 rotation_impulse{0, 0, 0};
-    glm::vec3 torque{0, 0, 0};
-    glm::vec3 torque_acceleration{0, 0, 0};
 };
 
 struct sphere_collider_component : gfx::ecs::component<sphere_collider_component>
@@ -147,65 +137,6 @@ struct plane_component : gfx::ecs::component<plane_component>
 {
     std::chrono::time_point<std::chrono::steady_clock> time_tilt_zero;
     bool                                               set_time_since_tilt_zero = false;
-};
-
-class movement_system : public gfx::ecs::system
-{
-public:
-    movement_system()
-    {
-        add_component_type(transform_component::id);
-        add_component_type(speed_component::id);
-    }
-
-    void update(double delta, gfx::ecs::component_base** components) const override
-    {
-        auto& tf = components[0]->as<transform_component>();
-        auto& sp = components[1]->as<speed_component>();
-
-        const auto sphere_radius = 1.3f;
-        const auto sphere_moment = 2.f / 5.f * sphere_radius * sphere_radius;
-        const auto moment        = sphere_moment;
-
-        const auto mass            = 10.f;
-        const auto weighted_moment = mass * moment;
-
-        constexpr float movement_drag = 0;
-        constexpr float rotation_drag = 0;
-
-
-        /*	if ((type & RigidBodyTypeFlagBits::eDynamic) != RigidBodyTypeFlagBits::eDynamic)
-                return;
-
-            const auto dt = scene()->fixed_time_step;*/
-        const float dt      = delta;
-        const auto  gravity = 0.f;    // glm::vec3(0, -9.81f, 0);
-
-        sp.impulse = (1.f - movement_drag) * sp.impulse + (sp.force + gravity * mass) * dt;
-
-        // if (isnan(sp.impulse.x)) gfx::elog << "nan";
-
-        tf.value.position += sp.impulse / mass * dt;
-
-        sp.rotation_impulse = (1.f - rotation_drag) * sp.rotation_impulse + (sp.torque + sp.torque_acceleration) * dt;
-        tf.value.rotation   = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.value.rotation;
-
-        sp.torque              = glm::vec3(0.f);
-        sp.torque_acceleration = glm::vec3(0.f);
-        // m_did_collide = false;
-
-
-        /*sp.velocity = (1 - movement_drag) * sp.velocity + sp.acceleration * delta;
-        tf.value.position += sp.velocity * delta;
-
-
-        sp.angular_velocity = slerp((1 - rotation_drag) * sp.angular_velocity, sp.angular_acceleration * sp.angular_velocity, float(delta));
-        tf.value.rotation = slerp(tf.value.rotation, sp.angular_velocity * tf.value.rotation, float(delta));*/
-    }
-
-private:
-    mutable std::mt19937                          gen;
-    mutable std::uniform_real_distribution<float> dist;
 };
 
 // const float chunk_size = 8.f;
@@ -494,14 +425,13 @@ private:
     prototype_renderer& _renderer;
 };
 
-
 class plane_movement_system : public gfx::ecs::system
 {
 public:
 	plane_movement_system(gfx::ecs::ecs& ecs, std::vector<gfx::ecs::entity>& entities, prototype_renderer& renderer, terrain& t) : _ecs(ecs), _entities(entities), _renderer(renderer), _terrain(t)
 	{
 		add_component_type(transform_component::id);
-		add_component_type(speed_component::id);
+		add_component_type(movement_component::id);
 		add_component_type(instance_component::id);
 		add_component_type(control_component::id);
 		add_component_type(plane_component::id);
@@ -510,7 +440,7 @@ public:
 	void update(double delta, gfx::ecs::component_base** components) const override
 	{
 		auto& tf   = components[0]->as<transform_component>();
-		auto& sp   = components[1]->as<speed_component>();
+		auto& sp   = components[1]->as<movement_component>();
 		auto& in   = components[2]->as<instance_component>();
 		auto& ctrl = components[3]->as<control_component>();
 		auto& pln = components[4]->as<plane_component>();
@@ -550,7 +480,7 @@ public:
 
 			glm::vec3 off = 0.9f * tf.value.left();
 			ttf.value = gfx::transform(tf.value.position + 2.3f * tf.value.forward() + 0.6f * tf.value.down() + off);
-			speed_component           tsp;
+			movement_component           tsp;
 			tsp.impulse = sp.impulse + tf.value.forward() * 830.f;
 			sphere_collider_component collider;
 			collider.radius = 0.1f;
@@ -667,7 +597,7 @@ public:
 		_colliders.clear();
     }
 
-    void resolve(transform_component& tc, speed_component& sc, sphere_collider_component& scc)
+    void resolve(transform_component& tc, movement_component& sc, sphere_collider_component& scc)
     {
 		scc.did_collide = false;
         const auto th = _terrain.terrain_height(glm::vec2(tc.value.position.x, tc.value.position.z));
@@ -696,7 +626,7 @@ public:
         auto& colliders = _colliders;
         for (const auto c : colliders) {
             auto& t_tc  = *std::get<transform_component*>(c);
-            auto& t_sc  = *std::get<speed_component*>(c);
+            auto& t_sc  = *std::get<movement_component*>(c);
             auto& t_scc = *std::get<sphere_collider_component*>(c);
 
             if (distance(tc.value.position, t_tc.value.position) < (scc.radius + t_scc.radius)) {
@@ -721,7 +651,7 @@ public:
 private:
     terrain&                                                                                                 _terrain;
 	collision_event_manager& _collision_event_manager;
-    std::vector<std::tuple<transform_component*, speed_component*, sphere_collider_component*>> _colliders;
+    std::vector<std::tuple<transform_component*, movement_component*, sphere_collider_component*>> _colliders;
 };
 
 class collision_system : public gfx::ecs::system
@@ -730,14 +660,14 @@ public:
     collision_system(collision_resolver& resolver) : _resolver(resolver)
     {
         add_component_type(transform_component::id);
-        add_component_type(speed_component::id);
+        add_component_type(movement_component::id);
         add_component_type(sphere_collider_component::id);
     }
 
     void update(double delta, gfx::ecs::component_base** components) const override
     {
         auto& tc  = components[0]->as<transform_component>();
-        auto& sc  = components[1]->as<speed_component>();
+        auto& sc  = components[1]->as<movement_component>();
         auto& scc = components[2]->as<sphere_collider_component>();
         _resolver.resolve(tc, sc, scc);
     }
@@ -752,7 +682,7 @@ public:
 	missile_system(gfx::ecs::ecs& ecs, std::vector<gfx::ecs::entity>& entities, prototype_renderer& renderer) : _ecs(ecs), _entities(entities), _renderer(renderer)
 	{
 		add_component_type(transform_component::id);
-		add_component_type(speed_component::id);
+		add_component_type(movement_component::id);
 		add_component_type(missile_component::id);
 		add_component_type(sphere_collider_component::id);
 	}
@@ -760,7 +690,7 @@ public:
 	void update(double delta, gfx::ecs::component_base** components) const override
 	{
 		auto& tc  = components[0]->as<transform_component>();
-		auto& sc  = components[1]->as<speed_component>();
+		auto& sc  = components[1]->as<movement_component>();
 		auto& mis = components[2]->as<missile_component>();
 		auto& scc = components[3]->as<sphere_collider_component>();
 
@@ -830,7 +760,7 @@ void executable::run()
         inst.prototype = prototype;
         transform_component tf;
         tf.value = gfx::transform(at);
-        speed_component           sp;
+        movement_component           sp;
 		sp.impulse = glm::vec3(0, 0, 203.f);
         sphere_collider_component collider;
         collider.radius = 1.4f;
@@ -847,7 +777,7 @@ void executable::run()
         tf.value = gfx::transform(at);
         target_component tgt;
         tgt.target = tf.value;
-        speed_component           sp;
+        movement_component           sp;
         sphere_collider_component collider;
         collider.radius = 1.5f;
         control_component controls;

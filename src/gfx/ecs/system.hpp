@@ -5,8 +5,9 @@
 #include <execution>
 #include <gfx/data/flags.hpp>
 
-namespace gfx::ecs
-{
+namespace gfx {
+inline namespace v1 {
+namespace ecs {
 enum class component_flag : uint32_t
 {
     optional = 1 << 0,
@@ -16,8 +17,12 @@ using component_flags = gfx::flags<uint32_t, component_flag>;
 class system_base
 {
 public:
-    virtual ~system_base() = default;
-    system_base()          = default;
+    virtual ~system_base()                = default;
+    system_base()                         = default;
+    system_base(const system_base& other) = default;
+    system_base(system_base&& other)      = default;
+    system_base& operator=(const system_base& other) = default;
+    system_base& operator=(system_base&& other) = default;
 
     virtual void                        update(double delta, component_base** components) const;
     const std::vector<id_t>&            types() const;
@@ -37,7 +42,6 @@ class system_list
 {
 public:
     void add(system_base& system);
-
     bool remove(system_base& system);
 
     system_base&       operator[](uint32_t index);
@@ -50,4 +54,6 @@ private:
     std::vector<std::reference_wrapper<system_base>> _systems;
 };
 
-}    // namespace gfx::ecs
+}    // namespace ecs
+}    // namespace v1
+}    // namespace gfx

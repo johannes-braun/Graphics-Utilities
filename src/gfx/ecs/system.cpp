@@ -1,7 +1,8 @@
 #include "system.hpp"
 
-namespace gfx::ecs
-{
+namespace gfx {
+inline namespace v1 {
+namespace ecs {
 void system_base::add_component_type(id_t id, component_flags flags)
 {
     _component_types.push_back(id);
@@ -61,4 +62,6 @@ size_t system_list::size() const noexcept
 {
     return _systems.size();
 }
-}
+}    // namespace ecs
+}    // namespace v1
+}    // namespace gfx
