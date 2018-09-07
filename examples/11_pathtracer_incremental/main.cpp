@@ -8,6 +8,7 @@ void executable::init(gfx::context_options& opt)
     opt.window_title        = "[11] Incremental Pathtracer";
     opt.framebuffer_samples = gfx::sample_count::x1;
     opt.graphics_api        = gfx::gapi::vulkan;
+	opt.max_framerate = 100000.f;
 }
 
 struct helper_info
@@ -15,6 +16,7 @@ struct helper_info
     glm::mat4 inverse_view_proj;
     float     time;
     gfx::u32  reset;
+	float	  rngval;
 };
 
 void executable::run()
@@ -33,9 +35,27 @@ void executable::run()
     const auto origin_cache_view       = origin_cache.view(gfx::imgv_type::image2d);
     const auto counter_cache_view      = counter_cache.view(gfx::imgv_type::image2d);
 
-    gfx::image&     cubemap      = res.cubemaps_hdr["arboretum/hdr"];
+    gfx::image&     cubemap      = res.cubemaps_hdr["nagoya/hdr"];
 	const gfx::image_view cubemap_view = cubemap.view(gfx::imgv_type::image_cube);
 	const gfx::sampler    sampler;
+
+	gfx::binding_layout trace_images_layout;
+	trace_images_layout.push(gfx::binding_type::sampled_image);
+
+	gfx::renderpass_layout trace_pass_layout;
+	trace_pass_layout.add_color_attachment(gfx::rgba16f);
+	std::vector<gfx::framebuffer> trace_fbos;
+	std::vector<gfx::image> trace_fbo_images;
+	std::vector<gfx::image_view> trace_fbo_image_views;
+	std::vector<gfx::binding_set> trace_images_sets;
+	for (int i=0; i<context->swapchain()->image_views().size(); ++i)
+	{
+		auto& img = trace_fbo_images.emplace_back(gfx::img_type::image2d, gfx::rgba16f, gfx::extent(options.window_width, options.window_height), 1);
+		auto& iv = trace_fbo_image_views.emplace_back(gfx::imgv_type::image2d, img);
+		trace_fbos.emplace_back(options.window_width, options.window_height, 1, trace_pass_layout);
+		trace_fbos.back().attach(gfx::attachment::color, 0, iv);
+		trace_images_sets.emplace_back(trace_images_layout).bind(0, iv);
+	}
 
 	gfx::binding_layout trace_layout;
 	trace_layout.push(gfx::binding_type::uniform_buffer);
@@ -57,13 +77,23 @@ void executable::run()
 	trace_state.state_bindings = &trace_layouts;
 	trace_state.state_multisample = &msaa_state;
 
-	gfx::graphics_pipeline trace_pipeline(trace_state, pass_layout, {
+	gfx::graphics_pipeline trace_pipeline(trace_state, trace_pass_layout, {
 		gfx::shader(gfx::shader_type::vert, "postfx/screen.vert"),
 		gfx::shader(gfx::shader_type::frag, "11_pathtracer_incremental/trace.frag")
 	});
 
+	gfx::pipe_state::binding_layouts filter_layouts;
+	filter_layouts.layouts.push_back(&trace_images_layout);
+	gfx::pipe_state filter_state;
+	filter_state.state_bindings = &filter_layouts;
+	filter_state.state_multisample = &msaa_state;
+	gfx::graphics_pipeline filter_pipeline(filter_state, pass_layout, {
+		gfx::shader(gfx::shader_type::vert, "postfx/screen.vert"),
+		gfx::shader(gfx::shader_type::frag, "postfx/filter/bilateral.frag")
+		});
+
     gfx::scene_file& scene1      = res.scenes["wall.dae"];
-	gfx::scene_file& scene2      = res.scenes["proto/serp.dae"];
+	gfx::scene_file& scene2      = res.scenes["sphere.dae"];
 	gfx::mesh3d      scene_mesh = scene1.mesh + scene2.mesh;
     scene_mesh.collapse();
 
@@ -92,7 +122,7 @@ void executable::run()
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
     gfx::transform last_cam = camera.transform_mode;
-
+	
     int   i    = 0;
     float time = 0;
     while (frame()) {
@@ -114,9 +144,15 @@ void executable::run()
             glm::mat4(glm::mat3(glm::inverse(camera_buffer->at(0).view))) * inverse(camera_buffer->at(0).projection);
         helper_info_buffer[0].time  = float(glfwGetTime()) * dist(gen);
         helper_info_buffer[0].reset = i++;
+        helper_info_buffer[0].rngval  = dist(gen);
+
+		current_command->begin_pass(trace_fbos[context->swapchain()->current_image()]);
+        current_command->bind_pipeline(trace_pipeline, {&trace_set});
+		current_command->draw(3);
+		current_command->end_pass();
 
 		current_command->begin_pass(*current_framebuffer);
-        current_command->bind_pipeline(trace_pipeline, {&trace_set});
+		current_command->bind_pipeline(filter_pipeline, { &trace_images_sets[context->swapchain()->current_image()] });
 		current_command->draw(3);
 		current_command->end_pass();
     }

@@ -1,10 +1,13 @@
-#define MSIZE 16
+#version 460 core
+#include "../../api.glsl"
 
-uniform sampler2D src_textures[];
+#define MSIZE 9
+
+layout(loc_gl(0) loc_vk(0, 0)) uniform sampler2D src_textures[1];
 #define this_texture (src_textures[0])
 
-uniform float gauss_sigma = 6.f;
-uniform float gauss_bsigma = 0.1f;
+const float gauss_sigma = 0.5f;
+const float gauss_bsigma = 0.055f;
 
 layout(location=0) out vec4 color;
 
@@ -20,8 +23,8 @@ float normpdf3(in vec4 v, in float sigma)
 
 void main(void)
 {
-    vec2 sketchSize = textureSize(this_texture, 0);
-	vec4 c = texture( this_texture, vec2(0.0, 0.0) + (gl_FragCoord.xy / sketchSize.xy) );
+    vec2 sketchSize = vec2(1280, 720);//textureSize(this_texture, 0);
+	vec4 c = texture( this_texture, vec2(0.0, 0.0) + (gl_FragCoord.xy) );
 
 	if(gauss_sigma==0)
 	{
@@ -51,7 +54,7 @@ void main(void)
 	{
 		for (int j=-kSize; j <= kSize; ++j)
 		{
-			cc = texture(this_texture, vec2(0.0, 0.0) + ( gl_FragCoord.xy + vec2(float(i),float(j)) ) / sketchSize.xy );
+			cc = texture(this_texture, vec2(0.0, 0.0) + ( gl_FragCoord.xy + vec2(float(i),float(j)) ) );
 			factor = normpdf3(cc-c, gauss_bsigma)*bZ*kernel[kSize+j]*kernel[kSize+i];
 			Z += factor;
 			final_colour += factor*cc;

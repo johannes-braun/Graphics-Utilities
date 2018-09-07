@@ -20,6 +20,7 @@ layout(loc_gl(1) loc_vk(0, 1)) uniform HelperInfo
     mat4  inverse_view_proj;
     float time;
     uint  reset;
+	float rngval;
 };
 
 struct bvh_attribute
@@ -101,7 +102,7 @@ void  init_random(ivec2 pixel, float seed);
 void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_color, in vec3 position, in vec3 normal, in vec2 uv,
                    in vec2 random_value)
 {
-    float roughness = 0.25f;
+    float roughness = 0.8f;
     float alpha2    = roughness * roughness;
 
 #define DIFFUSE 1
@@ -114,7 +115,7 @@ void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_co
     vec3 msnormal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), normal);
     direction     = reflect(direction.xyz, msnormal);
     origin        = position;
-    bounce_color *= vec4(0.8f, 0.4f, 0.2f, 1);
+    bounce_color *= vec4(1);
 #endif
 }
 
@@ -125,7 +126,7 @@ void main()
     ivec2 img_size = ivec2(imageSize(accumulation_cache));
     if (any(greaterThanEqual(pixel, img_size))) return;
 
-    init_random(ivec2(0, 0) + pixel, int(reset + 200 * time));
+    init_random(ivec2(0, 0) + pixel, int(30000 * rngval));
     vec2 random_value =
         random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (img_size.x * img_size.y),
                              1.f / (img_size.x * img_size.y));
@@ -133,7 +134,7 @@ void main()
     vec3 precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
 
     uvec2 c_counters      = reset != 0 ? imageLoad(counter_cache, pixel).xy : uvec2(0);
-    vec4  c_accumulation  = reset != 0 ? imageLoad(accumulation_cache, pixel) : vec4(0);
+    vec4  c_accumulation  = reset != 0 ? imageLoad(accumulation_cache, pixel) : vec4(0, 0, 0, 1);
     vec4  c_bounce        = reset != 0 && c_counters.x != 0 ? imageLoad(bounce_cache, pixel) : vec4(1);
     vec4  c_direction     = reset != 0 && c_counters.x != 0 ? imageLoad(direction_cache, pixel) : vec4(precalc_direction, 0);
     vec4  c_origin        = reset != 0 && c_counters.x != 0 ? imageLoad(origin_cache, pixel) : vec4(camera.position, 0);
@@ -141,7 +142,7 @@ void main()
 
     // READ ----------------------------------------
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < 2; ++i)
     {
         if (c_counters.x == 0)
         {
@@ -163,8 +164,8 @@ void main()
             uint v2  = model_indices[hit.near_triangle * 3 + 0];
             vec3 pos = hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
                        + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].position;
-            vec3 norm = hit.near_barycentric.x * model_vertices[v0].normal + hit.near_barycentric.y * model_vertices[v1].normal
-                        + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].normal;
+            vec3 norm = normalize(hit.near_barycentric.x * model_vertices[v0].normal + hit.near_barycentric.y * model_vertices[v1].normal
+                        + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].normal);
             vec2 uv = hit.near_barycentric.x * model_vertices[v0].uv + hit.near_barycentric.y * model_vertices[v1].uv
                       + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
 
@@ -175,9 +176,9 @@ void main()
             c_direction = vec4(dir, 0);
 
             float den = ++c_counters.x;
-            if (den > 4)
+            if (den > 0)
             {
-                c_counters.y;
+                ++c_counters.y;
                 c_accumulation += clamp(c_bounce, 0, 10);
                 c_counters.x = 0;
             }
@@ -187,8 +188,15 @@ void main()
         {
 			#define sample_env() texture(cubemap, c_direction.xyz)
 			//#define sample_env() vec4(0.2f)
+
+			vec4 env = sample_env();
+			if(any(isnan(env)))
+			{
+				env = vec4(0, 1, 1, 1);
+			}
+
             ++c_counters.y;
-            c_accumulation += clamp(c_bounce * sample_env(), 0, 10);
+            c_accumulation += vec4(clamp(c_bounce.rgb * env.rgb, 0, 10), 0);
             c_counters.x    = 0;
             c_display_color = (c_accumulation + c_bounce / (c_counters.x + 1)) / (c_counters.y + 1);
         }
@@ -294,7 +302,14 @@ vec3 sample_cosine_hemisphere(vec2 uv)
 vec3 bsdf_local_to_world(const in vec3 vector, const in vec3 normal)
 {
     // Find an axis that is not parallel to normal
-    vec3 u = normalize(cross(normal, (abs(normal.x) <= 0.6f) ? vec3(1, 0, 0) : vec3(0, 1, 0)));
+	vec3 perp = vec3(1, 0, 0);
+    vec3 u = normalize(cross(normal, perp));
+	for(int i=1; any(isnan(u)) && i < 3; ++i)
+	{
+		perp[i-1] = 0;
+		perp[i] = 1;
+		u = normalize(cross(normal, perp));
+	}
     return normalize(mat3(u, cross(normal, u), normal) * vector);
 }
 

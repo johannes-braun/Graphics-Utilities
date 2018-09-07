@@ -34,7 +34,7 @@ function(mark_as_executable exe_name)
     )
 
 	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
-		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ${exe_name}__shaders)
+		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ../src/shaders/${exe_name})
 		add_dependencies(${exe_name} shaders_${exe_name})
 		message("Target found: shaders_${exe_name}")
 	endif()

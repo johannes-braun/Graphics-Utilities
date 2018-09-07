@@ -150,6 +150,7 @@ configure_file(opengl/shader_include.hpp.in opengl/shader_include.hpp @ONLY)
 configure_file(gfx/graphics/shader_include.hpp.in gfx/graphics/shader_include.hpp @ONLY)
 
 add_subdirectory(shaders)
+add_dependencies(gfx shaders_gfx)
 
 install(EXPORT gfxTargets
     FILE gfxTargets.cmake

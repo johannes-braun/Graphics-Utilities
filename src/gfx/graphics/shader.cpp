@@ -12,12 +12,12 @@ shader::shader(shader_type stage, const std::filesystem::path& path) : _stage(st
     switch (gfx::context::current()->options().graphics_api)
     {
     case gfx::gapi::opengl:
-        gapi_str    = "opengl";
+        gapi_str    = ".gl.spv";
         enable_text = true;
         break;
-    case gfx::gapi::vulkan: gapi_str = "vulkan"; break;
+    case gfx::gapi::vulkan: gapi_str = ".vk.spv"; break;
     }
-    std::filesystem::path combined  = (path.string() + ".spv-" + gapi_str);
+    std::filesystem::path combined  = (path.string() + gapi_str);
     std::filesystem::path text_file = path.string();
 
     bool path_valid = path.is_absolute();
