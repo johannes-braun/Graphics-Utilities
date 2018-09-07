@@ -2,6 +2,8 @@
 #include <opengl/opengl.hpp>
 #include <gfx/gfx.hpp>
 
+#include <gfx/graphics/ext.hpp>
+
 struct spring
 {
     int   particle1;

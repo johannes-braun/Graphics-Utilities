@@ -1,7 +1,8 @@
 #pragma once
 
-namespace gfx::ecs
-{
+namespace gfx {
+inline namespace v1 {
+namespace ecs {
 template<typename... Component>
 void entity::add(const Component&... component)
 {
@@ -56,4 +57,6 @@ Component* ecs::get_component(entity_handle handle)
 {
     return static_cast<Component*>(get_component_impl(handle, _components[Component::id], Component::id));
 }
-}
+}    // namespace ecs
+}    // namespace v1
+}    // namespace gfx
