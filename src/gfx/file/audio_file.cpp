@@ -74,7 +74,7 @@ namespace gfx
             int c, s;
             const auto data_len = stb_vorbis_decode_filename(file::path.string().c_str(), &c, &s, &us);
             data_size = data_len * c * sizeof(short);
-            data = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(us), reinterpret_cast<uint8_t*>(us + data_size));
+            data = std::vector<uint8_t>(reinterpret_cast<uint8_t*>(us), reinterpret_cast<uint8_t*>(us) + data_size);
             channels = c;
             sample_rate = s;
             format = 0x1100 + (16 >> 3) - 1 + c*2-2;

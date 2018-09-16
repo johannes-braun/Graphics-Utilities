@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gsl/span>
+#include "gsl/span"
 
 namespace gfx
 {

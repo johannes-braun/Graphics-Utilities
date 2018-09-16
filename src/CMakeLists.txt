@@ -20,8 +20,7 @@ target_link_libraries(gfx
 		glfw::glfw 
 		assimp::assimp 
 		eigen::eigen 
-		vulkan::vulkan
-		OpenAL::OpenAL)
+		vulkan::vulkan)
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 
 	if(MSVC)
@@ -149,7 +148,6 @@ set(PUBLIC_HEADERS_FILE
 if(GFX_USE_INSTALL)
 	install(FILES ${PUBLIC_HEADERS_FILE} DESTINATION include/gfx/file)
 endif()
-configure_file(opengl/shader_include.hpp.in opengl/shader_include.hpp @ONLY)
 configure_file(gfx/graphics/shader_include.hpp.in gfx/graphics/shader_include.hpp @ONLY)
 
 add_subdirectory(shaders)

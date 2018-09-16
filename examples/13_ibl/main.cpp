@@ -99,7 +99,7 @@ void executable::run()
 
 		gfx::pipe_state::render_area filter_area;
 		filter_area.scissors.emplace_back(glm::vec2{ 0, 0 }, glm::vec2{ sampling_size, sampling_size });
-		filter_area.viewports.emplace_back(0, 0, sampling_size, sampling_size, 0.f, 1.f);
+		filter_area.viewports.emplace_back(0.f, 0.f, float(sampling_size), float(sampling_size), 0.f, 1.f);
 
 		gfx::pipe_state filter_state;
 		filter_state.state_input_assembly = &points_input;

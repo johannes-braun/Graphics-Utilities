@@ -28,7 +28,7 @@ namespace v1 {
 	{
 		static_assert(sizeof(T) > sizeof(drawcmd), "Buffer value type must contain the necessary indirect draw data.");
 		assert(stride > sizeof(drawcmd));
-		count = count == ~0 ? buffer.size() : count;
+		count = count == ~0 ? static_cast<u32>(buffer.size()) : count;
 		implementation()->draw_indirect(buffer.api_handle(), count, stride, first, true);
 	}
 
