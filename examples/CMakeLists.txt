@@ -14,9 +14,11 @@ function(mark_as_executable exe_name)
         $<BUILD_INTERFACE:${var_include_dir}>
         $<INSTALL_INTERFACE:include>
     )
-    install(TARGETS ${exe_name} EXPORT ${exe_name}Targets
-        RUNTIME DESTINATION bin
-    )
+	if(GFX_USE_INSTALL)
+		install(TARGETS ${exe_name} EXPORT ${exe_name}Targets
+			RUNTIME DESTINATION bin
+		)
+	endif()
     target_link_libraries(${exe_name} jbraun::gfx)
     
     target_compile_options(${exe_name} PRIVATE ${compile_options})
@@ -48,11 +50,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_
 
 mark_as_executable(00_equilateral_to_cubemap)
 mark_as_executable(01_color_normalization)
-mark_as_executable(02_forward_renderer)
-mark_as_executable(03_bidirectional_pathtracer)
 mark_as_executable(04_marching_squares)
-mark_as_executable(05_implementation_tests)
-mark_as_executable(06_sail_simulation)
 mark_as_executable(07_meshing)
 mark_as_executable(08_point_detection)
 mark_as_executable(09_bv_stuff)
@@ -62,5 +60,4 @@ mark_as_executable(12_boids)
 mark_as_executable(13_ibl)
 mark_as_executable(14_cubemapper)
 mark_as_executable(15_win32_window)
-mark_as_executable(16_new_runnable)
-mark_as_executable(17_instanced)
+mark_as_executable(17_proto)

@@ -1,10 +1,25 @@
-#ifndef SKY_GLSL
-#define SKY_GLSL
+#version 460 core
 
-const float time = 2.f;
+layout(location = 0) in vec3 uv;
+layout(location = 1) in vec3 campos;
+layout(location = 0) out vec4 color;
 
-float cnoise(vec3 P, vec3 cam);
-vec3 sky(vec3 uv, vec3 cam)
+float cnoise(vec3 P);
+float snoise(vec3 v);
+
+layout(binding = 0) uniform Camera
+{
+	mat4 view;
+	mat4 proj;
+	vec3 position;
+} camera;
+
+layout(binding = 1) uniform Time
+{
+	float time;
+};
+
+void main()
 {
 	vec3 bottom = vec3(0.2f);
 	vec3 top = vec3(0.3f, 0.5f, 1.f);
@@ -30,9 +45,10 @@ vec3 sky(vec3 uv, vec3 cam)
 	vec3 tc = normalize(uv);
 	tc.y *= 4.f;
 
-	float cn1 = cnoise(1.4f*normalize(tc), cam);
-	float cn10 = cnoise(5.f*normalize(tc), cam);
-	float cn100 = cnoise(36.f*normalize(tc), cam);
+	#if 0
+	float cn1 = snoise(1.4f*normalize(tc));
+	float cn10 = snoise(5.f*normalize(tc));
+	float cn100 = snoise(36.f*normalize(tc));
 	float ncn1 = smoothstep(-0.92f, 0.22, cn1);
 	float ncn10 = smoothstep(-1.f, 0.4f, cn10);
 	float ncn100 = smoothstep(-1.f, 0.5f, cn100);
@@ -41,83 +57,24 @@ vec3 sky(vec3 uv, vec3 cam)
 	cl = mix(0, cl, smoothstep(0.01f, 0.4f, up_angle));
 
 	tc += 0.14f * sundir;
-	float cn1x = cnoise(1.4f*normalize(tc), cam);
-	float cn10x = cnoise(5.f*normalize(tc), cam);
-	float cn100x = cnoise(36.f*normalize(tc), cam);
+	float cn1x = snoise(1.4f*normalize(tc));
+	float cn10x = snoise(5.f*normalize(tc));
+	float cn100x = snoise(36.f*normalize(tc));
 	float ncn1x = smoothstep(-0.92f, 0.42, cn1x);
 	float ncn10x = smoothstep(-1.f, 0.5f, cn10x);
 	float ncn100x = smoothstep(-1.f, 1, cn100x);
 	float clx = smoothstep(0.6f, 1.2f, pow(ncn1x, 4.f) * mix(ncn100x, ncn10x, ncn1x));
-
-	result = vec3(mix(result, vec3(1.f), 0.7f * cl));
-	result = vec3(mix(result, mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f), mix(0, clx, cl)));
-	return mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
-}
-
-vec3 sky_noclouds(vec3 uv, vec3 cam)
-{
-	vec3 bottom = vec3(0.2f);
-	vec3 top = vec3(0.3f, 0.5f, 1.f);
-	vec3 eve = vec3(0.9f, 0.5f, 0.1f);
-
-	float up_angle = dot(normalize(uv), normalize(vec3(0,1,0)));
-
-	vec3 result = bottom;
-
-	float sy = 1.1f + 0.5f * sin(time);
-	float sx = sin(time*0.1f) *1;
-	float sz = cos(time*0.1f) * 1;
-
-	vec3 sundir = normalize(vec3(sx, sy, sz));
-	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
-
-	result = mix(bottom, mix(eve, top, up_angle_sun), smoothstep(-0.4f, 0.1f, up_angle));
-
-	float angle = dot(normalize(uv), sundir);
-	result = mix(result, vec3(1.f), 0.5f*smoothstep(0.15f, 1.15f, angle));
-	result = mix(result, vec3(8.f), smoothstep(0.985f, 1.08f, angle));
-	
-	vec3 tc = normalize(uv);
-	tc.y *= 4.f;
-
+	#else
 	float cl = 0.f;
 	float clx = 0.f;
+	#endif
 	result = vec3(mix(result, vec3(1.f), 0.7f * cl));
 	result = vec3(mix(result, mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f), mix(0, clx, cl)));
 	result = mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
-	return result;
-//	vec3 bottom = vec3(0.2f);
-//	vec3 top = vec3(0.3f, 0.5f, 1.f);
-//	vec3 eve = vec3(0.9f, 0.5f, 0.1f);
-//
-//	float up_angle = dot(normalize(uv), normalize(vec3(0,1,0)));
-//
-//	vec3 result = bottom;
-//
-//	float sy = 1.1f + 0.5f * sin(time);
-//	float sx = sin(time*0.1f) *1;
-//	float sz = cos(time*0.1f) * 1;
-//
-//	vec3 sundir = normalize(vec3(sx, sy, sz));
-//	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
-//	return (mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f)) / 3.14159265359f;
-//
-//	result = mix(bottom, mix(eve, top, up_angle_sun), smoothstep(-0.4f, 0.1f, up_angle));
-//
-//	float angle = dot(normalize(uv), sundir);
-//	result = mix(result, vec3(1.f), 0.5f*smoothstep(0.15f, 1.15f, angle));
-//	result = mix(result, vec3(8.f), smoothstep(0.985f, 1.08f, angle));
-//	
-//	vec3 tc = normalize(uv);
-//	tc.y *= 4.f;
-//
-//	float cl = 0;
-//	float clx = 0;
-//
-//	result = vec3(mix(result, vec3(1.f), 0.7f * cl));
-//	result = vec3(mix(result, mix(mix(eve, top, up_angle_sun), vec3(0.6f), 0.4f), mix(0, clx, cl)));
-//	return mix(result, vec3(8.f), smoothstep(0.9955f, 1.05f, angle));
+
+	color = vec4(result, 1);
 }
+
 
 
 //	Classic Perlin 3D Noise 
@@ -127,8 +84,78 @@ vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
 vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
 
-float cnoise(vec3 P, vec3 cam){
-	P += vec3(0.1f*time + cam.x * 0.001f, 0, 0.1f*time + cam.z * 0.001f);
+float snoise(vec3 v){ 
+	v += vec3(0.1f*time + campos.x * 0.001f, 0, 0.1f*time + campos.z * 0.001f);
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+// First corner
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+// Other corners
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+
+  //  x0 = x0 - 0. + 0.0 * C 
+  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+  vec3 x3 = x0 - 1. + 3.0 * C.xxx;
+
+// Permutations
+  i = mod(i, 289.0 ); 
+  vec4 p = permute( permute( permute( 
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+// Gradients
+// ( N*N points uniformly over a square, mapped onto an octahedron.)
+  float n_ = 1.0/7.0; // N=7
+  vec3  ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+
+//Normalise gradients
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+// Mix final noise value
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                dot(p2,x2), dot(p3,x3) ) );
+}
+
+float cnoise(vec3 P){
+	P += vec3(0.1f*time + campos.x * 0.001f, 0, 0.1f*time + campos.z * 0.001f);
 
   vec3 Pi0 = floor(P); // Integer part for indexing
   vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1
@@ -196,5 +223,3 @@ float cnoise(vec3 P, vec3 cam){
   float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x); 
   return 2.2 * n_xyz;
 }
-
-#endif //SKY_GLSL

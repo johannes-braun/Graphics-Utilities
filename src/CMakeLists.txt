@@ -52,115 +52,120 @@ target_compile_definitions(gfx
 
 add_library(jbraun::gfx ALIAS gfx)
 
-install(TARGETS gfx EXPORT gfxTargets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
+if(GFX_USE_INSTALL)
+	install(TARGETS gfx EXPORT gfxTargets
+		LIBRARY DESTINATION lib
+		ARCHIVE DESTINATION lib
+		RUNTIME DESTINATION bin
+	)
+	function(register_public_headers ROOT)
+		list(REMOVE_AT ARGV 0)
+		foreach(file IN LISTS ARGV)
+			list(APPEND HEADERS ${ROOT}/${file})
+		endforeach()
+		install(FILES ${HEADERS} DESTINATION include/${ROOT})
+	endfunction()
 
-function(register_public_headers ROOT)
-    list(REMOVE_AT ARGV 0)
-    foreach(file IN LISTS ARGV)
-        list(APPEND HEADERS ${ROOT}/${file})
-    endforeach()
-    install(FILES ${HEADERS} DESTINATION include/${ROOT})
-endfunction()
+	register_public_headers(gfx 
+		file.hpp
+		flags.hpp
+		flags.inl
+		geometry.hpp
+		log.hpp
+		spline.hpp
+		input.hpp
+		context.hpp
+		callbacks.hpp
+		imgui.hpp)
 
-register_public_headers(gfx 
-    file.hpp
-    flags.hpp
-    flags.inl
-    geometry.hpp
-    log.hpp
-    spline.hpp
-    input.hpp
-    context.hpp
-    callbacks.hpp
-    imgui.hpp)
+	register_public_headers(gfx/imgui
+		imconfig.h
+		imgui.h)
 
-register_public_headers(gfx/imgui
-    imconfig.h
-    imgui.h)
+	register_public_headers(gfx/input
+		button_press.inl)
+	register_public_headers(gfx/interface
+		imgui_handler.hpp)
 
-register_public_headers(gfx/input
-    button_press.inl)
-register_public_headers(gfx/interface
-    imgui_handler.hpp)
+	register_public_headers(gfx/graphics
+		device_buffer.hpp
+		device_buffer.inl
+		host_buffer.hpp
+		host_buffer.inl
+		device_image.hpp
+		host_image.hpp
+		host_image.inl
+		swapchain.hpp
+		sampler.hpp
+		image_view.hpp
+		vertex_input.hpp)
 
-register_public_headers(gfx/graphics
-    device_buffer.hpp
-    device_buffer.inl
-    host_buffer.hpp
-    host_buffer.inl
-    device_image.hpp
-    host_image.hpp
-    host_image.inl
-    swapchain.hpp
-    sampler.hpp
-	image_view.hpp
-	vertex_input.hpp)
-
-register_public_headers(gfx/data
-    bvh.hpp
-    gpu_data.hpp
-    grid_line_space.hpp
-    line_space.hpp)
+	register_public_headers(gfx/data
+		bvh.hpp
+		gpu_data.hpp
+		grid_line_space.hpp
+		line_space.hpp)
     
-register_public_headers(gfx/data/impl
-    bvh.inl)
+	register_public_headers(gfx/data/impl
+		bvh.inl)
 
-register_public_headers(gfx/geometry
-    bounds.inl
-    projection.inl
-    transform.inl
-    vertex.inl)
+	register_public_headers(gfx/geometry
+		bounds.inl
+		projection.inl
+		transform.inl
+		vertex.inl)
     
-register_public_headers(opengl
-    buffer.hpp
-    command_list.hpp
-    context.hpp
-    enums.hpp
-    framebuffer.hpp
-    opengl.hpp
-    pipeline.hpp
-    query.hpp
-    shader.hpp
-    state.hpp
-    texture.hpp
-    uniform.hpp
-    vertex_array.hpp)
+	register_public_headers(opengl
+		buffer.hpp
+		command_list.hpp
+		context.hpp
+		enums.hpp
+		framebuffer.hpp
+		opengl.hpp
+		pipeline.hpp
+		query.hpp
+		shader.hpp
+		state.hpp
+		texture.hpp
+		uniform.hpp
+		vertex_array.hpp)
     
-register_public_headers(opengl/impl
-    bounded_buffer_data.inl
-    bounded_buffer_iterator.inl
-    buffer.inl
-    command_list.inl
-    framebuffer.inl
-    pipeline.inl
-    shader.inl
-    uniform.inl
-    vertex_array.inl)
+	register_public_headers(opengl/impl
+		bounded_buffer_data.inl
+		bounded_buffer_iterator.inl
+		buffer.inl
+		command_list.inl
+		framebuffer.inl
+		pipeline.inl
+		shader.inl
+		uniform.inl
+		vertex_array.inl)
+endif()
 
 configure_file(gfx/file/file_config.hpp.in gfx/file/file_config.hpp @ONLY)
 set(PUBLIC_HEADERS_FILE
     ${CMAKE_CURRENT_BINARY_DIR}/gfx/file/file_config.hpp)
-install(FILES ${PUBLIC_HEADERS_FILE} DESTINATION include/gfx/file)
 
+if(GFX_USE_INSTALL)
+	install(FILES ${PUBLIC_HEADERS_FILE} DESTINATION include/gfx/file)
+endif()
 configure_file(opengl/shader_include.hpp.in opengl/shader_include.hpp @ONLY)
 configure_file(gfx/graphics/shader_include.hpp.in gfx/graphics/shader_include.hpp @ONLY)
 
 add_subdirectory(shaders)
 add_dependencies(gfx shaders_gfx)
 
-install(EXPORT gfxTargets
-    FILE gfxTargets.cmake
-    NAMESPACE jbraun::
-    DESTINATION lib/cmake/gfx
-)
-
-install(DIRECTORY shaders DESTINATION . 
-	FILES_MATCHING
-		PATTERN *
-		PATTERN *.txt EXCLUDE
-		PATTERN *.bat EXCLUDE
-		PATTERN .git* EXCLUDE)
+if(GFX_USE_INSTALL)
+	install(DIRECTORY shaders DESTINATION . 
+		FILES_MATCHING
+			PATTERN *
+			PATTERN *.txt EXCLUDE
+			PATTERN *.bat EXCLUDE
+			PATTERN .git* EXCLUDE)
+	
+	install(EXPORT gfxTargets
+		FILE gfxTargets.cmake
+		NAMESPACE jbraun::
+		DESTINATION lib/cmake/gfx
+	)
+endif()

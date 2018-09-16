@@ -23,7 +23,12 @@ public:
     void on_add_component(gfx::ecs::entity e, gfx::ecs::id_t id) override;
     void on_remove_component(gfx::ecs::entity e, gfx::ecs::id_t id) override;
 
+	void process(double delta);
+
 private:
+	void clear_entities();
+	int max_variance_axis();
+
     std::vector<gfx::ecs::entity_handle> _entity_handles;
     std::vector<gfx::ecs::entity_handle> _entities_removed;
 };

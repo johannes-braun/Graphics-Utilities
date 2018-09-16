@@ -39,7 +39,7 @@ public:
         for (auto& p : _prototypes)
             if (p && &*p == proto)
             {
-                std::exchange(p, _prototypes.back());
+                std::exchange(p, std::move(_prototypes.back()));
                 _prototypes.pop_back();
                 break;
             }

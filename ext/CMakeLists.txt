@@ -78,20 +78,22 @@ add_library(assimp::assimp ALIAS assimp)
 if(MSVC)
     target_compile_options(assimp PRIVATE /MP)
 endif()
-install(EXPORT assimpTargets
-    FILE assimpTargets.cmake
-    NAMESPACE assimp::
-    DESTINATION lib/cmake/assimp
-)
-install(EXPORT zlibstaticTargets
-    FILE zlibstaticTargets.cmake
-    NAMESPACE assimp::
-    DESTINATION lib/cmake/assimp
-)
-install(EXPORT IrrXMLTargets
-    FILE IrrXMLTargets.cmake
-    NAMESPACE assimp::
-    DESTINATION lib/cmake/assimp
-)
+if(GFX_USE_INSTALL)
+	install(EXPORT assimpTargets
+		FILE assimpTargets.cmake
+		NAMESPACE assimp::
+		DESTINATION lib/cmake/assimp
+	)
+	install(EXPORT zlibstaticTargets
+		FILE zlibstaticTargets.cmake
+		NAMESPACE assimp::
+		DESTINATION lib/cmake/assimp
+	)
+	install(EXPORT IrrXMLTargets
+		FILE IrrXMLTargets.cmake
+		NAMESPACE assimp::
+		DESTINATION lib/cmake/assimp
+	)
+endif()
 set(BUILD_SHARED_LIBS OFF)
 cmake_policy(SET CMP0048 NEW)

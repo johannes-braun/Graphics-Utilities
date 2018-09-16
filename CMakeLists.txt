@@ -4,6 +4,8 @@ set(var_project_name            GFX)
 set(var_project_version         0.1.0.0)
 set(var_enabled_languages       C CXX)
 
+option(GFX_USE_INSTALL "Enable install targets" OFF)
+option(GFX_USE_TESTS   "Enable test targets"	ON)
 
 project(${var_project_name}
     VERSION 
@@ -13,7 +15,7 @@ project(${var_project_name}
 )
 
 if(MSVC)
-    set(compile_options -MP -openmp -permissive- -Zc:twoPhase- -wd4251)
+    set(compile_options -MP -openmp -permissive- -Zc:twoPhase- -wd4251 -showIncludes)
 else()
     set(compile_options -Wnon-template-friend -Wclass-memaccess -Wtautological-compare -Wconversion-null -std=c++1z)
 endif()
@@ -21,13 +23,17 @@ endif()
 set(var_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(var_include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-install(DIRECTORY res DESTINATION . 
-    FILES_MATCHING
-        PATTERN "*"
-        PATTERN ".gitignore" EXCLUDE)
+if(GFX_USE_INSTALL)
+	install(DIRECTORY res DESTINATION . 
+		FILES_MATCHING
+			PATTERN "*"
+			PATTERN ".gitignore" EXCLUDE)
+endif()
 
 add_subdirectory(ext)
 add_subdirectory(src)
 add_subdirectory(examples)
-enable_testing()
-add_subdirectory(tests)
+if(GFX_USE_TESTS)
+	enable_testing()
+	add_subdirectory(tests)
+endif()
