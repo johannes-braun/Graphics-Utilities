@@ -134,11 +134,12 @@ struct audio_file : file
     audio_file(const files::path& path);
     void* bytes() const noexcept;
 
-    uint16_t             channels;
-    uint32_t             sample_rate;
-    size_t               data_size;
-    uint32_t             format;
-    std::vector<uint8_t> data;
+    uint16_t           channels;
+    uint32_t           sample_rate;
+    size_t             data_size;
+    uint8_t            bits;
+    uint32_t           format;
+    std::vector<float> data;
 
 private:
     void* _raw = nullptr;
@@ -149,11 +150,11 @@ struct scene_file : file
     struct material
     {
         std::string     name;
-        glm::vec4       color_diffuse{0};
-        glm::vec4       color_emissive{0};
-        glm::vec4       color_reflective{0};
-        glm::vec4       color_specular{0};
-        glm::vec4       color_transparent{0};
+        glm::vec4       color_diffuse {0};
+        glm::vec4       color_emissive {0};
+        glm::vec4       color_reflective {0};
+        glm::vec4       color_specular {0};
+        glm::vec4       color_transparent {0};
         gfx::image_file texture_diffuse;
         gfx::image_file texture_bump;
     };
@@ -172,8 +173,8 @@ struct scene_file : file
     std::vector<material> materials;*/
 
 
-    mesh3d                                    mesh;
-    std::vector<material>                     materials;
+    mesh3d                              mesh;
+    std::vector<material>               materials;
     std::unordered_map<submesh3d*, u32> mesh_material_indices;
 
     scene_file(const files::path& path);

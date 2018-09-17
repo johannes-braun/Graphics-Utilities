@@ -4,6 +4,7 @@ add_library(glm::glm ALIAS glm)
 add_subdirectory(mygl)
 add_subdirectory(glsp)
 add_subdirectory(vulkan)
+add_subdirectory(soloud)
 
 set(GLFW_BUILD_EXAMPLES OFF)
 set(GLFW_BUILD_TESTS OFF)

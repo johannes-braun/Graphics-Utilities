@@ -50,6 +50,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_
 
 mark_as_executable(00_equilateral_to_cubemap)
 mark_as_executable(01_color_normalization)
+mark_as_executable(02_sound)
 mark_as_executable(04_marching_squares)
 mark_as_executable(07_meshing)
 mark_as_executable(08_point_detection)

@@ -20,7 +20,8 @@ target_link_libraries(gfx
 		glfw::glfw 
 		assimp::assimp 
 		eigen::eigen 
-		vulkan::vulkan)
+		vulkan::vulkan
+		soloud::soloud)
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 
 	if(MSVC)
