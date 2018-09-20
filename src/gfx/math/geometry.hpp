@@ -150,7 +150,8 @@ struct bounds
         bounds temp = *this;
         min         = value_type(std::numeric_limits<float>::max());
         max         = value_type(std::numeric_limits<float>::lowest());
-        for (unsigned corner = 0; corner < 8; ++corner) {
+        for (unsigned corner = 0; corner < 8; ++corner)
+        {
             const unsigned factor_x = (corner & 0b001);
             const unsigned factor_y = (corner & 0b010) >> 1;
             const unsigned factor_z = (corner & 0b100) >> 2;
@@ -174,10 +175,30 @@ struct bounds
     alignas(alignment) value_type max = value_type(std::numeric_limits<component_type>::lowest());
 };
 
+template<typename T, size_t Dim>
+struct ray
+{
+    constexpr static size_t dimensions = Dim;
+    using component_type               = T;
+    using value_type                   = glm::vec<Dim, T>;
+
+	constexpr ray() = default;
+	constexpr ray(glm::vec<Dim, T> origin, glm::vec<Dim, T> direction, float distance = std::numeric_limits<T>::infinity())
+		: origin(origin), direction(direction), distance(distance)
+	{}
+
+    glm::vec<Dim, T> origin;
+    glm::vec<Dim, T> direction;
+	float distance;
+};
+
 using line1f   = bounds<float, 1, 4>;
 using rect2f   = bounds<float, 2, 8>;
 using bounds3f = bounds<float, 3, 16>;
 using bounds4f = bounds<float, 4, 16>;
+
+using ray2f = ray<float, 2>;
+using ray3f = ray<float, 3>;
 
 struct submesh3d
 {

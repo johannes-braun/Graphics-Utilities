@@ -47,6 +47,7 @@
 
 // Includes for gfx/math:
 #include <gfx/math/geometry.hpp>
+#include <gfx/math/intersect.hpp>
 #include <gfx/math/math.hpp>
 #include <gfx/math/spline.hpp>
 
