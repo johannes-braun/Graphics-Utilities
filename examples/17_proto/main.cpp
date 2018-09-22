@@ -722,6 +722,8 @@ private:
 void executable::run()
 {
     gfx::ecs::ecs ecs;
+	interaction interaction_manager(ecs);
+    
     camera.projection_mode.perspective().clip_near = 0.01f;
     camera.projection_mode.perspective().clip_far  = 400.f;
 	std::vector<gfx::ecs::entity>         entities;
@@ -847,12 +849,12 @@ void executable::run()
     mesh_state.state_rasterizer    = &raster;
     mesh_state.state_vertex_input  = &mesh_input;
     const auto shaders             = {
-        gfx::shader(gfx::shader_type::vert, "17_instanced/mesh.vert"),
-        gfx::shader(gfx::shader_type::frag, "17_instanced/mesh.frag"),
+        gfx::shader(gfx::shader_type::vert, "17_proto/mesh.vert"),
+        gfx::shader(gfx::shader_type::frag, "17_proto/mesh.frag"),
     };
     gfx::graphics_pipeline mesh_pipeline(mesh_state, pass_layout, shaders);
 
-    gfx::compute_pipeline cull_pipeline(layouts, gfx::shader(gfx::shader_type::comp, "17_instanced/cull.comp"));
+    gfx::compute_pipeline cull_pipeline(layouts, gfx::shader(gfx::shader_type::comp, "17_proto/cull.comp"));
 
     struct terrain_chunk
     {
@@ -913,16 +915,16 @@ void executable::run()
     terrain_rasterizer.depth_bias_slope_factor    = -8.f;
 
     const auto terrain_shaders_shadow = {
-        gfx::shader(gfx::shader_type::vert, "17_instanced/terrain_shadow.vert"),
-        gfx::shader(gfx::shader_type::frag, "17_instanced/mesh_shadow.frag"),
+        gfx::shader(gfx::shader_type::vert, "17_proto/terrain_shadow.vert"),
+        gfx::shader(gfx::shader_type::frag, "17_proto/mesh_shadow.frag"),
     };
     gfx::graphics_pipeline terrain_pipeline_shadow(terrain_state, shadow_pass, terrain_shaders_shadow);
 
     terrain_rasterizer.depth_bias_enable = false;
 
     const auto terrain_shaders = {
-        gfx::shader(gfx::shader_type::vert, "17_instanced/terrain.vert"),
-        gfx::shader(gfx::shader_type::frag, "17_instanced/terrain.frag"),
+        gfx::shader(gfx::shader_type::vert, "17_proto/terrain.vert"),
+        gfx::shader(gfx::shader_type::frag, "17_proto/terrain.frag"),
     };
     terrain_state.state_multisample = &msaa_state;
     terrain_layouts.layouts.push_back(&terrain_shadow_bindings);
@@ -947,7 +949,7 @@ void executable::run()
     sky_state.state_multisample   = &msaa_state;
     gfx::graphics_pipeline sky_pipeline(
         sky_state, pass_layout,
-        {gfx::shader(gfx::shader_type::vert, "17_instanced/skybox.vert"), gfx::shader(gfx::shader_type::frag, "17_instanced/skybox.frag")});
+        {gfx::shader(gfx::shader_type::vert, "17_proto/skybox.vert"), gfx::shader(gfx::shader_type::frag, "17_proto/skybox.frag")});
 
 
     const int       shadow_map_count = 5;
@@ -968,8 +970,8 @@ void executable::run()
     raster.depth_bias_constant_factor = -1.f;
     raster.depth_bias_slope_factor    = -1.f;
     const auto shadow_shaders         = {
-        gfx::shader(gfx::shader_type::vert, "17_instanced/mesh_shadow.vert"),
-        gfx::shader(gfx::shader_type::frag, "17_instanced/mesh_shadow.frag"),
+        gfx::shader(gfx::shader_type::vert, "17_proto/mesh_shadow.vert"),
+        gfx::shader(gfx::shader_type::frag, "17_proto/mesh_shadow.frag"),
     };
     gfx::graphics_pipeline shadow_mesh_pipeline(mesh_state, shadow_pass, shadow_shaders);
 

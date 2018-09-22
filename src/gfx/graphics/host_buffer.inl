@@ -17,21 +17,24 @@ void host_buffer<T>::resize(size_type elements, const_reference base)
 
         if (elements < _data_span.size()) {
             std::for_each(_data_span.begin() + elements, _data_span.end(), [](value_type& it) { it.~value_type(); });
+			_data_span  ={ _data_span.data(), elements };
         }
+		else
+		{
+			auto    new_alloc = implementation()->allocate(elements * type_size);
+			pointer ptr       = static_cast<pointer>(new_alloc.data);
 
-        auto    new_alloc = implementation()->allocate(elements * type_size);
-        pointer ptr       = static_cast<pointer>(new_alloc.data);
-
-        for (size_type i = 0; i < elements; ++i) {
-            if (i < _data_span.size())
-                ptr[i] = std::move(_data_span[i]);
-            else
-                ptr[i] = base;
-        }
-        implementation()->deallocate(_allocation);
-        _allocation = new_alloc;
-        _data_span  = {ptr, elements};
-        _capacity   = elements;
+			for (size_type i = 0; i < elements; ++i) {
+				if (i < _data_span.size())
+					ptr[i] = std::move(_data_span[i]);
+				else
+					ptr[i] = base;
+			}
+			implementation()->deallocate(_allocation);
+			_allocation = new_alloc;
+			_data_span  ={ ptr, elements };
+			_capacity   = elements;
+		}
     }
 }
 

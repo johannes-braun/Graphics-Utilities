@@ -13,6 +13,7 @@ auto insert_uniquely_sorted(std::vector<T>& vec, const S& item, Pred pred = Pred
 interaction::interaction(gfx::ecs::ecs& ecs)
 	: _ecs(ecs)
 {
+	_ecs.add_listener(*this);
     add_component_id(transform_component::id);
     add_component_id(collider_component::id);
 }
@@ -48,8 +49,8 @@ void interaction::process(double delta)
 		return min1 < min2;
 	});
 
-	glm::vec3 centroid_sum;
-	glm::vec3 centroid_sum2;
+	glm::vec3 centroid_sum(0.f);
+	glm::vec3 centroid_sum2(0.f);
 	for (auto i = 0ull; i < _entities_sorted.size(); ++i)
 	{
 		const auto& aabb = _ecs.get_component<collider_component>(_entities_sorted[i])->aabb;
