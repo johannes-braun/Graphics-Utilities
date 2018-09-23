@@ -102,7 +102,7 @@ void  init_random(ivec2 pixel, float seed);
 void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_color, in vec3 position, in vec3 normal, in vec2 uv,
                    in vec2 random_value)
 {
-    float roughness = 0.8f;
+    float roughness = 0.154f;
     float alpha2    = roughness * roughness;
 
 #define DIFFUSE 1
@@ -126,10 +126,10 @@ void main()
     ivec2 img_size = ivec2(imageSize(accumulation_cache));
     if (any(greaterThanEqual(pixel, img_size))) return;
 
-    init_random(ivec2(0, 0) + pixel, int(30000 * rngval));
+    init_random(ivec2(0, 0) + pixel, int(3000 * rngval));
     vec2 random_value =
-        random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (img_size.x * img_size.y),
-                             1.f / (img_size.x * img_size.y));
+        random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (10*img_size.x * img_size.y),
+                             1.f / (10*img_size.x * img_size.y));
 	vec2 uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
     vec3 precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
 
@@ -147,8 +147,8 @@ void main()
         if (c_counters.x == 0)
         {
             random_value      = random_hammersley_2d(int(next_random() * img_size.x * img_size.y)
-                                                    % (img_size.x * img_size.y),
-                                                1.f / (img_size.x * img_size.y));
+                                                    % (10*img_size.x * img_size.y),
+                                                1.f / (10*img_size.x * img_size.y));
 			uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
 			precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
             c_bounce          = vec4(1);
@@ -176,7 +176,7 @@ void main()
             c_direction = vec4(dir, 0);
 
             float den = ++c_counters.x;
-            if (den > 0)
+            if (den > 7)
             {
                 ++c_counters.y;
                 c_accumulation += clamp(c_bounce, 0, 10);

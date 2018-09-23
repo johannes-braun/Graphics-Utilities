@@ -2,6 +2,7 @@
 #include "../../api.glsl"
 
 #define MSIZE 9
+layout(location = 0) in vec2 unused_uv;
 
 layout(loc_gl(0) loc_vk(0, 0)) uniform sampler2D src_textures[1];
 #define this_texture (src_textures[0])
@@ -23,10 +24,10 @@ float normpdf3(in vec4 v, in float sigma)
 
 void main(void)
 {
-    vec2 sketchSize = vec2(1280, 720);//textureSize(this_texture, 0);
-	vec4 c = texture( this_texture, vec2(0.0, 0.0) + (gl_FragCoord.xy) );
+    vec2 sketchSize = textureSize(this_texture, 0);
+	vec4 c = texture( this_texture, vec2(0.0, 0.0) + (gl_FragCoord.xy/sketchSize) );
 
-	if(gauss_sigma==0)
+	if(true || gauss_sigma==0)
 	{
 		color = c;
 		return;

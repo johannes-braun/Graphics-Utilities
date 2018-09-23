@@ -50,11 +50,11 @@ void executable::run()
 	std::vector<gfx::binding_set> trace_images_sets;
 	for (int i=0; i<context->swapchain()->image_views().size(); ++i)
 	{
-		auto& img = trace_fbo_images.emplace_back(gfx::img_type::image2d, gfx::rgba16f, gfx::extent(options.window_width, options.window_height), 1);
+		auto& img = trace_fbo_images.emplace_back(gfx::img_type::attachment, gfx::rgba16f, gfx::extent(options.window_width, options.window_height), 1);
 		auto& iv = trace_fbo_image_views.emplace_back(gfx::imgv_type::image2d, img);
 		trace_fbos.emplace_back(options.window_width, options.window_height, 1, trace_pass_layout);
 		trace_fbos.back().attach(gfx::attachment::color, 0, iv);
-		trace_images_sets.emplace_back(trace_images_layout).bind(0, iv);
+		trace_images_sets.emplace_back(trace_images_layout).bind(0, iv, sampler);
 	}
 
 	gfx::binding_layout trace_layout;
@@ -76,6 +76,7 @@ void executable::run()
 	gfx::pipe_state trace_state;
 	trace_state.state_bindings = &trace_layouts;
 	trace_state.state_multisample = &msaa_state;
+
 
 	gfx::graphics_pipeline trace_pipeline(trace_state, trace_pass_layout, {
 		gfx::shader(gfx::shader_type::vert, "postfx/screen.vert"),
