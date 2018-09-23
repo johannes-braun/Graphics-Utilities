@@ -19,7 +19,6 @@ LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
 // remains consistent on all systems.
 IDI_ICON1               ICON                    "logo.ico"
 
-
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -49,7 +48,6 @@ END
 //
 // Version
 //
-
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 0,0,1,1
  PRODUCTVERSION @GFX_RES_VERSION@
