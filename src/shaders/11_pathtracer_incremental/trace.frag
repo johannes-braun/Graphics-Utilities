@@ -79,7 +79,10 @@ layout(loc_gl(2) loc_vk(0, 4)) restrict readonly buffer ModelIndices
 layout(location = 0) in vec2 uv_unused;
 layout(location = 0) out vec4 color_output;
 
+const uint bvh_mode_any      = 0;
+const uint bvh_mode_nearest  = 1;
 bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_distance);
+void       bvh_state_set_mode(uint mode);
 bool       intersect_bounds(const vec3 origin, const vec3 direction, const vec3 bounds_min, const vec3 bounds_max, const float max_distance,
                             inout float min_distance, inout float out_max_distance, inout int face_tmin, inout int face_tmax);
 
@@ -100,7 +103,7 @@ void  init_random(ivec2 pixel, float seed);
 
 
 void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_color, in vec3 position, in vec3 normal, in vec2 uv,
-                   in vec2 random_value)
+                   in vec2 random_value, in vec3 diffuse)
 {
     float roughness = 0.154f;
     float alpha2    = roughness * roughness;
@@ -110,12 +113,12 @@ void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_co
     vec3 msnormal = bsdf_local_to_world(sample_cosine_hemisphere(random_value), normal);
     direction     = msnormal;
     origin        = position + direction * 1e-3f;
-    bounce_color *= abs(dot(direction, normal)) * vec4(1);// vec4(0.8f, 0.4f, 0.2f, 1);
+    bounce_color *= abs(dot(direction, normal)) * vec4(diffuse, 1);// vec4(0.8f, 0.4f, 0.2f, 1);
 #else
     vec3 msnormal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), normal);
     direction     = reflect(direction.xyz, msnormal);
     origin        = position;
-    bounce_color *= vec4(1);
+    bounce_color *= vec4(diffuse, 1);
 #endif
 }
 
@@ -128,8 +131,8 @@ void main()
 
     init_random(ivec2(0, 0) + pixel, int(3000 * rngval));
     vec2 random_value =
-        random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (10*img_size.x * img_size.y),
-                             1.f / (10*img_size.x * img_size.y));
+        random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (1212121),
+                             1.f / (1212121));
 	vec2 uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
     vec3 precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
 
@@ -147,8 +150,8 @@ void main()
         if (c_counters.x == 0)
         {
             random_value      = random_hammersley_2d(int(next_random() * img_size.x * img_size.y)
-                                                    % (10*img_size.x * img_size.y),
-                                                1.f / (10*img_size.x * img_size.y));
+                                                    % (1212121),
+                                                1.f / (1212121));
 			uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
 			precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
             c_bounce          = vec4(1);
@@ -169,25 +172,38 @@ void main()
             vec2 uv = hit.near_barycentric.x * model_vertices[v0].uv + hit.near_barycentric.y * model_vertices[v1].uv
                       + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
 
+			vec3 diffuse = v0 > 3500 ? vec3(1) : vec3(1.f, 0.f, 0.f);
+
             vec3 orig = c_origin.xyz;
             vec3 dir  = c_direction.xyz;
-            shade_retrace(orig, dir, c_bounce, pos, norm, uv, random_value);
+			shade_retrace(orig, dir, c_bounce, pos, norm, uv, random_value, diffuse);
             c_origin    = vec4(orig + dir * 1e-3f, 1);
             c_direction = vec4(dir, 0);
+
+			bvh_state_set_mode(bvh_mode_any);
+			const vec3 light = vec3(-7, 4, -4);
+			const float dist = distance(light, pos);
+			const vec3 to_light = normalize(light - pos);
+			bvh_result shadow_test = bvh_hit(pos + 1e-4 * to_light, to_light, dist);
+			if (!shadow_test.hits)
+			{
+				c_accumulation += vec4(vec3(38) * max(dot(norm, to_light), 0) * diffuse / (dist*dist), 0);
+			}
+			bvh_state_set_mode(bvh_mode_nearest);
 
             float den = ++c_counters.x;
             if (den > 7)
             {
                 ++c_counters.y;
-                c_accumulation += clamp(c_bounce, 0, 10);
+                c_accumulation += clamp(c_bounce, 0, 8);
                 c_counters.x = 0;
             }
             c_display_color = (c_accumulation + c_bounce / den) / (c_counters.y + 1);
         }
         else
         {
-			#define sample_env() texture(cubemap, c_direction.xyz)
-			//#define sample_env() vec4(0.2f)
+			//#define sample_env() texture(cubemap, c_direction.xyz)
+			#define sample_env() vec4(0.2f)
 
 			vec4 env = sample_env();
 			if(any(isnan(env)))
@@ -196,7 +212,7 @@ void main()
 			}
 
             ++c_counters.y;
-            c_accumulation += vec4(clamp(c_bounce.rgb * env.rgb, 0, 10), 0);
+            c_accumulation += vec4(c_bounce.rgb * clamp(env.rgb, 0, 8), 0);
             c_counters.x    = 0;
             c_display_color = (c_accumulation + c_bounce / (c_counters.x + 1)) / (c_counters.y + 1);
         }
@@ -354,8 +370,6 @@ const uint bvh_node_type_leaf  = 1;
 // Any hit means that the first hit that is being found when traversing will be returned.
 // Nearest hit means that all traversed candidates will be tested for their distance on the ray.
 //      The nearest (and in cases the farthest) intersections will be returned.
-const uint bvh_mode_any      = 0;
-const uint bvh_mode_nearest  = 1;
 uint       _bvh_mode_current = bvh_mode_nearest;
 void       bvh_state_set_mode(uint mode)
 {
