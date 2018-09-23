@@ -21,7 +21,8 @@ target_link_libraries(gfx
 		assimp::assimp 
 		eigen::eigen 
 		vulkan::vulkan
-		soloud::soloud)
+		soloud::soloud
+		nana::nana)
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 
 	if(MSVC)
