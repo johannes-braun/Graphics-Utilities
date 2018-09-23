@@ -337,7 +337,7 @@ int main()
 	const auto grn = framework.grounded();
 	for (auto&& c : grn)
 		std::cout << c.get().val << ", ";
-	const auto cmp = framework.all_complete();
+	//const auto cmp = framework.all_complete();
 
     return 0;
 }

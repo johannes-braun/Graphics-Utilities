@@ -2,7 +2,7 @@
 
 void executable::init(gfx::context_options& opt)
 {
-    opt.window_title        = "[03] Bidirectional Pathtracer";
+    opt.window_title        = "[04] Marching Squares";
     opt.window_height       = 720;
     opt.window_width        = 1280;
     opt.framebuffer_samples = gfx::sample_count::x8;

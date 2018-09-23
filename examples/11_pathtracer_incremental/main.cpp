@@ -35,7 +35,7 @@ void executable::run()
     const auto origin_cache_view       = origin_cache.view(gfx::imgv_type::image2d);
     const auto counter_cache_view      = counter_cache.view(gfx::imgv_type::image2d);
 
-    gfx::image&     cubemap      = res.cubemaps_hdr["nagoya/hdr"];
+    gfx::image&     cubemap      = res.cubemaps_hdr["hdri/hdr"];
 	const gfx::image_view cubemap_view = cubemap.view(gfx::imgv_type::image_cube);
 	const gfx::sampler    sampler;
 
@@ -92,8 +92,8 @@ void executable::run()
 		gfx::shader(gfx::shader_type::frag, "postfx/filter/bilateral.frag")
 		});
 
-    gfx::scene_file& scene1      = res.scenes["wall.dae"];
-	gfx::scene_file& scene2      = res.scenes["sphere.dae"];
+    gfx::scene_file& scene1      = res.scenes["bunny.dae"];
+	gfx::scene_file& scene2      = res.scenes["proto/serp.dae"];
 	gfx::mesh3d      scene_mesh = scene1.mesh + scene2.mesh;
     scene_mesh.collapse();
 
