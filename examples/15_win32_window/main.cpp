@@ -1,31 +1,43 @@
-#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#pragma comment( \
+    linker,      \
+    "\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+#include "gfx/gfx.hpp"
+#include "gfx/math/geometry.hpp"
+#include <CommCtrl.h>
+#include <Shlwapi.h>
 #include <Windows.h>
+#include <cassert>
 #include <functional>
 #include <gfx/type.hpp>
+#include <optional>
 #include <string>
 #include <utility>
 #include <winuser.h>
-#include <CommCtrl.h>
-#include <cassert>
-#include <Shlwapi.h>
-#include <optional>
-#include "gfx/log.hpp"
-#include "gfx/math/geometry.hpp"
 
 namespace gfx {
 inline namespace v1 {
 namespace win32 {
 class menu_bar;
 class control;
+class layout;
+
+enum class style : uint8_t
+{
+    none      = 0,
+    resizable = 1 << 0,
+    min       = 1 << 1,
+    max       = 1 << 2,
+};
+using style_flags = gfx::flags<uint8_t, style>;
+
+
 class window
 {
 public:
     friend class menu_bar;
-	friend class control;
-    window();
-
-    std::shared_ptr<gfx::win32::menu_bar> main_menu;
+    friend class control;
+    window(const std::wstring& title, style_flags style = style::none);
 
     void poll() const
     {
@@ -37,40 +49,73 @@ public:
         }
     }
 
-	void add(control& c);
+    void add(layout& l);
+	void add(control& c, layout& l, const glm::vec2& size, const glm::vec2& paddings ={ 0, 0 });
 
-	friend LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
+    friend LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
+
+    void position(const gfx::rect2f& rect) { position(rect.min, rect.size()); }
+    void position(const glm::vec2& pos, const glm::vec2& size)
+    {
+        _content_rect = {pos, pos + size};
+
+        MENUBARINFO mbi = {0};
+        mbi.cbSize      = sizeof(mbi);
+        GetMenuBarInfo(_hnd, OBJID_MENU, 0, &mbi);
+
+        RECT rect;
+        rect.left   = pos.x;
+        rect.right  = pos.x + size.x;
+        rect.top    = pos.y;
+        rect.bottom = pos.y + size.y + (mbi.rcBar.bottom - mbi.rcBar.top);
+        AdjustWindowRectEx(&rect, WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE, 0);
+
+        SetWindowPos(_hnd, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+    }
+
+    void set_menu(menu_bar& menu);
+    void set_menu(std::nullptr_t);
 
 private:
-    HWND _hnd;
-	std::unordered_map<uint32_t, control*> _controls;
+    menu_bar*                              _main_menu = nullptr;
+    gfx::rect2f                            _content_rect;
+    HWND                                   _hnd;
+    std::unordered_map<uint32_t, control*> _controls;
 };
 
 LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
 
-window::window()
+window::window(const std::wstring& title, style_flags style) : _content_rect{{100, 100}, {400, 300}}
 {
-	INITCOMMONCONTROLSEX iccx;
-	iccx.dwSize = sizeof(iccx);
-	iccx.dwICC = ICC_STANDARD_CLASSES;
-	BOOL bRet = ::InitCommonControlsEx(&iccx);
-	assert(bRet); // from crtcbg.h 
+    static std::atomic_int id = 0;
+    INITCOMMONCONTROLSEX   iccx;
+    iccx.dwSize = sizeof(iccx);
+    iccx.dwICC  = ICC_STANDARD_CLASSES;
+    BOOL bRet   = ::InitCommonControlsEx(&iccx);
+    assert(bRet);    // from crtcbg.h
 
     const HINSTANCE instance = GetModuleHandle(nullptr);
 
     WNDCLASSW wc{0};
     wc.lpfnWndProc   = window_callback;
     wc.hInstance     = instance;
-	wc.hbrBackground = HBRUSH(COLOR_WINDOW );
-    wc.lpszClassName = L"gfx::win32::window";
+    wc.hbrBackground = HBRUSH(COLOR_WINDOW);
+    std::wstring cl  = L"gfx::win32::window" + std::to_wstring(id++);
+    wc.lpszClassName = cl.c_str();
     wc.style         = CS_OWNDC;
     wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
 
     if (!RegisterClassW(&wc)) throw "up";
 
-    const auto flags = WS_OVERLAPPED | WS_VISIBLE | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX | WS_THICKFRAME | WS_MAXIMIZEBOX;
+    bool resizable   = (style & style::resizable) == style::resizable;
+    bool minimizable = (style & style::min) == style::min;
+    bool maximizable = (style & style::max) == style::max;
+
+    const auto flags = WS_OVERLAPPED | WS_VISIBLE | WS_SYSMENU | (resizable * WS_THICKFRAME) | (minimizable * WS_MINIMIZEBOX)
+                       | (maximizable * WS_MAXIMIZEBOX);
     ShowWindow(GetConsoleWindow(), false);
-    _hnd = CreateWindowW(L"gfx::win32::window", L"My Window", flags, 50, 50, 1280, 720, nullptr, nullptr, instance, this);
+    _hnd = CreateWindowW(cl.c_str(), title.c_str(), flags, 50, 50, 1280, 720, nullptr, nullptr, instance, this);
+    position(_content_rect);
 }
 
 bool call_checkbox(HMENU menu, UINT menu_item)
@@ -99,6 +144,7 @@ class menu;
 class menu_bar
 {
 public:
+    friend class window;
     template<typename... T>
     using basic_callback = std::function<void(T...)>;
 
@@ -106,7 +152,7 @@ public:
     using cmd_callback  = basic_callback<u32>;
     using bool_callback = basic_callback<bool>;
 
-    menu_bar(const window& w) : _window(w._hnd), _menu(CreateMenu()) { SetMenu(w._hnd, _menu); }
+    menu_bar() : _menu(CreateMenu()) {}
     menu_bar& add_item(const menu& submenu);
 
     void poll(uint32_t msg, uint64_t data);
@@ -116,11 +162,24 @@ public:
 private:
     std::vector<menu>                           _submenus;
     cmd_callback                                _command_callback;
-	std::unordered_map<uint32_t, callback>      _callbacks;
-	std::unordered_map<uint32_t, bool_callback> _bool_callbacks;
-    HWND                                        _window;
+    std::unordered_map<uint32_t, callback>      _callbacks;
+    std::unordered_map<uint32_t, bool_callback> _bool_callbacks;
     HMENU                                       _menu;
 };
+
+void window::set_menu(menu_bar& menu)
+{
+    _main_menu = &menu;
+    SetMenu(_hnd, menu._menu);
+    position(_content_rect);
+}
+
+void window::set_menu(std::nullptr_t)
+{
+    _main_menu = nullptr;
+    SetMenu(_hnd, nullptr);
+    position(_content_rect);
+}
 
 class menu
 {
@@ -202,7 +261,7 @@ void menu_bar::poll(uint32_t msg, uint64_t data)
 menu_bar& menu_bar::add_item(const menu& submenu)
 {
     AppendMenu(_menu, MF_STRING | MF_POPUP, reinterpret_cast<UINT>(submenu._menu), submenu._name.c_str());
-    SetMenu(_window, _menu);
+    // SetMenu(_window, _menu);
     _submenus.push_back(submenu);
     return *this;
 }
@@ -210,147 +269,198 @@ menu_bar& menu_bar::add_item(const menu& submenu)
 class control
 {
 public:
-	friend class window;
+    friend class window;
 
-	control() : _id(nextID()) {}
-	virtual ~control() = default;
+    control() : _id(nextID()) {}
+    virtual ~control()
+    {
+        if (_widget) DestroyWindow(_widget);
+    }
 
-	virtual void on_command(uint64_t w, int64_t l) = 0;
+    virtual std::wstring_view label() { return L""; }
+    virtual void              on_command(uint64_t w, int64_t l) = 0;
+    virtual std::wstring_view class_name()                      = 0;
+    virtual uint32_t          style()                           = 0;
 
 protected:
-	HWND win(window& w) { return w._hnd; }
-	uint32_t _id;
+    HWND     _parent = nullptr;
+    uint32_t _id;
+    HWND     _widget = nullptr;
+
 private:
-	static uint32_t nextID() { static uint32_t i = 0; return i++; }
+    static uint32_t nextID()
+    {
+        static uint32_t i = 0;
+        return i++;
+    }
 };
 
-void window::add(control& c)
+class layout : public control
 {
-	_controls.emplace(c._id, &c);
+public:
+    virtual ~layout()                                         = default;
+    virtual gfx::rect2f       position(const glm::vec2& size) = 0;
+    void                      on_command(uint64_t w, int64_t l) override { std::cout << "abldlksbndasddasd"; }
+    virtual std::wstring_view label() { return L""; }
+    std::wstring_view         class_name() override
+    {
+        const HINSTANCE instance = GetModuleHandle(nullptr);
+
+        WNDCLASSW wc{0};
+        wc.lpfnWndProc   = window_callback;
+        wc.hInstance     = instance;
+        wc.hbrBackground = HBRUSH(COLOR_WINDOW);
+        _cls             = L"gfx::win32::layout" + std::to_wstring(_id);
+        wc.lpszClassName = _cls.c_str();
+        wc.style         = CS_OWNDC;
+        wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+
+        if (!RegisterClassW(&wc)) throw "up";
+        return _cls.c_str();
+    }
+    uint32_t style() override { return WS_CLIPCHILDREN; }
+
+private:
+    std::wstring _cls;
+};
+
+class linear_layout : public layout
+{
+public:
+    enum class orient
+    {
+        horizontal,
+        vertical
+    };
+
+    linear_layout(orient o = orient::vertical) : _orient(o) {}
+
+    gfx::rect2f position(const glm::vec2& size) override
+    {
+        const auto  pos = _orient == orient::vertical ? glm::vec2{0, _ptr} : glm::vec2{_ptr, 0};
+        gfx::rect2f r(pos, pos + size);
+        _ptr += size[_orient == orient::vertical];
+        return r;
+    }
+
+private:
+    orient _orient;
+    float  _ptr = 0;
+};
+
+void window::add(layout& l)
+{
+    l._id = control::nextID();
+    _controls.emplace(l._id, &l);
+    const auto r    = _content_rect;
+    const auto size = r.size();
+
+    l._parent = _hnd;
+    if (l._widget) DestroyWindow(l._widget);
+    l._widget         = CreateWindowW(l.class_name().data(),                             // Predefined class; Unicode assumed
+                              l.label().data(),                                  // Button text
+                              WS_TABSTOP | WS_VISIBLE | WS_CHILD | l.style(),    // Styles
+                              0,                                                 // x position
+                              0,                                                 // y position
+                              size.x,                                            // Button width
+                              size.y,                                            // Button height
+                              _hnd,                                              // Parent window
+                              HMENU(l._id),                                      // No menu.
+                              (HINSTANCE)GetWindowLong(_hnd, (-6)),
+                              this);    // Pointer not needed.
+    HFONT defaultFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    SendMessage(l._widget, WM_SETFONT, WPARAM(defaultFont), TRUE);
+}
+
+void window::add(control& c, layout& l, const glm::vec2& s, const glm::vec2& paddings)
+{
+    c._id = control::nextID();
+    _controls.emplace(c._id, &c);
+    auto r    = l.position(s);
+	r.inset(paddings, paddings);
+    const auto size = r.size();
+
+    if (c._widget) DestroyWindow(c._widget);
+    c._widget         = CreateWindowW(c.class_name().data(),                             // Predefined class; Unicode assumed
+                              c.label().data(),                                  // Button text
+                              WS_TABSTOP | WS_VISIBLE | WS_CHILD | c.style(),    // Styles
+                              r.min.x,                                           // x position
+                              r.min.y,                                           // y position
+                              size.x,                                            // Button width
+                              size.y,                                            // Button height
+                              l._widget,                                         // Parent window
+                              HMENU(c._id),                                      // No menu.
+                              (HINSTANCE)GetWindowLong(l._widget, (-6)),
+                              this);    // Pointer not needed.
+    HFONT defaultFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    SendMessage(c._widget, WM_SETFONT, WPARAM(defaultFont), TRUE);
+    c._parent = l._widget;
 }
 
 class checkbox : public control
 {
 public:
-	checkbox(window& w, const std::wstring& label, const rect2f& rect, std::function<void(bool)> oncheck)
-		: _oncheck(std::move(oncheck))
-	{
-		_parent = win(w);
-		const auto size = rect.size();
-		_btn = CreateWindowW( 
-			L"BUTTON",  // Predefined class; Unicode assumed 
-			label.c_str(),      // Button text 
-			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BTNS_CHECK,  // Styles 
-			rect.min.x,         // x position 
-			rect.min.y,         // y position 
-			size.x,        // Button width
-			size.y,        // Button height
-			win(w),     // Parent window
-			HMENU(_id),       // No menu.
-			(HINSTANCE)GetWindowLong(win(w), (-6)), 
-			NULL);      // Pointer not needed.
-		HFONT defaultFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-		SendMessage(_btn, WM_SETFONT, WPARAM (defaultFont), TRUE);
-	}
-	~checkbox()
-	{
-		DestroyWindow(_btn);
-	}
-	void on_command(uint64_t w, int64_t l) override
-	{
-		if (IsDlgButtonChecked(_parent, _id)) {
-			CheckDlgButton(_parent, _id, BST_UNCHECKED);
-			_oncheck(false);
-		} else {
-			CheckDlgButton(_parent, _id, BST_CHECKED);
-			_oncheck(true);
-		}
-	}
+    checkbox(const std::wstring& label, std::function<void(bool)> oncheck) : _label(label), _oncheck(std::move(oncheck)) {}
+    std::wstring_view label() override { return _label; }
+    std::wstring_view class_name() override { return L"Button"; }
+    uint32_t          style() override { return BTNS_CHECK; }
+    void              on_command(uint64_t w, int64_t l) override
+    {
+        if (IsDlgButtonChecked(_parent, _id))
+        {
+            CheckDlgButton(_parent, _id, BST_UNCHECKED);
+            _oncheck(false);
+        }
+        else
+        {
+            CheckDlgButton(_parent, _id, BST_CHECKED);
+            _oncheck(true);
+        }
+    }
 
 private:
-	HWND _parent = nullptr;
-	HWND _btn = nullptr;
-	std::function<void(bool)> _oncheck;
+    std::wstring              _label;
+    std::function<void(bool)> _oncheck;
 };
 
 class button : public control
 {
 public:
-    button(window& w, const std::wstring& label, const rect2f& rect, std::function<void()> onclick)
-		: _onclick(std::move(onclick))
+    button(const std::wstring& label, std::function<void()> onclick) : _label(label), _onclick(std::move(onclick)) {}
+    void on_command(uint64_t w, int64_t l) override
     {
-		const auto size = rect.size();
-		_btn = CreateWindowW( 
-			L"BUTTON",  // Predefined class; Unicode assumed 
-			label.c_str(),      // Button text 
-			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BTNS_BUTTON,  // Styles 
-			rect.min.x,         // x position 
-			rect.min.y,         // y position 
-			size.x,        // Button width
-			size.y,        // Button height
-			win(w),     // Parent window
-			HMENU(_id),       // No menu.
-			(HINSTANCE)GetWindowLong(win(w), (-6)), 
-			NULL);      // Pointer not needed.
-		HFONT defaultFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-		SendMessage(_btn, WM_SETFONT, WPARAM (defaultFont), TRUE);
+        if (_onclick) _onclick();
     }
-    ~button()
-    {
-		DestroyWindow(_btn);
-    }
-	void on_command(uint64_t w, int64_t l) override
-    {
-        if(_onclick)
-		    _onclick();
-    }
+    virtual std::wstring_view label() { return _label; }
+    std::wstring_view         class_name() override { return L"Button"; }
+    uint32_t                  style() override { return BTNS_BUTTON; }
 
 private:
-	HWND _btn = nullptr;
-	std::function<void()> _onclick;
+    std::wstring          _label;
+    std::function<void()> _onclick;
 };
 
 class edittext : public control
 {
 public:
-	edittext(window& w, const rect2f& rect, std::optional<std::function<void(std::wstring_view)>> onchanged = std::nullopt)
-	{
-		if (onchanged)
-			_onchanged = *onchanged;
-		const auto size = rect.size();
-		_box = CreateWindowW( 
-			L"EDIT",  // Predefined class; Unicode assumed 
-			L"",      // Button text 
-			WS_TABSTOP | WS_VISIBLE | WS_CHILD | WS_BORDER | WS_EX_STATICEDGE,  // Styles 
-			rect.min.x,         // x position 
-			rect.min.y,         // y position 
-			size.x,        // Button width
-			size.y,        // Button height
-			win(w),     // Parent window
-			HMENU(_id),       // No menu.
-			(HINSTANCE)GetWindowLong(win(w), (-6)), 
-			NULL);      // Pointer not needed.
-		HFONT defaultFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-		SendMessage(_box, WM_SETFONT, WPARAM (defaultFont), TRUE);
-	}
-    ~edittext()
-	{
-		DestroyWindow(_box);
-	}
+    edittext(std::optional<std::function<void(std::wstring_view)>> onchanged = std::nullopt)
+    {
+        if (onchanged) _onchanged = *onchanged;
+    }
 
-    void on_command(uint64_t w, int64_t l) override
-	{
-		const int len = GetWindowTextLengthW(_box);
-		_content.resize(len);
-		GetWindowTextW(_box, _content.data(), len);
-		if (_onchanged)
-			_onchanged(_content);
-	}
+    std::wstring_view class_name() override { return L"EDIT"; }
+    uint32_t          style() override { return WS_BORDER | WS_EX_STATICEDGE; }
+    void              on_command(uint64_t w, int64_t l) override
+    {
+        const int len = GetWindowTextLengthW(_widget);
+        _content.resize(len);
+        GetWindowTextW(_widget, _content.data(), len);
+        if (_onchanged) _onchanged(_content);
+    }
 
 private:
-	HWND _box = nullptr;
-	std::wstring _content;
-	std::function<void(std::wstring_view)> _onchanged;
+    std::wstring                           _content;
+    std::function<void(std::wstring_view)> _onchanged;
 };
 
 LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
@@ -364,10 +474,9 @@ LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARA
         SetSysColors(2, aElements, aNewColors);
         SetWindowLongPtr(window, (-21u), reinterpret_cast<LONG_PTR>(reinterpret_cast<LPCREATESTRUCT>(lparam)->lpCreateParams));
 
-		HFONT hFont = CreateFont (13, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, 
-			OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, 
-			DEFAULT_PITCH | FF_DONTCARE, TEXT("Tahoma"));
-		SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+        HFONT hFont = CreateFont(13, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                 DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Tahoma"));
+        SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
     }
     break;
     case WM_DESTROY: { exit(0);
@@ -375,53 +484,78 @@ LRESULT CALLBACK window_callback(HWND window, UINT message, WPARAM wparam, LPARA
     break;
     }
     auto w = reinterpret_cast<win32::window*>(GetWindowLongPtr(window, (-21u)));
-    if (w && w->main_menu) w->main_menu->poll(message, wparam);
-    if(w)
+    if (w && w->_main_menu) w->_main_menu->poll(message, wparam);
+    if (w)
     {
-        for(auto& c : w->_controls)
+        for (auto& c : w->_controls)
         {
-			if (message == WM_COMMAND && LOWORD(wparam) == c.first)
-				c.second->on_command(wparam, lparam);
+            if (message == WM_COMMAND)
+                if (LOWORD(wparam) == c.first) c.second->on_command(wparam, lparam);
         }
     }
     return DefWindowProcW(window, message, wparam, lparam);
 }
 }    // namespace win32
+namespace ui = win32;
 }    // namespace v1
 }    // namespace gfx
 
 int main()
 {
-    gfx::win32::window win;
-    win.main_menu = std::make_shared<gfx::win32::menu_bar>(win);
-    win.main_menu
-        ->add_item(gfx::win32::menu("File")
-                       .button("Open...", [] {})
-                       .button("Save...", [] {})
-                       .separator()
-                       .button("Close", [] { exit(1); })
-                       .button("Exit##file", [] { exit(0); }))
-        .add_item(gfx::win32::menu("Edit")
+	const glm::vec2 pad{ 4, 4 };
+    gfx::ui::window   win(L"Yet another window");
+    gfx::ui::menu_bar main_menu;
+    main_menu
+        .add_item(gfx::ui::menu("File")
+                      .button("Open...", [] {})
+                      .button("Save...", [] {})
+                      .separator()
+                      .button("Close", [] { exit(1); })
+                      .button("Exit##file", [] { exit(0); }))
+        .add_item(gfx::ui::menu("Edit")
                       .button("Copy", [] {})
                       .button("Paste", [] {})
                       .separator()
-                      .popup(gfx::win32::menu("Tools")
+                      .popup(gfx::ui::menu("Tools")
                                  .checkbox("Show Console", false, [](bool b) { ShowWindow(GetConsoleWindow(), b); })
                                  .button("Exit##tools", [] {})
                                  .button("Advanced", [] {}))
                       .button("Properties", [] {}));
+    win.position({100, 100}, glm::vec2{288, 126} + 2*pad);
+    win.set_menu(main_menu);
 
-	gfx::win32::button btn1(win, L"Click me", { {10, 10}, {140, 58} }, []() { gfx::ilog << "One"; });
-	gfx::win32::button btn2(win, L"Click me too", {{148, 10}, {278, 58}}, []() { gfx::ilog << "Two"; });
-	gfx::win32::checkbox check(win, L"Check me out", { {10, 64}, {278, 90} }, [](bool c) { gfx::ilog << "Checked: " << c; });
-	gfx::win32::edittext edit(win, { {10, 96}, {248, 116} }, [](std::wstring_view s) { std::wcout << s.data(); });
-	gfx::win32::button dotted(win, L"...", { {254, 96}, {278, 116} }, []() { gfx::ilog << "Dotdotdot"; });
+    gfx::ui::button   btn1(L"Click me", []() { gfx::ilog << "One"; });
+    gfx::ui::button   btn2(L"Click me too", []() { gfx::ilog << "Two"; });
+    gfx::ui::checkbox check(L"Check me out", [&](bool c) {
+        gfx::ilog << "Checked: " << c;
+        if (c)
+            win.set_menu(main_menu);
+        else
+            win.set_menu(nullptr);
+    });
+    gfx::ui::edittext edit([](std::wstring_view s) { std::wcout << s.data(); });
+    gfx::ui::button   dotted(L"...", []() { gfx::ilog << "Dotdotdot"; });
 
-	win.add(btn1);
-	win.add(btn2);
-	win.add(check);
-	win.add(edit);
-	win.add(dotted);
+    gfx::ui::linear_layout ll(gfx::ui::linear_layout::orient::vertical);
+    gfx::ui::linear_layout btns(gfx::ui::linear_layout::orient::horizontal);
+    gfx::ui::linear_layout tb(gfx::ui::linear_layout::orient::horizontal);
+    win.add(ll);
+    win.add(btns, ll, glm::vec2{288, 48} + 2.f*pad, pad);
+    win.add(btn1, btns, {144, 48}, pad);
+    win.add(btn2, btns, {144, 48}, pad);
+    win.add(tb, ll, glm::vec2{288, 28} + 2.f*pad, pad);
+    win.add(edit, tb, {256, 28}, pad);
+    win.add(dotted, tb, {32, 28}, pad);
+    win.add(check, ll, {288, 32}, pad);
 
-    while (true) { win.poll(); }
+    gfx::ui::window win2(L"Also there");
+
+    win.set_menu(nullptr);
+    win2.set_menu(main_menu);
+
+    while (true)
+    {
+        win.poll();
+        win2.poll();
+    }
 }
