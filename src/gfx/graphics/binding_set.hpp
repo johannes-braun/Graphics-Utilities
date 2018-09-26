@@ -50,28 +50,28 @@ template<typename T>
 void binding_set::bind(u32 binding, const device_buffer<T>& buffer, u32 count, u32 first)
 {
 	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
-	implementation()->bind(binding, 0u, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.capacity() * sizeof(T) : count * sizeof(T)));
+	implementation()->bind(binding, 0u, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.size() * sizeof(T) : count * sizeof(T)));
 }
 
 template<typename T>
 void binding_set::bind(u32 binding, const host_buffer<T>& buffer, u32 count, u32 first)
 {
 	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
-	implementation()->bind(binding, 0u, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.capacity() * sizeof(T) : count * sizeof(T)));
+	implementation()->bind(binding, 0u, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.size() * sizeof(T) : count * sizeof(T)));
 }
 
 template<typename T>
 void binding_set::bind(u32 binding, u32 array_element, const device_buffer<T>& buffer, u32 count, u32 first)
 {
 	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
-	implementation()->bind(binding, array_element, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.capacity() * sizeof(T) : count * sizeof(T)));
+	implementation()->bind(binding, array_element, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.size() * sizeof(T) : count * sizeof(T)));
 }
 
 template<typename T>
 void binding_set::bind(u32 binding, u32 array_element, const host_buffer<T>& buffer, u32 count, u32 first)
 {
 	assert(_layout->types()[binding] == binding_type::uniform_buffer || _layout->types()[binding] == binding_type::storage_buffer);
-	implementation()->bind(binding, array_element, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.capacity() * sizeof(T) : count * sizeof(T)));
+	implementation()->bind(binding, array_element, _layout->types()[binding], &buffer.implementation(), static_cast<u32>(first * sizeof(T)), static_cast<u32>(count ==  ~0 ? buffer.size() * sizeof(T) : count * sizeof(T)));
 }
 
 }    // namespace v1

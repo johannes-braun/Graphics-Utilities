@@ -21,6 +21,7 @@ layout(loc_gl(1) loc_vk(0, 1)) uniform HelperInfo
     float time;
     uint  reset;
 	float rngval;
+	uint bounce_limit;
 };
 
 struct bvh_attribute
@@ -265,7 +266,7 @@ void main()
 			bvh_state_set_mode(bvh_mode_nearest);
 
             float den = ++c_counters.x;
-            if (den > 7 )
+            if (den > bounce_limit)
             {
                 ++c_counters.y;
                 c_accumulation += clamp(c_bounce, 0, 8);

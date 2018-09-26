@@ -129,6 +129,10 @@ public:
 
     void push_back(value_type&& value);
 	void push_back(const value_type& value);
+	void pop_back() { 
+		_data_span[size()-1].~value_type();
+		_data_span ={ _data_span.data(), _data_span.size()-1 };
+	}
 
     template<typename... Args, typename = decltype(value_type(std::declval<Args>()...))>
     T& emplace_back(Args&&... args);

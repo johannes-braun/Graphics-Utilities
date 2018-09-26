@@ -171,6 +171,22 @@ public:
 		i.reflectivity = reflectivity;
 	}
 
+	void clear_instances_of(const mesh_handle& m)
+	{
+		for (auto it = _instances.begin(); it != _instances.end();)
+		{
+			if (it->base_index == m._mesh->_base_index)
+			{
+				std::iter_swap(it, std::prev(_instances.end()));
+				_instances.pop_back();
+			}
+			else
+			{
+				++it;
+			}
+		}
+	}
+
 private:
     std::vector<std::unique_ptr<mesh>> _meshes;
 
