@@ -318,25 +318,31 @@ int main()
     };
 
     af<info>      framework;
-    af_node<info> autopsy  = framework.push({"autopsy"});
-    af_node<info> pistol   = framework.push({"pistol"});
-    af_node<info> knife    = framework.push({"knife"});
-    af_node<info> innocent = framework.push({"innocent"});
-    af_node<info> guilty   = framework.push({"guilty"});
+    af_node<info> a  = framework.push({"A"});
+    af_node<info> b   = framework.push({"B"});
+    af_node<info> c    = framework.push({"C"});
+    af_node<info> d = framework.push({"D"});
+    af_node<info> e   = framework.push({"E"});
+	af_node<info> f   = framework.push({"F"});
 
-	autopsy.attack(pistol);
-	pistol.attack(knife);
-	knife.attack(pistol);
-	knife.attack(innocent);
-	pistol.attack(innocent);
-	innocent.attack(guilty);
+	a.attack(c);
+	b.attack(d);
+	d.attack(e);
+	e.attack(f);
+	f.attack(b);
+	c.attack(e);
 
     const auto acf = framework.all_conflict_free();
     const auto aad = framework.all_admissible();
     const auto apr = framework.all_preferred();
 	const auto grn = framework.grounded();
-	for (auto&& c : grn)
-		std::cout << c.get().val << ", ";
+	for (auto&& x : apr)
+	{
+		std::cout << "{";
+		for (auto&& c : x)
+			std::cout << c.get().val << ", ";
+		std::cout << "}, ";
+	}
 	//const auto cmp = framework.all_complete();
 
     return 0;

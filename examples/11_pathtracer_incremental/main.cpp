@@ -1,7 +1,6 @@
 #include <executable.hpp>
 #include <random>
-
-#include <gfx/graphics/vulkan/swapchain_vulkan.hpp>
+#include "mesh.hpp"
 
 void executable::init(gfx::context_options& opt)
 {
@@ -17,6 +16,13 @@ struct helper_info
     float     time;
     gfx::u32  reset;
 	float	  rngval;
+};
+
+struct model
+{
+	uint32_t first_index;
+	uint32_t first_vertex;
+	uint32_t first_bvh_node;
 };
 
 void executable::run()
@@ -63,6 +69,7 @@ void executable::run()
 	trace_layout.push(gfx::binding_type::storage_buffer);
 	trace_layout.push(gfx::binding_type::storage_buffer);
 	trace_layout.push(gfx::binding_type::storage_buffer);
+	trace_layout.push(gfx::binding_type::storage_buffer);
 	trace_layout.push(gfx::binding_type::sampled_image);
 	trace_layout.push(gfx::binding_type::storage_image);
 	trace_layout.push(gfx::binding_type::storage_image);
@@ -91,36 +98,35 @@ void executable::run()
 	gfx::graphics_pipeline filter_pipeline(filter_state, pass_layout, {
 		gfx::shader(gfx::shader_type::vert, "postfx/screen.vert"),
 		gfx::shader(gfx::shader_type::frag, "postfx/filter/bilateral.frag")
-		});
+	});
 
-    gfx::scene_file& scene1      = res.scenes["bunny.dae"];
-	gfx::scene_file& scene2      = res.scenes["proto/serp.dae"];
-	gfx::mesh3d      scene_mesh = scene1.mesh + scene2.mesh;
-    scene_mesh.collapse();
-
-    gfx::bvh<3> bvh(gfx::shape::triangle);
-    bvh.sort(scene_mesh.indices.begin(), scene_mesh.indices.end(), [&](gfx::index32 i) { return scene_mesh.vertices[i].position; });
-    const gfx::buffer<gfx::bvh<3>::node> model_bvh(gfx::buffer_usage::storage, bvh.nodes());
-    const gfx::buffer<gfx::vertex3d>     vertices(gfx::buffer_usage::storage, scene_mesh.vertices);
-    const gfx::buffer<gfx::index32>      indices(gfx::buffer_usage::storage, scene_mesh.indices);
+	mesh_allocator meshes;
+	std::mt19937 gen;
+	std::uniform_real_distribution<float> dist;
+	for (auto m : meshes.allocate_meshes(res.scenes["bunny.dae"]))
+	{
+		for(float f = -10.f; f <= 10.f; f+=5.f)
+			for(float c = -10.f; c <= 10.f; c+=5.f)
+				meshes.add_instance(m, gfx::transform(glm::vec3(f, 0, c), glm::vec3(1)), glm::vec4(dist(gen), dist(gen), dist(gen), 1.f), 0.4f, 0.3f);
+	}
+	meshes.add_instance(meshes.allocate_meshes(res.scenes["floor.dae"])[0], 
+		{ {0, -0.5f, 0}, glm::vec3(1), glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0)) }, 
+		glm::vec4(1, 0, 0, 1), 0.2f, 0.7f);
 
     gfx::hbuffer<helper_info> helper_info_buffer(1);
-
 	gfx::binding_set trace_set(trace_layout);
 	trace_set.bind(0, *camera_buffer);
 	trace_set.bind(1, helper_info_buffer);
-	trace_set.bind(2, model_bvh);
-	trace_set.bind(3, vertices);
-	trace_set.bind(4, indices);
-	trace_set.bind(5, cubemap_view, sampler);
-	trace_set.bind(6, accumulation_cache_view);
-	trace_set.bind(7, bounce_cache_view);
-	trace_set.bind(8, direction_cache_view);
-	trace_set.bind(9, origin_cache_view);
-	trace_set.bind(10, counter_cache_view);
-
-    std::mt19937                          gen;
-    std::uniform_real_distribution<float> dist(0.f, 1.f);
+	trace_set.bind(2, meshes.bvh_buffer());
+	trace_set.bind(3, meshes.vertex_buffer());
+	trace_set.bind(4, meshes.index_buffer());
+	trace_set.bind(5, meshes.instances());
+	trace_set.bind(6, cubemap_view, sampler);
+	trace_set.bind(7, accumulation_cache_view);
+	trace_set.bind(8, bounce_cache_view);
+	trace_set.bind(9, direction_cache_view);
+	trace_set.bind(10, origin_cache_view);
+	trace_set.bind(11, counter_cache_view);
 
     gfx::transform last_cam = camera.transform_mode;
 	

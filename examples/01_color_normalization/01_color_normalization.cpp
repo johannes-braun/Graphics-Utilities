@@ -31,7 +31,8 @@ axis_transformation principal_axis_transformation(const gfx::himage& image)
 
     const glm::dmat3 covariance_rgb = [&] {
         glm::dmat3 matrix(0.0);
-        for (int i = 0; i < image.extents().count(); ++i) {
+        for (int i = 0; i < image.extents().count(); ++i)
+        {
             const glm::dvec3 error = glm::dvec3(image.load(image.extents().subpixel(i))) - average_rgb;
             matrix += outerProduct(error, error);
         }
@@ -158,14 +159,14 @@ void executable::run()
 
     dep.depth_test_enable  = false;
     ass.primitive_topology = gfx::topology::triangle_list;
-	raster.cull       = gfx::cull_mode::none;
+    raster.cull            = gfx::cull_mode::none;
     auto shaders3          = {
         gfx::shader{gfx::shader_type::vert, "postfx/screen.vert"},
         gfx::shader{gfx::shader_type::frag, "01_color_normalization/image.frag"},
     };
     gfx::graphics_pipeline picture_pipe(pipe_state, pass_layout, shaders3);
 
-	raster.cull       = gfx::cull_mode::back;
+    raster.cull           = gfx::cull_mode::back;
     dep.depth_test_enable = true;
     gfx::pipe_state::vertex_input input;
     input.attributes.emplace_back(0, 0, gfx::rgb32f, offsetof(gfx::vertex3d, position));
@@ -216,13 +217,15 @@ void executable::run()
     grid_bindings.bind(0, render_info_buffer);
     grid_bindings.bind(1, grid_view, sampler);
 
-    while (frame()) {
+    while (frame())
+    {
         ImGui::Begin("Settings");
         static bool hat_en = true;
         ImGui::Checkbox("Enable Transformation", &hat_en);
 
         glm::mat4 patmat = glm::mat4(1.f);
-        if (hat_en) {
+        if (hat_en)
+        {
             static int mode = 0;
             ImGui::Combo("Mode", &mode, " Basic (RGB) \0 Eigen (RGB) \0 Basic (POM) \0 Eigen (POM) \0");
 
@@ -239,8 +242,10 @@ void executable::run()
         static float scale = 1.f;
         ImGui::DragFloat("Preview Scale", &scale, 0.01f, 0.f, 100.f);
 
-        if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0))) {
-            if (const auto new_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files")) {
+        if (ImGui::Button("Load", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.5f, 0)))
+        {
+            if (const auto new_data = gfx::file::open_dialog("Open Image", "../", {"*.jpg", "*.png"}, "Image Files"))
+            {
                 picture      = gfx::himage(gfx::rgb8unorm, *new_data);
                 texture      = gfx::image(picture);
                 texture_view = gfx::image_view(gfx::imgv_type::image2d, texture.pixel_format(), texture, 0, texture.levels(), 0, 1);
@@ -255,7 +260,8 @@ void executable::run()
             }
         }
         ImGui::SameLine();
-        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
+        if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+        {
             glm::u8vec3*             data_cast = reinterpret_cast<glm::u8vec3*>(picture.storage().data());
             std::vector<glm::u8vec3> new_img(picture.extents().count());
             std::transform(data_cast, data_cast + picture.extents().count(), new_img.begin(), [&patmat](const glm::u8vec3& vec) {
@@ -303,9 +309,10 @@ void executable::run()
         current_command->bind_index_buffer(ibo, gfx::index_type::uint32);
         current_command->draw_indexed(ibo.capacity());
 
-		constexpr float default_size = 256.f;
-		const float aspect = static_cast<float>(picture.extents().height)/picture.extents().width;
-        gfx::viewport pic_vp(0, main_viewport.height - (default_size * aspect * scale), default_size * scale, default_size * aspect * scale, 0.f, 1.f);
+        constexpr float default_size = 256.f;
+        const float     aspect       = static_cast<float>(picture.extents().height) / picture.extents().width;
+        gfx::viewport pic_vp(0, main_viewport.height - (default_size * aspect * scale), default_size * scale, default_size * aspect * scale,
+                             0.f, 1.f);
         current_command->bind_pipeline(picture_pipe, {&main_bindings});
         current_command->set_viewports(0, {&pic_vp, 1}, {});
         current_command->draw(3);

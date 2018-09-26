@@ -2,12 +2,12 @@
 
 #include "../api.glsl"
 
-layout(loc_gl(0) loc_vk(0, 6), rgba32f) uniform image2D accumulation_cache;
-layout(loc_gl(1) loc_vk(0, 7), rgba32f) uniform image2D bounce_cache;
-layout(loc_gl(2) loc_vk(0, 8), rgba32f) uniform image2D direction_cache;
-layout(loc_gl(3) loc_vk(0, 9), rgba32f) uniform image2D origin_cache;
-layout(loc_gl(4) loc_vk(0, 10), rg32ui) uniform uimage2D counter_cache;
-layout(loc_gl(0) loc_vk(0, 5)) uniform samplerCube cubemap;
+layout(loc_gl(0) loc_vk(0, 7), rgba32f) uniform image2D accumulation_cache;
+layout(loc_gl(1) loc_vk(0, 8), rgba32f) uniform image2D bounce_cache;
+layout(loc_gl(2) loc_vk(0, 9), rgba32f) uniform image2D direction_cache;
+layout(loc_gl(3) loc_vk(0, 10), rgba32f) uniform image2D origin_cache;
+layout(loc_gl(4) loc_vk(0, 11), rg32ui) uniform uimage2D counter_cache;
+layout(loc_gl(0) loc_vk(0, 7)) uniform samplerCube cubemap;
 layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 {
     mat4 view;
@@ -50,7 +50,7 @@ struct bvh_result
     // Only two barycentric coordinates are needed.
     // Calculate the last one with z = 1 - bary.x - bary.y .
     vec2 near_barycentric;
-
+	uint instance;
     bool hits;
 };
 layout(loc_gl(0) loc_vk(0, 2)) restrict readonly buffer ModelBVH
@@ -76,12 +76,65 @@ layout(loc_gl(2) loc_vk(0, 4)) restrict readonly buffer ModelIndices
 {
     uint model_indices[];
 };
+
+#ifndef PI
+#define PI 3.14159265359
+#endif
+
+// The GGX chi function
+float ggx_chi(float v)
+{
+    return float(v > 0);
+}
+
+float ggx_distribution(const in float cos_theta, const in float roughness)
+{
+  float roughness2 = max(roughness * roughness, 0.0001f);
+  float normal_dot_half2 = cos_theta * cos_theta;
+  float denominator = normal_dot_half2 * roughness2 + (1-normal_dot_half2);
+  return ggx_chi(cos_theta) * roughness2 / (PI * denominator * denominator);
+}
+
+float ggx_partial_geometry(const in vec3 vector, const in vec3 normal, const in vec3 facet_normal, float roughness)
+{
+  float eye_dot_half2 = (dot(vector, facet_normal));
+  float chi = ggx_chi(eye_dot_half2 / (dot(vector, normal)));
+  eye_dot_half2 = eye_dot_half2 * eye_dot_half2;
+  float tan2 = (1 - eye_dot_half2) / eye_dot_half2;
+  return (chi*2) / (1 + sqrt(1 + roughness * roughness * tan2));
+}
+
+float ggx_geometry(const in vec3 view, const in vec3 outgoing, const in vec3 normal, const in vec3 facet_normal, float roughness)
+{
+  float geom_in = ggx_partial_geometry(-view, normal, facet_normal, roughness);
+  float geom_out = ggx_partial_geometry(outgoing, normal, facet_normal, roughness);
+  return geom_in * geom_out;
+}
+
+struct instance
+{
+	uint base_index;
+	uint base_vertex;
+	uint base_bvh_node;
+	mat4 transform;
+	uint color;
+	float roughness;
+	float reflectivity;
+
+};
+layout(loc_gl(3) loc_vk(0, 5)) restrict readonly buffer ModelInstances
+{
+    instance model_instances[];
+};
+
 layout(location = 0) in vec2 uv_unused;
 layout(location = 0) out vec4 color_output;
 
 const uint bvh_mode_any      = 0;
 const uint bvh_mode_nearest  = 1;
 bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_distance);
+bvh_result bvh_hit(vec3 origin, vec3 direction, const float max_distance, uint root_node);
+bvh_result bvh_hit_instanced(const vec3 origin, const vec3 direction, const float max_distance);
 void       bvh_state_set_mode(uint mode);
 bool       intersect_bounds(const vec3 origin, const vec3 direction, const vec3 bounds_min, const vec3 bounds_max, const float max_distance,
                             inout float min_distance, inout float out_max_distance, inout int face_tmin, inout int face_tmax);
@@ -102,24 +155,30 @@ float random_value(int seed);
 void  init_random(ivec2 pixel, float seed);
 
 
-void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_color, in vec3 position, in vec3 normal, in vec2 uv,
-                   in vec2 random_value, in vec3 diffuse)
+void shade_retrace(inout vec3 origin, inout vec3 direction, inout vec4 bounce_color, inout float diffusion, in vec3 position, in vec3 normal, in vec2 uv,
+                   in vec2 random_value, const in instance inst)
 {
-    float roughness = 0.154f;
+	vec3 diffuse = unpackUnorm4x8(inst.color).rgb;
+	float roughness = inst.roughness;
     float alpha2    = roughness * roughness;
 
-#define DIFFUSE 1
-#if DIFFUSE
-    vec3 msnormal = bsdf_local_to_world(sample_cosine_hemisphere(random_value), normal);
-    direction     = msnormal;
-    origin        = position + direction * 1e-3f;
-    bounce_color *= abs(dot(direction, normal)) * vec4(diffuse, 1);// vec4(0.8f, 0.4f, 0.2f, 1);
-#else
-    vec3 msnormal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), normal);
-    direction     = reflect(direction.xyz, msnormal);
-    origin        = position;
-    bounce_color *= vec4(diffuse, 1);
-#endif
+	float F0 = 1.f-sqrt(inst.reflectivity);
+	vec3 fresnel = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(dot(-direction, normal), 0), 5.0);
+
+	if((fresnel.x + fresnel.y + fresnel.z)/3.f > next_random())
+	{
+		vec3 msnormal = bsdf_local_to_world(sample_cosine_hemisphere(random_value), normal);
+		direction     = msnormal;
+		origin        = position + direction * 1e-3f;
+		bounce_color *= abs(dot(direction, normal)) * vec4(diffuse, 1); vec4(0.8f, 0.4f, 0.2f, 1);
+		diffusion = 1;
+	} else {
+		vec3 msnormal = bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), normal);
+		direction     = reflect(direction.xyz, msnormal);
+		origin        = position;
+		bounce_color *= vec4(diffuse, 1);
+		diffusion = 0;
+	}
 }
 
 
@@ -145,7 +204,7 @@ void main()
 
     // READ ----------------------------------------
 
-    for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < 1; ++i)
     {
         if (c_counters.x == 0)
         {
@@ -159,40 +218,54 @@ void main()
             c_origin          = vec4(camera.position, 0);
         }
 
-        bvh_result hit = bvh_hit(c_origin.xyz, c_direction.xyz, 1.f / 0.f);
+        bvh_result hit = bvh_hit_instanced(c_origin.xyz, c_direction.xyz, 1.f / 0.f);
         if (hit.hits)
         {
-            uint v0  = model_indices[hit.near_triangle * 3 + 1];
-            uint v1  = model_indices[hit.near_triangle * 3 + 2];
-            uint v2  = model_indices[hit.near_triangle * 3 + 0];
-            vec3 pos = hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
-                       + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].position;
-            vec3 norm = normalize(hit.near_barycentric.x * model_vertices[v0].normal + hit.near_barycentric.y * model_vertices[v1].normal
-                        + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].normal);
+			instance inst = model_instances[hit.instance];
+
+            uint v0  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 1];
+            uint v1  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 2];
+            uint v2  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 0];
+            vec3 pos = (inst.transform * vec4(hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
+                       + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].position, 1)).xyz;
+            vec3 norm = normalize((inst.transform * vec4(hit.near_barycentric.x * model_vertices[v0].normal + hit.near_barycentric.y * model_vertices[v1].normal
+                        + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].normal, 0)).xyz);
             vec2 uv = hit.near_barycentric.x * model_vertices[v0].uv + hit.near_barycentric.y * model_vertices[v1].uv
                       + (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
-
-			vec3 diffuse = v0 > 3500 ? vec3(1) : vec3(1.f, 0.f, 0.f);
+			
+			norm = faceforward(norm, c_direction.xyz, norm);
 
             vec3 orig = c_origin.xyz;
             vec3 dir  = c_direction.xyz;
-			shade_retrace(orig, dir, c_bounce, pos, norm, uv, random_value, diffuse);
+			vec3 view = -dir;
+			float diffusion = 0;
+			shade_retrace(orig, dir, c_bounce, diffusion, pos, norm, uv, random_value, inst);
             c_origin    = vec4(orig + dir * 1e-3f, 1);
             c_direction = vec4(dir, 0);
 
 			bvh_state_set_mode(bvh_mode_any);
-			const vec3 light = vec3(-7, 4, -4);
+			const vec3 light = vec3(-7, 8, -4);
 			const float dist = distance(light, pos);
 			const vec3 to_light = normalize(light - pos);
-			bvh_result shadow_test = bvh_hit(pos + 1e-4 * to_light, to_light, dist);
+			bvh_result shadow_test = bvh_hit_instanced(pos + 1e-4 * to_light, to_light, dist);
 			if (!shadow_test.hits)
 			{
-				c_accumulation += vec4(vec3(38) * max(dot(norm, to_light), 0) * diffuse / (dist*dist), 0);
+				vec3 diffuse = unpackUnorm4x8(inst.color).rgb;
+				float roughness = inst.roughness;
+
+				float F0 = 1.f-sqrt(inst.reflectivity);
+				vec3 fresnel = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(dot(view, norm), 0), 5.0);
+
+				float D = ggx_distribution(max(dot(norm, normalize(view + to_light)), 0), roughness);
+				float G = ggx_geometry(view, to_light, norm, normalize(view + to_light), roughness);
+
+				c_accumulation += diffusion * vec4(vec3(200) * max(dot(norm, to_light), 0) * unpackUnorm4x8(inst.color).rgb / (dist*dist), 0);
+				c_accumulation += clamp(vec4(vec3(1) * (1-diffusion) * D * G * fresnel, 0), 0, 8);
 			}
 			bvh_state_set_mode(bvh_mode_nearest);
 
             float den = ++c_counters.x;
-            if (den > 7)
+            if (den > 7 )
             {
                 ++c_counters.y;
                 c_accumulation += clamp(c_bounce, 0, 8);
@@ -447,14 +520,42 @@ bool intersect_triangle(const vec3 origin, const vec3 direction, const vec3 v1, 
     return (t = dot(e2, Q) * inv_det) > float_epsilon;
 }
 
+bvh_result bvh_hit_instanced(const vec3 origin, const vec3 direction, const float max_distance)
+{
+	bvh_result hit;
+	hit.hits = false;
+	float md = max_distance;
+	for(int i=0; i<model_instances.length(); ++i)
+	{
+		bvh_result nh = bvh_hit(origin, direction, md, i);
+		if(nh.hits)
+		{
+			if (_bvh_mode_current == bvh_mode_any)
+				return nh;
+			hit = nh;
+			md = hit.near_distance;
+			hit.instance = i;
+		}
+	}
+	return hit;
+}
+
 bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_distance)
+{
+	return bvh_hit(origin, direction, max_distance, 0);	
+}
+bvh_result bvh_hit(vec3 origin, vec3 direction, const float max_distance, uint instance_id)
 {
     bvh_result result;
     result.near_distance   = max_distance;
     result.hits            = false;
     float current_distance = 0;
-
-    uint root_node = 0;
+	
+	instance inst = model_instances[instance_id];
+	mat4 inv_tf = inverse(inst.transform);
+	origin		= (inv_tf * vec4(origin, 1)).xyz;
+	direction	= normalize((inv_tf * vec4(direction, 0)).xyz);
+	uint root_node = inst.base_bvh_node;
 
     bvh_node current_node = model_bvh.nodes[root_node];
     uint     current_id   = root_node;
@@ -471,10 +572,10 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_dist
             uint  right     = current_node.right;
             float min_left  = 1.f / 0.f;
             float min_right = 1.f / 0.f;
-            bool hits_left = intersect_bounds(origin, direction, model_bvh.nodes[left].bounds_min.xyz, model_bvh.nodes[left].bounds_max.xyz,
+            bool hits_left = intersect_bounds(origin, direction, model_bvh.nodes[root_node + left].bounds_min.xyz, model_bvh.nodes[root_node + left].bounds_max.xyz,
                                               result.near_distance, min_left);
-            bool hits_right = intersect_bounds(origin, direction, model_bvh.nodes[right].bounds_min.xyz,
-                                               model_bvh.nodes[right].bounds_max.xyz, result.near_distance, min_right);
+            bool hits_right = intersect_bounds(origin, direction, model_bvh.nodes[root_node + right].bounds_min.xyz,
+                                               model_bvh.nodes[root_node + right].bounds_max.xyz, result.near_distance, min_right);
 
             if (!hits_left && !hits_right) break;
 
@@ -486,7 +587,7 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_dist
 
             switchstack  = (switchstack << 1) | int(nrm);    // 0x1 -> right next, 0x0 -> left next
             bitstack     = (bitstack << 1) | int(hits_left && hits_right);
-            current_node = model_bvh.nodes[current_id = hits_first ? first : second];
+            current_node = model_bvh.nodes[root_node + (current_id = hits_first ? first : second)];
         }
 
         if (current_node.type == bvh_node_type_leaf)
@@ -496,9 +597,9 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_dist
             uint end   = current_node.right;
             for (uint i = start; i != end + 1; ++i)
             {
-                vec3 tv1 = model_vertices[model_indices[3 * i + 0]].position;
-                vec3 tv2 = model_vertices[model_indices[3 * i + 1]].position;
-                vec3 tv3 = model_vertices[model_indices[3 * i + 2]].position;
+                vec3 tv1 = model_vertices[inst.base_vertex + model_indices[inst.base_index + 3 * i + 0]].position;
+                vec3 tv2 = model_vertices[inst.base_vertex + model_indices[inst.base_index + 3 * i + 1]].position;
+                vec3 tv3 = model_vertices[inst.base_vertex + model_indices[inst.base_index + 3 * i + 2]].position;
 
                 if (intersect_triangle(origin, direction, tv1, tv2, tv3, current_distance, current_barycentric)
                     && current_distance < result.near_distance)
@@ -517,15 +618,15 @@ bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_dist
         {
             if (bitstack == 0) return result;
 
-            current_id  = model_bvh.nodes[current_id].parent;
+            current_id  = model_bvh.nodes[root_node + current_id].parent;
             bitstack    = bitstack >> 1;
             switchstack = switchstack >> 1;
         }
 
-        current_id = ((switchstack & 0x1) == 0x1) ? model_bvh.nodes[model_bvh.nodes[current_id].parent].right
-                                                  : model_bvh.nodes[model_bvh.nodes[current_id].parent].left;
+        current_id = ((switchstack & 0x1) == 0x1) ? model_bvh.nodes[model_bvh.nodes[root_node + current_id].parent].right
+                                                  : model_bvh.nodes[model_bvh.nodes[root_node + current_id].parent].left;
 
-        current_node = model_bvh.nodes[current_id];
+        current_node = model_bvh.nodes[root_node + current_id];
         bitstack     = bitstack ^ 1;
     }
     return result;

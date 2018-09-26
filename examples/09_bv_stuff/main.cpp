@@ -22,7 +22,7 @@ gfx::himage barrel_pillow_distort(const gfx::himage& src, const double factor_po
     const glm::dvec3 center = static_cast<glm::dvec3>(src.extents().vec) * 0.5;
     #pragma omp parallel for
     for (auto i = 0ll; i < static_cast<long long>(src.extents().count()); ++i) {
-        const glm::dvec3 pixel         = src.extents().subpixel(i);
+        const glm::dvec3 pixel         = src.extents().subpixel(static_cast<uint32_t>(i));
         const double     max_component = domain == distortion_domain::norm_coordinates ? glm::compMax(src.extents().vec) : 1.0;
         const auto       radius        = distance(pixel / max_component, center / max_component);
         const auto       diff_src      = (pixel - center) / map(radius);

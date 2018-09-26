@@ -42,7 +42,7 @@ public:
     sound_wave(audio_file file) : _file(file)
     {
         audio_file& opt_file = *_file;
-        _wave.loadRawWave(opt_file.data.data(), opt_file.data.size(), opt_file.sample_rate, opt_file.channels, false, false);
+        _wave.loadRawWave(opt_file.data.data(), static_cast<uint32_t>(opt_file.data.size()), static_cast<float>(opt_file.sample_rate), opt_file.channels, false, false);
     }
 
 private:

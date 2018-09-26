@@ -502,7 +502,7 @@ namespace ui = win32;
 
 int main()
 {
-	const glm::vec2 pad{ 4, 4 };
+	const glm::vec2 pad{ 0, 0 };
     gfx::ui::window   win(L"Yet another window");
     gfx::ui::menu_bar main_menu;
     main_menu
@@ -540,12 +540,12 @@ int main()
     gfx::ui::linear_layout btns(gfx::ui::linear_layout::orient::horizontal);
     gfx::ui::linear_layout tb(gfx::ui::linear_layout::orient::horizontal);
     win.add(ll);
-    win.add(btns, ll, glm::vec2{288, 48} + 2.f*pad, pad);
+    win.add(btns, ll, glm::vec2{288, 48}, pad);
     win.add(btn1, btns, {144, 48}, pad);
     win.add(btn2, btns, {144, 48}, pad);
-    win.add(tb, ll, glm::vec2{288, 28} + 2.f*pad, pad);
-    win.add(edit, tb, {256, 28}, pad);
-    win.add(dotted, tb, {32, 28}, pad);
+    win.add(tb, ll, glm::vec2{288, 20}, pad);
+    win.add(edit, tb, {256, 20}, pad);
+    win.add(dotted, tb, {32, 20}, pad);
     win.add(check, ll, {288, 32}, pad);
 
     gfx::ui::window win2(L"Also there");
