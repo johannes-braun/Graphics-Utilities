@@ -1,5 +1,34 @@
+# Find the QtWidgets library
+set(CMAKE_PREFIX_PATH "C:\\Qt\\5.11.2\\msvc2017_64")
+find_package(Qt5Widgets QUIET)
+if(NOT Qt5Widgets_FOUND)
+	gfx_msg("Qt5 not found. Compiling without Qt5.")
+else()
+	set(CMAKE_AUTOMOC ON)
+	set(CMAKE_AUTOUIC ON)
+	set(CMAKE_AUTORCC ON)
+	set(CMAKE_INCLUDE_CURRENT_DIR ON)
+	get_target_property(PROPS Qt5::Widgets LOCATION)
+	list(APPEND Qt5_DLLST ${PROPS})
+	get_target_property(PROPS Qt5::Gui LOCATION)
+	list(APPEND Qt5_DLLST ${PROPS})
+	get_target_property(PROPS Qt5::Core LOCATION)
+	list(APPEND Qt5_DLLST ${PROPS})
+
+	set(Qt5_DLLS ${Qt5_DLLST})
+	message(${Qt5_DLLS})
+endif()
+
 function(mark_as_executable exe_name)
     file(GLOB CPPS ${exe_name}/*.cpp)
+
+	if(Qt5Widgets_FOUND)
+		file(GLOB UIS ${exe_name}/*.ui)
+		file(GLOB MOCS ${exe_name}/*.moc.h)
+		file(GLOB RESS ${exe_name}/*.qrc)
+		
+		list(APPEND CPPS ${RES_SOURCES} ${UI_HEADERS} ${MOC_SRCS})
+	endif()
 
 	if(NOT TARGET ${exe_name})
 		add_executable(${exe_name})
@@ -19,7 +48,11 @@ function(mark_as_executable exe_name)
 			RUNTIME DESTINATION bin
 		)
 	endif()
-    target_link_libraries(${exe_name} jbraun::gfx comctl32)
+    target_link_libraries(${exe_name} PRIVATE jbraun::gfx)
+	
+	if(WIN32)
+		target_link_libraries(${exe_name} PRIVATE comctl32)
+	endif()
     
     target_compile_options(${exe_name} PRIVATE ${compile_options})
     set_target_properties(${exe_name} PROPERTIES LINK_FLAGS_RELEASE "-subsystem:windows -entry:mainCRTStartup")
@@ -34,11 +67,25 @@ function(mark_as_executable exe_name)
             $<TARGET_FILE:glfw>
             $<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:glfw>
     )
+	
+	if(Qt5Widgets_FOUND)
+		target_link_libraries(${exe_name}
+			PUBLIC Qt5::Widgets)
+		foreach(qt_dll ${Qt5_DLLS})
+			get_filename_component(qt_dll_name ${qt_dll} NAME)
+			add_custom_command(
+				TARGET ${exe_name} 
+				POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -E copy
+				${qt_dll}
+				$<TARGET_FILE_DIR:${exe_name}>/${qt_dll_name}
+			)
+		endforeach()
+	endif()
 
 	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
 		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ../src/shaders/${exe_name})
 		add_dependencies(${exe_name} shaders_${exe_name})
-		message("Target found: shaders_${exe_name}")
 	endif()
 endfunction()
 
@@ -53,7 +100,7 @@ mark_as_executable(01_color_normalization)
 mark_as_executable(02_sound)
 mark_as_executable(03_ai)
 mark_as_executable(04_marching_squares)
-mark_as_executable(05_nana)
+mark_as_executable(05_qt)
 mark_as_executable(07_meshing)
 mark_as_executable(08_point_detection)
 mark_as_executable(09_bv_stuff)

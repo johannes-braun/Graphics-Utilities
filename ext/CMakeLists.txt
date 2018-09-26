@@ -88,6 +88,3 @@ if(GFX_USE_INSTALL)
 endif()
 set(BUILD_SHARED_LIBS OFF)
 cmake_policy(SET CMP0048 NEW)
-
-add_subdirectory(nana)
-add_library(nana::nana ALIAS nana)

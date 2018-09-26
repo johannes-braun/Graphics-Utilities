@@ -1,8 +1,6 @@
 set(gfx_dir ${var_source_dir}/gfx)
 
 file(GLOB_RECURSE gfx_sources *.cpp *.c *.h *.hpp )
-message(${gfx_sources})
-message("INCLUDE DIRECTORY IS " ${var_include_dir})
 add_library(gfx ${gfx_sources})
 target_include_directories(gfx 
     PUBLIC
@@ -21,8 +19,8 @@ target_link_libraries(gfx
 		assimp::assimp 
 		eigen::eigen 
 		vulkan::vulkan
-		soloud::soloud
-		nana::nana)
+		soloud::soloud)
+
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 
 	if(MSVC)
