@@ -113,28 +113,39 @@ void executable::run()
                         0.7f);
 
     gfx::hbuffer<helper_info> helper_info_buffer(1);
-    gfx::binding_set          trace_set(trace_layout);
-    trace_set.bind(0, *camera_buffer);
-    trace_set.bind(1, helper_info_buffer);
-    trace_set.bind(6, cubemap_view, sampler);
-    trace_set.bind(7, accumulation_cache_view);
-    trace_set.bind(8, bounce_cache_view);
-    trace_set.bind(9, direction_cache_view);
-    trace_set.bind(10, origin_cache_view);
-    trace_set.bind(11, counter_cache_view);
+    std::vector<gfx::binding_set>         trace_sets;
 
+	for (auto i = 0ull; i < gfx::context::current()->swapchain()->image_views().size(); ++i)
+	{
+		auto& trace_set = trace_sets.emplace_back(trace_layout);
+		trace_set.bind(0, *camera_buffer);
+		trace_set.bind(1, helper_info_buffer);
+		trace_set.bind(2, meshes.bvh_buffer());
+		trace_set.bind(3, meshes.vertex_buffer());
+		trace_set.bind(4, meshes.index_buffer());
+		trace_set.bind(5, meshes.instances());
+		trace_set.bind(6, cubemap_view, sampler);
+		trace_set.bind(7, accumulation_cache_view);
+		trace_set.bind(8, bounce_cache_view);
+		trace_set.bind(9, direction_cache_view);
+		trace_set.bind(10, origin_cache_view);
+		trace_set.bind(11, counter_cache_view);
+	}
     gfx::transform last_cam = camera.transform_mode;
 
     int iteration   = 0;
     int max_bounces = 5;
     while (frame())
     {
-        trace_set.bind(2, meshes.bvh_buffer());
-        trace_set.bind(3, meshes.vertex_buffer());
-        trace_set.bind(4, meshes.index_buffer());
-        trace_set.bind(5, meshes.instances());
-
-        const auto reset = [&] { iteration = 0; };
+		auto& trace_set = trace_sets[gfx::context::current()->swapchain()->current_image()];
+		trace_set.bind(2, meshes.bvh_buffer());
+		trace_set.bind(3, meshes.vertex_buffer());
+		trace_set.bind(4, meshes.index_buffer());
+		trace_set.bind(5, meshes.instances());
+        const auto reset = [&]
+        {
+            iteration = 0;
+        };
 
         ImGui::Begin("Settings");
         if (ImGui::Button("Reset Tracer")) reset();
