@@ -43,6 +43,8 @@ public:
 
     template<typename Component>
     Component* get_component(entity_handle handle);
+	
+	component_base* get_component(entity_handle handle, id_t cid);
 
     void update(double delta, system_list& list);
 

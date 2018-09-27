@@ -20,6 +20,7 @@
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QStatusBar>
+#include <QMessageBox>
 #include <QThread>
 #include <QVector>
 #include <QtConcurrent>
@@ -48,7 +49,7 @@ public:
 
     ConverterWindow(QWidget* parent = nullptr) : QMainWindow(parent)
     {
-        setWindowTitle("Equilateral to Cubemap");
+        setWindowTitle("Equilateral to Cube");
         setCentralWidget(&_content);
         {        // Add Paths group
             {    // Add Source path selector field
@@ -132,6 +133,17 @@ private slots:
     {
         std::filesystem::path path = _input_path_edit.text().toStdString();
 
+        if(!exists(path))
+        {
+			QMessageBox::critical(this, "Error", "The input path is empty or pointing to a non-existent file.", QMessageBox::Ok);
+			return;
+        }
+        if(_output_path_edit.text().isEmpty())
+        {
+			QMessageBox::critical(this, "Error", "The output path is empty.", QMessageBox::Ok);
+			return;
+        }
+
         if (gfx::image_file hdri = gfx::image_file(path, gfx::bits::b32, 3); hdri.bytes())
         {
             // Prepare the vector.
@@ -144,10 +156,10 @@ private slots:
 
             // Create a QFutureWatcher and connect signals and slots.
             QFutureWatcher<void> futureWatcher;
-            QObject::connect(&futureWatcher, &QFutureWatcher<void>::finished, &dialog, &QProgressDialog::reset);
-            QObject::connect(&dialog, &QProgressDialog::canceled, &futureWatcher, &QFutureWatcher<void>::cancel);
-            QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressRangeChanged, &dialog, &QProgressDialog::setRange);
-            QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressValueChanged, &dialog, &QProgressDialog::setValue);
+            connect(&futureWatcher, &QFutureWatcher<void>::finished, &dialog, &QProgressDialog::reset);
+            connect(&dialog, &QProgressDialog::canceled, &futureWatcher, &QFutureWatcher<void>::cancel);
+            connect(&futureWatcher, &QFutureWatcher<void>::progressRangeChanged, &dialog, &QProgressDialog::setRange);
+            connect(&futureWatcher, &QFutureWatcher<void>::progressValueChanged, &dialog, &QProgressDialog::setValue);
 
             std::filesystem::path dest = _output_path_edit.text().toStdString();
             dest.replace_extension("");
@@ -172,45 +184,39 @@ private slots:
             };
             const int resolution = _resolution_edit.text().toInt();
 
-            // Our function to compute
-            std::function<void(int&)> spin = [&](int& side) {
-                const auto             matrix = inverse(projection * matrices[side]);
-                std::vector<glm::vec3> new_image(resolution * resolution);
-                for (int y = 0; y < resolution; ++y)
-                {
-                    for (int x = 0; x < resolution; ++x)
-                    {
-                        glm::vec4 dir =
-                            matrix
-                            * glm::vec4(static_cast<float>(x) / resolution * 2 - 1, static_cast<float>(y) / resolution * 2 - 1, 0, 1);
-                        new_image[y * resolution + x] = getter(dir / dir[3]);
-                    }
-                }
+            futureWatcher.setFuture(QtConcurrent::map(vector, [&](int& side) {
+				const auto             matrix = inverse(projection * matrices[side]);
+				std::vector<glm::vec3> new_image(resolution * resolution);
+				for (int y = 0; y < resolution; ++y)
+				{
+					for (int x = 0; x < resolution; ++x)
+					{
+						glm::vec4 dir =
+							matrix
+							* glm::vec4(static_cast<float>(x) / resolution * 2 - 1, static_cast<float>(y) / resolution * 2 - 1, 0, 1);
+						new_image[y * resolution + x] = getter(dir / dir[3]);
+					}
+				}
 
-                if (_generate_hdr_check->isChecked())
-                {
-                    const auto target = phdr.string() + "/" + sides[side] + ".hdr";
-                    gfx::ilog << "Writing " << target << " ...";
-                    gfx::image_file::save_hdr(target, resolution, resolution, 3, reinterpret_cast<float*>(new_image.data()));
-                }
+				if (_generate_hdr_check->isChecked())
+				{
+					const auto target = phdr.string() + "/" + sides[side] + ".hdr";
+					gfx::ilog << "Writing " << target << " ...";
+					gfx::image_file::save_hdr(target, resolution, resolution, 3, reinterpret_cast<float*>(new_image.data()));
+				}
 
-                if (_generate_png_check->isChecked())
-                {
-                    std::vector<glm::u8vec3> png(resolution * resolution);
-                    for (int i = 0; i < png.size(); ++i)
-                        png[i] = static_cast<glm::u8vec3>(
-                            glm::clamp(glm::pow(new_image[i], glm::vec3(1.f / 1.75f)) * glm::vec3(255), glm::vec3(0), glm::vec3(255)));
+				if (_generate_png_check->isChecked())
+				{
+					std::vector<glm::u8vec3> png(resolution * resolution);
+					for (int i = 0; i < png.size(); ++i)
+						png[i] = static_cast<glm::u8vec3>(
+							glm::clamp(glm::pow(new_image[i], glm::vec3(1.f / 1.75f)) * glm::vec3(255), glm::vec3(0), glm::vec3(255)));
 
-                    const auto target = ppng.string() + "/" + sides[side] + ".png";
-                    gfx::ilog << "Writing " << target << " ...";
-                    gfx::image_file::save_png(target, resolution, resolution, 3, reinterpret_cast<const uint8_t*>(png.data()));
-                }
-            };
-
-            // Start the computation.
-            futureWatcher.setFuture(QtConcurrent::map(vector, spin));
-
-            // Display the dialog and start the event loop.
+					const auto target = ppng.string() + "/" + sides[side] + ".png";
+					gfx::ilog << "Writing " << target << " ...";
+					gfx::image_file::save_png(target, resolution, resolution, 3, reinterpret_cast<const uint8_t*>(png.data()));
+				}
+			}));
             dialog.exec();
 
             futureWatcher.waitForFinished();

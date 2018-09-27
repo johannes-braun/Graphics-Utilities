@@ -113,6 +113,11 @@ unique_entity ecs::create_entity_unique(const component_base** components, const
     return unique_entity(new entity(create_entity(components, component_ids, count)));
 }
 
+component_base* ecs::get_component(entity_handle handle, id_t cid)
+{
+	return get_component_impl(handle, _components.at(cid), cid);
+}
+
 void ecs::update(double delta, system_list& list)
 {
     std::vector<component_base*>         multi_components;

@@ -722,7 +722,7 @@ private:
 void executable::run()
 {
     gfx::ecs::ecs ecs;
-	interaction interaction_manager(ecs);
+	interaction_processor interaction_manager(ecs);
     
     camera.projection_mode.perspective().clip_near = 0.01f;
     camera.projection_mode.perspective().clip_far  = 400.f;

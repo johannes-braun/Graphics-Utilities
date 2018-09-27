@@ -1,7 +1,7 @@
 # Find the QtWidgets library
 set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
-find_package(Qt5Widgets QUIET)
-find_package(Qt5Concurrent QUIET)
+find_package(Qt5Widgets)
+find_package(Qt5Concurrent)
 if(NOT Qt5Widgets_FOUND)
 	gfx_msg("Qt5 not found. Compiling without Qt5.")
 else()

@@ -55,7 +55,7 @@ bool ecs::remove_components(entity_handle handle)
 template<typename Component>
 Component* ecs::get_component(entity_handle handle)
 {
-    return static_cast<Component*>(get_component_impl(handle, _components[Component::id], Component::id));
+    return static_cast<Component*>(get_component(handle, Component::id));
 }
 }    // namespace ecs
 }    // namespace v1
