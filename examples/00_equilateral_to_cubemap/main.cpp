@@ -8,6 +8,22 @@
 #include <iostream>
 #include <vector>
 
+#include <QApplication>
+#include <QBoxLayout>
+#include <QCheckBox>
+#include <QFormLayout>
+#include <QFutureWatcher>
+#include <QGroupBox>
+#include <QIntValidator>
+#include <QLineEdit>
+#include <QMainWindow>
+#include <QProgressDialog>
+#include <QPushButton>
+#include <QStatusBar>
+#include <QThread>
+#include <QVector>
+#include <QtConcurrent>
+
 std::array<std::string, 6> sides{"posx", "negx", "negy", "posy", "posz", "negz"};
 
 glm::mat4 make_matrix(const glm::vec3 look_dir, const glm::vec3 up)
@@ -22,94 +38,204 @@ const std::array<glm::mat4, 6> matrices{
 
 const glm::mat4 projection = glm::perspective(glm::radians(90.f), 1.f, 0.01f, 100.f);
 
-namespace fs = std::filesystem;
-int main(const int argc, char** argv)
+class ConverterWindow : public QMainWindow
 {
-    const int resolution = 1024;
+public:
+    constexpr static int  default_resolution    = 1024;
+    constexpr static bool default_hdr           = true;
+    constexpr static bool default_png           = false;
+    constexpr static bool default_gen_subfolder = true;
 
-    gfx::file path;
-    fs::path  dest;
-    if (argc < 2)
+    ConverterWindow(QWidget* parent = nullptr) : QMainWindow(parent)
+    {
+        setWindowTitle("Equilateral to Cubemap");
+        setCentralWidget(&_content);
+        {        // Add Paths group
+            {    // Add Source path selector field
+                auto* file_selector        = new QWidget;
+                auto* file_selector_layout = new QHBoxLayout;
+                file_selector->setLayout(file_selector_layout);
+                auto* browse = new QPushButton;
+                browse->setText("...");
+                browse->setMaximumWidth(24);
+                connect(browse, &QPushButton::clicked, this, &ConverterWindow::on_browse_src);
+                file_selector_layout->addWidget(&_input_path_edit, 1);
+                file_selector_layout->addWidget(browse, 0);
+                file_selector_layout->setMargin(0);
+                _paths_layout.addRow("Input HDR", file_selector);
+            }
+
+            {    // Add Destination path selector field
+                auto* file_selector        = new QWidget;
+                auto* file_selector_layout = new QHBoxLayout;
+                file_selector->setLayout(file_selector_layout);
+                auto* browse = new QPushButton;
+                browse->setText("...");
+                browse->setMaximumWidth(24);
+                connect(browse, &QPushButton::clicked, this, &ConverterWindow::on_browse_dst);
+                file_selector_layout->addWidget(&_output_path_edit, 1);
+                file_selector_layout->addWidget(browse, 0);
+                file_selector_layout->setMargin(0);
+                _paths_layout.addRow("Output Folder", file_selector);
+
+                _generate_subfolder_check = new QCheckBox("Generate Subfolder");
+                _generate_subfolder_check->setChecked(default_gen_subfolder);
+                _paths_layout.addRow("", _generate_subfolder_check);
+            }
+
+            auto* group = new QGroupBox("Paths");
+            group->setLayout(&_paths_layout);
+            _content_layout.addWidget(group, 0);
+        }
+
+        {        // Add options panel
+            {    // Resolution
+                _resolution_edit.setValidator(new QIntValidator(0, 2 << 13, this));
+                _resolution_edit.setText(std::to_string(default_resolution).c_str());
+                _options_layout.addRow("Output Resolution", &_resolution_edit);
+
+                auto* vbox = new QVBoxLayout;
+                vbox->addWidget(_generate_hdr_check = new QCheckBox("*.hdr"));
+                vbox->addWidget(_generate_png_check = new QCheckBox("*.png"));
+
+                _generate_hdr_check->setChecked(default_hdr);
+                _generate_png_check->setChecked(default_png);
+
+                _options_layout.addRow("Output Formats", vbox);
+            }
+
+            auto* group = new QGroupBox("Options");
+            group->setLayout(&_options_layout);
+            _content_layout.addWidget(group, 0);
+        }
+
+        auto* run = new QPushButton;
+        run->setText("Generate");
+        connect(run, &QPushButton::clicked, this, &ConverterWindow::on_generate);
+        _content_layout.addWidget(run);
+        centralWidget()->setLayout(&_content_layout);
+    }
+
+private slots:
+    void on_browse_src()
     {
         if (const auto src = gfx::file::open_dialog("Open HDRI", "./", {"*.hdr"}, {"HDRI Images"}))
-            path = src.value();
-        else
-            return 0;
+            _input_path_edit.setText(src.value().path.string().c_str());
     }
-    else
+    void on_browse_dst()
     {
-        path = gfx::file(argv[1]);
-    }
+        const auto p = absolute(std::filesystem::path(".")).make_preferred();
+        if (const auto dst = gfx::file::folder_dialog("Select Target Folder", p))
+        { _output_path_edit.setText(dst.value().string().c_str()); } }
 
-    if (const auto dst = gfx::file::folder_dialog("Select Target Folder", ".")) { dest = dst.value(); }
-    else
+    void on_generate()
     {
-        dest = path;
-        dest.replace_extension("");
-    }
+        std::filesystem::path path = _input_path_edit.text().toStdString();
 
-    fs::path ppng = dest / "png";
-    fs::path phdr = dest / "hdr";
-    create_directories(phdr);
-    create_directories(ppng);
-
-    struct freer
-    {
-        void operator()(void* v) const { free(v); }
-    };
-    if (gfx::image_file hdri = gfx::image_file(path, gfx::bits::b32, 3); hdri.bytes())
-    {
-        gfx::ilog << "Successfully loaded " << path.path;
-        const auto getter = [&](glm::vec3 dir) {
-            dir                 = normalize(dir);
-            const float angle_a = std::atan2(dir.x, dir.z) / (2.0f * glm::pi<float>());
-            const float angle_b = 1 - (0.5f - asin(dir.y) / glm::pi<float>());
-
-            const auto idx = (int(angle_b * hdri.height) + 10000 * hdri.height) % hdri.height * hdri.width
-                             + (int(angle_a * hdri.width) + 10000 * hdri.width) % hdri.width;
-            return reinterpret_cast<glm::vec3*>(hdri.bytes())[idx];
-        };
-
-#pragma omp parallel for schedule(static)
-        for (int side = 0; side < 6; ++side)
+        if (gfx::image_file hdri = gfx::image_file(path, gfx::bits::b32, 3); hdri.bytes())
         {
-            const auto             matrix = inverse(projection * matrices[side]);
-            std::vector<glm::vec3> new_image(resolution * resolution);
-            for (int y = 0; y < resolution; ++y)
-            {
-                for (int x = 0; x < resolution; ++x)
+            // Prepare the vector.
+            QVector<int> vector(6);
+            std::iota(vector.begin(), vector.end(), 0);
+
+            // Create a progress dialog.
+            QProgressDialog dialog;
+            dialog.setLabelText(QString("Generating..."));
+
+            // Create a QFutureWatcher and connect signals and slots.
+            QFutureWatcher<void> futureWatcher;
+            QObject::connect(&futureWatcher, &QFutureWatcher<void>::finished, &dialog, &QProgressDialog::reset);
+            QObject::connect(&dialog, &QProgressDialog::canceled, &futureWatcher, &QFutureWatcher<void>::cancel);
+            QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressRangeChanged, &dialog, &QProgressDialog::setRange);
+            QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressValueChanged, &dialog, &QProgressDialog::setValue);
+
+            std::filesystem::path dest = _output_path_edit.text().toStdString();
+            dest.replace_extension("");
+
+			if (_generate_subfolder_check->isChecked())
+				dest /= path.filename();
+
+            std::filesystem::path ppng = dest / "png";
+            std::filesystem::path phdr = dest / "hdr";
+            if (_generate_hdr_check->isChecked()) create_directories(phdr);
+            if (_generate_png_check->isChecked()) create_directories(ppng);
+
+            gfx::ilog << "Successfully loaded " << path;
+            const auto getter = [&](glm::vec3 dir) {
+                dir                 = normalize(dir);
+                const float angle_a = std::atan2(dir.x, dir.z) / (2.0f * glm::pi<float>());
+                const float angle_b = 1 - (0.5f - asin(dir.y) / glm::pi<float>());
+
+                const auto idx = (int(angle_b * hdri.height) + 10000 * hdri.height) % hdri.height * hdri.width
+                                 + (int(angle_a * hdri.width) + 10000 * hdri.width) % hdri.width;
+                return reinterpret_cast<glm::vec3*>(hdri.bytes())[idx];
+            };
+            const int resolution = _resolution_edit.text().toInt();
+
+            // Our function to compute
+            std::function<void(int&)> spin = [&](int& side) {
+                const auto             matrix = inverse(projection * matrices[side]);
+                std::vector<glm::vec3> new_image(resolution * resolution);
+                for (int y = 0; y < resolution; ++y)
                 {
-                    glm::vec4 dir =
-                        matrix * glm::vec4(static_cast<float>(x) / resolution * 2 - 1, static_cast<float>(y) / resolution * 2 - 1, 0, 1);
-                    new_image[y * resolution + x] = getter(dir / dir[3]);
+                    for (int x = 0; x < resolution; ++x)
+                    {
+                        glm::vec4 dir =
+                            matrix
+                            * glm::vec4(static_cast<float>(x) / resolution * 2 - 1, static_cast<float>(y) / resolution * 2 - 1, 0, 1);
+                        new_image[y * resolution + x] = getter(dir / dir[3]);
+                    }
                 }
-            }
 
-#pragma omp critical
-            {
-                const auto target = phdr.string() + "/" + sides[side] + ".hdr";
-                gfx::ilog << "Writing " << target << " ...";
-                gfx::image_file::save_hdr(target, resolution, resolution, 3, reinterpret_cast<float*>(new_image.data()));
-            }
+                if (_generate_hdr_check->isChecked())
+                {
+                    const auto target = phdr.string() + "/" + sides[side] + ".hdr";
+                    gfx::ilog << "Writing " << target << " ...";
+                    gfx::image_file::save_hdr(target, resolution, resolution, 3, reinterpret_cast<float*>(new_image.data()));
+                }
 
-            std::vector<glm::u8vec3> png(resolution * resolution);
-            for (int i = 0; i < png.size(); ++i)
-                png[i] = static_cast<glm::u8vec3>(
-                    glm::clamp(glm::pow(new_image[i], glm::vec3(1.f / 1.75f)) * glm::vec3(255), glm::vec3(0), glm::vec3(255)));
+                if (_generate_png_check->isChecked())
+                {
+                    std::vector<glm::u8vec3> png(resolution * resolution);
+                    for (int i = 0; i < png.size(); ++i)
+                        png[i] = static_cast<glm::u8vec3>(
+                            glm::clamp(glm::pow(new_image[i], glm::vec3(1.f / 1.75f)) * glm::vec3(255), glm::vec3(0), glm::vec3(255)));
 
-#pragma omp critical
-            {
-                const auto target = ppng.string() + "/" + sides[side] + ".png";
-                gfx::ilog << "Writing " << target << " ...";
-                gfx::image_file::save_png(target, resolution, resolution, 3, reinterpret_cast<const uint8_t*>(png.data()));
-            }
+                    const auto target = ppng.string() + "/" + sides[side] + ".png";
+                    gfx::ilog << "Writing " << target << " ...";
+                    gfx::image_file::save_png(target, resolution, resolution, 3, reinterpret_cast<const uint8_t*>(png.data()));
+                }
+            };
+
+            // Start the computation.
+            futureWatcher.setFuture(QtConcurrent::map(vector, spin));
+
+            // Display the dialog and start the event loop.
+            dialog.exec();
+
+            futureWatcher.waitForFinished();
         }
     }
-    else
-    {
-        gfx::elog << "Failed to load image from " << path.path;
-    }
 
-    gfx::hlog("success") << "Press [ENTER] to quit.";
-    std::cin.ignore();
+private:
+    QWidget     _content;
+    QVBoxLayout _content_layout;
+    QLineEdit   _input_path_edit;
+    QLineEdit   _output_path_edit;
+    QLineEdit   _resolution_edit;
+    QCheckBox*  _generate_subfolder_check;
+    QCheckBox*  _generate_hdr_check;
+    QCheckBox*  _generate_png_check;
+    QFormLayout _paths_layout;
+    QFormLayout _options_layout;
+};
+
+int main(int argc, char** argv)
+{
+    QApplication app(argc, argv);
+
+    ConverterWindow converter;
+    converter.show();
+
+    return app.exec();
 }

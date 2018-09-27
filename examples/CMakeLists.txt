@@ -1,6 +1,7 @@
 # Find the QtWidgets library
-set(CMAKE_PREFIX_PATH "C:\\Qt\\5.11.2\\msvc2017_64")
+set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
 find_package(Qt5Widgets QUIET)
+find_package(Qt5Concurrent QUIET)
 if(NOT Qt5Widgets_FOUND)
 	gfx_msg("Qt5 not found. Compiling without Qt5.")
 else()
@@ -8,15 +9,6 @@ else()
 	set(CMAKE_AUTOUIC ON)
 	set(CMAKE_AUTORCC ON)
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
-	get_target_property(PROPS Qt5::Widgets LOCATION)
-	list(APPEND Qt5_DLLST ${PROPS})
-	get_target_property(PROPS Qt5::Gui LOCATION)
-	list(APPEND Qt5_DLLST ${PROPS})
-	get_target_property(PROPS Qt5::Core LOCATION)
-	list(APPEND Qt5_DLLST ${PROPS})
-
-	set(Qt5_DLLS ${Qt5_DLLST})
-	message(${Qt5_DLLS})
 endif()
 
 function(mark_as_executable exe_name)
@@ -48,8 +40,8 @@ function(mark_as_executable exe_name)
 			RUNTIME DESTINATION bin
 		)
 	endif()
-    target_link_libraries(${exe_name} PRIVATE jbraun::gfx)
-	
+    target_link_libraries(${exe_name} PRIVATE jbraun::gfx
+		)
 	if(WIN32)
 		target_link_libraries(${exe_name} PRIVATE comctl32)
 	endif()
@@ -70,17 +62,24 @@ function(mark_as_executable exe_name)
 	
 	if(Qt5Widgets_FOUND)
 		target_link_libraries(${exe_name}
-			PUBLIC Qt5::Widgets)
-		foreach(qt_dll ${Qt5_DLLS})
-			get_filename_component(qt_dll_name ${qt_dll} NAME)
-			add_custom_command(
-				TARGET ${exe_name} 
-				POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E copy
-				${qt_dll}
-				$<TARGET_FILE_DIR:${exe_name}>/${qt_dll_name}
+			PUBLIC Qt5::Widgets Qt5::Concurrent)
+		
+		add_custom_command(
+			TARGET ${exe_name} 
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy
+				$<TARGET_FILE:Qt5::Core>
+				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Core>
+			COMMAND ${CMAKE_COMMAND} -E copy
+				$<TARGET_FILE:Qt5::Widgets>
+				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Widgets>
+			COMMAND ${CMAKE_COMMAND} -E copy
+				$<TARGET_FILE:Qt5::Gui>
+				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Gui>
+			COMMAND ${CMAKE_COMMAND} -E copy
+				$<TARGET_FILE:Qt5::Concurrent>
+				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Concurrent>
 			)
-		endforeach()
 	endif()
 
 	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
