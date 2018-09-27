@@ -21,7 +21,7 @@ project(${var_project_name}
 if(MSVC)
     set(compile_options -MP -openmp -permissive- -Zc:twoPhase-)
 else()
-    set(compile_options -Wnon-template-friend -Wclass-memaccess -Wtautological-compare -Wconversion-null -std=c++1z)
+    set(compile_options -Wnon-template-friend -Wclass-memaccess -Wtautological-compare -Wconversion-null)
 endif()
 
 set(var_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src")

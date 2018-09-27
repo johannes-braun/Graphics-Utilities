@@ -20,6 +20,7 @@ target_link_libraries(gfx
 		eigen::eigen 
 		vulkan::vulkan
 		soloud::soloud)
+target_compile_options(gfx PRIVATE ${compile_options})
 
 if(WIN32)
     target_link_libraries(gfx PUBLIC opengl32) 

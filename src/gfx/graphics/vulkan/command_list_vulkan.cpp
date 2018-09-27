@@ -106,7 +106,7 @@ void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
         check_result(vkCreateFence(_device, &fc, nullptr, &_default_fence));
     }
 
-    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : _default_fence));
+    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : _default_fence.get()));
 }
 void commands_implementation::execute(fence* f)
 {
@@ -124,7 +124,7 @@ void commands_implementation::execute(fence* f)
         check_result(vkCreateFence(_device, &fc, nullptr, &_default_fence));
     }
 
-    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : _default_fence));
+    check_result(vkQueueSubmit(_queue, 1, &submit, f ? handle_cast<VkFence>(*f) : _default_fence.get()));
 }
 void commands_implementation::bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings)
 {

@@ -14,6 +14,7 @@ void interaction_processor::add_entity(gfx::ecs::entity e)
 interaction_processor::interaction_processor(gfx::ecs::ecs& ecs) : _ecs(ecs)
 {
     _ecs.add_listener(*this);
+
     add_component_id(transform_component::id);
     add_component_id(collider_component::id);
 }
@@ -25,7 +26,7 @@ void interaction_processor::on_add(gfx::ecs::entity e)
 
 void interaction_processor::on_remove(gfx::ecs::entity e)
 {
-    if (std::find(_entities_removed.begin(), _entities_removed.end(), e) == _entities_removed.end()) _entities_removed.push_back({e});
+    if (std::find(_entities_removed.begin(), _entities_removed.end(), e) == _entities_removed.end()) _entities_removed.push_back(e);
 }
 
 void interaction_processor::on_add_component(gfx::ecs::entity e, gfx::ecs::id_t id)
@@ -35,7 +36,7 @@ void interaction_processor::on_add_component(gfx::ecs::entity e, gfx::ecs::id_t 
     else if (id == collider_component::id && e.get<transform_component>())
         add_entity(e);
     else if (e.get<transform_component>() && e.get<collider_component>())
-        if (std::find(_entities_updated.begin(), _entities_updated.end(), e) == _entities_updated.end()) _entities_updated.push_back({e});
+        if (std::find(_entities_updated.begin(), _entities_updated.end(), e) == _entities_updated.end()) _entities_updated.push_back(e);
 }
 
 void interaction_processor::on_remove_component(gfx::ecs::entity e, gfx::ecs::id_t id)
@@ -43,15 +44,15 @@ void interaction_processor::on_remove_component(gfx::ecs::entity e, gfx::ecs::id
     if (id == transform_component::id || id == collider_component::id)
         on_remove(e);
     else if (e.get<transform_component>() && e.get<collider_component>())
-        if (std::find(_entities_updated.begin(), _entities_updated.end(), e) == _entities_updated.end()) _entities_updated.push_back({e});
+        if (std::find(_entities_updated.begin(), _entities_updated.end(), e) == _entities_updated.end()) _entities_updated.push_back(e);
 }
 
 void interaction_processor::process(double delta)
 {
     clear_entities();
-    std::sort(_entities.begin(), _entities.end(), [this](const gfx::ecs::entity_handle a, const gfx::ecs::entity_handle b) {
-        const auto min1 = _ecs.get_component<collider_component>(a)->aabb.min[_max_variance_axis];
-        const auto min2 = _ecs.get_component<collider_component>(b)->aabb.min[_max_variance_axis];
+    std::sort(_entities.begin(), _entities.end(), [this](const entity_internal& a, const entity_internal& b) {
+        const auto min1 = _ecs.get_component<collider_component>(a.handle)->aabb.min[_max_variance_axis];
+        const auto min2 = _ecs.get_component<collider_component>(b.handle)->aabb.min[_max_variance_axis];
         return min1 < min2;
     });
 
@@ -99,7 +100,7 @@ template<typename T, typename Iterator>
 auto unstable_remove(std::vector<T>& vec, Iterator at)
 {
     const auto d = std::distance(vec.begin(), at);
-    std::iter_swap(vec, std::prev(vec.end()));
+    std::iter_swap(at, std::prev(vec.end()));
     return vec.begin() + d;
 }
 }    // namespace detail

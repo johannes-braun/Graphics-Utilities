@@ -1,12 +1,4 @@
-#include <array>
-#include <cmath>
-#include <filesystem>
 #include <gfx/gfx.hpp>
-#include <gfx/log.hpp>
-#include <glm/ext.hpp>
-#include <glm/glm.hpp>
-#include <iostream>
-#include <vector>
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -172,7 +164,7 @@ private slots:
             if (_generate_hdr_check->isChecked()) create_directories(phdr);
             if (_generate_png_check->isChecked()) create_directories(ppng);
 
-            gfx::ilog << "Successfully loaded " << path;
+           // gfx::ilog << "Successfully loaded " << path;
             const auto getter = [&](glm::vec3 dir) {
                 dir                 = normalize(dir);
                 const float angle_a = std::atan2(dir.x, dir.z) / (2.0f * glm::pi<float>());
@@ -201,7 +193,7 @@ private slots:
 				if (_generate_hdr_check->isChecked())
 				{
 					const auto target = phdr.string() + "/" + sides[side] + ".hdr";
-					gfx::ilog << "Writing " << target << " ...";
+					//gfx::ilog << "Writing " << target << " ...";
 					gfx::image_file::save_hdr(target, resolution, resolution, 3, reinterpret_cast<float*>(new_image.data()));
 				}
 
@@ -213,7 +205,7 @@ private slots:
 							glm::clamp(glm::pow(new_image[i], glm::vec3(1.f / 1.75f)) * glm::vec3(255), glm::vec3(0), glm::vec3(255)));
 
 					const auto target = ppng.string() + "/" + sides[side] + ".png";
-					gfx::ilog << "Writing " << target << " ...";
+					//gfx::ilog << "Writing " << target << " ...";
 					gfx::image_file::save_png(target, resolution, resolution, 3, reinterpret_cast<const uint8_t*>(png.data()));
 				}
 			}));

@@ -40,12 +40,10 @@ inline WinCMD mkwincmd()
 static WinCMD vtp = mkwincmd();
 #endif
 
-namespace gfx
-{
+namespace gfx {
 template<typename T>
 struct enable_styling : std::false_type
-{
-};
+{};
 template<typename T>
 constexpr bool enable_styling_v = enable_styling<T>::value;
 
@@ -125,7 +123,8 @@ constexpr logger_label log_label(const char* l)
 {
     uint64_t out = 0;
     auto     len = cstrlen(l);
-    for (uint32_t i = 0; i < 7; ++i) {
+    for (uint32_t i = 0; i < 7; ++i)
+    {
         if (i < len) out |= uint64_t(uint8_t(l[i])) << (i << 3);
     }
     return logger_label{out};
@@ -138,14 +137,14 @@ static std::string expand_label(logger_label l)
     return s + " ";
 }
 
-namespace log_impl
-{
+namespace log_impl {
 class log_thread
 {
 public:
     ~log_thread()
     {
-        if (lock) {
+        if (lock)
+        {
             lock = false;
             _thread.join();
         }
@@ -153,7 +152,8 @@ public:
 
     void quit()
     {
-        if (lock) {
+        if (lock)
+        {
             lock = false;
             _thread.join();
         }
@@ -161,22 +161,23 @@ public:
 
     log_thread()
           : _thread([this]() {
-              while (true) {
-                  if (lock && _printers.empty()) {
+              while (true)
+              {
+                  if (lock && _printers.empty())
+                  {
                       using namespace std::chrono_literals;
                       std::this_thread::sleep_for(1ms);
                   }
                   else
                   {
                       // flush all
-                      while (!_printers.empty()) {
+                      while (!_printers.empty())
+                      {
                           std::unique_lock lockx(mtx);
                           _printers.front()();
                           _printers.pop();
                       }
-                      if (!lock) {
-                          break;
-                      }
+                      if (!lock) { break; }
                   }
               }
               log_thread_finished = true;
@@ -220,9 +221,9 @@ class logger
         void print_one(Stream& stream, std::size_t index)
         {
             if (_cstate == state::style && enable_styling_v<Stream>)
-                log_impl::logging_thread().enqueue([ str = _outputs[index].str(), &strm = stream ]() { strm << str << 'm' << "\n"; });
+                log_impl::logging_thread().enqueue([str = _outputs[index].str(), &strm = stream]() { strm << str << 'm' << "\n"; });
             else
-                log_impl::logging_thread().enqueue([ str = _outputs[index].str(), &strm = stream ]() { strm << str << "\n"; });
+                log_impl::logging_thread().enqueue([str = _outputs[index].str(), &strm = stream]() { strm << str << "\n"; });
         }
 
         template<typename Tuple, std::size_t... Indices>
@@ -240,57 +241,81 @@ class logger
 
         ~log_printer()
         {
-            if (_outputs[0].rdbuf()->in_avail()) {
+            if (_outputs[0].rdbuf()->in_avail())
+            {
                 *this << style::none;
                 print_each(_parent._streams, std::make_index_sequence<sizeof...(Streams)>{});
 
-				#if GFX_RELEASE
-                if (_parent._message_box) {
-                    auto res = file::message("Log Notification", _str_base.str() + "\n\nWould you like to close the application now?", msg_type::yes_no, msg_icon::error);
-                    if (res == msg_result::yes) exit(-1); 
+#if GFX_RELEASE
+                if (_parent._message_box)
+                {
+                    auto res = file::message("Log Notification", _str_base.str() + "\n\nWould you like to close the application now?",
+                                             msg_type::yes_no, msg_icon::error);
+                    if (res == msg_result::yes) exit(-1);
                 }
-				#endif
+#endif
             }
         }
 
-        template<typename T>
+        template<typename T,
+                 typename = std::enable_if_t<
+                     !std::is_convertible_v<T, style> && !std::is_convertible_v<T, color_fg> && !std::is_convertible_v<T, color_bg>>>
         log_printer& operator<<(T&& value)
         {
-            using dec        = std::decay_t<T>;
             state next_state = _cstate;
-            for (int i = 0; i < sizeof...(Streams); ++i) {
-                if constexpr (std::is_same_v<dec, color_fg>) {
-                    if (_do_style[i]) {
-                        _outputs[i] << (_cstate == state::def ? "\033[" : ";");
-                        _outputs[i] << "38;5;" << static_cast<uint32_t>(value);
-                    }
-                    next_state = state::style;
-                }
-                else if constexpr (std::is_same_v<dec, color_bg>)
-                {
-                    if (_do_style[i]) {
-                        _outputs[i] << (_cstate == state::def ? "\033[" : ";");
-                        _outputs[i] << "48;5;" << static_cast<uint32_t>(value);
-                    }
-                    next_state = state::style;
-                }
-                else if constexpr (std::is_same_v<dec, style>)
-                {
-                    if (_do_style[i]) {
-                        _outputs[i] << (_cstate == state::def ? "\033[" : ";");
-                        _outputs[i] << static_cast<uint32_t>(value);
-                    }
-                    next_state = state::style;
-                }
-                else
-                {
-                    if (_cstate == state::style && _do_style[i]) _outputs[i] << "m";
-                    _outputs[i] << value;
-                    next_state = state::def;
-                }
+            for (int i = 0; i < sizeof...(Streams); ++i)
+            {
+                if (_cstate == state::style && _do_style[i]) _outputs[i] << "m";
+                _outputs[i] << value;
+                next_state = state::def;
             }
-            if constexpr (!std::is_same_v<dec, color_fg> && !std::is_same_v<dec, color_bg> && !std::is_same_v<dec, style>)
-                if (_parent._message_box) _str_base << value;
+            if (_parent._message_box) _str_base << value;
+            _cstate = next_state;
+            return *this;
+        }
+
+        log_printer& operator<<(color_fg&& value)
+        {
+            state next_state = _cstate;
+            for (int i = 0; i < sizeof...(Streams); ++i)
+            {
+                if (_do_style[i])
+                {
+                    _outputs[i] << (_cstate == state::def ? "\033[" : ";");
+                    _outputs[i] << "38;5;" << static_cast<uint32_t>(value);
+                }
+                next_state = state::style;
+            }
+            _cstate = next_state;
+            return *this;
+        }
+        log_printer& operator<<(color_bg&& value)
+        {
+            state next_state = _cstate;
+            for (int i = 0; i < sizeof...(Streams); ++i)
+            {
+                if (_do_style[i])
+                {
+                    _outputs[i] << (_cstate == state::def ? "\033[" : ";");
+                    _outputs[i] << "48;5;" << static_cast<uint32_t>(value);
+                }
+                next_state = state::style;
+            }
+            _cstate = next_state;
+            return *this;
+        }
+        log_printer& operator<<(style&& value)
+        {
+            state next_state = _cstate;
+            for (int i = 0; i < sizeof...(Streams); ++i)
+            {
+                if (_do_style[i])
+                {
+                    _outputs[i] << (_cstate == state::def ? "\033[" : ";");
+                    _outputs[i] << static_cast<uint32_t>(value);
+                }
+                next_state = state::style;
+            }
             _cstate = next_state;
             return *this;
         }
@@ -344,8 +369,7 @@ private:
 
 template<>
 struct enable_styling<std::ostream> : std::true_type
-{
-};
+{};
 
 inline std::ofstream& log_err()
 {
@@ -360,11 +384,11 @@ inline std::ofstream& log_all()
 }
 
 template<color_bg C, logger_label L = log_label("user")>
-logger cclog{highlighter(expand_label(L), uint32_t(C)), false, std::cout};
+logger<std::ostream> cclog{highlighter(expand_label(L), uint32_t(C)), false, std::cout};
 template<color_bg C, logger_label L = log_label("user")>
-logger calog{highlighter(expand_label(L), uint32_t(C)), false, std::cout, log_all()};
+logger<std::ostream, std::ofstream> calog{highlighter(expand_label(L), uint32_t(C)), false, std::cout, log_all()};
 template<color_bg C, logger_label L = log_label("user")>
-inline logger celog{highlighter(expand_label(L), uint32_t(C)), true, std::cout, log_all(), log_err()};
+logger<std::ostream, std::ofstream, std::ofstream> celog{highlighter(expand_label(L), uint32_t(C)), true, std::cout, log_all(), log_err()};
 
 inline static auto& dlog = cclog<color_bg(31), log_label("debug")>;
 inline static auto& hlog = cclog<color_bg(59), log_label("hint")>;

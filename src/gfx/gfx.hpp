@@ -10,8 +10,8 @@
 #include <gfx/res.hpp>
 
 // Includes for gfx/gui:
-#include <gfx/gui/imgui/imconfig.h>
 #include <gfx/gui/gui.hpp>
+#include <gfx/gui/imgui/imconfig.h>
 
 // Includes for gfx/graphics:
 #include <gfx/graphics/binding_layout.hpp>
@@ -22,20 +22,20 @@
 #include <gfx/graphics/fence.hpp>
 #include <gfx/graphics/formats.hpp>
 #include <gfx/graphics/framebuffer.hpp>
-#include <gfx/graphics/pipeline.hpp>
 #include <gfx/graphics/host_buffer.hpp>
 #include <gfx/graphics/host_image.hpp>
 #include <gfx/graphics/image_view.hpp>
+#include <gfx/graphics/pipeline.hpp>
 #include <gfx/graphics/sampler.hpp>
 #include <gfx/graphics/shader.hpp>
 #include <gfx/graphics/swapchain.hpp>
 
 // Includes for gfx/data:
 #include <gfx/data/bvh.hpp>
+#include <gfx/data/flags.hpp>
 #include <gfx/data/gpu_data.hpp>
 #include <gfx/data/grid_line_space.hpp>
 #include <gfx/data/line_space.hpp>
-#include <gfx/data/flags.hpp>
 
 // Includes for gfx/file:
 #include <gfx/file/file.hpp>
