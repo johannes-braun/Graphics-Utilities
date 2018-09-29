@@ -19,7 +19,7 @@ constexpr vec<T, S>::vec(std::index_sequence<Is...>, const X* other) noexcept : 
 {}
 
 template<typename T, size_t S>
-constexpr vec<T, S>::vec() noexcept : vec(0)
+constexpr vec<T, S>::vec() noexcept : vec(T{})
 {}
 
 template<typename T, size_t S>
@@ -403,7 +403,7 @@ constexpr typename vec<T, S>::size_type vec<T, S>::size() const noexcept
 }
 
 template<typename T, size_t S>
-void vec<T, S>::fill(const T& value)
+constexpr void vec<T, S>::fill(const T& value)
 {
     std::fill_n(this->components, S, value);
 }
