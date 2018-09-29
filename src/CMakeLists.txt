@@ -19,7 +19,8 @@ target_link_libraries(gfx
 		assimp::assimp 
 		eigen::eigen 
 		vulkan::vulkan
-		soloud::soloud)
+		soloud::soloud
+		zeux::pugixml)
 target_compile_options(gfx PRIVATE ${compile_options})
 
 if(WIN32)
@@ -33,7 +34,8 @@ target_compile_definitions(gfx
     PUBLIC 
         GLFW_INCLUDE_NONE
         GLM_FORCE_RADIANS
-        GLM_ENABLE_EXPERIMENTAL)
+        GLM_ENABLE_EXPERIMENTAL
+		GLM_FORCE_PURE)
 
 if(MSVC)
     target_compile_definitions(gfx 

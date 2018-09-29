@@ -28,16 +28,15 @@ shader::shader(shader_type stage, const std::filesystem::path& path) : _stage(st
                 _path      = inc / combined;
                 path_valid = true;
             }
-            if (exists(inc / path)) {
+            else if (exists(inc / path)) {
                 text_file = inc / path;
                 if (enable_text && !path_valid) {
                     _format    = gfx::shader_format::text;
                     _path      = text_file;
                     path_valid = true;
-                    break;
                 }
-                if (path_valid) break;
             }
+            if (path_valid) break;
         }
 
     if (!path_valid) {

@@ -5,7 +5,7 @@
 namespace gfx {
 inline namespace v1 {
 namespace shader_includes {
-    inline std::vector<std::filesystem::path> directories = {"../shaders", "@PROJECT_SOURCE_DIR@/src/shaders", "@PROJECT_BINARY_DIR@/src/shaders"};
+    inline std::vector<std::filesystem::path> directories = {"../shaders", "@PROJECT_BINARY_DIR@/src/shaders", "@PROJECT_SOURCE_DIR@/src/shaders"};
 } // namespace shader_includes
 } // namespace v1
 } // namespace gfx
