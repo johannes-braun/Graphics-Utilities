@@ -1,60 +1,51 @@
+#include "vec.hpp"
+
 #include <gfx/gfx.hpp>
 
-struct transformation : gfx::ecs::component<transformation>
-{
-    gfx::transform transform;
-};
 
-struct rigid_body : gfx::ecs::component<rigid_body>
-{
-    glm::vec3 velocity;
-    glm::vec3 acceleration;
-    float     mass = 1.f;
-};
+volatile float x;
 
-struct s1 : gfx::ecs::system
+auto t0()
 {
-    s1()
+    const auto now = std::chrono::steady_clock::now();
+    for (int i = 0; i < 100000; ++i)
     {
-        add_component_type(rigid_body::id);
-        add_component_type(transformation::id);
+        gfx::vec<float, 3> vector1(10);
+        x = cross(vector1, vector1 * vector1)[2];
     }
-
-    virtual void update(double delta, gfx::ecs::component_base** components) const
+    return std::chrono::steady_clock::now() - now;
+}
+auto t1()
+{
+    const auto now = std::chrono::steady_clock::now();
+    for (int i = 0; i < 100000; ++i)
     {
-        rigid_body&     rb    = components[0]->as<rigid_body>();
-        transformation& trafo = components[1]->as<transformation>();
-
-        rb.velocity += delta * glm::vec3(0, -9.81f, 0) * rb.mass + delta * rb.acceleration;
-
-        const auto next          = trafo.transform.position + rb.velocity;
-        trafo.transform.position = next;
-        if (next.y < 0) {
-            rb.velocity                = -rb.velocity;
-            trafo.transform.position.y = 0;
-        }
+        glm::vec<3, float> vector1(10);
+        x = cross(vector1, vector1 * vector1)[2];
     }
-};
+    return std::chrono::steady_clock::now() - now;
+}
 
 int main()
 {
-    gfx::ecs::ecs    ecs;
-    gfx::ecs::unique_entity entity = ecs.create_entity_unique();
-    entity->add(transformation(), rigid_body());
-    entity->get<transformation>()->transform.position = {0, 20, 0};
-
-    s1                    gravity;
-    gfx::ecs::system_list physics;
-    physics.add(gravity);
-
-    while (true) {
-        auto n = std::chrono::steady_clock::now();
-        gfx::ilog << to_string(entity->get<transformation>()->transform.position);
-
-        ecs.update(0.01, physics);
-
-        using namespace std::chrono_literals;
-        while (std::chrono::steady_clock::now() - n < 10ms)
-            ;
+    {
+        long long avg = 0;
+        for (int i = 0; i < 100; ++i) avg += t0().count() / 100;
+        std::cout << avg << "ns\n";
     }
+
+    {
+        long long avg = 0;
+        for (int i = 0; i < 100; ++i) avg += t1().count() / 100;
+        std::cout << avg << "ns\n";
+    }
+
+    glm::vec4     test;
+    gfx::vec<float, 4> other = test;
+    test += other;
+
+    std::array<float, 4> arr{0};
+    gfx::vec<float, 4>   v(arr.data());
+
+    return 0;
 }
