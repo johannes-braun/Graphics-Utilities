@@ -10,7 +10,7 @@ namespace detail {
 template<typename T, size_t S>
 struct vec_components
 {
-    T components[S];
+    T components[S]{ 0 };
 };
 
 template<typename T>
@@ -30,7 +30,7 @@ struct vec_components<T, 1>
         {
             T u;
         };
-        T components[1];
+        T components[1]{ 0 };
     };
 };
 
@@ -51,7 +51,7 @@ struct vec_components<T, 2>
         {
             T u, v;
         };
-        T components[2];
+        T components[2]{ 0 };
     };
 };
 
@@ -72,7 +72,7 @@ struct vec_components<T, 3>
         {
             T u, v, w;
         };
-        T components[3];
+        T components[3]{ 0 };
     };
 };
 
@@ -339,8 +339,8 @@ namespace detail {
 template<typename UnaryConvertFun, typename T, size_t S, std::size_t... Is>
 constexpr auto apply_for_each_impl(std::index_sequence<Is...>, UnaryConvertFun&& fun) noexcept
 {
-    using return_type = decltype(fun());
-    return vec<return_type, S>((static_cast<void>(Is), fun())...);
+    using return_type = decltype(fun(size_t{}));
+    return vec<return_type, S>(fun(Is)...);
 }
 template<typename T, size_t S, typename UnaryConvertFun>
 constexpr auto apply_for_each(UnaryConvertFun&& fun) noexcept

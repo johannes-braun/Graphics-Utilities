@@ -6,24 +6,25 @@
 
 volatile float x;
 
+constexpr gfx::vec4 myvec(1.f, 1.f, 0.2f, 1.f);
+
 auto t0()
 {
+	gfx::vec4 dm1(1.f);
     const auto now = std::chrono::steady_clock::now();
-    for (int i = 0; i < 100000; ++i)
-    {
-		auto dm1 = transposed(gfx::identity<float, 4, 4>());
-
-		x = dm1[2][2];
+	for (int i = 0; i < 100000; ++i)
+	{
+		x = gfx::outer_prod(dm1, dm1)[1][1];
     }
     return std::chrono::steady_clock::now() - now;
 }
 auto t1()
 {
+		glm::vec4 dm1(1.f);
     const auto now = std::chrono::steady_clock::now();
-    for (int i = 0; i < 100000; ++i)
-    {
-		glm::mat4 a= transpose(glm::mat4(1.f));
-		x = a[2][2];
+	for (int i = 0; i < 100000; ++i)
+	{
+		x = glm::outerProduct(dm1, dm1)[1][1];
     }
     return std::chrono::steady_clock::now() - now;
 }
@@ -48,7 +49,11 @@ int main()
 
 	dm3 = std::floor(dm3);
 
+	auto xsaxca = det(gfx::diag<float, 4, 4>(2.f));
+
+	std::cout << xsaxca << "\n";
 	const auto mm = minmax_element(dm3);
+
 
     {
         long long avg = 0;
