@@ -14,42 +14,58 @@ auto t0()
     const auto now = std::chrono::steady_clock::now();
 	for (int i = 0; i < 100000; ++i)
 	{
-		x = gfx::outer_prod(dm1, dm1)[1][1];
+		x = transposed(inverse(gfx::outer_prod(dm1, dm1)))[1][1];
     }
     return std::chrono::steady_clock::now() - now;
 }
 auto t1()
 {
-		glm::vec4 dm1(1.f);
+	glm::vec4 dm1(1.f);
     const auto now = std::chrono::steady_clock::now();
 	for (int i = 0; i < 100000; ++i)
 	{
-		x = glm::outerProduct(dm1, dm1)[1][1];
+		x = transpose(inverse(glm::outerProduct(dm1, dm1)))[1][1];
     }
     return std::chrono::steady_clock::now() - now;
 }
 
+
+using T = float;
+constexpr auto S = 3;
+
 int main()
 {
+	constexpr float f = gfx::det(gfx::mat4(gfx::identity));
+	constexpr auto c = gfx::cols(gfx::mat4(8.f, gfx::diagonal));
+	const auto inv = gfx::inverse(gfx::mat4(2.f, gfx::diagonal));
+
+
+	constexpr auto so = sizeof(gfx::u8vec3);
+
+	gfx::mat<float, 7> mine(4.f, gfx::diagonal);
+	gfx::mat<float, 7> inve = gfx::inverse(mine);
+
+	const auto xscad = -8.f + (mine + inve);
+
 	using namespace std::complex_literals;
 	gfx::tcvec3<float> complex1_vec3(8.0+19i, 8i, 2i);
 	gfx::tcvec3<float> complex2_vec3(8i, 4i, 56i);
 
 	auto x = complex1_vec3.real();
 
-	auto dm1 = gfx::diag<float, 4, 4>(1.f);
+	auto dm1 = gfx::make_diag<float, 4, 4>(1.f);
 	auto dm2 = gfx::vec<float, 4>(1.f);
 	dm1[0][0] = 2.f;
 	dm1[1][1] = 2.f;
 	auto mul = dm1 * dm2;
 
-	auto dm3 = gfx::diag<float, 4, 4>(1.f);
+	auto dm3 = gfx::make_diag<float, 4, 4>(1.f);
 	dm3[0][1] = 5.22f;
 	transpose(dm3);
 
 	dm3 = std::floor(dm3);
 
-	auto xsaxca = det(gfx::diag<float, 4, 4>(2.f));
+	auto xsaxca = det(gfx::make_diag<float, 4, 4>(2.f));
 
 	std::cout << xsaxca << "\n";
 	const auto mm = minmax_element(dm3);

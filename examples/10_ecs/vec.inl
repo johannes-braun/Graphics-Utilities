@@ -83,90 +83,6 @@ constexpr vec<T, S>::operator glm::vec<S, T>&() noexcept
 }
 
 template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_add_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept
-{
-    return vec((s1[Is] + s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_sub_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept
-{
-    return vec((s1[Is] - s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_mul_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept
-{
-    return vec((s1[Is] * s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_div_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept
-{
-    return vec((s1[Is] / s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_mod_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept
-{
-    return vec((s1[Is] % s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_fmod_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept
-{
-    return vec(std::fmod(s1[Is], s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_add_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept
-{
-    return ((d[Is] += s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_sub_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept
-{
-    return ((d[Is] -= s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_mul_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept
-{
-    return ((d[Is] *= s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_div_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept
-{
-    return ((d[Is] /= s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_mod_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept
-{
-    return ((d[Is] %= s2[Is])...);
-}
-
-template<typename T, size_t S>
-template<std::size_t... Is>
-constexpr auto vec<T, S>::op_fmod_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept
-{
-    return ((d[Is] = std::fmod(d[Is], s2[Is]))...);
-}
-
-template<typename T, size_t S>
 template<typename X, size_t D, std::size_t... Is>
 constexpr vec<T, S>::vec(std::index_sequence<Is...>, const glm_interop_t&, const glm::vec<D, X>& other) noexcept
       : detail::vec_components<T, S>{static_cast<T>(other[Is])...}
@@ -189,7 +105,10 @@ constexpr vec<T, S>& vec<T, S>::operator+=(const vec& other) noexcept
     else if constexpr (S == 4)
         this->x op = other.x, this->y op = other.y, this->z op = other.z, this->w op = other.w;
     else
-        op_add_unroll_assign(std::make_index_sequence<S>(), this->components, other.components);
+		detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		val op = other;
+	});
 #undef op
     return *this;
 }
@@ -207,7 +126,10 @@ constexpr vec<T, S>& vec<T, S>::operator-=(const vec& other) noexcept
     else if constexpr (S == 4)
         this->x op = other.x, this->y op = other.y, this->z op = other.z, this->w op = other.w;
     else
-        op_sub_unroll_assign(std::make_index_sequence<S>(), this->components, other.components);
+		detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		val op = other;
+	});
 #undef op
     return *this;
 }
@@ -225,7 +147,10 @@ constexpr vec<T, S>& vec<T, S>::operator*=(const vec& other) noexcept
     else if constexpr (S == 4)
         this->x op = other.x, this->y op = other.y, this->z op = other.z, this->w op = other.w;
     else
-        op_mul_unroll_assign(std::make_index_sequence<S>(), this->components, other.components);
+		detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		val op = other;
+	});
 #undef op
     return *this;
 }
@@ -243,7 +168,10 @@ constexpr vec<T, S>& vec<T, S>::operator/=(const vec& other) noexcept
     else if constexpr (S == 4)
         this->x op = other.x, this->y op = other.y, this->z op = other.z, this->w op = other.w;
     else
-        op_div_unroll_assign(std::make_index_sequence<S>(), this->components, other.components);
+		detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		val op = other;
+	});
 #undef op
     return *this;
 }
@@ -263,7 +191,10 @@ constexpr vec<T, S>& vec<T, S>::operator%=(const vec& other) const noexcept
             this->x = std::fmod(this->x, other.x), this->y = std::fmod(this->y, other.y), this->z = std::fmod(this->z, other.z),
             this->w = std::fmod(this->w, other.w);
         else
-            op_fmod_unroll_assign(std::make_index_sequence<S>(), this->components, other.components);
+			detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+		{
+			val op = other;
+		});
     }
     else
     {
@@ -277,7 +208,10 @@ constexpr vec<T, S>& vec<T, S>::operator%=(const vec& other) const noexcept
         else if constexpr (S == 4)
             this->x op = other.x, this->y op = other.y, this->z op = other.z, this->w op = other.w;
         else
-            op_mod_unroll_assign(std::make_index_sequence<S>(), this->components, other.components);
+			detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+		{
+			val op = other;
+		});
 #undef op
     }
     return *this;
@@ -296,7 +230,10 @@ constexpr vec<T, S> vec<T, S>::operator+(const vec& other) const noexcept
     else if constexpr (S == 4)
         return vec(this->x op other.x, this->y op other.y, this->z op other.z, this->w op other.w);
     else
-        return op_add_unroll(std::make_index_sequence<S>(), this->components, other.components);
+		return detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		return val op other;
+	});
 #undef op
 }
 
@@ -313,7 +250,10 @@ constexpr vec<T, S> vec<T, S>::operator-(const vec& other) const noexcept
     else if constexpr (S == 4)
         return vec(this->x op other.x, this->y op other.y, this->z op other.z, this->w op other.w);
     else
-        return op_sub_unroll(std::make_index_sequence<S>(), this->components, other.components);
+		return detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		return val op other;
+	});
 #undef op
 }
 
@@ -330,7 +270,10 @@ constexpr vec<T, S> vec<T, S>::operator*(const vec& other) const noexcept
     else if constexpr (S == 4)
         return vec(this->x op other.x, this->y op other.y, this->z op other.z, this->w op other.w);
     else
-        return op_mul_unroll(std::make_index_sequence<S>(), this->components, other.components);
+		return detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		return val op other;
+	});
 #undef op
 }
 
@@ -347,7 +290,10 @@ constexpr vec<T, S> vec<T, S>::operator/(const vec& other) const noexcept
     else if constexpr (S == 4)
         return vec(this->x op other.x, this->y op other.y, this->z op other.z, this->w op other.w);
     else
-        return op_div_unroll(std::make_index_sequence<S>(), this->components, other.components);
+		return detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+	{
+		return val op other;
+	});
 #undef op
 }
 
@@ -365,7 +311,10 @@ constexpr vec<T, S> vec<T, S>::operator%(const vec& other) const noexcept
         else if constexpr (S == 4)
             return vec(std::fmod(this->x, other.x), std::fmod(this->y, other.y), std::fmod(this->z, other.z), std::fmod(this->w, other.w));
         else
-            return op_fmod_unroll(std::make_index_sequence<S>(), this->components, other.components);
+		    return detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+		    {
+			    return std::fmod(val, other);
+		    });
     }
     else
     {
@@ -379,9 +328,379 @@ constexpr vec<T, S> vec<T, S>::operator%(const vec& other) const noexcept
         else if constexpr (S == 4)
             return vec(this->x op other.x, this->y op other.y, this->z op other.z, this->w op other.w);
         else
-            return op_mod_unroll(std::make_index_sequence<S>(), this->components, other.components);
+			return detail::apply_for_each(*this, other, [](const auto& val, const auto& other)
+		    {
+			    return val op other;
+		    });
 #undef op
     }
+}
+
+
+
+template<typename T, size_t S>
+constexpr vec<T, S>& vec<T, S>::operator+=(const T& other) noexcept
+{
+#define op +
+	if constexpr (S == 1)
+		this->x op = other;
+	else if constexpr (S == 2)
+		this->x op = other, this->y op = other;
+	else if constexpr (S == 3)
+		this->x op = other, this->y op = other, this->z op = other;
+	else if constexpr (S == 4)
+		this->x op = other, this->y op = other, this->z op = other, this->w op = other;
+	else
+		detail::apply_for_each(*this, [&](auto& val)
+	{
+		val op = other;
+	});
+#undef op
+	return *this;
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S>& vec<T, S>::operator-=(const T& other) noexcept
+{
+#define op -
+	if constexpr (S == 1)
+		this->x op = other;
+	else if constexpr (S == 2)
+		this->x op = other, this->y op = other;
+	else if constexpr (S == 3)
+		this->x op = other, this->y op = other, this->z op = other;
+	else if constexpr (S == 4)
+		this->x op = other, this->y op = other, this->z op = other, this->w op = other;
+	else
+		detail::apply_for_each(*this, [&](auto& val)
+	{
+		val op = other;
+	});
+#undef op
+	return *this;
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S>& vec<T, S>::operator*=(const T& other) noexcept
+{
+#define op *
+	if constexpr (S == 1)
+		this->x op = other;
+	else if constexpr (S == 2)
+		this->x op = other, this->y op = other;
+	else if constexpr (S == 3)
+		this->x op = other, this->y op = other, this->z op = other;
+	else if constexpr (S == 4)
+		this->x op = other, this->y op = other, this->z op = other, this->w op = other;
+	else
+		detail::apply_for_each(*this, [&](auto& val)
+	{
+		val op = other;
+	});
+#undef op
+	return *this;
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S>& vec<T, S>::operator/=(const T& other) noexcept
+{
+#define op /
+	if constexpr (S == 1)
+		this->x op = other;
+	else if constexpr (S == 2)
+		this->x op = other, this->y op = other;
+	else if constexpr (S == 3)
+		this->x op = other, this->y op = other, this->z op = other;
+	else if constexpr (S == 4)
+		this->x op = other, this->y op = other, this->z op = other, this->w op = other;
+	else
+		detail::apply_for_each(*this, [&](auto& val)
+	{
+		val op = other;
+	});
+#undef op
+	return *this;
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S>& vec<T, S>::operator%=(const T& other) const noexcept
+{
+	if constexpr (std::is_floating_point_v<std::decay_t<T>>)
+	{
+		if constexpr (S == 1)
+			this->x = std::fmod(this->x, other);
+		else if constexpr (S == 2)
+			this->x = std::fmod(this->x, other), this->y = std::fmod(this->y, other);
+		else if constexpr (S == 3)
+			this->x = std::fmod(this->x, other), this->y = std::fmod(this->y, other), this->z = std::fmod(this->z, other);
+		else if constexpr (S == 4)
+			this->x = std::fmod(this->x, other), this->y = std::fmod(this->y, other), this->z = std::fmod(this->z, other),
+			this->w = std::fmod(this->w, other);
+		else
+			detail::apply_for_each(*this, [&](auto& val)
+		{
+			val = std::fmod(val, other);
+		});
+	}
+	else
+	{
+#define op %
+		if constexpr (S == 1)
+			this->x op = other;
+		else if constexpr (S == 2)
+			this->x op = other, this->y op = other;
+		else if constexpr (S == 3)
+			this->x op = other, this->y op = other, this->z op = other;
+		else if constexpr (S == 4)
+			this->x op = other, this->y op = other, this->z op = other, this->w op = other;
+		else
+			detail::apply_for_each(*this, [&](auto& val)
+		{
+			val op = other;
+		});
+#undef op
+	}
+	return *this;
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> vec<T, S>::operator+(const T& other) const noexcept
+{
+#define op +
+	if constexpr (S == 1)
+		return vec(this->x op other);
+	else if constexpr (S == 2)
+		return vec(this->x op other, this->y op other);
+	else if constexpr (S == 3)
+		return vec(this->x op other, this->y op other, this->z op other);
+	else if constexpr (S == 4)
+		return vec(this->x op other, this->y op other, this->z op other, this->w op other);
+	else
+		return detail::apply_for_each(*this, [&](const auto& val)
+	{
+		return val op other;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> vec<T, S>::operator-(const T& other) const noexcept
+{
+#define op -
+	if constexpr (S == 1)
+		return vec(this->x op other);
+	else if constexpr (S == 2)
+		return vec(this->x op other, this->y op other);
+	else if constexpr (S == 3)
+		return vec(this->x op other, this->y op other, this->z op other);
+	else if constexpr (S == 4)
+		return vec(this->x op other, this->y op other, this->z op other, this->w op other);
+	else
+		return detail::apply_for_each(*this, [&](const auto& val)
+	{
+		return val op other;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> vec<T, S>::operator*(const T& other) const noexcept
+{
+#define op *
+	if constexpr (S == 1)
+		return vec(this->x op other);
+	else if constexpr (S == 2)
+		return vec(this->x op other, this->y op other);
+	else if constexpr (S == 3)
+		return vec(this->x op other, this->y op other, this->z op other);
+	else if constexpr (S == 4)
+		return vec(this->x op other, this->y op other, this->z op other, this->w op other);
+	else
+		return detail::apply_for_each(*this, [&](const auto& val)
+	{
+		return val op other;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> vec<T, S>::operator/(const T& other) const noexcept
+{
+#define op /
+	if constexpr (S == 1)
+		return vec(this->x op other);
+	else if constexpr (S == 2)
+		return vec(this->x op other, this->y op other);
+	else if constexpr (S == 3)
+		return vec(this->x op other, this->y op other, this->z op other);
+	else if constexpr (S == 4)
+		return vec(this->x op other, this->y op other, this->z op other, this->w op other);
+	else
+		return detail::apply_for_each(*this, [&](const auto& val)
+	{
+		return val op other;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> vec<T, S>::operator%(const T& other) const noexcept
+{
+	if constexpr (std::is_floating_point_v<std::decay_t<T>>)
+	{
+		if constexpr (S == 1)
+			return vec(std::fmod(this->x, other));
+		else if constexpr (S == 2)
+			return vec(std::fmod(this->x, other), std::fmod(this->y, other));
+		else if constexpr (S == 3)
+			return vec(std::fmod(this->x, other), std::fmod(this->y, other), std::fmod(this->z, other));
+		else if constexpr (S == 4)
+			return vec(std::fmod(this->x, other), std::fmod(this->y, other), std::fmod(this->z, other), std::fmod(this->w, other));
+		else
+			return detail::apply_for_each(*this, [&](const auto& val)
+		{
+			return std::fmod(val, other);
+		});
+	}
+	else
+	{
+#define op %
+		if constexpr (S == 1)
+			return vec(this->x op other);
+		else if constexpr (S == 2)
+			return vec(this->x op other, this->y op other);
+		else if constexpr (S == 3)
+			return vec(this->x op other, this->y op other, this->z op other);
+		else if constexpr (S == 4)
+			return vec(this->x op other, this->y op other, this->z op other, this->w op other);
+		else
+			return detail::apply_for_each(*this, [&](const auto& val)
+		    {
+			    return val op other;
+		    });
+#undef op
+	}
+}
+
+
+
+template<typename T, size_t S>
+constexpr vec<T, S> operator+(const T& other, const vec<T, S>& v) noexcept
+{
+#define op +
+	if constexpr (S == 1)
+		return vec(other op this->x);
+	else if constexpr (S == 2)
+		return vec(other op v.x, other op v.y);
+	else if constexpr (S == 3)
+		return vec(other op v.x, other op v.y, other op v.z);
+	else if constexpr (S == 4)
+		return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+	else
+		return detail::apply_for_each(v, [&](const auto& val)
+	{
+		return val op other;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> operator-(const T& other, const vec<T, S>& v) noexcept
+{
+#define op -
+	if constexpr (S == 1)
+		return vec(other op v.x);
+	else if constexpr (S == 2)
+		return vec(other op v.x, other op v.y);
+	else if constexpr (S == 3)
+		return vec(other op v.x, other op v.y, other op v.z);
+	else if constexpr (S == 4)
+		return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+	else
+		return detail::apply_for_each(v, [&](const auto& val)
+	{
+		return other op val;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> operator*(const T& other, const vec<T, S>& v) noexcept
+{
+#define op *
+	if constexpr (S == 1)
+		return vec(other op v.x);
+	else if constexpr (S == 2)
+		return vec(other op v.x, other op v.y);
+	else if constexpr (S == 3)
+		return vec(other op v.x, other op v.y, other op v.z);
+	else if constexpr (S == 4)
+		return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+	else
+		return detail::apply_for_each(v, [&](const auto& val)
+	{
+		return other op val;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> operator/(const T& other, const vec<T, S>& v) noexcept
+{
+#define op /
+	if constexpr (S == 1)
+		return vec(other op v.x);
+	else if constexpr (S == 2)
+		return vec(other op v.x, other op v.y);
+	else if constexpr (S == 3)
+		return vec(other op v.x, other op v.y, other op v.z);
+	else if constexpr (S == 4)
+		return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+	else
+		return detail::apply_for_each(v, [&](const auto& val)
+	{
+		return other op val;
+	});
+#undef op
+}
+
+template<typename T, size_t S>
+constexpr vec<T, S> operator%(const T& other, const vec<T, S>& v) noexcept
+{
+	if constexpr (std::is_floating_point_v<std::decay_t<T>>)
+	{
+		if constexpr (S == 1)
+			return vec(std::fmod(v.x, other));
+		else if constexpr (S == 2)
+			return vec(std::fmod(v.x, other), std::fmod(v.y, other));
+		else if constexpr (S == 3)
+			return vec(std::fmod(v.x, other), std::fmod(v.y, other), std::fmod(v.z, other));
+		else if constexpr (S == 4)
+			return vec(std::fmod(v.x, other), std::fmod(v.y, other), std::fmod(v.z, other), std::fmod(v.w, other));
+		else
+			return detail::apply_for_each(v, [&](const auto& val)
+		{
+			return std::fmod(other, val);
+		});
+	}
+	else
+	{
+#define op %
+		if constexpr (S == 1)
+			return vec(other op v.x);
+		else if constexpr (S == 2)
+			return vec(other op v.x, other op v.y);
+		else if constexpr (S == 3)
+			return vec(other op v.x, other op v.y, other op v.z);
+		else if constexpr (S == 4)
+			return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+		else
+			return detail::apply_for_each(v, [&](const auto& val)
+		{
+			return other op val;
+		});
+#undef op
+	}
 }
 
 template<typename T, size_t S>

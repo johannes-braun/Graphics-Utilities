@@ -18,6 +18,7 @@ struct vec_components<T, 1>
 {
     union
     {
+		T components[1]{ 0 };
         struct
         {
             T x;
@@ -30,7 +31,6 @@ struct vec_components<T, 1>
         {
             T u;
         };
-        T components[1]{ 0 };
     };
 };
 
@@ -39,6 +39,7 @@ struct vec_components<T, 2>
 {
     union
     {
+		T components[2]{ 0 };
         struct
         {
             T x, y;
@@ -51,7 +52,6 @@ struct vec_components<T, 2>
         {
             T u, v;
         };
-        T components[2]{ 0 };
     };
 };
 
@@ -60,6 +60,7 @@ struct vec_components<T, 3>
 {
     union
     {
+		T components[3]{ 0 };
         struct
         {
             T x, y, z;
@@ -72,7 +73,6 @@ struct vec_components<T, 3>
         {
             T u, v, w;
         };
-        T components[3]{ 0 };
     };
 };
 
@@ -81,6 +81,7 @@ struct vec_components<T, 4>
 {
     union
     {
+		T components[4]{ 0 };
         struct
         {
             T x, y, z, w;
@@ -93,7 +94,6 @@ struct vec_components<T, 4>
         {
             T u, v, s, t;
         };
-        T components[4]{0};
     };
 };
 
@@ -205,6 +205,8 @@ public:
 
     constexpr operator vec_tuple_t<vec>&() noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
     constexpr operator const vec_tuple_t<vec>&() noexcept { return reinterpret_cast<const vec_tuple_t<vec>&>(*this); }
+    constexpr vec_tuple_t<vec>& tuple() noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
+	constexpr const vec_tuple_t<vec>& tuple() const noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
 
     constexpr vec(const glm::vec<S, T>& v) noexcept;
 
@@ -220,6 +222,18 @@ public:
     constexpr vec operator/(const vec& other) const noexcept;
     constexpr vec operator%(const vec& other) const noexcept;
 
+	constexpr vec& operator+=(const T& other) noexcept;
+	constexpr vec& operator-=(const T& other) noexcept;
+	constexpr vec& operator*=(const T& other) noexcept;
+	constexpr vec& operator/=(const T& other) noexcept;
+	constexpr vec& operator%=(const T& other) const noexcept;
+
+	constexpr vec operator+(const T& other) const noexcept;
+	constexpr vec operator-(const T& other) const noexcept;
+	constexpr vec operator*(const T& other) const noexcept;
+	constexpr vec operator/(const T& other) const noexcept;
+	constexpr vec operator%(const T& other) const noexcept;
+
 private:
     constexpr static struct glm_interop_t
     {
@@ -233,31 +247,6 @@ private:
     explicit constexpr vec(std::index_sequence<Is...>, const X* other) noexcept;
     template<typename X, size_type D, std::size_t... Is>
     explicit constexpr vec(std::index_sequence<Is...>, const glm_interop_t&, const glm::vec<D, X>& other) noexcept;
-
-    template<std::size_t... Is>
-    constexpr static auto op_add_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_sub_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_mul_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_div_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_mod_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_fmod_unroll(std::index_sequence<Is...>, const_pointer s1, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_add_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_sub_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_mul_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_div_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_mod_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept;
-    template<std::size_t... Is>
-    constexpr static auto op_fmod_unroll_assign(std::index_sequence<Is...>, pointer d, const_pointer s2) noexcept;
 };
 
 template<typename T>
@@ -360,6 +349,17 @@ constexpr auto apply_for_each(const vec<T, S>& vector, UnaryConvertFun&& fun) no
     return apply_for_each_impl(std::make_index_sequence<S>{}, vector, fun);
 }
 template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
+constexpr auto apply_for_each_impl(std::index_sequence<Is...>, vec<T, S>& vector, UnaryConvertFun&& fun) noexcept
+{
+	using return_type = decltype(fun(vector.components[0]));
+	return vec<return_type, S>(fun(vector.components[Is])...);
+}
+template<typename UnaryConvertFun, typename T, size_t S>
+constexpr auto apply_for_each(vec<T, S>& vector, UnaryConvertFun&& fun) noexcept
+{
+	return apply_for_each_impl(std::make_index_sequence<S>{}, vector, fun);
+}
+template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
 constexpr auto apply_for_each_impl(std::index_sequence<Is...>, const vec<T, S>& vector1, const vec<T, S>& vector2,
                                    UnaryConvertFun&& fun) noexcept
 {
@@ -371,6 +371,21 @@ constexpr auto apply_for_each(const vec<T, S>& vector1, const vec<T, S>& vector2
 {
     return apply_for_each_impl(std::make_index_sequence<S>{}, vector1, vector2, fun);
 }
+
+
+template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
+constexpr auto apply_for_each_impl(std::index_sequence<Is...>, vec<T, S>& vector1, const vec<T, S>& vector2,
+	UnaryConvertFun&& fun) noexcept
+{
+	using return_type = decltype(fun(vector1.components[0], vector2.components[0]));
+	return vec<return_type, S>(fun(vector1.components[Is], vector2.components[Is])...);
+}
+template<typename UnaryConvertFun, typename T, size_t S>
+constexpr auto apply_for_each(vec<T, S>& vector1, const vec<T, S>& vector2, UnaryConvertFun&& fun) noexcept
+{
+	return apply_for_each_impl(std::make_index_sequence<S>{}, vector1, vector2, fun);
+}
+
 template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
 constexpr auto apply_for_each_impl(std::index_sequence<Is...>, const vec<T, S>& vector1, const vec<T, S>& vector2, const vec<T, S>& vector3,
                                    UnaryConvertFun&& fun) noexcept
