@@ -49,13 +49,13 @@ constexpr vec<T, S>::vec(Ts&&... ts) noexcept : detail::vec_components<T, S>{sta
 template<typename T, size_t S>
 constexpr typename vec<T, S>::reference vec<T, S>::at(size_type index)
 {
-    return detail::vec_components<T, S>::components.at(index);
+    return detail::vec_components<T, S>::components[index];
 }
 
 template<typename T, size_t S>
 constexpr typename vec<T, S>::const_reference vec<T, S>::at(size_type index) const
 {
-    return detail::vec_components<T, S>::components.at(index);
+    return detail::vec_components<T, S>::components[index];
 }
 
 template<typename T, size_t S>
@@ -91,7 +91,7 @@ constexpr vec<T, S>::vec(std::index_sequence<Is...>, const glm_interop_t&, const
 template<typename T, size_t S>
 constexpr vec<T, S>::vec(const glm::vec<S, T>& v) noexcept : vec(std::make_index_sequence<S>{}, glm_interop, v)
 {}
-
+/*
 template<typename T, size_t S>
 constexpr vec<T, S>& vec<T, S>::operator+=(const vec& other) noexcept
 {
@@ -629,13 +629,13 @@ constexpr vec<T, S> operator*(const T& other, const vec<T, S>& v) noexcept
 {
 #define op *
 	if constexpr (S == 1)
-		return vec(other op v.x);
+		return vec<T, S>(other op v.x);
 	else if constexpr (S == 2)
-		return vec(other op v.x, other op v.y);
+		return vec<T, S>(other op v.x, other op v.y);
 	else if constexpr (S == 3)
-		return vec(other op v.x, other op v.y, other op v.z);
+		return vec<T, S>(other op v.x, other op v.y, other op v.z);
 	else if constexpr (S == 4)
-		return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+		return vec<T, S>(other op v.x, other op v.y, other op v.z, other op v.w);
 	else
 		return detail::apply_for_each(v, [&](const auto& val)
 	{
@@ -649,13 +649,13 @@ constexpr vec<T, S> operator/(const T& other, const vec<T, S>& v) noexcept
 {
 #define op /
 	if constexpr (S == 1)
-		return vec(other op v.x);
+		return vec<T, S>(other op v.x);
 	else if constexpr (S == 2)
-		return vec(other op v.x, other op v.y);
+		return vec<T, S>(other op v.x, other op v.y);
 	else if constexpr (S == 3)
-		return vec(other op v.x, other op v.y, other op v.z);
+		return vec<T, S>(other op v.x, other op v.y, other op v.z);
 	else if constexpr (S == 4)
-		return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+		return vec<T, S>(other op v.x, other op v.y, other op v.z, other op v.w);
 	else
 		return detail::apply_for_each(v, [&](const auto& val)
 	{
@@ -670,13 +670,13 @@ constexpr vec<T, S> operator%(const T& other, const vec<T, S>& v) noexcept
 	if constexpr (std::is_floating_point_v<std::decay_t<T>>)
 	{
 		if constexpr (S == 1)
-			return vec(std::fmod(v.x, other));
+			return vec<T, S>(std::fmod(v.x, other));
 		else if constexpr (S == 2)
-			return vec(std::fmod(v.x, other), std::fmod(v.y, other));
+			return vec<T, S>(std::fmod(v.x, other), std::fmod(v.y, other));
 		else if constexpr (S == 3)
-			return vec(std::fmod(v.x, other), std::fmod(v.y, other), std::fmod(v.z, other));
+			return vec<T, S>(std::fmod(v.x, other), std::fmod(v.y, other), std::fmod(v.z, other));
 		else if constexpr (S == 4)
-			return vec(std::fmod(v.x, other), std::fmod(v.y, other), std::fmod(v.z, other), std::fmod(v.w, other));
+			return vec<T, S>(std::fmod(v.x, other), std::fmod(v.y, other), std::fmod(v.z, other), std::fmod(v.w, other));
 		else
 			return detail::apply_for_each(v, [&](const auto& val)
 		{
@@ -687,13 +687,13 @@ constexpr vec<T, S> operator%(const T& other, const vec<T, S>& v) noexcept
 	{
 #define op %
 		if constexpr (S == 1)
-			return vec(other op v.x);
+			return vec<T, S>(other op v.x);
 		else if constexpr (S == 2)
-			return vec(other op v.x, other op v.y);
+			return vec<T, S>(other op v.x, other op v.y);
 		else if constexpr (S == 3)
-			return vec(other op v.x, other op v.y, other op v.z);
+			return vec<T, S>(other op v.x, other op v.y, other op v.z);
 		else if constexpr (S == 4)
-			return vec(other op v.x, other op v.y, other op v.z, other op v.w);
+			return vec<T, S>(other op v.x, other op v.y, other op v.z, other op v.w);
 		else
 			return detail::apply_for_each(v, [&](const auto& val)
 		{
@@ -702,7 +702,7 @@ constexpr vec<T, S> operator%(const T& other, const vec<T, S>& v) noexcept
 #undef op
 	}
 }
-
+*/
 template<typename T, size_t S>
 constexpr typename vec<T, S>::pointer vec<T, S>::data() noexcept
 {

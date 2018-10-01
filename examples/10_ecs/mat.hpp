@@ -51,137 +51,25 @@ namespace gfx {
 			{
 			}
 
+			template<size_t X, size_t Y>
+			constexpr mat(const mat<T, X, Y>& m)
+				: mat(m.sub<T, SizeMajor, SizeMinor>(0, 0, std::min(X, SizeMajor), std::min(Y, SizeMinor)))
+			{
+			}
+
 			constexpr static size_t rows() noexcept { return SizeMinor; }
 			constexpr static size_t cols() noexcept { return SizeMajor; }
 
 			template<typename X, size_t Maj, size_t Min>
-			constexpr mat<X, Maj, Min> sub(size_t offset_maj, size_t offset_min)
+			constexpr mat<X, Maj, Min> sub(size_t offset_maj, size_t offset_min, size_t copy_range_maj, size_t copy_range_min) const
 			{
 				mat<X, Maj, Min> m;
-				for (auto maj = offset_maj; maj < offset_maj + Maj; ++maj)
-					for (auto min = offset_min; min < offset_min + Min; ++min) m[maj - offset_maj][min - offset_min] = (*this)[maj][min];
+				for (auto maj = offset_maj; maj < offset_maj + copy_range_maj; ++maj)
+					for (auto min = offset_min; min < offset_min + copy_range_min; ++min) m[maj - offset_maj][min - offset_min] = (*this)[maj][min];
 				return m;
 			}
-
-			constexpr mat operator+(const mat& other) const noexcept
-			{
-				return nested_vector_type::operator+(other);
-			}
-			constexpr mat operator-(const mat& other) const noexcept
-			{
-				return nested_vector_type::operator-(other);
-			}
-			constexpr mat operator*(const mat& other) const noexcept
-			{
-				return nested_vector_type::operator*(other);
-			}
-			constexpr mat operator/(const mat& other) const noexcept
-			{
-				return nested_vector_type::operator/(other);
-			}
-			constexpr mat operator%(const mat& other) const noexcept
-			{
-				return nested_vector_type::operator%(other);
-			}
-			constexpr mat& operator+=(const mat& other) noexcept
-			{
-				return nested_vector_type::operator+=(other);
-			}
-			constexpr mat& operator-=(const mat& other) noexcept
-			{
-				return nested_vector_type::operator-=(other);
-			}
-			constexpr mat& operator*=(const mat& other) noexcept
-			{
-				return nested_vector_type::operator*=(other);
-			}
-			constexpr mat& operator/=(const mat& other) noexcept
-			{
-				return nested_vector_type::operator/=(other);
-			}
-			constexpr mat& operator%=(const mat& other) noexcept
-			{
-				return nested_vector_type::operator%=(other);
-			}
-
-			constexpr mat& operator+=(const T& other) noexcept
-			{
-			    detail::apply_for_each(*this, [&](auto& val)
-			    {
-					val += other;
-				});
-				return *this;
-			}
-			constexpr mat& operator-=(const T& other) noexcept
-			{
-				detail::apply_for_each(*this, [&](auto& val)
-				{
-					val -= other;
-				});
-				return *this;
-			}
-			constexpr mat& operator*=(const T& other) noexcept
-			{
-				detail::apply_for_each(*this, [&](auto& val)
-				{
-					val *= other;
-				});
-				return *this;
-			}
-			constexpr mat& operator/=(const T& other) noexcept
-			{
-				detail::apply_for_each(*this, [&](auto& val)
-				{
-					val /= other;
-				});
-				return *this;
-			}
-			constexpr mat& operator%=(const T& other) const noexcept
-			{
-				detail::apply_for_each(*this, [&](auto& val)
-				{
-					val %= other;
-				});
-				return *this;
-			}
-
-			constexpr mat operator+(const T& other) const noexcept
-			{
-				return detail::apply_for_each(*this, [&](auto& val)
-				{
-					return val + other;
-				});
-			}
-			constexpr mat operator-(const T& other) const noexcept
-			{
-				return detail::apply_for_each(*this, [&](auto& val)
-				{
-					return val - other;
-				});
-			}
-			constexpr mat operator*(const T& other) const noexcept
-			{
-				return detail::apply_for_each(*this, [&](auto& val)
-				{
-					return val * other;
-				});
-			}
-			constexpr mat operator/(const T& other) const noexcept
-			{
-				return detail::apply_for_each(*this, [&](auto& val)
-				{
-					return val / other;
-				});
-			}
-			constexpr mat operator%(const T& other) const noexcept
-			{
-				return detail::apply_for_each(*this, [&](auto& val)
-				{
-					return val % other;
-				});
-			}
 		};
-
+		/*
 		template<typename T, size_t Maj, size_t Min>
 		constexpr mat<T, Maj, Min> operator+(const T& other, const mat<T, Maj, Min>& mat) noexcept
 		{
@@ -221,8 +109,7 @@ namespace gfx {
 			{
 				return other % val;
 			});
-		}
-
+		}*/
 
 		using mat4 = mat<float, 4>;
 		using mat3 = mat<float, 3>;
@@ -284,6 +171,7 @@ namespace gfx {
 }
 
 #include "mat/mat_apply.inl"
+#include "mat/mat_ops.inl"
 #include "mat/mat_get.inl"
 #include "mat/mat_make.inl"
 #include "mat/mat_det.inl"

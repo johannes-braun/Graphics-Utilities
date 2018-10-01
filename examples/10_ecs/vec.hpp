@@ -175,20 +175,33 @@ public:
     explicit constexpr vec(Ts&&... ts) noexcept;
 
 private:
-    template<std::size_t... Is, typename UnaryConvertFun>
-    constexpr auto convert_unary_imag_real(std::index_sequence<Is...>, UnaryConvertFun&& fun) const noexcept
-    {
-        return vec<real_imag_type, S>(fun(this->components[Is])...);
-    }
+	template<std::size_t... Is, typename UnaryConvertFun>
+	constexpr auto apply(std::index_sequence<Is...>, UnaryConvertFun&& fun) const noexcept
+	{
+		using type = decltype(fun(this->components[0]));
+		if constexpr (std::is_same_v< type, void>)
+			(fun(this->components[Is]), ...);
+		else
+			return vec<type, S>(fun(this->components[Is])...);
+	}
+	template<std::size_t... Is, typename UnaryConvertFun>
+	constexpr auto apply(std::index_sequence<Is...>, const vec& other, UnaryConvertFun&& fun) const noexcept
+	{
+		using type = decltype(fun(this->components[0], other.components[0]));
+		if constexpr (std::is_same_v<type, void>)
+			(fun(this->components[Is], other.components[Is]), ...);
+		else
+			return vec<type, S>(fun(this->components[Is], other.components[Is])...);
+	}
 
 public:
     constexpr vec<real_imag_type, S> real() const noexcept
     {
-        return convert_unary_imag_real(std::make_index_sequence<S>{}, [](const auto& x) { return std::real(x); });
+        return apply(std::make_index_sequence<S>{}, [](const auto& x) { return std::real(x); });
     }
     constexpr vec<real_imag_type, S> imag() const noexcept
     {
-        return convert_unary_imag_real(std::make_index_sequence<S>{}, [](const auto& x) { return std::real(x); });
+        return apply(std::make_index_sequence<S>{}, [](const auto& x) { return std::real(x); });
     }
 
     constexpr reference       at(size_type index);
@@ -209,7 +222,7 @@ public:
 	constexpr const vec_tuple_t<vec>& tuple() const noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
 
     constexpr vec(const glm::vec<S, T>& v) noexcept;
-
+/*
     constexpr vec& operator+=(const vec& other) noexcept;
     constexpr vec& operator-=(const vec& other) noexcept;
     constexpr vec& operator*=(const vec& other) noexcept;
@@ -233,6 +246,51 @@ public:
 	constexpr vec operator*(const T& other) const noexcept;
 	constexpr vec operator/(const T& other) const noexcept;
 	constexpr vec operator%(const T& other) const noexcept;
+	template<typename = decltype(-std::declval<T>())>
+	constexpr vec operator-() const noexcept
+	{
+		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return -x; });
+	}
+	template<typename = decltype(+std::declval<T>())>
+	constexpr vec operator+() const noexcept
+	{
+		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return +x; });
+	}
+	template<typename = decltype(~std::declval<T>())>
+	constexpr vec operator~() const noexcept
+	{
+		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return ~x; });
+	}
+	template<typename = decltype(!std::declval<T>())>
+	constexpr vec operator!() const noexcept
+	{
+		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return !x; });
+	}
+
+	template<typename = decltype(++std::declval<T>())>
+	constexpr vec& operator++() const noexcept
+	{
+		apply(std::make_index_sequence<S>{}, [](const auto& x) { ++x; });
+		return *this;
+	}
+	template<typename = decltype(--std::declval<T>())>
+	constexpr vec& operator--() const noexcept
+	{
+		apply(std::make_index_sequence<S>{}, [](const auto& x) { --x; });
+		return *this;
+	}
+
+	template<typename = decltype(std::declval<T>()++)>
+	constexpr vec operator++(int) const noexcept
+	{
+		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return x++; });
+	}
+	template<typename = decltype(std::declval<T>()--)>
+	constexpr vec& operator--(int) const noexcept
+	{
+		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return x--; });
+	}
+*/
 
 private:
     constexpr static struct glm_interop_t
@@ -771,3 +829,4 @@ using std::tanh;
 }    // namespace v1
 }    // namespace gfx
 #include "vec.inl"
+#include "vec_ops.inl"

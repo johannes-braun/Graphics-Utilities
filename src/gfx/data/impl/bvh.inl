@@ -168,7 +168,7 @@ namespace gfx
             glm::vec2& barycentric,
             float& t)
     {
-        using namespace glm;
+        using glm::vec3;
         float float_epsilon = 1e-23f;
         float border_epsilon = 1e-6f;
 

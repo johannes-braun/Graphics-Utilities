@@ -1,5 +1,6 @@
 #include "vec.hpp"
 #include "mat.hpp"
+#include "quat.hpp"
 
 #include <gfx/gfx.hpp>
 
@@ -29,21 +30,32 @@ auto t1()
     return std::chrono::steady_clock::now() - now;
 }
 
-
-using T = float;
-constexpr auto S = 3;
-
 int main()
 {
-	constexpr float f = gfx::det(gfx::mat4(gfx::identity));
-	constexpr auto c = gfx::cols(gfx::mat4(8.f, gfx::diagonal));
+	const float f = gfx::det(gfx::mat4(gfx::identity));
+	const auto c = gfx::cols(gfx::mat4(8.f, gfx::diagonal));
 	const auto inv = gfx::inverse(gfx::mat4(2.f, gfx::diagonal));
 
+	gfx::quat quat(gfx::to_rad(90), gfx::vec3(1, 0, 0));
+	const auto iq = inverse(quat) * gfx::vec3(0, 0, 1);
 
 	constexpr auto so = sizeof(gfx::u8vec3);
 
-	gfx::mat<float, 7> mine(4.f, gfx::diagonal);
+	gfx::vec3 larger(1.f, 4.f, 9.f);
+	gfx::vec3 smaller(0.2f, 89.1f, 4.f);
+
+	auto xaxax = larger > smaller;
+	const auto comp = all_of(xaxax);
+
+	gfx::mat<float, 7> mine(gfx::mat4(8.f, gfx::diagonal));
 	gfx::mat<float, 7> inve = gfx::inverse(mine);
+
+	gfx::vec<bool, 3> vasdc(true, false, false);
+	vasdc == gfx::vec<bool, 3>(false, false, true);
+
+
+
+	gfx::mat4 trafo = gfx::as_mat(quat);
 
 	const auto xscad = -8.f + (mine + inve);
 

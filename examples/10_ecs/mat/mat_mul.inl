@@ -24,6 +24,16 @@ namespace gfx
 			});
 			return reinterpret_cast<const vec<T, SizeMinorA>&>(result);
 		}
+		template<typename T, size_t SizeMajorA, size_t SizeMinorA, size_t SizeMajorB>
+		constexpr mat<T, SizeMajorB, SizeMinorA> operator/(const mat<T, SizeMajorA, SizeMinorA>& a, const mat<T, SizeMajorB, SizeMajorA>& b) noexcept
+		{
+			return a * inverse(b);
+		}
+		template<typename T, size_t SizeMajorA, size_t SizeMinorA>
+		constexpr vec<T, SizeMinorA> operator*(const vec<T, SizeMajorA>& b, const mat<T, SizeMajorA, SizeMinorA>& a) noexcept
+		{
+			return inverse(a) * b;
+		}
 
 		template<typename T, size_t A, size_t B>
 		constexpr auto outer_prod(const vec<T, A>& a, const vec<T, B>& b) noexcept
