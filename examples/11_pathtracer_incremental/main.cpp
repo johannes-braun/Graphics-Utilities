@@ -104,13 +104,13 @@ void executable::run()
 
     std::uniform_real_distribution<float> dist;
     mesh_handle                           bunny = meshes.allocate_meshes(res.scenes["bunny.dae"])[0];
-    for (float f = -10.f; f <= 10.f; f += 5.f)
-        for (float c = -10.f; c <= 10.f; c += 5.f)
+    for (float f = -10.f; f <= 10.f; f += 11.f)
+        for (float c = -10.f; c <= 10.f; c += 11.f)
             meshes.add_instance(bunny, gfx::transform(glm::vec3(f, 0, c), glm::vec3(1)), glm::vec4(dist(gen), dist(gen), dist(gen), 1.f),
                                 0.4f, 0.3f);
-    meshes.add_instance(meshes.allocate_meshes(res.scenes["floor.dae"])[0],
-                        {{0, -0.5f, 0}, glm::vec3(1), glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))}, glm::vec4(1, 0, 0, 1), 0.2f,
-                        0.7f);
+    meshes.add_instance(meshes.allocate_meshes(res.scenes["bdy07_armature.dae"])[0],
+                        {{0, -0.5f, 0}, glm::vec3(1), glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))}, glm::vec4(1, 1, 1, 1), 0.5f,
+                        0.3f);
 
     gfx::hbuffer<helper_info> helper_info_buffer(1);
     std::vector<gfx::binding_set>         trace_sets;

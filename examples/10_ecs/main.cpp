@@ -47,15 +47,17 @@ int main()
 	auto xaxax = larger > smaller;
 	const auto comp = all_of(xaxax);
 
+	gfx::mat<uint32_t, 16> flagmat1(0xff1, gfx::diagonal);
+	gfx::mat<uint32_t, 16> flagmat2(0xf001f, gfx::diagonal);
+	const auto a = flagmat1 << 1u;
+
 	gfx::mat<float, 7> mine(gfx::mat4(8.f, gfx::diagonal));
 	gfx::mat<float, 7> inve = gfx::inverse(mine);
 
 	gfx::vec<bool, 3> vasdc(true, false, false);
-	vasdc == gfx::vec<bool, 3>(false, false, true);
-
-
-
-	gfx::mat4 trafo = gfx::as_mat(quat);
+	const auto asgad = vasdc == gfx::vec<bool, 3>(false, false, true);
+	
+	gfx::mat4 trafo = gfx::to_mat(quat);
 
 	const auto xscad = -8.f + (mine + inve);
 
@@ -94,10 +96,6 @@ int main()
         for (int i = 0; i < 100; ++i) avg += t1().count() / 100;
         std::cout << avg << "ns\n";
     }
-
-    glm::vec4     test;
-    gfx::vec<float, 4> other = test;
-    test += other;
 
     gfx::vec<float, 4> nv{1, 1, 1, 0};
     nv = normalize(nv);

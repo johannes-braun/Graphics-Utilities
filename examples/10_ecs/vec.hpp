@@ -2,11 +2,12 @@
 
 #include <array>
 #include <complex>
-#include <glm/glm.hpp>
 
 namespace gfx {
 inline namespace v1 {
 namespace detail {
+	constexpr size_t max_static_vector_size = 24;
+
 template<typename T, size_t S>
 struct vec_components
 {
@@ -176,33 +177,13 @@ public:
 
 private:
 	template<std::size_t... Is, typename UnaryConvertFun>
-	constexpr auto apply(std::index_sequence<Is...>, UnaryConvertFun&& fun) const noexcept
-	{
-		using type = decltype(fun(this->components[0]));
-		if constexpr (std::is_same_v< type, void>)
-			(fun(this->components[Is]), ...);
-		else
-			return vec<type, S>(fun(this->components[Is])...);
-	}
+	constexpr auto apply(std::index_sequence<Is...>, UnaryConvertFun&& fun) const noexcept;
 	template<std::size_t... Is, typename UnaryConvertFun>
-	constexpr auto apply(std::index_sequence<Is...>, const vec& other, UnaryConvertFun&& fun) const noexcept
-	{
-		using type = decltype(fun(this->components[0], other.components[0]));
-		if constexpr (std::is_same_v<type, void>)
-			(fun(this->components[Is], other.components[Is]), ...);
-		else
-			return vec<type, S>(fun(this->components[Is], other.components[Is])...);
-	}
+	constexpr auto apply(std::index_sequence<Is...>, const vec& other, UnaryConvertFun&& fun) const noexcept;
 
 public:
-    constexpr vec<real_imag_type, S> real() const noexcept
-    {
-        return apply(std::make_index_sequence<S>{}, [](const auto& x) { return std::real(x); });
-    }
-    constexpr vec<real_imag_type, S> imag() const noexcept
-    {
-        return apply(std::make_index_sequence<S>{}, [](const auto& x) { return std::real(x); });
-    }
+	constexpr vec<real_imag_type, S> real() const noexcept;
+	constexpr vec<real_imag_type, S> imag() const noexcept;
 
     constexpr reference       at(size_type index);
     constexpr const_reference at(size_type index) const;
@@ -212,90 +193,13 @@ public:
     constexpr const_pointer   data() const noexcept;
     constexpr size_type       size() const noexcept;
     constexpr void            fill(const T& value);
-
-    constexpr operator const glm::vec<S, T>&() const noexcept;
-    constexpr operator glm::vec<S, T>&() noexcept;
-
+	
     constexpr operator vec_tuple_t<vec>&() noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
     constexpr operator const vec_tuple_t<vec>&() noexcept { return reinterpret_cast<const vec_tuple_t<vec>&>(*this); }
     constexpr vec_tuple_t<vec>& tuple() noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
 	constexpr const vec_tuple_t<vec>& tuple() const noexcept { return reinterpret_cast<vec_tuple_t<vec>&>(*this); }
-
-    constexpr vec(const glm::vec<S, T>& v) noexcept;
-/*
-    constexpr vec& operator+=(const vec& other) noexcept;
-    constexpr vec& operator-=(const vec& other) noexcept;
-    constexpr vec& operator*=(const vec& other) noexcept;
-    constexpr vec& operator/=(const vec& other) noexcept;
-    constexpr vec& operator%=(const vec& other) const noexcept;
-
-    constexpr vec operator+(const vec& other) const noexcept;
-    constexpr vec operator-(const vec& other) const noexcept;
-    constexpr vec operator*(const vec& other) const noexcept;
-    constexpr vec operator/(const vec& other) const noexcept;
-    constexpr vec operator%(const vec& other) const noexcept;
-
-	constexpr vec& operator+=(const T& other) noexcept;
-	constexpr vec& operator-=(const T& other) noexcept;
-	constexpr vec& operator*=(const T& other) noexcept;
-	constexpr vec& operator/=(const T& other) noexcept;
-	constexpr vec& operator%=(const T& other) const noexcept;
-
-	constexpr vec operator+(const T& other) const noexcept;
-	constexpr vec operator-(const T& other) const noexcept;
-	constexpr vec operator*(const T& other) const noexcept;
-	constexpr vec operator/(const T& other) const noexcept;
-	constexpr vec operator%(const T& other) const noexcept;
-	template<typename = decltype(-std::declval<T>())>
-	constexpr vec operator-() const noexcept
-	{
-		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return -x; });
-	}
-	template<typename = decltype(+std::declval<T>())>
-	constexpr vec operator+() const noexcept
-	{
-		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return +x; });
-	}
-	template<typename = decltype(~std::declval<T>())>
-	constexpr vec operator~() const noexcept
-	{
-		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return ~x; });
-	}
-	template<typename = decltype(!std::declval<T>())>
-	constexpr vec operator!() const noexcept
-	{
-		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return !x; });
-	}
-
-	template<typename = decltype(++std::declval<T>())>
-	constexpr vec& operator++() const noexcept
-	{
-		apply(std::make_index_sequence<S>{}, [](const auto& x) { ++x; });
-		return *this;
-	}
-	template<typename = decltype(--std::declval<T>())>
-	constexpr vec& operator--() const noexcept
-	{
-		apply(std::make_index_sequence<S>{}, [](const auto& x) { --x; });
-		return *this;
-	}
-
-	template<typename = decltype(std::declval<T>()++)>
-	constexpr vec operator++(int) const noexcept
-	{
-		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return x++; });
-	}
-	template<typename = decltype(std::declval<T>()--)>
-	constexpr vec& operator--(int) const noexcept
-	{
-		return apply(std::make_index_sequence<S>{}, [](const auto& x) { return x--; });
-	}
-*/
-
+	
 private:
-    constexpr static struct glm_interop_t
-    {
-    } glm_interop = {};
 
     template<std::size_t... Is>
     explicit constexpr vec(std::index_sequence<Is...>, T&& value) noexcept;
@@ -303,8 +207,6 @@ private:
     explicit constexpr vec(std::index_sequence<Is...>, const vec<X, D>& other) noexcept;
     template<typename X, std::size_t... Is>
     explicit constexpr vec(std::index_sequence<Is...>, const X* other) noexcept;
-    template<typename X, size_type D, std::size_t... Is>
-    explicit constexpr vec(std::index_sequence<Is...>, const glm_interop_t&, const glm::vec<D, X>& other) noexcept;
 };
 
 template<typename T>
@@ -366,467 +268,31 @@ using u16vec2 = tvec2<uint16_t>;
 using u16vec3 = tvec3<uint16_t>;
 using u16vec4 = tvec4<uint16_t>;
 
-template<typename T, std::size_t... Is>
-constexpr T dot_impl(std::index_sequence<Is...>, const T* s1, const T* s2) noexcept
-{
-    return ((s1[Is] * s2[Is]) + ...);
-}
 template<typename T, size_t S>
-constexpr T dot(const vec<T, S>& a, const vec<T, S>& b) noexcept
-{
-    return dot_impl(std::make_index_sequence<S>(), a.components, b.components);
-}
+constexpr T dot(const vec<T, S>& a, const vec<T, S>& b) noexcept;
 template<typename T, size_t S>
-constexpr auto length(const vec<T, S>& a) noexcept
-{
-    return std::sqrt<T>(dot<T, S>(a, a)).real();
-}
-
-namespace detail {
-template<typename UnaryConvertFun, typename T, size_t S, std::size_t... Is>
-constexpr auto apply_for_each_impl(std::index_sequence<Is...>, UnaryConvertFun&& fun) noexcept
-{
-    using return_type = decltype(fun(size_t{}));
-    return vec<return_type, S>(fun(Is)...);
-}
-template<typename T, size_t S, typename UnaryConvertFun>
-constexpr auto apply_for_each(UnaryConvertFun&& fun) noexcept
-{
-    return apply_for_each_impl<UnaryConvertFun, T, S>(std::make_index_sequence<S>{}, std::forward<UnaryConvertFun&&>(fun));
-}
-
-template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each_impl(std::index_sequence<Is...>, const vec<T, S>& vector, UnaryConvertFun&& fun) noexcept
-{
-    using return_type = decltype(fun(vector.components[0]));
-    return vec<return_type, S>(fun(vector.components[Is])...);
-}
-template<typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each(const vec<T, S>& vector, UnaryConvertFun&& fun) noexcept
-{
-    return apply_for_each_impl(std::make_index_sequence<S>{}, vector, fun);
-}
-template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each_impl(std::index_sequence<Is...>, vec<T, S>& vector, UnaryConvertFun&& fun) noexcept
-{
-	using return_type = decltype(fun(vector.components[0]));
-	return vec<return_type, S>(fun(vector.components[Is])...);
-}
-template<typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each(vec<T, S>& vector, UnaryConvertFun&& fun) noexcept
-{
-	return apply_for_each_impl(std::make_index_sequence<S>{}, vector, fun);
-}
-template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each_impl(std::index_sequence<Is...>, const vec<T, S>& vector1, const vec<T, S>& vector2,
-                                   UnaryConvertFun&& fun) noexcept
-{
-    using return_type = decltype(fun(vector1.components[0], vector2.components[0]));
-    return vec<return_type, S>(fun(vector1.components[Is], vector2.components[Is])...);
-}
-template<typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each(const vec<T, S>& vector1, const vec<T, S>& vector2, UnaryConvertFun&& fun) noexcept
-{
-    return apply_for_each_impl(std::make_index_sequence<S>{}, vector1, vector2, fun);
-}
-
-
-template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each_impl(std::index_sequence<Is...>, vec<T, S>& vector1, const vec<T, S>& vector2,
-	UnaryConvertFun&& fun) noexcept
-{
-	using return_type = decltype(fun(vector1.components[0], vector2.components[0]));
-	return vec<return_type, S>(fun(vector1.components[Is], vector2.components[Is])...);
-}
-template<typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each(vec<T, S>& vector1, const vec<T, S>& vector2, UnaryConvertFun&& fun) noexcept
-{
-	return apply_for_each_impl(std::make_index_sequence<S>{}, vector1, vector2, fun);
-}
-
-template<std::size_t... Is, typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each_impl(std::index_sequence<Is...>, const vec<T, S>& vector1, const vec<T, S>& vector2, const vec<T, S>& vector3,
-                                   UnaryConvertFun&& fun) noexcept
-{
-    using return_type = decltype(fun(vector1.components[0], vector2.components[0], vector3.components[0]));
-    return vec<return_type, S>(fun(vector1.components[Is], vector2.components[Is], vector3.components[Is])...);
-}
-template<typename UnaryConvertFun, typename T, size_t S>
-constexpr auto apply_for_each(const vec<T, S>& vector1, const vec<T, S>& vector2, const vec<T, S>& vector3, UnaryConvertFun&& fun) noexcept
-{
-    return apply_for_each_impl(std::make_index_sequence<S>{}, vector1, vector2, vector3, fun);
-}
-}    // namespace detail
-
+constexpr auto length(const vec<T, S>& a) noexcept;
 template<typename T, size_t S>
-constexpr auto normalize(const vec<T, S>& a) noexcept
-{
-    return detail::apply_for_each(a, [inv_len = T(1) / length(a)](const auto& val) { return val * inv_len; });
-}
-
+constexpr auto normalize(const vec<T, S>& a) noexcept;
 template<typename T>
-constexpr auto cross(const vec<T, 3>& a, const vec<T, 3>& b) noexcept
-{
-    return vec<T, 3>(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
-}
-
+constexpr auto cross(const vec<T, 3>& a, const vec<T, 3>& b) noexcept;
 template<size_t S>
-constexpr bool any_of(const vec<bool, S>& v)
-{
-    return std::any_of(v.begin(), v.end(), [](bool b) { return b; });
-}
+constexpr bool any_of(const vec<bool, S>& v);
 template<size_t S>
-constexpr bool all_of(const vec<bool, S>& v)
-{
-    return std::all_of(v.begin(), v.end(), [](bool b) { return b; });
-}
+constexpr bool all_of(const vec<bool, S>& v);
 template<size_t S>
-constexpr bool none_of(const vec<bool, S>& v)
-{
-    return std::none_of(v.begin(), v.end(), [](bool b) { return b; });
-}
+constexpr bool none_of(const vec<bool, S>& v);
 template<typename T, size_t S>
-constexpr auto min_element(const vec<T, S>& v)
-{
-    return std::min_element(v.begin(), v.end(), std::less<T>());
-}
+constexpr auto min_element(const vec<T, S>& v);
 template<typename T, size_t S>
-constexpr auto max_element(const vec<T, S>& v)
-{
-    return std::max_element(v.begin(), v.end(), std::less<T>());
-}
+constexpr auto max_element(const vec<T, S>& v);
 template<typename T, size_t S>
-constexpr auto minmax_element(const vec<T, S>& v)
-{
-    return std::minmax_element(v.begin(), v.end(), std::less<T>());
-}
+constexpr auto minmax_element(const vec<T, S>& v);
 }    // namespace v1
 }    // namespace gfx
 
-namespace std {
-template<typename T, size_t S>
-constexpr auto real(const gfx::vec<T, S>& a) noexcept
-{
-    return a.real();
-}
-template<typename T, size_t S>
-constexpr auto imag(const gfx::vec<T, S>& a) noexcept
-{
-    return a.imag();
-}
-template<typename T, size_t S>
-constexpr auto abs(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::abs(val); });
-}
-template<typename T, size_t S>
-constexpr auto arg(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::arg(val); });
-}
-template<typename T, size_t S>
-constexpr auto norm(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::dot(a, a);
-}
-template<typename T, size_t S>
-constexpr auto conj(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::conj(val); });
-}
-template<typename T, size_t S>
-constexpr auto proj(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::proj(val); });
-}
-template<typename T, size_t S>
-constexpr auto exp(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::exp(val); });
-}
-template<typename T, size_t S>
-constexpr auto exp2(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::exp2(val); });
-}
-template<typename T, size_t S>
-constexpr auto expm1(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::expm1(val); });
-}
-template<typename T, size_t S>
-constexpr auto log(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::log(val); });
-}
-template<typename T, size_t S>
-constexpr auto log2(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::log2(val); });
-}
-template<typename T, size_t S>
-constexpr auto log10(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::log10(val); });
-}
-template<typename T, size_t S>
-constexpr auto log1p(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::log1p(val); });
-}
-template<typename T, size_t S>
-constexpr auto pow(const gfx::vec<T, S>& a, const T& exponent) noexcept
-{
-    return gfx::detail::apply_for_each(a, [&](const auto& val) { return std::pow(val, exponent); });
-}
-template<typename T, size_t S>
-constexpr auto pow(const gfx::vec<T, S>& a, const gfx::vec<T, S>& exponent) noexcept
-{
-    return gfx::detail::apply_for_each(a, exponent, [&](const auto& val, const auto& ex) { return std::pow(val, ex); });
-}
-template<typename T, size_t S>
-constexpr auto sqrt(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::sqrt(val); });
-}
-template<typename T, size_t S>
-constexpr auto cqrt(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::cqrt(val); });
-}
-template<typename T, size_t S>
-constexpr auto hypot(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::hypot(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto hypot(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b, const gfx::vec<T, S>& c) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, c, [](const auto& va, const auto& vb, const auto& vc) { return std::hypot(va, vb, vc); });
-}
-template<typename T, size_t S>
-constexpr auto sin(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::sin(val); });
-}
-template<typename T, size_t S>
-constexpr auto cos(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::cos(val); });
-}
-template<typename T, size_t S>
-constexpr auto tan(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::tan(val); });
-}
-template<typename T, size_t S>
-constexpr auto asin(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::asin(val); });
-}
-template<typename T, size_t S>
-constexpr auto acos(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::acos(val); });
-}
-template<typename T, size_t S>
-constexpr auto atan(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::atan(val); });
-}
-template<typename T, size_t S>
-constexpr auto sinh(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::sinh(val); });
-}
-template<typename T, size_t S>
-constexpr auto cosh(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::cosh(val); });
-}
-template<typename T, size_t S>
-constexpr auto tanh(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::tanh(val); });
-}
-template<typename T, size_t S>
-constexpr auto asinh(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::asinh(val); });
-}
-template<typename T, size_t S>
-constexpr auto acosh(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::acosh(val); });
-}
-template<typename T, size_t S>
-constexpr auto atanh(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::atanh(val); });
-}
-template<typename T, size_t S>
-constexpr auto atan2(const gfx::vec<T, S>& a, const T& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, [&](const auto& va) { return std::atan2(va, b); });
-}
-template<typename T, size_t S>
-constexpr auto atan2(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::atan2(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto ceil(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::ceil(val); });
-}
-template<typename T, size_t S>
-constexpr auto floor(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::floor(val); });
-}
-template<typename T, size_t S>
-constexpr auto round(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::round(val); });
-}
-template<typename T, size_t S>
-constexpr auto isfinite(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::isfinite(val); });
-}
-template<typename T, size_t S>
-constexpr auto isinf(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::isinf(val); });
-}
-template<typename T, size_t S>
-constexpr auto isnan(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::isnan(val); });
-}
-template<typename T, size_t S>
-constexpr auto isnormal(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::isnormal(val); });
-}
-template<typename T, size_t S>
-constexpr auto signbit(const gfx::vec<T, S>& a) noexcept
-{
-    return gfx::detail::apply_for_each(a, [](const auto& val) { return std::signbit(val); });
-}
-template<typename T, size_t S>
-constexpr auto isgreater(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::isgreater(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto isgreaterequal(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::isgreaterequal(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto isless(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::isless(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto islessequal(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::islessequal(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto islessgreater(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::islessgreater(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto isunordered(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::isunordered(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto max(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::max(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto min(const gfx::vec<T, S>& a, const gfx::vec<T, S>& b) noexcept
-{
-    return gfx::detail::apply_for_each(a, b, [](const auto& va, const auto& vb) { return std::min(va, vb); });
-}
-template<typename T, size_t S>
-constexpr auto clamp(const gfx::vec<T, S>& a, const gfx::vec<T, S>& min, const gfx::vec<T, S>& max) noexcept
-{
-    return gfx::detail::apply_for_each(a, min, max,
-                                       [](const auto& va, const auto& vmin, const auto& vmax) { return std::clamp(va, vmin, vmax); });
-}
-template<typename T, size_t S>
-constexpr auto clamp(const gfx::vec<T, S>& a, const T& min, const gfx::vec<T, S>& max) noexcept
-{
-    return gfx::detail::apply_for_each(a, max, [&](const auto& va, const auto& vmax) { return std::clamp(va, min, vmax); });
-}
-template<typename T, size_t S>
-constexpr auto clamp(const gfx::vec<T, S>& a, const gfx::vec<T, S>& min, const T& max) noexcept
-{
-    return gfx::detail::apply_for_each(a, min, [&](const auto& va, const auto& vmin) { return std::clamp(va, vmin, max); });
-}
-template<typename T, size_t S>
-constexpr auto clamp(const gfx::vec<T, S>& a, const T& min, const T& max) noexcept
-{
-    return gfx::detail::apply_for_each(a, [&](const auto& va) { return std::clamp(va, min, max); });
-}
-}    // namespace std
-
-namespace gfx {
-inline namespace v1 {
-using std::abs;
-using std::acos;
-using std::acosh;
-using std::arg;
-using std::asin;
-using std::asinh;
-using std::atan;
-using std::atanh;
-using std::ceil;
-using std::clamp;
-using std::conj;
-using std::cos;
-using std::cosh;
-using std::cqrt;
-using std::exp;
-using std::exp2;
-using std::expm1;
-using std::floor;
-using std::hypot;
-using std::imag;
-using std::isfinite;
-using std::isgreater;
-using std::isgreaterequal;
-using std::isinf;
-using std::isless;
-using std::islessequal;
-using std::islessgreater;
-using std::isnan;
-using std::isnormal;
-using std::isunordered;
-using std::log;
-using std::log10;
-using std::log1p;
-using std::log2;
-using std::max;
-using std::min;
-using std::norm;
-using std::pow;
-using std::proj;
-using std::real;
-using std::round;
-using std::signbit;
-using std::sin;
-using std::sinh;
-using std::sqrt;
-using std::tan;
-using std::tanh;
-}    // namespace v1
-}    // namespace gfx
-#include "vec.inl"
-#include "vec_ops.inl"
+#include "vec/vec_apply.inl"
+#include "vec/vec.inl"
+#include "vec/vec_get.inl"
+#include "vec/vec_ops.inl"
+#include "vec/vec_std.inl"

@@ -7,7 +7,7 @@ layout(loc_gl(1) loc_vk(0, 8), rgba32f) uniform image2D bounce_cache;
 layout(loc_gl(2) loc_vk(0, 9), rgba32f) uniform image2D direction_cache;
 layout(loc_gl(3) loc_vk(0, 10), rgba32f) uniform image2D origin_cache;
 layout(loc_gl(4) loc_vk(0, 11), rg32ui) uniform uimage2D counter_cache;
-layout(loc_gl(0) loc_vk(0, 7)) uniform samplerCube cubemap;
+layout(loc_gl(0) loc_vk(0, 6)) uniform samplerCube cubemap;
 layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 {
     mat4 view;
@@ -261,7 +261,7 @@ void main()
 				float G = ggx_geometry(view, to_light, norm, normalize(view + to_light), roughness);
 
 				c_accumulation += diffusion * vec4(vec3(200) * max(dot(norm, to_light), 0) * unpackUnorm4x8(inst.color).rgb / (dist*dist), 0);
-				c_accumulation += clamp(vec4(vec3(1) * (1-diffusion) * D * G * fresnel, 0), 0, 8);
+				c_accumulation += clamp(vec4(vec3(1) * max(dot(norm, to_light), 0) * (1-diffusion) * D * G * fresnel, 0), 0, 8);
 			}
 			bvh_state_set_mode(bvh_mode_nearest);
 
@@ -276,8 +276,8 @@ void main()
         }
         else
         {
-			//#define sample_env() texture(cubemap, c_direction.xyz)
-			#define sample_env() vec4(0.2f)
+			#define sample_env() texture(cubemap, c_direction.xyz)
+			//#define sample_env() vec4(0.2f)
 
 			vec4 env = sample_env();
 			if(any(isnan(env)))

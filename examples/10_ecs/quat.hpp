@@ -142,7 +142,7 @@ constexpr tquat<T> operator-(const T& v, const tquat<T>& q) noexcept
 }
 
 template<typename T>
-constexpr mat<T, 3> as_mat(const tquat<T>& q) noexcept
+constexpr mat<T, 3> to_mat(const tquat<T>& q) noexcept
 {
 	return static_cast<mat<T, 3>>(q);
 }

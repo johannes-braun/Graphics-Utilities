@@ -38,6 +38,8 @@ logic_op(-)
 logic_op(*)
 logic_op(/)
 logic_op(%)
+logic_op(<<)
+logic_op(>>)
 
 #undef logic_op
 
@@ -54,6 +56,8 @@ logic_op_direct(&)
 logic_op_direct(^)
 logic_op_direct(||)
 logic_op_direct(&&)
+logic_op_direct(>>)
+logic_op_direct(<<)
 
 #undef logic_op_direct
 
@@ -73,6 +77,8 @@ assign_op(-=)
 assign_op(*=)
 assign_op(/=)
 assign_op(%=)
+assign_op(<<= )
+assign_op(>>= )
 
 #undef assign_op
 
