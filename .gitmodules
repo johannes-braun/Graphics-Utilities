@@ -9,7 +9,7 @@
 	url = https://github.com/g-truc/glm.git
 [submodule "ext/glshader"]
 	path = ext/glshader
-	url = git@github.com:johannes-braun/GLshader.git
+	url = https://github.com/johannes-braun/GLshader.git
 [submodule "ext/vulkan/headers"]
 	path = ext/vulkan/headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers.git
