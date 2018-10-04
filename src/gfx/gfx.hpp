@@ -56,3 +56,4 @@
 
 // Includes for gfx/ecs:
 #include <gfx/ecs/ecs.hpp>
+#include <gfx/ecs/defaults/camera.hpp>

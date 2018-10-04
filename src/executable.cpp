@@ -50,7 +50,10 @@ executable::executable()
 	gui       = std::make_unique<gfx::gui>();
 	logo      = std::make_unique<gfx::image>(gfx::himage(gfx::rgba8unorm, "ui/logo_next.png"));
 	logo_view = std::make_unique<gfx::image_view>(gfx::imgv_type::image2d, *logo);
-	camera_buffer = std::make_unique<gfx::hbuffer<gfx::camera::data>>(1);
+	camera_buffer = std::make_unique<gfx::hbuffer<gfx::camera_component::matrices>>(1);
+
+	control_systems.add(input_system);
+	user_entity = ecs.create_entity_unique(gfx::camera_component(), gfx::camera_controls());
 }
 
 bool executable::frame()
@@ -85,14 +88,15 @@ bool executable::frame()
 		ImGui::Spacing();
 		ImGui::End();
 
-		controller.update(camera);
+		ecs.update(context->delta(), control_systems);
 
 		const gfx::u32 frame = context->swapchain()->current_image();
 		current_command      = &render_commands[frame];
 		current_framebuffer  = &fbos[frame];
 		current_command->reset();
 		current_command->begin();
-		current_command->update_buffer(*camera_buffer, 0, camera.info());
+		const auto x = user_entity->get<gfx::camera_component>()->info();
+		current_command->update_buffer(*camera_buffer, 0, x);
 	}
 
 	return rv;

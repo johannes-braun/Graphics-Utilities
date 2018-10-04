@@ -103,18 +103,6 @@ void executable::run()
 
     int f = 0;
     while (frame()) {
-      /*  if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::BeginMenu("File")) {
-                bool u = false;
-                ImGui::MenuItem("Open", "Ctrl+O", &u);
-                ImGui::MenuItem("Save", "Ctrl+S", &u);
-                ImGui::Separator();
-                ImGui::MenuItem("Close", "", &u);
-                ImGui::MenuItem("Exit", "", &u);
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
-        }*/
 
         ImGui::Begin("Settings");
         ImGui::Value("Current set", current_set);

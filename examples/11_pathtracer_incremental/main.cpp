@@ -28,7 +28,7 @@ struct model
 
 void executable::run()
 {
-    camera.transform_mode.position.z += 4.f;
+	user_entity->get<gfx::camera_component>()->transform.position.z += 4.f;
 
     gfx::image accumulation_cache(gfx::img_type::image2d, gfx::rgba32f, gfx::extent(1280, 720), 1);
     gfx::image bounce_cache(gfx::img_type::image2d, gfx::rgba32f, gfx::extent(1280, 720), 1);
@@ -108,7 +108,7 @@ void executable::run()
         for (float c = -10.f; c <= 10.f; c += 11.f)
             meshes.add_instance(bunny, gfx::transform(glm::vec3(f, 0, c), glm::vec3(1)), glm::vec4(dist(gen), dist(gen), dist(gen), 1.f),
                                 0.4f, 0.3f);
-    meshes.add_instance(meshes.allocate_meshes(res.scenes["bdy07_armature.dae"])[0],
+    meshes.add_instance(meshes.allocate_meshes(res.scenes["renderable.dae"])[0],
                         {{0, -0.5f, 0}, glm::vec3(1), glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))}, glm::vec4(1, 1, 1, 1), 0.5f,
                         0.3f);
 
@@ -131,7 +131,7 @@ void executable::run()
 		trace_set.bind(10, origin_cache_view);
 		trace_set.bind(11, counter_cache_view);
 	}
-    gfx::transform last_cam = camera.transform_mode;
+    gfx::transform last_cam = user_entity->get<gfx::camera_component>()->transform;
 
     int iteration   = 0;
     int max_bounces = 5;
@@ -166,9 +166,9 @@ void executable::run()
         }
         ImGui::End();
 
-        if (last_cam != camera.transform_mode)
+        if (last_cam != user_entity->get<gfx::camera_component>()->transform)
         {
-            last_cam = camera.transform_mode;
+            last_cam = user_entity->get<gfx::camera_component>()->transform;
             reset();
         }
 

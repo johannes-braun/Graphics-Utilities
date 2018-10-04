@@ -721,11 +721,10 @@ private:
 
 void executable::run()
 {
-    gfx::ecs::ecs ecs;
 	interaction_processor interaction_manager(ecs);
     
-    camera.projection_mode.perspective().clip_near = 0.01f;
-    camera.projection_mode.perspective().clip_far  = 400.f;
+    user_entity->get<gfx::camera_component>()->projection.perspective().clip_near = 0.01f;
+	user_entity->get<gfx::camera_component>()->projection.perspective().clip_far  = 400.f;
 	std::vector<gfx::ecs::entity>         entities;
 
     terrain            main_terrain("heightmap.png", 2.f, 400);
@@ -745,10 +744,10 @@ void executable::run()
 
     gfx::ecs::system_list graphics_systems;
     prototype_system      proto_system(renderer);
-    camera_system         cam_system;
+    //camera_system         cam_system;
     owner_system          own_system;
     graphics_systems.add(proto_system);
-    graphics_systems.add(cam_system);
+   // graphics_systems.add(cam_system);
     graphics_systems.add(own_system);
 
     gfx::sampler sampler;
@@ -976,20 +975,19 @@ void executable::run()
     gfx::graphics_pipeline shadow_mesh_pipeline(mesh_state, shadow_pass, shadow_shaders);
 
     const float                    vps = 80.f;
-    std::vector<gfx::camera>       light_cameras(shadow_map_count);
-    std::vector<gfx::camera::data> cam_infos(shadow_map_count);
+    std::vector<gfx::camera_component> light_cameras(shadow_map_count);
+    std::vector<gfx::camera_component::matrices> cam_infos(shadow_map_count);
     for (int i = 0; i < std::size(light_cameras); ++i) {
-        light_cameras[i]                         = camera;
-        light_cameras[i].transform_mode.position = glm::vec3(100, -150, 100);
-        light_cameras[i].transform_mode.rotation =
-            glm::quatLookAt(normalize(glm::vec3(0) - light_cameras[i].transform_mode.position), glm::vec3(0, 1, 0));
+        light_cameras[i].transform.position = glm::vec3(100, -150, 100);
+        light_cameras[i].transform.rotation =
+            glm::quatLookAt(normalize(glm::vec3(0) - light_cameras[i].transform.position), glm::vec3(0, 1, 0));
         const float vpss = vps * (1 << i);
-        light_cameras[i].projection_mode =
+        light_cameras[i].projection =
             gfx::projection(-vpss * 0.5f, vpss * 0.5f, -vpss * 0.5f, vpss * 0.5f, -main_terrain.chunk_size() * main_terrain.chunk_count(),
                             main_terrain.chunk_size() * main_terrain.chunk_count());
         cam_infos[i] = light_cameras[i].info();
     }
-    gfx::buffer<gfx::camera::data> light_camera_data(gfx::buffer_usage::uniform, cam_infos);
+    gfx::buffer<gfx::camera_component::matrices> light_camera_data(gfx::buffer_usage::uniform, cam_infos);
 
     std::vector<gfx::binding_set> light_camera_sets;
     std::vector<gfx::binding_set> light_camera_terrain_sets;
@@ -1058,7 +1056,7 @@ void executable::run()
         ImGui::Value("Frametime (ms)", float(ftime * 1000.0));
         ImGui::Checkbox("Follow any", &enable_following_camera);
         if (enable_following_camera && ImGui::Button("Random cam")) {
-            gfx::dlog << ecs.remove_components<camera_component>(cam_system.cam_component()->entity);
+           // gfx::dlog << ecs.remove_components<camera_component>(cam_system.cam_component()->entity);
             entities[int(dist(gen) * entities.size())].add(camera_component{});
         }
         ImGui::Separator();
@@ -1072,7 +1070,7 @@ void executable::run()
             ImGui::Value("usg: ", proto.usages);
             ImGui::SameLine();
             if (ImGui::Button("Spawn")) {
-                spawn_from_prototype(&proto, camera.transform_mode.position + camera.transform_mode.forward() * 8.f);
+                spawn_from_prototype(&proto, user_entity->get<gfx::camera_component>()->transform.position + user_entity->get<gfx::camera_component>()->transform.forward() * 8.f);
             }
             ImGui::PopID();
         }
@@ -1090,23 +1088,23 @@ void executable::run()
 
         mesh_sets[context->swapchain()->current_image()].bind(0, renderer.instances_device());
 
-        camera.transform_mode.position.y =
-            main_terrain.terrain_height({camera.transform_mode.position.x, camera.transform_mode.position.z}) + 150.8f;
-        current_command->update_buffer(*camera_buffer, 0, camera.info());
+		user_entity->get<gfx::camera_component>()->transform.position.y =
+            main_terrain.terrain_height({ user_entity->get<gfx::camera_component>()->transform.position.x, user_entity->get<gfx::camera_component>()->transform.position.z}) + 150.8f;
+        current_command->update_buffer(*camera_buffer, 0, user_entity->get<gfx::camera_component>()->info());
         if (enable_following_camera) {
-            current_command->update_buffer(*camera_buffer, 0, cam_system.camera().info());
-            camera = cam_system.camera();
+            current_command->update_buffer(*camera_buffer, 0, user_entity->get<gfx::camera_component>()->info());
+            //camera = cam_system.camera();
         }
         if (show_light_cam) current_command->update_buffer(*camera_buffer, 0, light_cameras[1].info());
 
         for (int i = 0; i < std::size(light_cameras); ++i) {
             const float vpss = vps * (1 << i);
 
-            glm::vec3 campos = camera.transform_mode.position;
+            glm::vec3 campos = user_entity->get<gfx::camera_component>()->transform.position;
             campos.y         = main_terrain.terrain_height({campos.x, campos.z});
-            light_cameras[i].transform_mode.position =
+            light_cameras[i].transform.position =
                 (glm::vec3(glm::ivec3(campos * vpss / shadow_map.extents().width)) * shadow_map.extents().width / vpss)
-                + 500.f * (light_cameras[i].transform_mode.rotation * glm::vec3(0, 0, 1));
+                + 500.f * (light_cameras[i].transform.rotation * glm::vec3(0, 0, 1));
 
             auto lci       = light_cameras[i].info();
             lci.projection = lci.projection;

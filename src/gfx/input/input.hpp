@@ -17,7 +17,7 @@ namespace gfx
     class button
     {
     public:
-        explicit button(int key);
+        button(int key);
         void update(GLFWwindow* window);
         button_state state() const;
         void set_key(int key);
