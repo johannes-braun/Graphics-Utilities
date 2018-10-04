@@ -88,7 +88,7 @@ void context_implementation::initialize(GLFWwindow* window, const context_option
 void context_implementation::init_instance(const context_options& opt)
 {
     init<VkApplicationInfo> app_info{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app_info.apiVersion         = VK_API_VERSION_1_0;
+    app_info.apiVersion         = VK_API_VERSION_1_1;
     app_info.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
     app_info.engineVersion      = VK_MAKE_VERSION(0, 1, 0);
     app_info.pApplicationName   = opt.window_title.c_str();
