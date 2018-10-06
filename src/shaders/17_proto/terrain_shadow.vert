@@ -1,25 +1,12 @@
 #version 460 core
 #include "../api.glsl"
+#include "terrain.input.glsl"
 
 layout(location = 0) in vec2 position;
 
 out gl_PerVertex
 {
 	vec4 gl_Position;
-};
-
-layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
-{
-	mat4 view;
-	mat4 proj;
-	vec3 pos;
-} camera;
-layout(loc_gl(0) loc_vk(0, 1)) uniform sampler2D heightmap;
-
-layout(loc_gl(1) loc_vk(1, 2)) uniform TerrainInfo
-{
-	float           chunk_size;
-	int             chunk_count;
 };
 
 float get_height(vec2 position)

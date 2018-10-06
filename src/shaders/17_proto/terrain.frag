@@ -1,30 +1,18 @@
 #version 460 core
 #include "../api.glsl"
 #include "sky.glsl"
+#include "terrain.input.glsl"
 
-layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
-{
-	mat4 view;
-	mat4 proj;
-	vec3 pos;
-} camera;
-
-layout(loc_gl(1) loc_vk(1, 0)) uniform sampler2D bumpmap;
-layout(loc_gl(2) loc_vk(1, 1)) uniform sampler2D colormap;
-layout(loc_gl(1) loc_vk(1, 2)) uniform TerrainInfo
-{
-	float           chunk_size;
-	int             chunk_count;
-};
-
-layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2DArrayShadow shadowmap;
+layout(loc_gl(1) loc_vk(2, 0)) uniform sampler2D bumpmap;
+layout(loc_gl(2) loc_vk(2, 1)) uniform sampler2D colormap;
+layout(loc_gl(3) loc_vk(3, 0)) uniform sampler2DArrayShadow shadowmap;
 struct shadow_cam_data
 {
 	mat4 view;
 	mat4 proj;
 	vec3 pos;
 };
-layout(loc_gl(2) loc_vk(2, 1)) uniform ShadowCamera
+layout(loc_gl(2) loc_vk(3, 1)) uniform ShadowCamera
 {
 	shadow_cam_data data[256];
 } shadow_camera;
