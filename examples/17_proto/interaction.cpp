@@ -15,7 +15,7 @@ interaction_processor::interaction_processor(gfx::ecs::ecs& ecs) : _ecs(ecs)
 {
     _ecs.add_listener(*this);
 
-    add_component_id(transform_component::id);
+    add_component_id(gfx::transform_component::id);
     add_component_id(collider_component::id);
 }
 
@@ -31,19 +31,19 @@ void interaction_processor::on_remove(gfx::ecs::entity e)
 
 void interaction_processor::on_add_component(gfx::ecs::entity e, gfx::ecs::id_t id)
 {
-    if (id == transform_component::id && e.get<collider_component>())
+    if (id == gfx::transform_component::id && e.get<collider_component>())
         add_entity(e);
-    else if (id == collider_component::id && e.get<transform_component>())
+    else if (id == collider_component::id && e.get<gfx::transform_component>())
         add_entity(e);
-    else if (e.get<transform_component>() && e.get<collider_component>())
+    else if (e.get<gfx::transform_component>() && e.get<collider_component>())
         if (std::find(_entities_updated.begin(), _entities_updated.end(), e) == _entities_updated.end()) _entities_updated.push_back(e);
 }
 
 void interaction_processor::on_remove_component(gfx::ecs::entity e, gfx::ecs::id_t id)
 {
-    if (id == transform_component::id || id == collider_component::id)
+    if (id == gfx::transform_component::id || id == collider_component::id)
         on_remove(e);
-    else if (e.get<transform_component>() && e.get<collider_component>())
+    else if (e.get<gfx::transform_component>() && e.get<collider_component>())
         if (std::find(_entities_updated.begin(), _entities_updated.end(), e) == _entities_updated.end()) _entities_updated.push_back(e);
 }
 

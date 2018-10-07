@@ -3,11 +3,6 @@
 #include "gfx/ecs/ecs.hpp"
 #include <gfx/gfx.hpp>
 
-struct transform_component : gfx::ecs::component<transform_component>
-{
-    gfx::transform value;
-};
-
 struct collider_component : gfx::ecs::component<collider_component>
 {
 	gfx::bounds3f aabb;

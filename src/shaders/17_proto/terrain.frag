@@ -126,24 +126,32 @@ void main()
 
 //	color = vec4(base_normal, 1);
 //	return;
-//
-	vec3 normals[4];
-	normals[0] = from_bump(position, base_normal, uv, view, bumpmap, 0.01f);
-	for(int i=1; i < normals.length(); ++i)
-	{
-		normals[i] = mix(normals[i-1], from_bump(position, base_normal, uv * 2*(i+1), view, bumpmap, (i+1)*0.01f), 1.f / (i+1));
-	}
-	vec3 colors[4];
-	colors[0] = texture(colormap, uv).rgb;
-	for(int i=1; i < colors.length(); ++i)
-	{
-		colors[i] = mix(colors[i-1], texture(colormap, uv * 2 * (i+1)).rgb, 1.f / (i+1));
-	}
+////
+//	vec3 normals[4];
+//	normals[0] = from_bump(position, base_normal, uv, view, bumpmap, 0.01f);
+//	for(int i=1; i < normals.length(); ++i)
+//	{
+//		normals[i] = mix(normals[i-1], from_bump(position, base_normal, uv * 2*(i+1), view, bumpmap, (i+1)*0.01f), 1.f / (i+1));
+//	}
+//	vec3 colors[4];
+//	colors[0] = texture(colormap, uv).rgb;
+//	for(int i=1; i < colors.length(); ++i)
+//	{
+//		colors[i] = mix(colors[i-1], texture(colormap, uv * 8 * (i+1)).rgb, 1.f / (i+1));
+//	}
+//	
+	float scaling_0_25 = smoothstep(0, 25, cam_dist);
+	float scaling_25_100 = smoothstep(25, 100, cam_dist);
+	float scaling_100_500 = smoothstep(100, 500, cam_dist);
 	
-	float scaling = 1-smoothstep(0, 1200, cam_dist);
-	int index = clamp(int(normals.length() * scaling), 0, normals.length()-1);
-	const vec3 normal = normalize(normals[index]);
-	const vec3 albedo = colors[index];
+	float scaling_0_100 = smoothstep(0, 100, cam_dist);
+	float scaling_0_500 = smoothstep(0, 500, cam_dist);
+//	int index = clamp(int(normals.length() * scaling), 0, normals.length()-1);
+//	const vec3 normal = normalize(normals[index]);
+//	const vec3 albedo = colors[index];
+
+	const vec3 normal = normalize(from_bump(position, base_normal, 2.f*uv, view, bumpmap, 0.1f) + from_bump(position, base_normal, 0.5f*uv, view, bumpmap, 0.1f) + from_bump(position, base_normal, 0.05f*uv, view, bumpmap, 0.1f) + from_bump(position, base_normal, 0.006f*uv, view, bumpmap, 0.1f));
+	const vec3 albedo = texture(colormap, 0.1f*uv).rgb;
 
 	const vec3 light  = normalize(position-shadow_camera.data[0].pos);
 	const float ndotl = max(dot(light, normal), 0.f);

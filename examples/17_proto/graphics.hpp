@@ -26,6 +26,7 @@ public:
     void create_mesh_pipelines()
     {
         mesh_bindings = gfx::binding_layout{};
+		mesh_style_bindings = gfx::binding_layout{};
 
         gfx::pipe_state::vertex_input mesh_input;
         mesh_input.attributes.emplace_back(0, 0, gfx::rgb32f, offsetof(gfx::vertex3d, position));
@@ -33,9 +34,11 @@ public:
         mesh_input.attributes.emplace_back(2, 0, gfx::rgb32f, offsetof(gfx::vertex3d, normal));
         mesh_input.bindings.emplace_back(0, sizeof(gfx::vertex3d));
         mesh_bindings.push(gfx::binding_type::storage_buffer);
+		mesh_style_bindings.push(gfx::binding_type::sampled_image); // overlay texture;
         gfx::pipe_state::binding_layouts layouts;
         layouts.layouts.push_back(&camera_bindings);
         layouts.layouts.push_back(&mesh_bindings);
+        layouts.layouts.push_back(&mesh_style_bindings);
         layouts.layouts.push_back(&shadow_bindings);
         gfx::pipe_state::depth_stencil depth_stencil;
         depth_stencil.depth_test_enable = true;
@@ -152,6 +155,7 @@ public:
 
     gfx::binding_layout camera_bindings;
     gfx::binding_layout mesh_bindings;
+    gfx::binding_layout mesh_style_bindings;
     gfx::binding_layout shadow_bindings;
     gfx::binding_layout terrain_info_bindings;
     gfx::binding_layout terrain_style_bindings;

@@ -3,13 +3,13 @@
 
 movement_system::movement_system()
 {
-    add_component_type(transform_component::id);
+    add_component_type(gfx::transform_component::id);
     add_component_type(movement_component::id);
 }
 
 void movement_system::update(double delta, gfx::ecs::component_base** components) const
 {
-    auto& tf = components[0]->as<transform_component>();
+    auto& tf = components[0]->as<gfx::transform_component>();
     auto& sp = components[1]->as<movement_component>();
 
     const auto sphere_radius = 1.3f;

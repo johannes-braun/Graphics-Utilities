@@ -32,7 +32,7 @@ struct executable
 
 	gfx::ecs::system_list control_systems;
 
-	std::unique_ptr<gfx::hbuffer<gfx::camera_component::matrices>> camera_buffer;
+	std::unique_ptr<gfx::hbuffer<gfx::camera_matrices>> camera_buffer;
 };
 
 #ifndef GFX_EXECUTABLE_NO_MAIN

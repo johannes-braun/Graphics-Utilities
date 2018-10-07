@@ -7,21 +7,31 @@
 
 namespace gfx {
 inline namespace v1 {
+struct transform_component : gfx::ecs::component<transform_component>
+{
+	gfx::transform value;
+};
+
 struct camera_component : ecs::component<camera_component>
 {
-    transform  transform;
     projection projection{glm::radians(70.f), 1280, 720, 0.01f, 1000.f, true, true};
-
-    struct matrices
-    {
-        glm::mat4 view;
-        glm::mat4 projection;
-        glm::vec3 position;
-        int       do_cull = 1;
-    };
-
-    matrices info() const noexcept { return { inverse(transform.matrix()), projection.matrix(), transform.position, 1}; }
 };
+
+struct camera_matrices
+{
+	glm::mat4 view;
+	glm::mat4 projection;
+	glm::vec3 position;
+	int       do_cull = 1;
+};
+inline std::optional<camera_matrices> get_camera_info(ecs::ecs& ecs, ecs::entity_handle entity)
+{
+	auto* cam = ecs.get_component<camera_component>(entity);
+	auto* tfm = ecs.get_component<transform_component>(entity);
+	if (!cam || !tfm)
+		return std::nullopt;
+	return camera_matrices{ inverse(tfm->value.matrix()), cam->projection.matrix(), tfm->value.position, 1 };
+}
 
 struct camera_controls : ecs::component<camera_controls>
 {
@@ -47,18 +57,20 @@ public:
     user_camera_system()
     {
         add_component_type(camera_component::id);
+        add_component_type(transform_component::id);
         add_component_type(camera_controls::id);
     }
 
     void update(double delta, ecs::component_base** components) const override
     {
         camera_component& cam  = components[0]->as<camera_component>();
-        camera_controls&  ctrl = components[1]->as<camera_controls>();
+		transform_component& trn  = components[1]->as<transform_component>();
+        camera_controls&  ctrl = components[2]->as<camera_controls>();
 
         if (&cam != ctrl.last_camera)
         {
             ctrl.last_camera      = &cam;
-            ctrl.target_transform = cam.transform;
+            ctrl.target_transform = trn.value;
         }
 
         const auto _window = context::current()->window();
@@ -104,9 +116,9 @@ public:
             * static_cast<float>(delta) * ctrl.movement_speed;
 
         const float alpha      = float(glm::clamp(15.0 * delta, 0.0, 1.0));
-        cam.transform.position = mix(cam.transform.position, ctrl.target_transform.position, alpha);
-        cam.transform.scale    = mix(cam.transform.scale, ctrl.target_transform.scale, alpha);
-        cam.transform.rotation = glm::slerp(cam.transform.rotation, ctrl.target_transform.rotation, alpha);
+		trn.value.position = mix(trn.value.position, ctrl.target_transform.position, alpha);
+		trn.value.scale    = mix(trn.value.scale, ctrl.target_transform.scale, alpha);
+		trn.value.rotation = glm::slerp(trn.value.rotation, ctrl.target_transform.rotation, alpha);
 
         ctrl.cursor.update_position(context::current()->window());
     }

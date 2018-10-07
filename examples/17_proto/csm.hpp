@@ -35,12 +35,17 @@ public:
         light_camera_matrices.resize(_cascades);
         for (auto i = 0ull; i < std::size(light_cameras); ++i)
         {
-            light_cameras[i].transform.position = glm::vec3(100, -150, 100);
-            light_cameras[i].transform.rotation =
-                glm::quatLookAt(normalize(glm::vec3(0) - light_cameras[i].transform.position), glm::vec3(0, 1, 0));
+            light_cameras[i].second.value.position = glm::vec3(100, -150, 100);
+            light_cameras[i].second.value.rotation =
+                glm::quatLookAt(normalize(glm::vec3(0) - light_cameras[i].second.value.position), glm::vec3(0, 1, 0));
             const float vpss            = vps * (1 << i);
-            light_cameras[i].projection = gfx::projection(-vpss * 0.5f, vpss * 0.5f, -vpss * 0.5f, vpss * 0.5f, -1000.f, 1000.f);
-            light_camera_matrices[i]    = light_cameras[i].info();
+            light_cameras[i].first.projection = gfx::projection(-vpss * 0.5f, vpss * 0.5f, -vpss * 0.5f, vpss * 0.5f, -1000.f, 1000.f);
+
+			auto& lci = light_camera_matrices[i];
+			lci.do_cull = true;
+			lci.view = inverse(light_cameras[i].second.value.matrix());
+			lci.projection = light_cameras[i].first.projection.matrix();
+			lci.position = light_cameras[i].second.value.position;
         }
         _camera_data.update(light_camera_matrices);
 
@@ -51,28 +56,30 @@ public:
     template<typename FunPre, typename FunDraw>
     void render(gfx::commands& cmd, glm::vec3 position, FunPre&& preDraw, FunDraw&& draw)
     {
-		for (int i = 0; i < std::size(light_cameras); ++i) {
+		for (auto i = 0ull; i < std::size(light_cameras); ++i) {
 			const float vpss = vps * (1 << i);
 
-			light_cameras[i].transform.position =
+			light_cameras[i].second.value.position =
 				(glm::vec3(glm::ivec3(position * vpss / shadow_map->extents().width)) * shadow_map->extents().width / vpss)
-				+ 500.f * (light_cameras[i].transform.rotation * glm::vec3(0, 0, 1));
+				+ 500.f * (light_cameras[i].second.value.rotation * glm::vec3(0, 0, 1));
 
-			auto lci = light_cameras[i].info();
-			lci.projection = lci.projection;
-			light_camera_matrices[i] = lci;
+			auto& lci = light_camera_matrices[i];
+			lci.do_cull = true;
+			lci.view = inverse(light_cameras[i].second.value.matrix());
+			lci.projection = light_cameras[i].first.projection.matrix();
+			lci.position = light_cameras[i].second.value.position;
 			cmd.update_buffer(_camera_data, 0, lci);
 			preDraw(light_camera_sets[i]);
 			cmd.begin_pass(shadow_map_framebuffers[i]);
 			draw(light_camera_sets[i]);
 			cmd.end_pass();
 		}
-		cmd.update_buffer(_camera_data, 0, light_camera_matrices.size(), light_camera_matrices.data());
+		cmd.update_buffer(_camera_data, 0, gfx::u32(light_camera_matrices.size()), light_camera_matrices.data());
     }
 
 	gfx::binding_set                 shadow_set;
-	std::vector<gfx::camera_component>           light_cameras;	
-    std::vector<gfx::camera_component::matrices> light_camera_matrices;
+	std::vector<std::pair<gfx::camera_component, gfx::transform_component>>           light_cameras;	
+    std::vector<gfx::camera_matrices> light_camera_matrices;
     std::unique_ptr<gfx::image>      shadow_map;
     std::unique_ptr<gfx::image_view> shadow_map_view;
     std::vector<gfx::binding_set>    light_camera_sets;
@@ -83,5 +90,5 @@ public:
 private:
     graphics&                                    _core;
     int                                          _cascades;
-    gfx::buffer<gfx::camera_component::matrices> _camera_data;
+    gfx::buffer<gfx::camera_matrices> _camera_data;
 };

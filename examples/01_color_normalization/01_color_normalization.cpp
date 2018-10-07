@@ -276,7 +276,7 @@ void executable::run()
         int w, h;
         glfwGetFramebufferSize(context->window(), &w, &h);
 
-        render_info_buffer[0].vp               = user_entity->get<gfx::camera_component>()->projection.matrix() * inverse(user_entity->get<gfx::camera_component>()->transform.matrix());
+        render_info_buffer[0].vp               = user_entity->get<gfx::camera_component>()->projection.matrix() * inverse(user_entity->get<gfx::transform_component>()->value.matrix());
         render_info_buffer[0].transform_matrix = hat_en ? patmat : glm::mat4(1.f);
         render_info_buffer[0].average          = average;
 

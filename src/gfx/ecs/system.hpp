@@ -29,6 +29,8 @@ public:
     const std::vector<component_flags>& flags() const;
 
 protected:
+    template<typename T, typename = std::enable_if_t<std::is_convertible_v<T, component<T>>>>
+	void add_component_type(component_flags flags = {}) { add_component_type(T::id, flags); }
     void add_component_type(id_t id, component_flags flags = {});
 
 private:

@@ -74,7 +74,7 @@ void executable::run()
         ImGui::End();
 
         uniform_buffer[0].vp =
-			user_entity->get<gfx::camera_component>()->projection.matrix() * glm::inverse(user_entity->get<gfx::camera_component>()->transform.matrix()) * glm::scale(glm::vec3(scale));
+			user_entity->get<gfx::camera_component>()->projection.matrix() * glm::inverse(user_entity->get<gfx::transform_component>()->value.matrix()) * glm::scale(glm::vec3(scale));
 	
         current_command->begin_pass(*current_framebuffer);
         current_command->bind_pipeline(pipeline, {&set});

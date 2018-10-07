@@ -5,6 +5,7 @@
 #include "system.hpp"
 #include <execution>
 #include <unordered_map>
+#include <cassert>
 
 namespace gfx {
 inline namespace v1 {

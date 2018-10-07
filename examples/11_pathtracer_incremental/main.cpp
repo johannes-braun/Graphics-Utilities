@@ -28,7 +28,7 @@ struct model
 
 void executable::run()
 {
-	user_entity->get<gfx::camera_component>()->transform.position.z += 4.f;
+	user_entity->get<gfx::transform_component>()->value.position.z += 4.f;
 
     gfx::image accumulation_cache(gfx::img_type::image2d, gfx::rgba32f, gfx::extent(1280, 720), 1);
     gfx::image bounce_cache(gfx::img_type::image2d, gfx::rgba32f, gfx::extent(1280, 720), 1);
@@ -131,7 +131,7 @@ void executable::run()
 		trace_set.bind(10, origin_cache_view);
 		trace_set.bind(11, counter_cache_view);
 	}
-    gfx::transform last_cam = user_entity->get<gfx::camera_component>()->transform;
+    gfx::transform last_cam = user_entity->get<gfx::transform_component>()->value;
 
     int iteration   = 0;
     int max_bounces = 5;
@@ -166,9 +166,9 @@ void executable::run()
         }
         ImGui::End();
 
-        if (last_cam != user_entity->get<gfx::camera_component>()->transform)
+        if (last_cam != user_entity->get<gfx::transform_component>()->value)
         {
-            last_cam = user_entity->get<gfx::camera_component>()->transform;
+            last_cam = user_entity->get<gfx::transform_component>()->value;
             reset();
         }
 

@@ -14,14 +14,15 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 	vec3 pos;
 } camera;
 
-layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2DArrayShadow shadowmap;
+layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2D overlay_texture;
+layout(loc_gl(4) loc_vk(3, 0)) uniform sampler2DArrayShadow shadowmap;
 struct shadow_cam_data
 {
 	mat4 view;
 	mat4 proj;
 	vec3 pos;
 };
-layout(loc_gl(2) loc_vk(2, 1)) uniform ShadowCamera
+layout(loc_gl(2) loc_vk(3, 1)) uniform ShadowCamera
 {
 	shadow_cam_data data[8];
 } shadow_camera;
@@ -94,7 +95,7 @@ void main()
 
 	const float ndotl = max(dot(light, normal), 0.f);
 
-	color = vec4(ndotl * albedo, 1);
+	color = vec4(ndotl * albedo * texture(overlay_texture, uv).rgb, 1);
 
 	const float cam_distxz = distance(position.xzy, camera.pos.xzy);
 	float s = shadow(shadowmap, position, cam_distxz, normal, light);

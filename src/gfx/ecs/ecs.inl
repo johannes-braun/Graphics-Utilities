@@ -18,7 +18,9 @@ bool entity::remove()
 template<typename Component>
 Component* entity::get()
 {
-    return static_cast<Component*>(_ecs->get_component_impl(_handle, _ecs->_components[Component::id], Component::id));
+    auto* const c = static_cast<Component*>(_ecs->get_component_impl(_handle, _ecs->_components[Component::id], Component::id));
+	assert(c);
+	return c;
 }
 
 template<typename... Components, typename>
