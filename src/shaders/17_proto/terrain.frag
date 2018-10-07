@@ -2,25 +2,14 @@
 #include "../api.glsl"
 #include "sky.glsl"
 #include "terrain.input.glsl"
+#include "shadow.glsl"
 
 layout(loc_gl(1) loc_vk(2, 0)) uniform sampler2D bumpmap;
 layout(loc_gl(2) loc_vk(2, 1)) uniform sampler2D colormap;
-layout(loc_gl(3) loc_vk(3, 0)) uniform sampler2DArrayShadow shadowmap;
-struct shadow_cam_data
-{
-	mat4 view;
-	mat4 proj;
-	vec3 pos;
-};
-layout(loc_gl(2) loc_vk(3, 1)) uniform ShadowCamera
-{
-	shadow_cam_data data[256];
-} shadow_camera;
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal_u;
 layout(location = 2) in vec2 uv;
-
 layout(location = 0) out vec4 color;
 
 mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv)
@@ -60,62 +49,6 @@ vec3 from_bump(vec3 surf_pos, vec3 surf_norm, vec2 uv, vec3 view_dir, sampler2D 
              duv.xxyy;
 
     return tbn * normalize(cross(vec3(2, 0, h[0] - h[1]), vec3(0, 2, h[2] - h[3])));
-}
-
-vec3 get_pos(mat4 mat, vec3 pos)
-{
-    vec4 map_pos = mat * vec4(pos, 1);
-    map_pos /= map_pos.w;
-    map_pos.xy = 0.5f * map_pos.xy + 0.5f;
-    return map_pos.xyz;
-}
-
-int get_layer(float dist, out float frac)
-{
-	ivec3 ts = textureSize(shadowmap, 0);
-	float layers = ts.z;
-	const int l = int(log2(int(dist / 20.f + 0.5f)));
-	frac = 0.f;
-	if(l >= layers) return -1;
-	frac = fract(log2(dist / 20.f + 0.5f));
-	return l;
-}
-
-float shadow(in sampler2DArrayShadow map, vec3 pos, float dist, vec3 normal, vec3 light_dir){
-	ivec3 ts = textureSize(map, 0);
-    vec2 tex_size = ts.xy;
-	float layers = ts.z;
-	
-	float frac = 0.f;
-	const int layer = get_layer(dist, frac);
-	if(layer == -1)
-		return 1.f;
-
-	const mat4 mat = shadow_camera.data[layer].proj * shadow_camera.data[layer].view;
-    vec3 map_pos = get_pos(mat, pos);
-
-	const float layer_next = clamp(layer+1, 0, layers-1);
-	const mat4 mat_next = shadow_camera.data[int(layer_next)].proj * shadow_camera.data[int(layer_next)].view;
-    vec3 map_pos_next = get_pos(mat_next, pos);
-
-    float shadow = 0.f;
-    vec2 inv_size = 1/max(tex_size, vec2(1, 1));
-    const int size = 3;
-
-    for(int i=0; i<size*size; ++i)
-    {
-        const int x = (i % size - (size >> 1)-1);
-        const int y = (i / size - (size >> 1)-1);
-        const vec2 offset = vec2(x, y) * inv_size;
-
-        const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
-        const vec2 uv2 = clamp(map_pos_next.xy + offset, vec2(0), vec2(1));
-        const float depth = 1-texture(map, vec4(get_uv(uv), layer, map_pos.z)).r;
-        const float depth2 = 1-texture(map, vec4(get_uv(uv2), layer_next, map_pos_next.z)).r;
-
-        shadow += mix(depth, depth2, frac);
-    }
-    return shadow / (size*size);
 }
 
 void main()

@@ -4,7 +4,7 @@
 
 class csm
 {
-	const float vps = 80.f;
+	const float vps = 60.f;
 public:
 
     csm(graphics& core, uint32_t resolution = 1024, int cascades = 4)
@@ -56,24 +56,29 @@ public:
     template<typename FunPre, typename FunDraw>
     void render(gfx::commands& cmd, glm::vec3 position, FunPre&& preDraw, FunDraw&& draw)
     {
-		for (auto i = 0ull; i < std::size(light_cameras); ++i) {
-			const float vpss = vps * (1 << i);
+		const int i = _current_cascade;
+		const int sub = _sub_cascade;
 
-			light_cameras[i].second.value.position =
-				(glm::vec3(glm::ivec3(position * vpss / shadow_map->extents().width)) * shadow_map->extents().width / vpss)
-				+ 500.f * (light_cameras[i].second.value.rotation * glm::vec3(0, 0, 1));
+		_sub_cascade = (_sub_cascade + 1) % 1; // frames between updates
+        if(_sub_cascade == 0)
+		    _current_cascade = (_current_cascade + 1) % _cascades;
+		const float vpss = vps * (1 << i);
 
-			auto& lci = light_camera_matrices[i];
-			lci.do_cull = true;
-			lci.view = inverse(light_cameras[i].second.value.matrix());
-			lci.projection = light_cameras[i].first.projection.matrix();
-			lci.position = light_cameras[i].second.value.position;
-			cmd.update_buffer(_camera_data, 0, lci);
-			preDraw(light_camera_sets[i]);
-			cmd.begin_pass(shadow_map_framebuffers[i]);
-			draw(light_camera_sets[i]);
-			cmd.end_pass();
-		}
+		light_cameras[i].second.value.position =
+			(glm::vec3(glm::ivec3(position * 4.f*vpss / shadow_map->extents().width)) * shadow_map->extents().width / (4.f*vpss))
+			+ 300.f * (light_cameras[i].second.value.rotation * glm::vec3(0, 0, 1));
+
+		auto& lci = light_camera_matrices[i];
+		lci.do_cull = true;
+		lci.view = inverse(light_cameras[i].second.value.matrix());
+		lci.projection = light_cameras[i].first.projection.matrix();
+		lci.position = light_cameras[i].second.value.position;
+		cmd.update_buffer(_camera_data, 0, lci);
+		preDraw(light_camera_sets[i]);
+
+		cmd.begin_pass(shadow_map_framebuffers[i]);
+		draw(light_camera_sets[i]);
+		cmd.end_pass();
 		cmd.update_buffer(_camera_data, 0, gfx::u32(light_camera_matrices.size()), light_camera_matrices.data());
     }
 
@@ -91,4 +96,6 @@ private:
     graphics&                                    _core;
     int                                          _cascades;
     gfx::buffer<gfx::camera_matrices> _camera_data;
+	int _current_cascade = 0;
+	int _sub_cascade = 0;
 };

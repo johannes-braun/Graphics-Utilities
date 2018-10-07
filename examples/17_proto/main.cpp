@@ -25,7 +25,7 @@ void executable::run()
     const std::uniform_real_distribution<float> dist;
 
     graphics core(*this);
-    csm      shadow_map(core, 1024, 5);
+    csm      shadow_map(core, 2048, 5);
 
     interaction_processor interaction_manager(ecs);
 
@@ -62,7 +62,6 @@ void executable::run()
     }
 
 	gfx::scene_file tree_file("tree.dae");
-	gfx::scene_file grass_file("grass.dae");
 	gfx::span<gfx::vertex3d> tree_vertices = tree_file.mesh.vertices;
 	gfx::span<gfx::index32> tree_indices = tree_file.mesh.indices;
 
@@ -73,13 +72,9 @@ void executable::run()
 
 	unique_mesh trunk = prototypes.allocate_mesh_unique(tree_trunk_vertices, tree_trunk_indices);
 	unique_mesh leaves = prototypes.allocate_mesh_unique(tree_leaves_vertices, tree_leaves_indices);
-	unique_mesh grass_tuft = prototypes.allocate_mesh_unique(grass_file.mesh.vertices, grass_file.mesh.indices);
 	std::array tree_meshes = { leaves.get(), trunk.get() };
-	std::array grass_meshes = { grass_tuft.get() };
 	unique_prototype tree = prototypes.allocate_prototype_unique("Tree", tree_meshes);
-	unique_prototype grass = prototypes.allocate_prototype_unique("Grass", grass_meshes);
-
-	for (auto i = 0ull; i < 500; ++i)
+	for (auto i = 0ull; i < 350; ++i)
 	{
 		prototype_component tree_proto_component;
 		tree_proto_component.proto = tree.get();
@@ -96,14 +91,16 @@ void executable::run()
 		ecs.create_entity(tree_proto_component, transform);
 	}
 
-	for (auto i = 0ull; i < 5000; ++i)
+	gfx::scene_file grass_file("grass.dae");
+	unique_mesh grass_tuft = prototypes.allocate_mesh_unique(grass_file.mesh.vertices, grass_file.mesh.indices);
+	std::array grass_meshes = { grass_tuft.get() };
+	unique_prototype grass = prototypes.allocate_prototype_unique("Grass", grass_meshes);
+	for (auto i = 0ull; i < 10000; ++i)
 	{
 		prototype_component grass_proto_component;
 		grass_proto_component.proto = grass.get();
 		grass_proto_component.properties[0].visible = true;
 		grass_proto_component.properties[0].color = glm::vec4(0.4f, 1.f, 0.15f, 1.f);
-		grass_proto_component.properties[1].visible = true;
-		grass_proto_component.properties[1].color = glm::vec4(0.5f, 0.3f, 0.04f, 1.f);
 
 		gfx::transform_component transform;
 		transform.value.position = glm::vec3(200.f * dist(gen) - 100.f, 0.f, 200.f * dist(gen) - 100.f);
@@ -188,15 +185,13 @@ void executable::run()
 
         if (enable_following_camera) { current_command->update_buffer(*camera_buffer, 0, *gfx::get_camera_info(ecs, *user_entity)); }
 
-
-		gfx::ilog << (std::chrono::steady_clock::now() - now).count();
         glm::vec3 campos = user_entity->get<gfx::transform_component>()->value.position;
         campos.y         = main_terrain.terrain_height({campos.x, campos.z});
         shadow_map.render(*current_command, campos,
                           [&](gfx::binding_set& light_camera) {
-                              current_command->bind_pipeline(*core.mesh_cull_pipeline,
+                              /*current_command->bind_pipeline(*core.mesh_cull_pipeline,
                                                              {&light_camera, &mesh_sets[context->swapchain()->current_image()]});
-                              current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));
+                              current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));*/
                           },
                           [&](gfx::binding_set& light_camera) {
                               current_command->bind_pipeline(*core.mesh_shadow_pipeline,
@@ -208,8 +203,8 @@ void executable::run()
                               current_command->draw({gfx::u32(main_terrain.chunk_buffer().size())});
                           });
 
-        current_command->bind_pipeline(*core.mesh_cull_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()]});
-        current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));
+        /*current_command->bind_pipeline(*core.mesh_cull_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()]});
+        current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));*/
         current_command->begin_pass(*current_framebuffer);
         current_command->bind_pipeline(*core.sky_pipeline, {&sky_set});
         current_command->draw(3);
