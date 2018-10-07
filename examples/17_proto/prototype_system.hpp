@@ -7,8 +7,7 @@
 struct prototype_component : gfx::ecs::component<prototype_component>
 {
     prototype* proto   = nullptr;
-    bool       visible = true;
-    glm::vec4  color   = {1.f, 1.f, 1.f, 1.f};
+	prototype_mesh_property properties[prototype::max_submeshes];
 };
 
 class prototype_system : public gfx::ecs::system
@@ -25,7 +24,7 @@ public:
         auto& proto = components[0]->as<prototype_component>();
         auto& trans = components[1]->as<gfx::transform_component>();
 
-        if (proto.proto && proto.visible) _manager.enqueue(proto.proto, trans.value, proto.color);
+        if (proto.proto) _manager.enqueue(proto.proto, trans.value, proto.properties);
     }
 
 private:

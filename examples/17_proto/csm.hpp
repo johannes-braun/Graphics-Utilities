@@ -7,7 +7,7 @@ class csm
 	const float vps = 80.f;
 public:
 
-    csm(graphics& core, uint32_t resolution = 1024, int cascades = 5)
+    csm(graphics& core, uint32_t resolution = 1024, int cascades = 4)
           : shadow_set(core.shadow_bindings), _core(core), _cascades(cascades), _camera_data(gfx::buffer_usage::uniform, cascades)
     {
         shadow_map = std::make_unique<gfx::image>(gfx::img_type::attachment, gfx::d32f, gfx::extent(resolution, resolution, _cascades), 1);

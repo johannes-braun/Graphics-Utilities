@@ -58,6 +58,13 @@ private:
 using unique_prototype = std::unique_ptr<prototype, prototype_deleter>;
 using unique_mesh      = std::unique_ptr<mesh, mesh_deleter>;
 
+struct prototype_mesh_property
+{
+    gfx::transform relative_transform;
+    bool           visible = true;
+    glm::vec4      color   = {1.f, 1.f, 1.f, 1.f};
+};
+
 class prototype_manager
 {
 public:
@@ -111,8 +118,8 @@ public:
 
         _staging_vertex_buffer.resize(_staging_vertex_buffer.size() + vertices.size());
         _staging_index_buffer.resize(_staging_index_buffer.size() + indices.size());
-        memcpy(_staging_vertex_buffer.data(), vertices.data(), vertices.size() * sizeof(gfx::vertex3d));
-        memcpy(_staging_index_buffer.data(), indices.data(), indices.size() * sizeof(gfx::index32));
+        memcpy(_staging_vertex_buffer.data() + m->_base_vertex, vertices.data(), vertices.size() * sizeof(gfx::vertex3d));
+        memcpy(_staging_index_buffer.data() + m->_base_index, indices.data(), indices.size() * sizeof(gfx::index32));
 
         gfx::buf_copy(_vertex_buffer, _staging_vertex_buffer, _staging_vertex_buffer.size());
         gfx::buf_copy(_index_buffer, _staging_index_buffer, _staging_index_buffer.size());
@@ -167,35 +174,58 @@ public:
 
     void clear_commands()
     {
+        _cleared          = true;
         _current_instance = (_current_instance + 1) % _draw_commands.size();
-        _draw_commands[_current_instance].clear();
+		_draw_stage_pre.clear();
+		_draw_counts[_current_instance] = 0;
     }
 
-    void enqueue(prototype* p, const gfx::transform& t, const glm::vec4& color)
+    void enqueue(prototype* p, const gfx::transform& t, gfx::span<prototype_mesh_property> properties)
     {
+        int i = 0;
         for (const auto& m : p->meshes)
         {
             if (!m) break;
-            draw_command& c           = _draw_commands[_current_instance].emplace_back();
+            if (!properties[i].visible) continue;
+			++_draw_counts[_current_instance];
+            draw_command& c           = _draw_stage_pre.emplace_back();
             c.indirect.base_index     = m->base->_base_index;
             c.indirect.base_vertex    = m->base->_base_vertex;
             c.indirect.index_count    = m->base->_index_count;
             c.indirect.base_instance  = 0;
             c.indirect.instance_count = 1;
-            c.transform               = t * m->relative_transform;
+            c.transform               = t * m->relative_transform * properties[i].relative_transform;
             c.bounds                  = m->base->_bounds;
-            c.color                   = color;
+            c.color                   = properties[i].color;
+
+            ++i;
         }
+    }
+
+    void update(gfx::commands& cmd)
+    {
+		if (_draw_stage_pre.size() > _draw_commands[_current_instance].size() || _draw_stage_pre.size() > _draw_stages[_current_instance].size())
+		{
+			_draw_stages[_current_instance].resize(_draw_stage_pre.size());
+			_draw_commands[_current_instance].reallocate(_draw_stage_pre.capacity());
+		}
+		if (_cleared)
+		{
+			memcpy(_draw_stages[_current_instance].data(), _draw_stage_pre.data(), _draw_stage_pre.size() * sizeof(draw_command));
+			cmd.copy_buffer(_draw_commands[_current_instance], _draw_stages[_current_instance], _draw_stage_pre.size());
+			_cleared = false;
+		}
     }
 
     void render(gfx::commands& cmd)
     {
         cmd.bind_vertex_buffer(_vertex_buffer, 0);
         cmd.bind_index_buffer(_index_buffer, gfx::index_type::uint32);
-        cmd.draw_indirect_indexed(_draw_commands[_current_instance]);
+        cmd.draw_indirect_indexed(_draw_commands[_current_instance], _draw_counts[_current_instance]);
     }
 
-    const gfx::hbuffer<draw_command>& current_commands() const noexcept { return _draw_commands[_current_instance]; }
+    const gfx::buffer<draw_command>& current_commands() const noexcept { return _draw_commands[_current_instance]; }
+	size_t current_command_count() const noexcept { return _draw_counts[_current_instance]; }
 
 private:
     std::unordered_map<std::string, std::unique_ptr<prototype>> _prototypes;
@@ -206,8 +236,14 @@ private:
     gfx::buffer<gfx::vertex3d>  _vertex_buffer;
     gfx::buffer<gfx::index32>   _index_buffer;
 
-    ptrdiff_t                                 _current_instance = 0;
-    std::array<gfx::hbuffer<draw_command>, 3> _draw_commands;
+    ptrdiff_t                                _current_instance = 0;
+    bool                                     _cleared          = true;
+	std::vector<draw_command>               _draw_stage_pre;
+	std::array<gfx::hbuffer<draw_command>, 3> _draw_stages{};
+	std::array<size_t, 3> _draw_counts {0};
+    std::array<gfx::buffer<draw_command>, 3> _draw_commands{gfx::buffer<draw_command>(gfx::buffer_usage::all),
+                                                            gfx::buffer<draw_command>(gfx::buffer_usage::all),
+                                                            gfx::buffer<draw_command>(gfx::buffer_usage::all)};
 };
 
 inline void prototype_deleter::operator()(prototype* p) const
