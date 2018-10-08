@@ -4,7 +4,7 @@
 
 class csm
 {
-	const float vps = 60.f;
+	const float vps = 40.f;
 public:
 
     csm(graphics& core, uint32_t resolution = 1024, int cascades = 4)
@@ -62,11 +62,23 @@ public:
 		_sub_cascade = (_sub_cascade + 1) % 1; // frames between updates
         if(_sub_cascade == 0)
 		    _current_cascade = (_current_cascade + 1) % _cascades;
-		const float vpss = vps * (1 << i);
+		const float vpss = vps * (1 << i) * (1 << (_cascades - i));
+
+		float sx = 0.5f;
+		float sy = cos(0.1f * glfwGetTime() / glm::pi<float>());
+		float sz = sin(0.1f * glfwGetTime() / glm::pi<float>());
+
+		glm::vec3 sundir = normalize(glm::vec3(sx, sy, sz));
+
+        light_cameras[i].second.value.rotation =
+            glm::quatLookAt(sundir, glm::vec3(0, 1, 0));
 
 		light_cameras[i].second.value.position =
-			(glm::vec3(glm::ivec3(position * 4.f*vpss / shadow_map->extents().width)) * shadow_map->extents().width / (4.f*vpss))
+			glm::vec3(glm::ivec3(position * 8.f)) / 8.f
 			+ 300.f * (light_cameras[i].second.value.rotation * glm::vec3(0, 0, 1));
+
+
+		//(glm::vec3(glm::ivec3(position * 2.f * vpss / shadow_map->extents().width)) * shadow_map->extents().width / (2.f * vpss))
 
 		auto& lci = light_camera_matrices[i];
 		lci.do_cull = true;

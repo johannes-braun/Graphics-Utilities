@@ -236,12 +236,13 @@ private:
     gfx::buffer<gfx::vertex3d>  _vertex_buffer;
     gfx::buffer<gfx::index32>   _index_buffer;
 
+	static constexpr size_t max_buffer_count = 3;
     ptrdiff_t                                _current_instance = 0;
     bool                                     _cleared          = true;
 	std::vector<draw_command>               _draw_stage_pre;
-	std::array<gfx::hbuffer<draw_command>, 3> _draw_stages{};
-	std::array<size_t, 3> _draw_counts {0};
-    std::array<gfx::buffer<draw_command>, 3> _draw_commands{gfx::buffer<draw_command>(gfx::buffer_usage::all),
+	std::array<gfx::hbuffer<draw_command>, max_buffer_count> _draw_stages{};
+	std::array<size_t, max_buffer_count> _draw_counts {0};
+    std::array<gfx::buffer<draw_command>, max_buffer_count> _draw_commands{gfx::buffer<draw_command>(gfx::buffer_usage::all),
                                                             gfx::buffer<draw_command>(gfx::buffer_usage::all),
                                                             gfx::buffer<draw_command>(gfx::buffer_usage::all)};
 };

@@ -1,11 +1,16 @@
 #version 460 core
 #include "../api.glsl"
-#include "sky.glsl"
 #include "terrain.input.glsl"
 #include "shadow.glsl"
 
 layout(loc_gl(1) loc_vk(2, 0)) uniform sampler2D bumpmap;
 layout(loc_gl(2) loc_vk(2, 1)) uniform sampler2D colormap;
+
+layout(loc_gl(3) loc_vk(4, 0)) uniform Time
+{
+	float time;
+};
+#include "sky.glsl"
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal_u;

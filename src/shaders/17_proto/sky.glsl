@@ -1,7 +1,7 @@
 #ifndef SKY_GLSL
 #define SKY_GLSL
 
-const float time = 2.f;
+const float pi = 3.14159265359f;
 
 float cnoise(vec3 P, vec3 cam);
 vec3 sky(vec3 uv, vec3 cam)
@@ -14,9 +14,9 @@ vec3 sky(vec3 uv, vec3 cam)
 
 	vec3 result = bottom;
 
-	float sy = 1.1f + 0.5f * sin(time);
-	float sx = sin(time*0.1f) *1;
-	float sz = cos(time*0.1f) * 1;
+	float sx = 0.5f;
+	float sy = cos(0.1f * time / pi);
+	float sz = sin(0.1f * time / pi);
 
 	vec3 sundir = normalize(vec3(sx, sy, sz));
 	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
@@ -58,23 +58,24 @@ vec3 sky_noclouds(vec3 uv, vec3 cam)
 {
 	vec3 bottom = vec3(0.2f);
 	vec3 top = vec3(0.3f, 0.5f, 1.f);
-	vec3 eve = vec3(0.9f, 0.5f, 0.1f);
+	vec3 eve = vec3(0.4f, 0.5f, 0.67f);
+	vec3 ngh = vec3(0.02f, 0.04f, 0.07f);
 
 	float up_angle = dot(normalize(uv), normalize(vec3(0,1,0)));
 
 	vec3 result = bottom;
-
-	float sy = 1.1f + 0.5f * sin(time);
-	float sx = sin(time*0.1f) *1;
-	float sz = cos(time*0.1f) * 1;
-
+	
+	float sx = 0.5f;
+	float sy = cos(0.1f * time / pi);
+	float sz = sin(0.1f * time / pi);
 	vec3 sundir = normalize(vec3(sx, sy, sz));
 	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
+	float night = smoothstep(0.0f, -0.5f, up_angle_sun);
 
-	result = mix(bottom, mix(eve, top, up_angle_sun), smoothstep(-0.4f, 0.1f, up_angle));
+	result = mix(bottom, mix(mix(eve, top, up_angle_sun), ngh, night), smoothstep(-0.4f, 0.1f, up_angle));
 
 	float angle = dot(normalize(uv), sundir);
-	result = mix(result, vec3(1.f), 0.5f*smoothstep(0.15f, 1.15f, angle));
+	result = mix(result, mix(mix(vec3(0.9f, 0.5f, 0.1f), vec3(1.f), up_angle_sun), 0.4f*vec3(0.9f, 0.5f, 0.1f), night), 0.5f*smoothstep(0.15f, 1.15f, angle));
 	result = mix(result, vec3(8.f), smoothstep(0.985f, 1.08f, angle));
 	
 	vec3 tc = normalize(uv);

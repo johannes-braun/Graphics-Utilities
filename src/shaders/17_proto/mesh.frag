@@ -1,6 +1,5 @@
 #version 460 core
 #include "../api.glsl"
-#include "sky.glsl"
 #include "shadow.glsl"
 
 layout(location = 0) in vec3 position;
@@ -16,6 +15,12 @@ layout(loc_gl(0) loc_vk(0, 0)) uniform Camera
 } camera;
 
 layout(loc_gl(3) loc_vk(2, 0)) uniform sampler2D overlay_texture;
+
+layout(loc_gl(2) loc_vk(4, 0)) uniform Time
+{
+	float time;
+};
+#include "sky.glsl"
 
 layout(location = 0) out vec4 color;
 const float chunk_size = 2.f;

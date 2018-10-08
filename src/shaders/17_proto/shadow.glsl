@@ -1,5 +1,5 @@
 
-const float vps = 60.f;
+const float vps = 40.f;
 const float shd_dist_div = 4.f / vps;
 const int smoothing_size = 3;
 

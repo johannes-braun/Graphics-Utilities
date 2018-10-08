@@ -18,6 +18,9 @@ public:
             .push(gfx::binding_type::sampled_image)      // shadow map
             .push(gfx::binding_type::uniform_buffer);    // shadow camera infos
 
+		time_bindings = gfx::binding_layout{};
+		time_bindings.push(gfx::binding_type::uniform_buffer);
+
         create_mesh_pipelines();
         create_sky_pipeline();
         create_terrain_pipelines();
@@ -40,6 +43,7 @@ public:
         layouts.layouts.push_back(&mesh_bindings);
         layouts.layouts.push_back(&mesh_style_bindings);
         layouts.layouts.push_back(&shadow_bindings);
+        layouts.layouts.push_back(&time_bindings);
         gfx::pipe_state::depth_stencil depth_stencil;
         depth_stencil.depth_test_enable = true;
         gfx::pipe_state::rasterizer raster;
@@ -70,11 +74,9 @@ public:
     }
     void create_sky_pipeline()
     {
-        sky_bindings = gfx::binding_layout{};
-
-        sky_bindings.push(gfx::binding_type::uniform_buffer).push(gfx::binding_type::uniform_buffer);
         gfx::pipe_state::binding_layouts sky_binding_state;
-        sky_binding_state.layouts.push_back(&sky_bindings);
+        sky_binding_state.layouts.push_back(&camera_bindings);
+		sky_binding_state.layouts.push_back(&time_bindings);
         gfx::pipe_state::depth_stencil sky_depth;
         sky_depth.depth_write_enable = false;
         sky_depth.depth_test_enable  = true;
@@ -147,6 +149,7 @@ public:
         terrain_state.state_multisample = &exe.msaa_state;
 		terrain_layouts.layouts.push_back(&terrain_style_bindings);
 		terrain_layouts.layouts.push_back(&shadow_bindings);
+		terrain_layouts.layouts.push_back(&time_bindings);
         terrain_rasterizer.cull = gfx::cull_mode::back;
         terrain_render_pipeline = std::make_unique<gfx::graphics_pipeline>(terrain_state, exe.pass_layout, terrain_shaders);
     }
@@ -159,7 +162,7 @@ public:
     gfx::binding_layout shadow_bindings;
     gfx::binding_layout terrain_info_bindings;
     gfx::binding_layout terrain_style_bindings;
-    gfx::binding_layout sky_bindings;
+	gfx::binding_layout time_bindings;
 
     std::unique_ptr<gfx::graphics_pipeline> mesh_render_pipeline;
     std::unique_ptr<gfx::graphics_pipeline> mesh_shadow_pipeline;

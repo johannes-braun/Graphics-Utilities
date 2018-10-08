@@ -25,7 +25,7 @@ void executable::run()
     const std::uniform_real_distribution<float> dist;
 
     graphics core(*this);
-    csm      shadow_map(core, 2048, 5);
+    csm      shadow_map(core, 2048, 6);
 
     interaction_processor interaction_manager(ecs);
 
@@ -48,7 +48,7 @@ void executable::run()
     std::array       s     = {um.get()};
     unique_prototype proto = prototypes.allocate_prototype_unique("Tech Plane", s);
 
-    for (auto i = 0ull; i < 1000; ++i)
+    for (auto i = 0ull; i < 600; ++i)
     {
         prototype_component tplanecomp;
         tplanecomp.proto   = proto.get();
@@ -74,7 +74,7 @@ void executable::run()
 	unique_mesh leaves = prototypes.allocate_mesh_unique(tree_leaves_vertices, tree_leaves_indices);
 	std::array tree_meshes = { leaves.get(), trunk.get() };
 	unique_prototype tree = prototypes.allocate_prototype_unique("Tree", tree_meshes);
-	for (auto i = 0ull; i < 350; ++i)
+	for (auto i = 0ull; i < 150; ++i)
 	{
 		prototype_component tree_proto_component;
 		tree_proto_component.proto = tree.get();
@@ -87,7 +87,7 @@ void executable::run()
 		transform.value.position = glm::vec3(200.f * dist(gen) - 100.f, 0.f, 200.f * dist(gen) - 100.f);
 		transform.value.position.y = main_terrain.terrain_height({ transform.value.position.x, transform.value.position.z });
 		transform.value.rotation = glm::angleAxis(glm::radians(dist(gen) * 180.f), glm::vec3(0, 1, 0)) * glm::angleAxis(glm::radians(90.f), glm::vec3(-1, 0, 0));
-		transform.value.scale = glm::vec3(0.2f + 1.5f * dist(gen));
+		transform.value.scale = glm::vec3(0.1f + 5.5f * dist(gen));
 		ecs.create_entity(tree_proto_component, transform);
 	}
 
@@ -113,7 +113,7 @@ void executable::run()
     gfx::ecs::system_list graphics_systems;
     graphics_systems.add(proto_system);
 
-    const gfx::hbuffer<float> time_buffer{2.f};
+    gfx::hbuffer<float> time_buffer{2.f};
 
     gfx::image&           terrain_bump       = res.images_ldr["6675-bump.jpg"];
     const gfx::image_view terrain_bump_view  = terrain_bump.view(gfx::imgv_type::image2d);
@@ -122,9 +122,8 @@ void executable::run()
     gfx::image&           mesh_color         = res.images_ldr["rust.png"];
     const gfx::image_view mesh_color_view    = mesh_color.view(gfx::imgv_type::image2d);
 
-	gfx::binding_set sky_set(core.sky_bindings);
-	sky_set.bind(0, *camera_buffer);
-	sky_set.bind(1, time_buffer);
+	gfx::binding_set time_set(core.time_bindings);
+	time_set.bind(0, time_buffer);
 
     gfx::binding_set main_camera_set(core.camera_bindings);
     main_camera_set.bind(0, *camera_buffer);
@@ -187,9 +186,10 @@ void executable::run()
 
         glm::vec3 campos = user_entity->get<gfx::transform_component>()->value.position;
         campos.y         = main_terrain.terrain_height({campos.x, campos.z});
+		time_buffer[0] = glfwGetTime();
         shadow_map.render(*current_command, campos,
                           [&](gfx::binding_set& light_camera) {
-                              /*current_command->bind_pipeline(*core.mesh_cull_pipeline,
+                             /* current_command->bind_pipeline(*core.mesh_cull_pipeline,
                                                              {&light_camera, &mesh_sets[context->swapchain()->current_image()]});
                               current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));*/
                           },
@@ -203,16 +203,16 @@ void executable::run()
                               current_command->draw({gfx::u32(main_terrain.chunk_buffer().size())});
                           });
 
-        /*current_command->bind_pipeline(*core.mesh_cull_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()]});
-        current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));*/
+        //current_command->bind_pipeline(*core.mesh_cull_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()]});
+        //current_command->dispatch(gfx::u32((prototypes.current_command_count() + 31) / 32));
         current_command->begin_pass(*current_framebuffer);
-        current_command->bind_pipeline(*core.sky_pipeline, {&sky_set});
+        current_command->bind_pipeline(*core.sky_pipeline, {&main_camera_set, &time_set});
         current_command->draw(3);
         current_command->bind_pipeline(*core.mesh_render_pipeline, {&main_camera_set, &mesh_sets[context->swapchain()->current_image()],
-                                                                    &mesh_style_set, &shadow_map.shadow_set});
+                                                                    &mesh_style_set, &shadow_map.shadow_set, &time_set });
         current_command->render(prototypes);
         current_command->bind_pipeline(*core.terrain_render_pipeline,
-                                       {&terrain_info_set, &main_camera_set, &terrain_style_set, &shadow_map.shadow_set});
+                                       {&terrain_info_set, &main_camera_set, &terrain_style_set, &shadow_map.shadow_set, &time_set });
         current_command->bind_vertex_buffer(main_terrain.chunk_buffer(), 0);
         current_command->draw({gfx::u32(main_terrain.chunk_buffer().size())});
         current_command->end_pass();
