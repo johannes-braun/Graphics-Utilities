@@ -70,7 +70,7 @@ public:
         const auto                  info   = image_file::info(folder / ("posx"+extension));
         const auto                  mips   = static_cast<uint32_t>(floor(log2(std::max(info.width, info.height))) + 1);
 
-        device_image base_cubemap(img_type::image2d, rgba32f, extent(info.width, info.height, 6), mips);
+        device_image base_cubemap(img_type::image2d, rgba16f, extent(info.width, info.height, 6), mips);
         base_cubemap.layer(0) << host_image(base_cubemap.pixel_format(), folder / ("posx"+extension));
         base_cubemap.layer(1) << host_image(base_cubemap.pixel_format(), folder / ("negx"+extension));
         base_cubemap.layer(2) << host_image(base_cubemap.pixel_format(), folder / ("posy"+extension));

@@ -49,9 +49,9 @@ public:
 		alignas(16) uint32_t base_index     = 0;
 		alignas(4) uint32_t base_vertex    = 0;
 		alignas(4) uint32_t base_bvh_node  = 0;
+		alignas(4) glm::u8vec4 color;
 
 		alignas(16) glm::mat4 transform;
-		alignas(16) glm::u8vec4 color;
 		alignas(4)  float roughness;
 		alignas(4)  float reflectivity;
 	};
@@ -74,32 +74,29 @@ public:
 
 	mesh_handle allocate_mesh(const gfx::span<const gfx::vertex3d>& vertices, const gfx::span<const gfx::index32>& indices)
     {
-        mesh* m = [this] { return &*_meshes.emplace_back(std::make_unique<mesh>()); }();
+        mesh* m = &*_meshes.emplace_back(std::make_unique<mesh>());
         assert(m);
         m->_base_index   = static_cast<uint32_t>(_staging_index_buffer.size());
         m->_base_vertex  = static_cast<uint32_t>(_staging_vertex_buffer.size());
         m->_index_count  = static_cast<uint32_t>(indices.size());
         m->_vertex_count = static_cast<uint32_t>(vertices.size());
 
-        const auto prev_index_buffer_size = _staging_index_buffer.size();
         _staging_index_buffer.resize(_staging_index_buffer.size() + indices.size());
-        memcpy(_staging_index_buffer.data() + prev_index_buffer_size, indices.data(), indices.size() * sizeof(gfx::index32));
-        _bvh_generator.sort(_staging_index_buffer.begin() + prev_index_buffer_size, _staging_index_buffer.end(),
+        memcpy(_staging_index_buffer.data() + m->_base_index, indices.data(), indices.size() * sizeof(gfx::index32));
+        _bvh_generator.sort(_staging_index_buffer.begin() + m->_base_index, _staging_index_buffer.end(),
                             [&](const gfx::index32 i) { return vertices[i].position; });
         gfx::buf_copy(_index_buffer, _staging_index_buffer, _staging_index_buffer.size());
 
         m->_base_bvh_node  = static_cast<uint32_t>(_staging_bvh_buffer.size());
         m->_bvh_node_count = static_cast<uint32_t>(_bvh_generator.nodes().size());
 
-        const auto prev_bvh_buffer_size = _staging_bvh_buffer.size();
         _staging_bvh_buffer.resize(_staging_bvh_buffer.size() + _bvh_generator.nodes().size());
-        memcpy(_staging_bvh_buffer.data() + prev_bvh_buffer_size, _bvh_generator.nodes().data(),
+        memcpy(_staging_bvh_buffer.data() + m->_base_bvh_node, _bvh_generator.nodes().data(),
                _bvh_generator.nodes().size() * sizeof(gfx::bvh<3>::node));
         gfx::buf_copy(_bvh_buffer, _staging_bvh_buffer, _staging_bvh_buffer.size());
-
-        const auto prev_vertex_buffer_size = _staging_vertex_buffer.size();
-        _staging_vertex_buffer.resize(_staging_vertex_buffer.size() + vertices.size());
-        memcpy(_staging_vertex_buffer.data() + prev_vertex_buffer_size, vertices.data(), vertices.size() * sizeof(gfx::vertex3d));
+        
+		_staging_vertex_buffer.resize(_staging_vertex_buffer.size() + vertices.size());
+        memcpy(_staging_vertex_buffer.data() + m->_base_vertex, vertices.data(), vertices.size() * sizeof(gfx::vertex3d));
         gfx::buf_copy(_vertex_buffer, _staging_vertex_buffer, _staging_vertex_buffer.size());
 
         return m;

@@ -117,8 +117,8 @@ struct instance
 	uint base_index;
 	uint base_vertex;
 	uint base_bvh_node;
-	mat4 transform;
 	uint color;
+	mat4 transform;
 	float roughness;
 	float reflectivity;
 
@@ -193,7 +193,7 @@ void main()
     vec2 random_value =
         random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (1212121),
                              1.f / (1212121));
-	vec2 uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
+	vec2 uv = get_uv(vec2(((pixel + random_value-0.5f) / vec2(img_size)) * 2 - 1));
     vec3 precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
 
     uvec2 c_counters      = reset != 0 ? imageLoad(counter_cache, pixel).xy : uvec2(0);
@@ -205,14 +205,14 @@ void main()
 
     // READ ----------------------------------------
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < 3; ++i)
     {
         if (c_counters.x == 0)
         {
             random_value      = random_hammersley_2d(int(next_random() * img_size.x * img_size.y)
                                                     % (1212121),
                                                 1.f / (1212121));
-			uv = get_uv(vec2(((pixel + 2.f*random_value-1.f) / vec2(img_size)) * 2 - 1));
+			uv = get_uv(vec2(((pixel + random_value-0.5f) / vec2(img_size)) * 2 - 1));
 			precalc_direction = vec3(inverse_view_proj * vec4(uv, 0.f, 1.f));
             c_bounce          = vec4(1);
             c_direction       = vec4(precalc_direction, 0);
@@ -276,8 +276,8 @@ void main()
         }
         else
         {
-			#define sample_env() texture(cubemap, c_direction.xyz)
-			//#define sample_env() vec4(0.2f)
+			//#define sample_env() texture(cubemap, c_direction.xyz)
+			#define sample_env() vec4(0.2f)
 
 			vec4 env = sample_env();
 			if(any(isnan(env)))
@@ -555,7 +555,7 @@ bvh_result bvh_hit(vec3 origin, vec3 direction, const float max_distance, uint i
 	instance inst = model_instances[instance_id];
 	mat4 inv_tf = inverse(inst.transform);
 	origin		= (inv_tf * vec4(origin, 1)).xyz;
-	direction	= normalize((inv_tf * vec4(direction, 0)).xyz);
+	direction	= ((inv_tf * vec4(direction, 0)).xyz);
 	uint root_node = inst.base_bvh_node;
 
     bvh_node current_node = model_bvh.nodes[root_node];
@@ -624,8 +624,8 @@ bvh_result bvh_hit(vec3 origin, vec3 direction, const float max_distance, uint i
             switchstack = switchstack >> 1;
         }
 
-        current_id = ((switchstack & 0x1) == 0x1) ? model_bvh.nodes[model_bvh.nodes[root_node + current_id].parent].right
-                                                  : model_bvh.nodes[model_bvh.nodes[root_node + current_id].parent].left;
+        current_id = ((switchstack & 0x1) == 0x1) ? model_bvh.nodes[root_node + model_bvh.nodes[root_node + current_id].parent].right
+                                                  : model_bvh.nodes[root_node + model_bvh.nodes[root_node + current_id].parent].left;
 
         current_node = model_bvh.nodes[root_node + current_id];
         bitstack     = bitstack ^ 1;

@@ -19,16 +19,9 @@ struct helper_info
     uint32_t  bounce_limit;
 };
 
-struct model
-{
-    uint32_t first_index;
-    uint32_t first_vertex;
-    uint32_t first_bvh_node;
-};
-
 void executable::run()
 {
-	user_entity->get<gfx::transform_component>()->value.position.z += 4.f;
+    user_entity->get<gfx::transform_component>()->value.position.z += 4.f;
 
     gfx::image accumulation_cache(gfx::img_type::image2d, gfx::rgba32f, gfx::extent(1280, 720), 1);
     gfx::image bounce_cache(gfx::img_type::image2d, gfx::rgba32f, gfx::extent(1280, 720), 1);
@@ -103,49 +96,55 @@ void executable::run()
     std::mt19937   gen;
 
     std::uniform_real_distribution<float> dist;
-    mesh_handle                           bunny = meshes.allocate_meshes(res.scenes["bunny.dae"])[0];
-    for (float f = -10.f; f <= 10.f; f += 11.f)
-        for (float c = -10.f; c <= 10.f; c += 11.f)
-            meshes.add_instance(bunny, gfx::transform(glm::vec3(f, 0, c), glm::vec3(1)), glm::vec4(dist(gen), dist(gen), dist(gen), 1.f),
-                                0.4f, 0.3f);
-    meshes.add_instance(meshes.allocate_meshes(res.scenes["renderable.dae"])[0],
-                        {{0, -0.5f, 0}, glm::vec3(1), glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))}, glm::vec4(1, 1, 1, 1), 0.5f,
-                        0.3f);
+    auto span = meshes.allocate_meshes(res.scenes["tree.dae"]);
+	auto leaves = span[1], trunks = span[0];
+    for (int c = 0; c <= 5; ++c)
+    {
+        const auto scale = 0.5f + 2.f * dist(gen);
+        const auto pos   = glm::vec3(40.f * dist(gen), 0.f, 40.f * dist(gen));
+        meshes.add_instance(leaves,
+                            gfx::transform(pos, glm::vec3(scale), glm::angleAxis(glm::radians(90.f), glm::vec3(-1, 0, 0))),
+                            glm::vec4(0.2f, 1.f, 0.01f, 1.f), 0.5f, 0.1f);
+        meshes.add_instance(trunks,
+                            gfx::transform(pos, glm::vec3(scale), glm::angleAxis(glm::radians(90.f), glm::vec3(-1, 0, 0))),
+                            glm::vec4(0.4f, 0.3f, 0.1f, 1.f), 0.5f, 0.1f);
+    }
+     const auto xube = meshes.allocate_meshes(res.scenes["floor.dae"])[0];
+     meshes.add_instance(xube,
+    	{ {3, -0.5f, 0}, glm::vec3(8, 8, 1), glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0)) }, glm::vec4(1, 1, 1, 1), 0.15f,
+    	0.5f);
 
-    gfx::hbuffer<helper_info> helper_info_buffer(1);
-    std::vector<gfx::binding_set>         trace_sets;
+    gfx::hbuffer<helper_info>     helper_info_buffer(1);
+    std::vector<gfx::binding_set> trace_sets;
 
-	for (auto i = 0ull; i < gfx::context::current()->swapchain()->image_views().size(); ++i)
-	{
-		auto& trace_set = trace_sets.emplace_back(trace_layout);
-		trace_set.bind(0, *camera_buffer);
-		trace_set.bind(1, helper_info_buffer);
-		trace_set.bind(2, meshes.bvh_buffer());
-		trace_set.bind(3, meshes.vertex_buffer());
-		trace_set.bind(4, meshes.index_buffer());
-		trace_set.bind(5, meshes.instances());
-		trace_set.bind(6, cubemap_view, sampler);
-		trace_set.bind(7, accumulation_cache_view);
-		trace_set.bind(8, bounce_cache_view);
-		trace_set.bind(9, direction_cache_view);
-		trace_set.bind(10, origin_cache_view);
-		trace_set.bind(11, counter_cache_view);
-	}
+    for (auto i = 0ull; i < gfx::context::current()->swapchain()->image_views().size(); ++i)
+    {
+        auto& trace_set = trace_sets.emplace_back(trace_layout);
+        trace_set.bind(0, *camera_buffer);
+        trace_set.bind(1, helper_info_buffer);
+        trace_set.bind(2, meshes.bvh_buffer());
+        trace_set.bind(3, meshes.vertex_buffer());
+        trace_set.bind(4, meshes.index_buffer());
+        trace_set.bind(5, meshes.instances());
+        trace_set.bind(6, cubemap_view, sampler);
+        trace_set.bind(7, accumulation_cache_view);
+        trace_set.bind(8, bounce_cache_view);
+        trace_set.bind(9, direction_cache_view);
+        trace_set.bind(10, origin_cache_view);
+        trace_set.bind(11, counter_cache_view);
+    }
     gfx::transform last_cam = user_entity->get<gfx::transform_component>()->value;
 
     int iteration   = 0;
     int max_bounces = 5;
     while (frame())
     {
-		auto& trace_set = trace_sets[gfx::context::current()->swapchain()->current_image()];
-		trace_set.bind(2, meshes.bvh_buffer());
-		trace_set.bind(3, meshes.vertex_buffer());
-		trace_set.bind(4, meshes.index_buffer());
-		trace_set.bind(5, meshes.instances());
-        const auto reset = [&]
-        {
-            iteration = 0;
-        };
+        auto& trace_set = trace_sets[gfx::context::current()->swapchain()->current_image()];
+        trace_set.bind(2, meshes.bvh_buffer());
+        trace_set.bind(3, meshes.vertex_buffer());
+        trace_set.bind(4, meshes.index_buffer());
+        trace_set.bind(5, meshes.instances());
+        const auto reset = [&] { iteration = 0; };
 
         ImGui::Begin("Settings");
         if (ImGui::Button("Reset Tracer")) reset();
@@ -153,17 +152,6 @@ void executable::run()
         ImGui::Value("Min. Samples", iteration / max_bounces);
         ImGui::Value("Time", time);
 
-        if (ImGui::Button("Add Bunny!"))
-        {
-            meshes.add_instance(bunny, gfx::transform(glm::vec3(28 * dist(gen) - 14, 0, 28 * dist(gen) - 14), glm::vec3(1)),
-                                glm::vec4(dist(gen), dist(gen), dist(gen), 1.f), 0.4f, 0.3f);
-            reset();
-        }
-        if (ImGui::Button("Clear Bunnies :("))
-        {
-            meshes.clear_instances_of(bunny);
-            reset();
-        }
         ImGui::End();
 
         if (last_cam != user_entity->get<gfx::transform_component>()->value)

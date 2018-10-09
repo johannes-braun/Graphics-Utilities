@@ -70,6 +70,8 @@ namespace gfx
 
         if (_mode != bvh_mode::persistent_iterators)
             _get_vertex = [](size_t index) { return vec_type(); };
+
+		_nodes.resize(_node_count);
     }
 
     template<size_t Dimension>

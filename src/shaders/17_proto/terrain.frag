@@ -90,8 +90,14 @@ void main()
 
 	const vec3 normal = normalize(from_bump(position, base_normal, 2.f*uv, view, bumpmap, 0.1f) + from_bump(position, base_normal, 0.5f*uv, view, bumpmap, 0.1f) + from_bump(position, base_normal, 0.05f*uv, view, bumpmap, 0.1f) + from_bump(position, base_normal, 0.006f*uv, view, bumpmap, 0.1f));
 	const vec3 albedo = texture(colormap, 0.1f*uv).rgb;
+	
+	float sx = 0.5f;
+	float sy = cos(0.1f * time / pi);
+	float sz = sin(0.1f * time / pi);
+	vec3 sundir = normalize(vec3(sx, sy, sz));
+	float up_angle_sun = dot(sundir, normalize(vec3(0,1,0)));
 
-	const vec3 light  = normalize(position-shadow_camera.data[0].pos);
+	const vec3 light  = sundir;
 	const float ndotl = max(dot(light, normal), 0.f);
 	const float ndotv = max(dot(-view, normal), 0.f);
 
@@ -101,7 +107,7 @@ void main()
 	const float cam_distxz = distance(position.xzy, camera.pos.xzy); 
 	float s = shadow(shadowmap, position, cam_distxz, normal, light);
 
-	color = vec4(s * ndotl * albedo + albedo * vec3(0.3f, 0.5f, 1.f) / 3.14159265359f, 1);
+	color = vec4(smoothstep(0.f, 0.2f, up_angle_sun) * s * ndotl * albedo + albedo * vec3(0.3f, 0.5f, 1.f) / 3.14159265359f, 1);
 	
 	const float max_dist = chunk_size * chunk_count;
 	color = mix(color, vec4(sky_noclouds(view, camera.pos), 1), smoothstep(max_dist / 2.5f, max_dist/2.f, cam_dist));
