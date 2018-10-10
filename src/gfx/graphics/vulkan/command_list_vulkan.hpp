@@ -33,24 +33,30 @@ public:
     void bind_vertex_buffer(const handle& buffer, u32 binding, i64 offset) override;
     void bind_index_buffer(const handle& buffer, index_type index, i64 offset) override;
     void draw_indexed(u32 index_count, u32 instance_count, u32 base_index, u32 base_vertex, u32 base_instance) override;
-	void draw_indirect(const handle& buffer, u32 count, u32 stride, u32 first, bool indexed) override;
+    void draw_indirect(const handle& buffer, u32 count, u32 stride, u32 first, bool indexed) override;
 
     void push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size) override;
     void set_viewports(u32 first, span<viewport> vp, span<rect2f> scissors);
-	void update_buffer(const handle& buffer, u32 offset, u32 size, const void* data) override;
-	void copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size) override;
+    void update_buffer(const handle& buffer, u32 offset, u32 size, const void* data) override;
+    void copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size) override;
 
-	handle api_handle() { return VkCommandBuffer(_cmd); }
+    handle api_handle() { return VkCommandBuffer(_cmd); }
 
 private:
-	movable_handle<VkFence> _default_fence = nullptr;
+    struct
+    {
+		VkPipelineBindPoint bind_point;
+        VkPipeline          pipeline = nullptr;
+		VkPipelineLayout    layout   = nullptr;
+		void clear() { pipeline = nullptr; layout = nullptr; }
+    } pipeline_state;
+
+    movable_handle<VkFence>              _default_fence = nullptr;
     commands_type                        _type;
     VkRect2D                             _last_render_area;
     gfx::vulkan::context_implementation* _ctx_impl;
     gfx::u32                             _family;
     std::vector<VkDescriptorSet>         _sets;
-    const graphics_pipeline*             _last_gpipeline = nullptr;
-    const compute_pipeline*              _last_cpipeline = nullptr;
     VkDevice                             _device         = nullptr;
     VkCommandPool                        _pool           = nullptr;
     VkQueue                              _queue          = nullptr;

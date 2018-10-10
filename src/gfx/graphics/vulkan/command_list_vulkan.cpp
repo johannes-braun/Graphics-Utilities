@@ -18,7 +18,8 @@ commands_implementation::~commands_implementation()
         _ctx_impl->final_wait_semaphores[_family].pop_back();
     }
 
-    if (_default_fence) {
+    if (_default_fence)
+    {
         if (vkGetFenceStatus(_device, _default_fence) == VK_NOT_READY)
             check_result(vkWaitForFences(_device, 1, &_default_fence, true, std::numeric_limits<uint64_t>::max()));
         vkDestroyFence(_device, _default_fence, nullptr);
@@ -57,7 +58,8 @@ void commands_implementation::initialize(commands_type type)
 }
 void commands_implementation::reset()
 {
-    if (_default_fence) {
+    if (_default_fence)
+    {
         if (vkGetFenceStatus(_device, _default_fence) == VK_NOT_READY)
             check_result(vkWaitForFences(_device, 1, &_default_fence, true, std::numeric_limits<uint64_t>::max()));
         check_result(vkResetFences(_device, 1, &_default_fence));
@@ -74,6 +76,7 @@ void commands_implementation::begin()
 void commands_implementation::end()
 {
     check_result(vkEndCommandBuffer(_cmd));
+	pipeline_state.clear();
 }
 void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
 {
@@ -101,7 +104,8 @@ void commands_implementation::execute_sync_after(const commands& cmd, fence* f)
     VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     submit.pWaitDstStageMask        = &stageFlags;
 
-    if (!_default_fence && !f) {
+    if (!_default_fence && !f)
+    {
         init<VkFenceCreateInfo> fc{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         check_result(vkCreateFence(_device, &fc, nullptr, &_default_fence));
     }
@@ -119,7 +123,8 @@ void commands_implementation::execute(fence* f)
     submit.signalSemaphoreCount = 1;
     submit.pSignalSemaphores    = &_signal;
 
-    if (!_default_fence && !f) {
+    if (!_default_fence && !f)
+    {
         init<VkFenceCreateInfo> fc{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         check_result(vkCreateFence(_device, &fc, nullptr, &_default_fence));
     }
@@ -128,14 +133,16 @@ void commands_implementation::execute(fence* f)
 }
 void commands_implementation::bind_pipeline(const compute_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
-    _last_gpipeline = nullptr;
-    _last_cpipeline = &p;
+    pipeline_state.bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+    pipeline_state.layout     = static_cast<compute_pipeline_implementation*>(&*p.implementation())->layout();
+    pipeline_state.pipeline   = handle_cast<VkPipeline>(p);
+
     vkCmdBindPipeline(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE, handle_cast<VkPipeline>(p));
-    if (bindings.size() > 0) {
+    if (bindings.size() > 0)
+    {
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
-        vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                static_cast<compute_pipeline_implementation*>(&*p.implementation())->layout(), 0, static_cast<u32>(std::size(bindings)),
+        vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_state.layout, 0, static_cast<u32>(std::size(bindings)),
                                 _sets.data() + offset, 0, nullptr);
     }
 }
@@ -159,24 +166,28 @@ void commands_implementation::begin_pass(const framebuffer& fbo, std::optional<r
 void commands_implementation::end_pass()
 {
     vkCmdEndRenderPass(_cmd);
+	pipeline_state.clear();
 }
 void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
-    _last_gpipeline = &p;
-    _last_cpipeline = nullptr;
+    pipeline_state.bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+    pipeline_state.layout     = static_cast<graphics_pipeline_implementation*>(&*p.implementation())->layout();
+    pipeline_state.pipeline   = handle_cast<VkPipeline>(p);
+
     vkCmdBindPipeline(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, handle_cast<VkPipeline>(p));
-    if (bindings.size() > 0) {
+    if (bindings.size() > 0)
+    {
         const u32 offset = u32(_sets.size());
         for (auto& b : bindings) _sets.push_back(handle_cast<VkDescriptorSet>(*b));
-        vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                static_cast<graphics_pipeline_implementation*>(&*p.implementation())->layout(), 0, static_cast<u32>(std::size(bindings)),
+        vkCmdBindDescriptorSets(_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_state.layout, 0, static_cast<u32>(std::size(bindings)),
                                 _sets.data() + offset, 0, nullptr);
     }
 
     const auto* impl = static_cast<graphics_pipeline_implementation*>(&*p.implementation());
 
     // bind default viewports and scissors
-    if (impl->dynamic_viewports()) {
+    if (impl->dynamic_viewports())
+    {
         VkViewport vps{0};
         vps.width    = static_cast<float>(_last_render_area.extent.width);
         vps.height   = static_cast<float>(_last_render_area.extent.height);
@@ -185,7 +196,8 @@ void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::ini
         vkCmdSetViewport(_cmd, 0, 1, &vps);
     }
 
-    if (impl->dynamic_scissors()) {
+    if (impl->dynamic_scissors())
+    {
         VkRect2D scs = _last_render_area;
         vkCmdSetScissor(_cmd, 0, 1, &scs);
     }
@@ -222,19 +234,19 @@ void commands_implementation::draw_indexed(u32 index_count, u32 instance_count, 
 
 void commands_implementation::draw_indirect(const handle& buffer, u32 count, u32 stride, u32 first, bool indexed)
 {
-	const auto h = std::any_cast<VkBuffer>(buffer);
-	decltype(&vkCmdDrawIndirect) x[]{ &vkCmdDrawIndirect, &vkCmdDrawIndexedIndirect };
-	x[int(indexed)](_cmd, h, first * stride, count, stride);
+    const auto                   h = std::any_cast<VkBuffer>(buffer);
+    decltype(&vkCmdDrawIndirect) x[]{&vkCmdDrawIndirect, &vkCmdDrawIndexedIndirect};
+    x[int(indexed)](_cmd, h, first * stride, count, stride);
 }
 
 void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element, binding_type type, std::any obj, u32 offset, u32 size)
 {
-    assert(_last_gpipeline || _last_cpipeline);
-    const auto bind_point = _last_gpipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+    assert(pipeline_state.pipeline);
+    //const auto bind_point = _last_gpipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
 
-    VkPipelineLayout layout = _last_cpipeline
-                                  ? static_cast<compute_pipeline_implementation*>(&*_last_cpipeline->implementation())->layout()
-                                  : static_cast<graphics_pipeline_implementation*>(&*_last_gpipeline->implementation())->layout();
+    //VkPipelineLayout layout = _last_cpipeline
+    //                              ? static_cast<compute_pipeline_implementation*>(&*_last_cpipeline->implementation())->layout()
+    //                              : static_cast<graphics_pipeline_implementation*>(&*_last_gpipeline->implementation())->layout();
 
     if (obj.type()
         == typeid(std::pair<const std::unique_ptr<detail::image_view_implementation>*,
@@ -242,7 +254,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
     {
         assert(type == binding_type::sampled_image);
 
-        auto[ivp, sp] = std::any_cast<
+        auto [ivp, sp] = std::any_cast<
             std::pair<const std::unique_ptr<detail::image_view_implementation>*, const std::unique_ptr<detail::sampler_implementation>*>>(
             obj);
 
@@ -264,7 +276,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         img_info.imageView   = img_view;
         img_info.sampler     = smp;
         write.pImageInfo     = &img_info;
-        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+        vkCmdPushDescriptorSetKHR(_cmd, pipeline_state.bind_point, pipeline_state.layout, set, 1, &write);
     }
     else if (obj.type() == typeid(const std::unique_ptr<detail::image_view_implementation>*))
     {
@@ -285,7 +297,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         img_info.imageView   = img_view;
         img_info.sampler     = nullptr;
         write.pImageInfo     = &img_info;
-        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+        vkCmdPushDescriptorSetKHR(_cmd, pipeline_state.bind_point, pipeline_state.layout, set, 1, &write);
     }
     else if (obj.type() == typeid(const std::unique_ptr<detail::host_buffer_implementation>*))
     {
@@ -312,7 +324,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         buf_info.offset   = offset;
         write.pBufferInfo = &buf_info;
 
-        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+        vkCmdPushDescriptorSetKHR(_cmd, pipeline_state.bind_point, pipeline_state.layout, set, 1, &write);
     }
     else if (obj.type() == typeid(const std::unique_ptr<detail::device_buffer_implementation>*))
     {
@@ -339,7 +351,7 @@ void commands_implementation::push_binding(u32 set, u32 binding, u32 arr_element
         buf_info.offset   = offset;
         write.pBufferInfo = &buf_info;
 
-        vkCmdPushDescriptorSetKHR(_cmd, bind_point, layout, set, 1, &write);
+        vkCmdPushDescriptorSetKHR(_cmd, pipeline_state.bind_point, pipeline_state.layout, set, 1, &write);
     }
 }
 
@@ -347,8 +359,10 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
 {
     std::vector<VkViewport> vps(vp.size());
     std::vector<VkRect2D>   sci(scissors.size());
-    for (int i = 0; i < vp.size(); ++i) {
-        if (!sci.empty()) {
+    for (int i = 0; i < vp.size(); ++i)
+    {
+        if (!sci.empty())
+        {
             auto size            = scissors[i].size();
             sci[i].extent.width  = static_cast<u32>(size.x);
             sci[i].extent.height = static_cast<u32>(size.y);
@@ -365,23 +379,21 @@ void commands_implementation::set_viewports(u32 first, span<viewport> vp, span<r
     }
 
     vkCmdSetViewport(_cmd, first, static_cast<u32>(vps.size()), vps.data());
-    if (!sci.empty()) {
-        vkCmdSetScissor(_cmd, first, static_cast<u32>(sci.size()), sci.data());
-    }
+    if (!sci.empty()) { vkCmdSetScissor(_cmd, first, static_cast<u32>(sci.size()), sci.data()); }
 }
 
 void commands_implementation::update_buffer(const handle& buffer, u32 offset, u32 size, const void* data)
 {
-	vkCmdUpdateBuffer(_cmd, std::any_cast<VkBuffer>(buffer), offset, size, data);
+    vkCmdUpdateBuffer(_cmd, std::any_cast<VkBuffer>(buffer), offset, size, data);
 }
 
 void commands_implementation::copy_buffer(const handle& dest, u32 dest_offset, const handle& src, u32 src_offset, u32 size)
 {
-	init<VkBufferCopy> copy;
-	copy.size = size;
-	copy.dstOffset = dest_offset;
-	copy.srcOffset = src_offset;
-	vkCmdCopyBuffer(_cmd, std::any_cast<VkBuffer>(src), std::any_cast<VkBuffer>(dest), 1, &copy);
+    init<VkBufferCopy> copy;
+    copy.size      = size;
+    copy.dstOffset = dest_offset;
+    copy.srcOffset = src_offset;
+    vkCmdCopyBuffer(_cmd, std::any_cast<VkBuffer>(src), std::any_cast<VkBuffer>(dest), 1, &copy);
 }
 
 }    // namespace vulkan

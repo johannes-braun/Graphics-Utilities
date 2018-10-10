@@ -105,8 +105,13 @@ public:
         3) shadow:
             0 - map
             1 - cameras
-         */
 
+		-------------------------------------------
+
+		
+
+         */
+		
         terrain_info_bindings
             .push(gfx::binding_type::sampled_image)      // heightmap
             .push(gfx::binding_type::uniform_buffer);    // terrain info
