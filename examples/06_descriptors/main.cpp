@@ -191,10 +191,34 @@ class queue
 public:
     queue() = delete;
 
+    void submit(vk::ArrayProxy<std::reference_wrapper<const std::commands>> cmds)
+    {
+        std::vector<vk::CommandBuffer> submits(cmds.size());
+        for(size_t i = 0; i < submits.size(); ++i)
+            submits[i] = cmds[i].get().cmd();
+        
+        vk::SubmitInfo submit;
+        submit.commandBufferCount = u32(submits.size());
+        submit.pCommandBuffers = submits.data();
+        // Semaphores...
+        
+        _queue.submit(submit, nullptr);
+    }
+    
+    vk::Queue get() const noexcept { return _queue; }
+    
 private:
     vk::Queue _queue;
 };
 
+class commands
+{
+public:
+    vk::CommandBuffer cmd() const noexcept { return _buf.get(); }
+    
+private:
+    vk::UniqueCommandBuffer _buf;
+}
 
 enum class queue_type
 {
@@ -315,14 +339,21 @@ public:
         std::unordered_map<u32, u32> queue_counter;
 
         for (size_t index = 0; index < graphics_priorities.size(); ++index)
+        {
             _queues[u32(queue_type::graphics)].push_back(_device->getQueue(fgraphics, queue_counter[fgraphics]++));
+            _command_pools[u32(queue_type::graphics)].push_back(_device->createCommandPool({vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fgraphics}));
+        }
 
         for (size_t index = 0; index < compute_priorities.size(); ++index)
+        {
             _queues[u32(queue_type::compute)].push_back(_device->getQueue(fcompute, queue_counter[fcompute]++));
+            _command_pools[u32(queue_type::compute)].push_back(_device->createCommandPool({vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fcompute}));
+        }
 
         _queues[u32(queue_type::transfer)].push_back(_device->getQueue(ftransfer, queue_counter[ftransfer]++));
+        _command_pools[u32(queue_type::transfer)].push_back(_device->createCommandPool({vk::CommandPoolCreateFlagBits::eTransient, ftransfer}));
         if (enable_present) _queues[u32(queue_type::present)].push_back(_device->getQueue(fpresent, queue_counter[fpresent]++));
-
+        
         VmaAllocatorCreateInfo allocator_create_info{0};
         allocator_create_info.device         = _device.get();
         allocator_create_info.physicalDevice = _gpu;
@@ -352,6 +383,21 @@ public:
     vk::PhysicalDevice    gpu() const noexcept { return _gpu; }
     VmaAllocator          alloc() const noexcept { return _allocator.get(); }
     const ext_dispatcher& dispatcher() const noexcept { return _dispatcher; }
+    
+    std::vector<commands> allocate_graphics_commands(u32 count, bool primary = true) const noexcept
+    {
+        vk::CommandBufferAllocateInfo alloc{ _command_pool[u32(queue_type::graphics)].get(), primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary
+            , count};
+        auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+        return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
+    }
+    commands allocate_graphics_command(bool primary = true) const noexcept
+    {
+        vk::CommandBufferAllocateInfo alloc{ _command_pool[u32(queue_type::graphics)].get(), primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary
+            , count};
+        auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+        return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
+    }
 
 private:
     u32 presentation_family(instance& i, const surface& s, gsl::span<const vk::QueueFamilyProperties> props) const noexcept
@@ -399,6 +445,7 @@ private:
     std::unique_ptr<VmaAllocator_T, vma_alloc_deleter> _allocator;
     ext_dispatcher                                     _dispatcher;
     std::array<std::vector<vk::Queue>, 4>              _queues;
+    std::array<std::vector<vk::UniqueCommandPool>, 4>  _command_pools;
     std::array<u32, 4>                                 _queue_families{};
 };
 
@@ -423,6 +470,8 @@ public:
     void             recreate() { recreate(*this); }
     vk::SwapchainKHR chain() const noexcept { return _swapchain.get(); }
 
+    u32 count() const noexcept { return _images.size(); }
+    
 private:
     void recreate(std::optional<std::reference_wrapper<swapchain>> old)
     {
@@ -545,6 +594,12 @@ int main(int argc, char** argv)
     gfx::surface   surf(my_app, &surface);
     gfx::device    gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf);
     gfx::swapchain chain(gpu, surf);
+    
+    std::vector<gfx::commands> gpu_cmd = gpu.allocate_graphics_commands(chain.count());
+    
+    
+
+    
 
     window.show();
 
