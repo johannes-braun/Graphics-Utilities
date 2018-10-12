@@ -16,6 +16,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <QApplication>
+#include <QLabel>
 #include <QWidget>
 #include <QWindow>
 #include <gfx/log.hpp>
@@ -80,11 +81,10 @@ using u16 = uint16_t;
 
 struct version_t
 {
-    constexpr version_t(u16 major, u16 minor, u16 patch) : major(major), minor(minor), patch(patch) {}
+    constexpr version_t(u16 major, u16 minor, u16 patch) : patch(patch), minor(minor), major(major) {}
     constexpr version_t() : version_t(0, 0, 0) {}
     constexpr operator u32() const { return *reinterpret_cast<const u32*>(this); }
-
-    u32 patch : 12, minor : 10, major : 10;
+    u32       patch : 12, minor : 10, major : 10;
 };
 enum class api
 {
@@ -174,11 +174,7 @@ public:
         _surface = i.inst().createWin32SurfaceKHRUnique({{}, nullptr, glfwGetWin32Window(glfw_window)});
     }
 
-    surface(instance& i, QWidget* qt_window)
-    {
-		auto wnd = qt_window->winId();
-        _surface = i.inst().createWin32SurfaceKHRUnique({{}, nullptr, HWND(wnd)});
-    }
+    surface(instance& i, QWidget* qt_window) { _surface = i.inst().createWin32SurfaceKHRUnique({{}, nullptr, HWND(qt_window->winId())}); }
 
     vk::SurfaceKHR surf() const noexcept { return _surface.get(); }
 
@@ -186,39 +182,42 @@ private:
     vk::UniqueSurfaceKHR _surface;
 };
 
+class commands
+{
+public:
+    vk::CommandBuffer cmd() const noexcept { return _buf.get(); }
+
+private:
+    vk::UniqueCommandBuffer _buf;
+};
+
 class queue
 {
 public:
     queue() = delete;
 
-    void submit(vk::ArrayProxy<std::reference_wrapper<const std::commands>> cmds)
+    void submit(vk::ArrayProxy<const std::reference_wrapper<const commands>> cmds, vk::Semaphore wait_for, vk::Semaphore signal) const
     {
         std::vector<vk::CommandBuffer> submits(cmds.size());
-        for(size_t i = 0; i < submits.size(); ++i)
-            submits[i] = cmds[i].get().cmd();
-        
+        for (size_t i = 0; i < submits.size(); ++i) submits[i] = cmds.data()[i].get().cmd();
+
         vk::SubmitInfo submit;
-        submit.commandBufferCount = u32(submits.size());
-        submit.pCommandBuffers = submits.data();
-        // Semaphores...
-        
+        submit.commandBufferCount   = u32(submits.size());
+        submit.pCommandBuffers      = submits.data();
+        submit.waitSemaphoreCount   = 1;
+        vk::PipelineStageFlags flag = vk::PipelineStageFlagBits::eAllCommands;
+        submit.pWaitDstStageMask    = &flag;
+        submit.pWaitSemaphores      = &wait_for;
+        submit.signalSemaphoreCount = 1;
+        submit.pSignalSemaphores    = &signal;
         _queue.submit(submit, nullptr);
     }
-    
+
     vk::Queue get() const noexcept { return _queue; }
-    
+
 private:
     vk::Queue _queue;
 };
-
-class commands
-{
-public:
-    vk::CommandBuffer cmd() const noexcept { return _buf.get(); }
-    
-private:
-    vk::UniqueCommandBuffer _buf;
-}
 
 enum class queue_type
 {
@@ -242,7 +241,7 @@ public:
     device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
            vk::ArrayProxy<const float> compute_priorities, std::optional<std::reference_wrapper<surface>> surface = std::nullopt)
     {
-        const auto             gpus        = i.inst().enumeratePhysicalDevices();
+        const auto                   gpus        = i.inst().enumeratePhysicalDevices();
         const vk::PhysicalDeviceType target_type = [target] {
             using dt  = device_target;
             using vdt = vk::PhysicalDeviceType;
@@ -253,10 +252,11 @@ public:
             case dt::igpu: return vdt::eIntegratedGpu;
             case dt::vgpu: return vdt::eVirtualGpu;
             }
+            return vdt::eDiscreteGpu;
         }();
-		vk::PhysicalDevice dgpu;
-		vk::PhysicalDevice igpu;
-		vk::PhysicalDevice cpu;
+        vk::PhysicalDevice dgpu;
+        vk::PhysicalDevice igpu;
+        vk::PhysicalDevice cpu;
         for (const auto& gpu : gpus)
         {
             if (gpu.getProperties().deviceType == target_type)
@@ -264,21 +264,21 @@ public:
                 _gpu = gpu;
                 break;
             }
-			if (gpu.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-				dgpu = gpu;
-			else if (gpu.getProperties().deviceType == vk::PhysicalDeviceType::eCpu)
-				cpu = gpu;
-			else if (gpu.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
-				igpu = gpu;
+            if (gpu.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+                dgpu = gpu;
+            else if (gpu.getProperties().deviceType == vk::PhysicalDeviceType::eCpu)
+                cpu = gpu;
+            else if (gpu.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
+                igpu = gpu;
         }
-        if(!_gpu)
+        if (!_gpu)
         {
-			if (dgpu)
-				_gpu = dgpu;
-			else if (igpu)
-				_gpu = igpu;
-			else if (cpu)
-				_gpu = cpu;
+            if (dgpu)
+                _gpu = dgpu;
+            else if (igpu)
+                _gpu = igpu;
+            else if (cpu)
+                _gpu = cpu;
         }
 
         const bool enable_present                   = surface && i.is_surface_supported();
@@ -339,21 +339,20 @@ public:
         std::unordered_map<u32, u32> queue_counter;
 
         for (size_t index = 0; index < graphics_priorities.size(); ++index)
-        {
             _queues[u32(queue_type::graphics)].push_back(_device->getQueue(fgraphics, queue_counter[fgraphics]++));
-            _command_pools[u32(queue_type::graphics)].push_back(_device->createCommandPool({vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fgraphics}));
-        }
+        _command_pools[u32(queue_type::graphics)] =
+            _device->createCommandPoolUnique({vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fgraphics});
 
         for (size_t index = 0; index < compute_priorities.size(); ++index)
-        {
             _queues[u32(queue_type::compute)].push_back(_device->getQueue(fcompute, queue_counter[fcompute]++));
-            _command_pools[u32(queue_type::compute)].push_back(_device->createCommandPool({vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fcompute}));
-        }
+        _command_pools[u32(queue_type::compute)] =
+            _device->createCommandPoolUnique({vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fcompute});
 
         _queues[u32(queue_type::transfer)].push_back(_device->getQueue(ftransfer, queue_counter[ftransfer]++));
-        _command_pools[u32(queue_type::transfer)].push_back(_device->createCommandPool({vk::CommandPoolCreateFlagBits::eTransient, ftransfer}));
+        _command_pools[u32(queue_type::transfer)] =
+            _device->createCommandPoolUnique({vk::CommandPoolCreateFlagBits::eTransient, ftransfer});
         if (enable_present) _queues[u32(queue_type::present)].push_back(_device->getQueue(fpresent, queue_counter[fpresent]++));
-        
+
         VmaAllocatorCreateInfo allocator_create_info{0};
         allocator_create_info.device         = _device.get();
         allocator_create_info.physicalDevice = _gpu;
@@ -383,19 +382,19 @@ public:
     vk::PhysicalDevice    gpu() const noexcept { return _gpu; }
     VmaAllocator          alloc() const noexcept { return _allocator.get(); }
     const ext_dispatcher& dispatcher() const noexcept { return _dispatcher; }
-    
+
     std::vector<commands> allocate_graphics_commands(u32 count, bool primary = true) const noexcept
     {
-        vk::CommandBufferAllocateInfo alloc{ _command_pool[u32(queue_type::graphics)].get(), primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary
-            , count};
-        auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+        const vk::CommandBufferAllocateInfo alloc{_command_pools[u32(queue_type::graphics)].get(),
+                                                  primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
+        auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
         return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
     }
     commands allocate_graphics_command(bool primary = true) const noexcept
     {
-        vk::CommandBufferAllocateInfo alloc{ _command_pool[u32(queue_type::graphics)].get(), primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary
-            , count};
-        auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+        const vk::CommandBufferAllocateInfo alloc{_command_pools[u32(queue_type::graphics)].get(),
+                                                  primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
+        auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
         return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
     }
 
@@ -445,7 +444,7 @@ private:
     std::unique_ptr<VmaAllocator_T, vma_alloc_deleter> _allocator;
     ext_dispatcher                                     _dispatcher;
     std::array<std::vector<vk::Queue>, 4>              _queues;
-    std::array<std::vector<vk::UniqueCommandPool>, 4>  _command_pools;
+    std::array<vk::UniqueCommandPool, 4>               _command_pools;
     std::array<u32, 4>                                 _queue_families{};
 };
 
@@ -467,19 +466,22 @@ public:
 
         recreate(std::nullopt);
     }
-    void             recreate() { recreate(*this); }
+    bool             recreate() { return recreate(*this); }
     vk::SwapchainKHR chain() const noexcept { return _swapchain.get(); }
 
     u32 count() const noexcept { return _images.size(); }
-    
+
+    const std::vector<vk::Image>& imgs() const noexcept { return _images; }
+
 private:
-    void recreate(std::optional<std::reference_wrapper<swapchain>> old)
-    {
+    [[maybe_unused]] bool recreate(std::optional<std::reference_wrapper<swapchain>> old) {
         vk::SwapchainCreateInfoKHR sc;
         sc.clipped        = true;
         sc.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 
-        const auto scaps = _gpu.getSurfaceCapabilitiesKHR(_surface);
+        vk::SurfaceCapabilitiesKHR scaps{0};
+        const auto                 result = _gpu.getSurfaceCapabilitiesKHR(_surface, &scaps);
+        if (result == vk::Result::eErrorSurfaceLostKHR) return false;
         sc.preTransform  = scaps.currentTransform;
         sc.minImageCount = scaps.minImageCount;
         sc.imageExtent = _extent = scaps.currentExtent;
@@ -509,6 +511,7 @@ private:
         _swapchain = _device.createSwapchainKHRUnique(sc, nullptr, *_dispatcher);
 
         _images = _device.getSwapchainImagesKHR(_swapchain.get());
+        return true;
     }
 
     static vk::PresentModeKHR find_present_mode(gsl::span<const vk::PresentModeKHR> modes)
@@ -538,70 +541,154 @@ private:
     }
 
     bool                                               _general_images;
-    const ext_dispatcher*                              _dispatcher;
+    const ext_dispatcher*                              _dispatcher = nullptr;
     vk::Device                                         _device;
     vk::PhysicalDevice                                 _gpu;
     vk::SurfaceKHR                                     _surface;
-    vk::PresentModeKHR                                 _present_mode;
-    vk::ColorSpaceKHR                                  _color_space;
-    vk::Format                                         _format;
     vk::UniqueHandle<vk::SwapchainKHR, ext_dispatcher> _swapchain;
-    vk::Extent2D                                       _extent;
     std::vector<u32>                                   _condensed_families;
     std::vector<vk::Image>                             _images;
+    vk::PresentModeKHR                                 _present_mode = {};
+    vk::ColorSpaceKHR                                  _color_space  = {};
+    vk::Format                                         _format       = {};
+    vk::Extent2D                                       _extent       = {};
 };
 
 }    // namespace v1
 }    // namespace gfx
 
-#include <QMainWindow>
 #include <QBoxLayout>
-#include <QMenuBar>
-#include <QMenu>
 #include <QFrame>
+#include <QMainWindow>
+#include <QMenuBar>
 
-
-void action()
+class worker
 {
+public:
+    template<typename Fun>
+    worker(Fun&& fun) : _stopped(false), _worker_thread([&] { fun(*this); })
+    {}
+    ~worker()
+    {
+        _stopped = true;
+        _worker_thread.join();
+    }
 
-}
+    const std::atomic_bool& has_stopped() const noexcept { return _stopped; }
+    void                    trigger_stop() noexcept { _stopped = true; }
+
+private:
+    std::atomic_bool _stopped;
+    std::thread      _worker_thread;
+};
+//
+// class window : public QMainWindow
+//{
+// public:
+//    std::function<void()> on_close;
+//
+// protected:
+//    void closeEvent(QCloseEvent* event) override
+//    {
+//        if (on_close) on_close();
+//    }
+//};
+
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QPushButton>
+#include <QSlider>
+#include <QCheckBox>
 
 int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
 
-    QMainWindow window;
-    window.resize(1280, 720);
-	QMenuBar menu_bar;
-	QMenu file_menu;
-	QAction* act = file_menu.addAction("Exit");
-	window.connect(act, &QAction::triggered, nullptr, []
-	{
+    QMainWindow win;
+    win.resize(1280, 720);
+    QMenuBar* menuBar = new QMenuBar();
+	QMenu *fileMenu = new QMenu("File");
+	menuBar->addMenu(fileMenu);
+	fileMenu->addAction("Save");
+	fileMenu->addAction("Exit");
 
-	});
-	menu_bar.addMenu(&file_menu);
+    QHBoxLayout* mainLayout = new QHBoxLayout;
+    QWidget*     central    = new QWidget;
+    win.setCentralWidget(central);
+    central->setLayout(mainLayout);
+	mainLayout->setMenuBar(menuBar);
+    QFrame* render_frame = new QFrame;
+    render_frame->setFrameStyle(QFrame::Shadow_Mask);
+    render_frame->setFrameShadow(QFrame::Sunken);
+    QVBoxLayout* render_frame_layout = new QVBoxLayout;
+    render_frame->setLayout(render_frame_layout);
+    QWidget* render_surface = new QWidget;
+    render_frame_layout->addWidget(render_surface);
+    mainLayout->addWidget(render_frame, 1);
 
-	QVBoxLayout mainLayout;
-	QWidget central;
-	window.setCentralWidget(&central);
-	central.setLayout(&mainLayout);
-	window.setMenuBar(&menu_bar);
-	QWidget surface;
-	mainLayout.addWidget(&surface);
-	surface.resize(80, 200);
+    QVBoxLayout* left_panel_layout = new QVBoxLayout;
+    QWidget*     left_panel        = new QWidget;
+    mainLayout->addWidget(left_panel);
+    left_panel->setLayout(left_panel_layout);
+    left_panel_layout->addWidget(new QPushButton("Press me, I'm Qt"));
+
+    QGroupBox*   inputs        = new QGroupBox("Inputs");
+    QFormLayout* inputs_layout = new QFormLayout;
+    inputs->setLayout(inputs_layout);
+    left_panel_layout->addWidget(inputs);
+    inputs_layout->addRow(new QLabel("Slider"), new QSlider(Qt::Horizontal));
+
 
     gfx::instance  my_app("Application", gfx::version_t(1, 0, 0), true, true);
-    gfx::surface   surf(my_app, &surface);
-    gfx::device    gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf);
-    gfx::swapchain chain(gpu, surf);
-    
+    gfx::surface   surf1(my_app, render_surface);
+    gfx::device    gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf1);
+    gfx::swapchain chain(gpu, surf1);
     std::vector<gfx::commands> gpu_cmd = gpu.allocate_graphics_commands(chain.count());
     
-    
+	win.show();
 
-    
+    vk::UniqueSemaphore render_finish_signal = gpu.dev().createSemaphoreUnique({});
+    vk::UniqueSemaphore acquire_image_signal = gpu.dev().createSemaphoreUnique({});
+    worker              render_thread([&](worker& self) {
 
-    window.show();
+        while (!self.has_stopped())
+        {
+            auto [result, img] = gpu.dev().acquireNextImageKHR(chain.chain(), 1000000000, acquire_image_signal.get(), nullptr);
+            if (result == vk::Result::eErrorOutOfDateKHR)
+            {
+                if (!chain.recreate())
+                {
+                    gfx::ilog << "Could not recreate swapchain. Exiting.";
+                    self.trigger_stop();
+                    break;
+                }
+                continue;
+            }
+
+            gpu_cmd[img].cmd().reset({});
+            gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+            gpu_cmd[img].cmd().clearColorImage(chain.imgs()[img], vk::ImageLayout::eUndefined,
+                                               vk::ClearColorValue{std::array<float, 4>{0.8f, 0.5f, 0.1f, 1}},
+                                               vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+            gpu_cmd[img].cmd().end();
+
+            gpu.graphics_queue().submit({std::cref(gpu_cmd[img])}, acquire_image_signal.get(), render_finish_signal.get());
+            gpu.graphics_queue().get().waitIdle();
+            auto               c = chain.chain();
+            vk::PresentInfoKHR present_info(1, &render_finish_signal.get(), 1, &c, &img, nullptr);
+            result = gpu.present_queue().get().presentKHR(&present_info);
+            if (result == vk::Result::eErrorOutOfDateKHR)
+            {
+                if (!chain.recreate())
+                {
+                    gfx::ilog << "Could not recreate swapchain. Exiting.";
+                    self.trigger_stop();
+                    break;
+                }
+                continue;
+            }
+        }
+    });
 
     return app.exec();
 }
