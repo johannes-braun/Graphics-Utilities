@@ -12,7 +12,7 @@ else()
 endif()
 
 function(mark_as_executable exe_name)
-    file(GLOB CPPS ${exe_name}/*.cpp)
+    file(GLOB CPPS ${exe_name}/*.cpp ${exe_name}/*/*.cpp)
 
 	if(Qt5Widgets_FOUND)
 		file(GLOB UIS ${exe_name}/*.ui)
