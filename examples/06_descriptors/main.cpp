@@ -176,7 +176,7 @@ public:
 
     surface(instance& i, QWidget* qt_window) { _surface = i.inst().createWin32SurfaceKHRUnique({{}, nullptr, HWND(qt_window->winId())}); }
 
-    vk::SurfaceKHR surf() const noexcept { return _surface.get(); }
+    const vk::SurfaceKHR& surf() const noexcept { return _surface.get(); }
 
 private:
     vk::UniqueSurfaceKHR _surface;
@@ -185,35 +185,47 @@ private:
 class commands
 {
 public:
-    vk::CommandBuffer cmd() const noexcept { return _buf.get(); }
+    const vk::CommandBuffer& cmd() const noexcept { return _buf.get(); }
 
 private:
     vk::UniqueCommandBuffer _buf;
 };
+
+class semaphore;
+class fence;
+class swapchain;
+
+enum class present_error
+{
+    out_of_date = -1000001004,
+    suboptimal  = 1000001003
+};
+enum class acquire_error
+{
+    not_ready   = 1,
+    timeout     = 2,
+    out_of_date = -1000001004,
+    suboptimal  = 1000001003
+};
+
+template<typename T>
+using cref_array_view = vk::ArrayProxy<const std::reference_wrapper<const T>>;
+template<typename T>
+using opt_ref = std::optional<std::reference_wrapper<T>>;
 
 class queue
 {
 public:
     queue() = delete;
 
-    void submit(vk::ArrayProxy<const std::reference_wrapper<const commands>> cmds, vk::Semaphore wait_for, vk::Semaphore signal) const
-    {
-        std::vector<vk::CommandBuffer> submits(cmds.size());
-        for (size_t i = 0; i < submits.size(); ++i) submits[i] = cmds.data()[i].get().cmd();
+    void submit(cref_array_view<commands> cmds, cref_array_view<semaphore> wait_for, cref_array_view<semaphore> signal,
+                opt_ref<const fence> f = std::nullopt) const;
+    [[nodiscard]] std::optional<present_error>
+        present(vk::ArrayProxy<const std::pair<u32, const std::reference_wrapper<const swapchain>>> swapchains,
+                cref_array_view<semaphore>                                                    wait_for) const;
 
-        vk::SubmitInfo submit;
-        submit.commandBufferCount   = u32(submits.size());
-        submit.pCommandBuffers      = submits.data();
-        submit.waitSemaphoreCount   = 1;
-        vk::PipelineStageFlags flag = vk::PipelineStageFlagBits::eAllCommands;
-        submit.pWaitDstStageMask    = &flag;
-        submit.pWaitSemaphores      = &wait_for;
-        submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores    = &signal;
-        _queue.submit(submit, nullptr);
-    }
-
-    vk::Queue get() const noexcept { return _queue; }
+    const vk::Queue& get() const noexcept { return _queue; }
+    void             wait() const noexcept { _queue.waitIdle(); }
 
 private:
     vk::Queue _queue;
@@ -239,7 +251,7 @@ class device
 {
 public:
     device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
-           vk::ArrayProxy<const float> compute_priorities, std::optional<std::reference_wrapper<surface>> surface = std::nullopt)
+           vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface = std::nullopt)
     {
         const auto                   gpus        = i.inst().enumeratePhysicalDevices();
         const vk::PhysicalDeviceType target_type = [target] {
@@ -378,10 +390,10 @@ public:
     const u32& transfer_family() const noexcept { return _queue_families[u32(queue_type::transfer)]; }
     const u32& present_family() const noexcept { return _queue_families[u32(queue_type::present)]; }
 
-    vk::Device            dev() const noexcept { return _device.get(); }
-    vk::PhysicalDevice    gpu() const noexcept { return _gpu; }
-    VmaAllocator          alloc() const noexcept { return _allocator.get(); }
-    const ext_dispatcher& dispatcher() const noexcept { return _dispatcher; }
+    const vk::Device&         dev() const noexcept { return _device.get(); }
+    const vk::PhysicalDevice& gpu() const noexcept { return _gpu; }
+    const VmaAllocator&       alloc() const noexcept { return _allocator.get(); }
+    const ext_dispatcher&     dispatcher() const noexcept { return _dispatcher; }
 
     std::vector<commands> allocate_graphics_commands(u32 count, bool primary = true) const noexcept
     {
@@ -448,6 +460,50 @@ private:
     std::array<u32, 4>                                 _queue_families{};
 };
 
+class semaphore
+{
+public:
+    semaphore(device& dev) : _sem(dev.dev().createSemaphoreUnique({})) {}
+    const vk::Semaphore& sem() const noexcept { return _sem.get(); }
+
+private:
+    vk::UniqueSemaphore _sem;
+};
+
+class fence
+{
+public:
+    fence(device& dev, bool signaled = false)
+          : _fence(dev.dev().createFenceUnique({signaled ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlags{}}))
+    {}
+    const vk::Fence& fen() const noexcept { return _fence.get(); }
+
+private:
+    vk::UniqueFence _fence;
+};
+
+void queue::submit(cref_array_view<commands> cmds, cref_array_view<semaphore> wait_for, cref_array_view<semaphore> signal,
+                   opt_ref<const fence> f) const
+{
+    std::vector<vk::CommandBuffer> submits(cmds.size());
+    for (size_t i = 0; i < submits.size(); ++i) submits[i] = cmds.data()[i].get().cmd();
+    std::vector<vk::Semaphore> waits(wait_for.size());
+    for (size_t i = 0; i < waits.size(); ++i) waits[i] = wait_for.data()[i].get().sem();
+    std::vector<vk::Semaphore> sigs(signal.size());
+    for (size_t i = 0; i < sigs.size(); ++i) sigs[i] = signal.data()[i].get().sem();
+
+    vk::SubmitInfo submit;
+    submit.commandBufferCount   = u32(submits.size());
+    submit.pCommandBuffers      = submits.data();
+    submit.waitSemaphoreCount   = u32(waits.size());
+    submit.pWaitSemaphores      = waits.data();
+    vk::PipelineStageFlags flag = vk::PipelineStageFlagBits::eAllCommands;
+    submit.pWaitDstStageMask    = &flag;
+    submit.signalSemaphoreCount = u32(sigs.size());
+    submit.pSignalSemaphores    = sigs.data();
+    _queue.submit(submit, f ? f->get().fen() : nullptr);
+}
+
 class swapchain
 {
 public:
@@ -466,12 +522,21 @@ public:
 
         recreate(std::nullopt);
     }
-    bool             recreate() { return recreate(*this); }
-    vk::SwapchainKHR chain() const noexcept { return _swapchain.get(); }
+    bool                    recreate() { return recreate(*this); }
+    const vk::SwapchainKHR& chain() const noexcept { return _swapchain.get(); }
 
     u32 count() const noexcept { return _images.size(); }
 
     const std::vector<vk::Image>& imgs() const noexcept { return _images; }
+
+    std::pair<u32, std::optional<acquire_error>> next_image(opt_ref<const semaphore> sem     = std::nullopt,
+                                                            opt_ref<const fence>     fen     = std::nullopt,
+                                                            std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max())
+    {
+        auto [result, img] = _device.acquireNextImageKHR(_swapchain.get(), timeout.count(), sem ? sem->get().sem() : nullptr,
+                                                         fen ? fen->get().fen() : nullptr);
+        return {img, result == vk::Result::eSuccess ? std::nullopt : std::optional<acquire_error>(acquire_error(u32(result)))};
+    }
 
 private:
     [[maybe_unused]] bool recreate(std::optional<std::reference_wrapper<swapchain>> old) {
@@ -554,6 +619,23 @@ private:
     vk::Extent2D                                       _extent       = {};
 };
 
+std::optional<present_error> queue::present(vk::ArrayProxy<const std::pair<u32, const std::reference_wrapper<const swapchain>>> swapchains,
+	cref_array_view<semaphore>                                                    wait_for) const
+{
+	std::vector<u32>              images(swapchains.size());
+	std::vector<vk::SwapchainKHR> swaps(swapchains.size());
+	for (size_t i = 0; i < swapchains.size(); ++i)
+	{
+		images[i] = swapchains.data()[i].first;
+		swaps[i] = swapchains.data()[i].second.get().chain();
+	}
+	std::vector<vk::Semaphore> semaphores(wait_for.size());
+	for (size_t i = 0; i < swapchains.size(); ++i) semaphores[i] = wait_for.data()[i].get().sem();
+
+	const vk::PresentInfoKHR pr(u32(semaphores.size()), semaphores.data(), u32(swaps.size()), swaps.data(), images.data(), nullptr);
+	const vk::Result         r = _queue.presentKHR(&pr);
+	return r == vk::Result::eSuccess ? std::nullopt : std::optional<present_error>{ present_error(u32(r)) };
+}
 }    // namespace v1
 }    // namespace gfx
 
@@ -581,24 +663,12 @@ private:
     std::atomic_bool _stopped;
     std::thread      _worker_thread;
 };
-//
-// class window : public QMainWindow
-//{
-// public:
-//    std::function<void()> on_close;
-//
-// protected:
-//    void closeEvent(QCloseEvent* event) override
-//    {
-//        if (on_close) on_close();
-//    }
-//};
 
+#include <QCheckBox>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QPushButton>
 #include <QSlider>
-#include <QCheckBox>
 
 int main(int argc, char** argv)
 {
@@ -606,17 +676,17 @@ int main(int argc, char** argv)
 
     QMainWindow win;
     win.resize(1280, 720);
-    QMenuBar* menuBar = new QMenuBar();
-	QMenu *fileMenu = new QMenu("File");
-	menuBar->addMenu(fileMenu);
-	fileMenu->addAction("Save");
-	fileMenu->addAction("Exit");
+    QMenuBar* menuBar  = new QMenuBar();
+    QMenu*    fileMenu = new QMenu("File");
+    menuBar->addMenu(fileMenu);
+    fileMenu->addAction("Save");
+    fileMenu->addAction("Exit");
 
     QHBoxLayout* mainLayout = new QHBoxLayout;
     QWidget*     central    = new QWidget;
     win.setCentralWidget(central);
     central->setLayout(mainLayout);
-	mainLayout->setMenuBar(menuBar);
+    mainLayout->setMenuBar(menuBar);
     QFrame* render_frame = new QFrame;
     render_frame->setFrameStyle(QFrame::Shadow_Mask);
     render_frame->setFrameShadow(QFrame::Sunken);
@@ -636,25 +706,34 @@ int main(int argc, char** argv)
     QFormLayout* inputs_layout = new QFormLayout;
     inputs->setLayout(inputs_layout);
     left_panel_layout->addWidget(inputs);
-    inputs_layout->addRow(new QLabel("Slider"), new QSlider(Qt::Horizontal));
+    QSlider* slider_r = new QSlider(Qt::Horizontal);
+    QSlider* slider_g = new QSlider(Qt::Horizontal);
+    QSlider* slider_b = new QSlider(Qt::Horizontal);
+    slider_r->setRange(0, 255);
+    slider_g->setRange(0, 255);
+    slider_b->setRange(0, 255);
+    inputs_layout->addRow(new QLabel("Red"), slider_r);
+    inputs_layout->addRow(new QLabel("Green"), slider_g);
+    inputs_layout->addRow(new QLabel("Blue"), slider_b);
 
+    std::array<float, 4> clear_color = {0.f, 0.f, 0.f, 1.f};
+    win.connect(slider_r, &QSlider::valueChanged, [&](int val) { clear_color[0] = val / 255.f; });
+    win.connect(slider_g, &QSlider::valueChanged, [&](int val) { clear_color[1] = val / 255.f; });
+    win.connect(slider_b, &QSlider::valueChanged, [&](int val) { clear_color[2] = val / 255.f; });
+    win.show();
 
-    gfx::instance  my_app("Application", gfx::version_t(1, 0, 0), true, true);
-    gfx::surface   surf1(my_app, render_surface);
-    gfx::device    gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf1);
-    gfx::swapchain chain(gpu, surf1);
+    gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), true, true);
+    gfx::surface               surf1(my_app, render_surface);
+    gfx::device                gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf1);
+    gfx::swapchain             chain(gpu, surf1);
     std::vector<gfx::commands> gpu_cmd = gpu.allocate_graphics_commands(chain.count());
-    
-	win.show();
-
-    vk::UniqueSemaphore render_finish_signal = gpu.dev().createSemaphoreUnique({});
-    vk::UniqueSemaphore acquire_image_signal = gpu.dev().createSemaphoreUnique({});
-    worker              render_thread([&](worker& self) {
-
+    gfx::semaphore             acquire_image_signal(gpu);
+    gfx::semaphore             render_finish_signal(gpu);
+    worker                     render_thread([&](worker& self) {
         while (!self.has_stopped())
         {
-            auto [result, img] = gpu.dev().acquireNextImageKHR(chain.chain(), 1000000000, acquire_image_signal.get(), nullptr);
-            if (result == vk::Result::eErrorOutOfDateKHR)
+            const auto [img, aquire_error] = chain.next_image(acquire_image_signal);
+            if (aquire_error && (*aquire_error == gfx::acquire_error::out_of_date || *aquire_error == gfx::acquire_error::suboptimal))
             {
                 if (!chain.recreate())
                 {
@@ -667,17 +746,14 @@ int main(int argc, char** argv)
 
             gpu_cmd[img].cmd().reset({});
             gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
-            gpu_cmd[img].cmd().clearColorImage(chain.imgs()[img], vk::ImageLayout::eUndefined,
-                                               vk::ClearColorValue{std::array<float, 4>{0.8f, 0.5f, 0.1f, 1}},
+            gpu_cmd[img].cmd().clearColorImage(chain.imgs()[img], vk::ImageLayout::eUndefined, vk::ClearColorValue{clear_color},
                                                vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
             gpu_cmd[img].cmd().end();
 
-            gpu.graphics_queue().submit({std::cref(gpu_cmd[img])}, acquire_image_signal.get(), render_finish_signal.get());
-            gpu.graphics_queue().get().waitIdle();
-            auto               c = chain.chain();
-            vk::PresentInfoKHR present_info(1, &render_finish_signal.get(), 1, &c, &img, nullptr);
-            result = gpu.present_queue().get().presentKHR(&present_info);
-            if (result == vk::Result::eErrorOutOfDateKHR)
+            gpu.graphics_queue().submit({gpu_cmd[img]}, {acquire_image_signal}, {render_finish_signal});
+            gpu.graphics_queue().wait();
+            const auto present_error = gpu.present_queue().present({{img, chain}}, {render_finish_signal});
+            if (present_error)
             {
                 if (!chain.recreate())
                 {
