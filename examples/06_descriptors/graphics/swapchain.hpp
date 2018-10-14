@@ -33,6 +33,11 @@ public:
                                                             opt_ref<const fence>     fen     = std::nullopt,
                                                             std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max());
 
+	const vk::PresentModeKHR&                                     present_mode() const noexcept { return _present_mode; }
+	const vk::ColorSpaceKHR&                                      color_space() const noexcept { return _color_space; }
+	const vk::Format&                                             format() const noexcept { return _format; }
+	const vk::Extent2D&                                           extent() const noexcept { return _extent; }
+
 private:
     [[maybe_unused]] bool recreate(std::optional<std::reference_wrapper<swapchain>> old);
     static vk::PresentModeKHR find_present_mode(gsl::span<const vk::PresentModeKHR> modes);
