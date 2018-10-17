@@ -13,6 +13,8 @@ namespace gfx
 
 			PFN_vkCreateDebugUtilsMessengerEXT  vkCreateDebugUtilsMessengerEXT = nullptr;
 			PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = nullptr;
+			PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = nullptr;
+			PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT = nullptr;
 			PFN_vkCreateSwapchainKHR            vkCreateSwapchainKHR = nullptr;
 			PFN_vkDestroySwapchainKHR           vkDestroySwapchainKHR = nullptr;
 		};

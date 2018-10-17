@@ -36,6 +36,9 @@ class fence;
 class device
 {
 public:
+	template<typename T>
+	friend class mapped;
+
 	explicit device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
            vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface = std::nullopt);
 
@@ -71,6 +74,7 @@ private:
         void operator()(allocator alloc) const noexcept;
     };
 
+	instance* _instance;
     vk::PhysicalDevice                                 _gpu = nullptr;
     vk::UniqueDevice                                   _device;
     std::unique_ptr<VmaAllocator_T, vma_alloc_deleter> _allocator;

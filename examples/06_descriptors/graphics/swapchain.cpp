@@ -51,10 +51,19 @@ namespace gfx
     std::pair<u32, std::optional<acquire_error>> swapchain::next_image(opt_ref<const semaphore> sem, opt_ref<const fence> fen,
                                                                        std::chrono::nanoseconds timeout)
     {
-        auto [result, img] = _device.acquireNextImageKHR(_swapchain.get(), timeout.count(), sem ? sem->get().sem() : nullptr,
-                                                         fen ? fen->get().fen() : nullptr);
+		u32 img = 0;
+        auto result = _device.acquireNextImageKHR(_swapchain.get(), timeout.count(), sem ? sem->get().sem() : nullptr,
+                                                         fen ? fen->get().fen() : nullptr, &img);
         return {img, result == vk::Result::eSuccess ? std::nullopt : std::optional<acquire_error>(acquire_error(u32(result)))};
     }
+
+	bool swapchain::has_resized() const noexcept
+	{
+		vk::SurfaceCapabilitiesKHR scaps{ 0 };
+		const auto                 result = _gpu.getSurfaceCapabilitiesKHR(_surface, &scaps);
+		if (result == vk::Result::eErrorSurfaceLostKHR) return true;
+		return _extent != scaps.currentExtent;
+	}
 
     bool swapchain::recreate(std::optional<std::reference_wrapper<swapchain>> old)
     {
@@ -90,8 +99,9 @@ namespace gfx
         if (old) sc.oldSwapchain = (*old).get().chain();
         sc.surface               = _surface;
 
-        _swapchain.reset();
-        _swapchain = _device.createSwapchainKHRUnique(sc, nullptr, *_dispatcher);
+        auto newSwapchain = _device.createSwapchainKHRUnique(sc, nullptr, *_dispatcher);
+		_swapchain.reset();
+		_swapchain = std::move(newSwapchain);
 
         _images = _device.getSwapchainImagesKHR(_swapchain.get());
         return true;

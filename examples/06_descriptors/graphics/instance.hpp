@@ -24,6 +24,7 @@ namespace gfx
 			vk::UniqueInstance                                           _instance;
 			vk::UniqueHandle<vk::DebugUtilsMessengerEXT, extension_dispatch> _debug_messenger;
 			extension_dispatch                                               _dispatcher;
+			vk::UniqueHandle<vk::DebugReportCallbackEXT, extension_dispatch> _debug_callback;
 
 			struct
 			{

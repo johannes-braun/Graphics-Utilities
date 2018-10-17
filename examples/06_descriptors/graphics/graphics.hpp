@@ -1,5 +1,6 @@
 #pragma once
 
+#include "buffer.hpp"
 #include "commands.hpp"
 #include "device.hpp"
 #include "extensions.hpp"

@@ -14,7 +14,7 @@ vec2 pts[3] = {
 
 layout(set = 0, binding = 0) uniform Matrix
 {
-	mat4 my_mat;
+	mat4 model;
 };
 
 layout(location = 0) out vec3 albedo;
@@ -23,5 +23,5 @@ void main()
 {
 	albedo = vec3(0);
 	albedo[gl_VertexIndex % 3] = 1.f;
-	gl_Position = my_mat * vec4(pts[gl_VertexIndex], 0, 1);
+	gl_Position = model * vec4(pts[gl_VertexIndex], 0, 1);
 }

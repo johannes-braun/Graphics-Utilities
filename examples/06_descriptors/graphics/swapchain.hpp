@@ -37,6 +37,8 @@ public:
 	const vk::ColorSpaceKHR&                                      color_space() const noexcept { return _color_space; }
 	const vk::Format&                                             format() const noexcept { return _format; }
 	const vk::Extent2D&                                           extent() const noexcept { return _extent; }
+	
+	bool has_resized() const noexcept;
 
 private:
     [[maybe_unused]] bool recreate(std::optional<std::reference_wrapper<swapchain>> old);

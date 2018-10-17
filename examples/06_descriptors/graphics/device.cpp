@@ -16,7 +16,7 @@ namespace gfx
 	{
 
 	device::device(instance&                   i, device_target                     target, vk::ArrayProxy<const float> graphics_priorities,
-	               vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface)
+	               vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface) : _instance(&i)
 	{
 	    const auto                   gpus        = i.inst().enumeratePhysicalDevices();
 	    const vk::PhysicalDeviceType target_type = [target]

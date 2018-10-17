@@ -10,6 +10,8 @@ namespace gfx
 
 			load_fun(vkCreateDebugUtilsMessengerEXT);
 			load_fun(vkDestroyDebugUtilsMessengerEXT);
+			load_fun(vkCreateDebugReportCallbackEXT);
+			load_fun(vkDestroyDebugReportCallbackEXT);
 
 #undef load_fun
 		}
