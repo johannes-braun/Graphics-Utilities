@@ -49,33 +49,33 @@ private:
 int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
-    //app.setStyle(QStyleFactory::create("fusion"));
-    //QFont defaultFont = QApplication::font();
-    //defaultFont.setPointSize(defaultFont.pointSize() + 2);
-    //app.setFont(defaultFont);
-    //QPalette darkPalette;
-    //darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-    //darkPalette.setColor(QPalette::WindowText, Qt::white);
-    //darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
-    //darkPalette.setColor(QPalette::Base, QColor(42, 42, 42));
-    //darkPalette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
-    //darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-    //darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-    //darkPalette.setColor(QPalette::Text, Qt::white);
-    //darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
-    //darkPalette.setColor(QPalette::Dark, QColor(35, 35, 35));
-    //darkPalette.setColor(QPalette::Shadow, QColor(20, 20, 20));
-    //darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-    //darkPalette.setColor(QPalette::ButtonText, Qt::white);
-    //darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
-    //darkPalette.setColor(QPalette::BrightText, Qt::red);
-    //darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
-    //darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-    //darkPalette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
-    //darkPalette.setColor(QPalette::HighlightedText, Qt::white);
-    //darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
-    //app.setPalette(darkPalette);
-    //app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
+    app.setStyle(QStyleFactory::create("fusion"));
+    QFont defaultFont = QApplication::font();
+    defaultFont.setPointSize(defaultFont.pointSize() + 2);
+    app.setFont(defaultFont);
+    QPalette darkPalette;
+    darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::WindowText, Qt::white);
+    darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
+    darkPalette.setColor(QPalette::Base, QColor(42, 42, 42));
+    darkPalette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
+    darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+    darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+    darkPalette.setColor(QPalette::Text, Qt::white);
+    darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
+    darkPalette.setColor(QPalette::Dark, QColor(35, 35, 35));
+    darkPalette.setColor(QPalette::Shadow, QColor(20, 20, 20));
+    darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+    darkPalette.setColor(QPalette::ButtonText, Qt::white);
+    darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
+    darkPalette.setColor(QPalette::BrightText, Qt::red);
+    darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+    darkPalette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(80, 80, 80));
+    darkPalette.setColor(QPalette::HighlightedText, Qt::white);
+    darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(127, 127, 127));
+    app.setPalette(darkPalette);
+    app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
 
     QMainWindow win;
     win.resize(1280, 720);
@@ -167,6 +167,34 @@ int main(int argc, char** argv)
     gfx::semaphore             acquire_image_signal(gpu);
     gfx::semaphore             render_finish_signal(gpu);
     std::vector<gfx::fence>    cmd_fences;
+
+    struct T
+    {
+        T(T&& t) { gfx::ilog << "T&&"; }
+        T(const T& t) { gfx::ilog << "const T&"; }
+        T& operator=(T&& t)
+        {
+            gfx::ilog << "T&&";
+            return *this;
+        }
+        T& operator=(const T& t)
+        {
+            gfx::ilog << "const T&";
+            return *this;
+        }
+        T() { gfx::ilog << "T"; }
+		~T() { gfx::ilog << "~T"; }
+
+        float f;
+    };
+
+    gfx::mapped<T> my_floats(gpu);
+    for (int i = 0; i < 10; ++i) my_floats.emplace_back().f = i;
+
+	my_floats.insert(my_floats.begin(), { T{}, T{}, T{} });
+	my_floats.erase(my_floats.begin() + 4);
+    T* f = my_floats.data();
+
     for (size_t i = 0; i < gpu_cmd.size(); ++i) cmd_fences.emplace_back(gpu, true);
 
     vk::PhysicalDeviceProperties2 props       = gpu.gpu().getProperties2();
