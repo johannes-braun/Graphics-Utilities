@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    This will make GitHub and some editors recognize this code as XML: 
+    vim: syntax=xml
+-->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="gfx::v1::mapped&lt;*&gt;">
+        <DisplayString>{{ size = {storage_.size_} }}</DisplayString>
+        <Expand>
+            <Item Name="[size]">storage_.size_</Item>
+            <Item Name="[capacity]">_capacity</Item>
+            <Item Name="[queue families]">_families</Item>
+            <ArrayItems>
+                <Size>storage_.size_</Size>
+                <ValuePointer>storage_.data_</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
+  <Type Name="gfx::v1::buffer&lt;*&gt;">
+    <DisplayString>{{ size = {_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_size</Item>
+      <Item Name="[capacity]">_capacity</Item>
+      <Item Name="[queue families]">_families</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="gfx::v1::device">
+    <DisplayString>{ device }</DisplayString>
+    <Expand>
+      <Item Name="[handle]">_device.m_value</Item>
+      <Item Name="[physical device]">_gpu</Item>
+      <Item Name="[allocator]">_allocator._Mypair._Myval2</Item>
+
+      <CustomListItems>
+        <Variable InitialValue="0" Name="index"/>
+        <Loop>
+          <If Condition="index &gt; 3">
+            <Break/>
+          </If>
+          <Item Condition="index == 0" Name="[graphics family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Item Condition="index == 1" Name="[compute family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Item Condition="index == 2" Name="[transfer family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Item Condition="index == 3" Name="[present family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <!--<Item Name="command pool">_command_pools._Elems[index].m_value</Item>-->
+          <Exec>index++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  
+</AutoVisualizer>  
+
+<!--
+    vk::PhysicalDevice                                 _gpu = nullptr;
+    vk::UniqueDevice                                   _device;
+    std::unique_ptr<VmaAllocator_T, vma_alloc_deleter> _allocator;
+    extension_dispatch                                 _dispatcher;
+    std::array<std::vector<vk::Queue>, 4>              _queues;
+    std::array<vk::UniqueCommandPool, 4>               _command_pools;
+    std::array<u32, 4>                                 _queue_families{};
+    
+graphics,
+compute,
+transfer,
+present
+-->

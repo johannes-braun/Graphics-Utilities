@@ -1,13 +1,14 @@
 {
   "environments": [
     {
-      "cmakeCommandArgs": "-Wno-dev"
+      "cmakeCommandArgs": "-Wno-dev",
+      "generatorx64": "Visual Studio 15 2017 Win64"
     }
   ],
   "configurations": [
     {
       "name": "x64-Debug",
-      "generator": "Ninja",
+      "generator": "${env.generatorx64}",
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",
@@ -18,7 +19,7 @@
     },
     {
       "name": "x64-RelWithDebInfo",
-      "generator": "Ninja",
+      "generator": "${env.generatorx64}",
       "configurationType": "RelWithDebInfo",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",
@@ -29,7 +30,7 @@
     },
     {
       "name": "x64-Release",
-      "generator": "Ninja",
+      "generator": "${env.generatorx64}",
       "configurationType": "Release",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",

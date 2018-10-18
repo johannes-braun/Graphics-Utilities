@@ -12,7 +12,7 @@ else()
 endif()
 
 function(mark_as_executable exe_name)
-    file(GLOB CPPS ${exe_name}/*.cpp ${exe_name}/*/*.cpp)
+    file(GLOB_RECURSE CPPS ${exe_name}/*.cpp ${exe_name}/*.natvis)
 
 	if(Qt5Widgets_FOUND)
 		file(GLOB UIS ${exe_name}/*.ui)
@@ -26,6 +26,8 @@ function(mark_as_executable exe_name)
 		add_executable(${exe_name})
 	endif()
 	target_sources(${exe_name} PUBLIC ${CPPS})
+
+	message(${CPPS})
 
     if(WIN32)
         target_sources(${exe_name} PUBLIC res/app.rc)

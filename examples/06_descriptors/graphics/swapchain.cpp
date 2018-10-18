@@ -3,6 +3,7 @@
 #include "surface.hpp"
 #include "sync.hpp"
 #include <unordered_set>
+#include <iostream>
 
 namespace gfx
 {
@@ -24,6 +25,9 @@ namespace gfx
             families.emplace(d.graphics_family());
         }
         _condensed_families = std::vector<u32>(families.begin(), families.end());
+
+		if (!d.gpu().getSurfaceSupportKHR(d.present_family(), s.surf()))
+			throw "";
 
         recreate(std::nullopt);
     }
@@ -80,8 +84,7 @@ namespace gfx
         sc.imageArrayLayers = 1;
 
         using usg = vk::ImageUsageFlagBits;
-        sc.imageUsage = usg::eColorAttachment | usg::eInputAttachment | usg::eTransientAttachment
-                        | (_general_images ? usg::eSampled | usg::eStorage | usg::eTransferSrc | usg::eTransferDst : usg{});
+        sc.imageUsage = scaps.supportedUsageFlags;
 
 
         sc.queueFamilyIndexCount = _condensed_families.size();

@@ -60,6 +60,8 @@ public:
 
     std::vector<commands> allocate_graphics_commands(u32 count, bool primary = true) const noexcept;
     commands allocate_graphics_command(bool primary = true) const noexcept;
+	std::vector<commands> allocate_transfer_commands(u32 count, bool primary = true) const noexcept;
+	commands allocate_transfer_command(bool primary = true) const noexcept;
 
 	void wait_for(cref_array_view<fence> fences, bool all = true, std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max());
 	void reset_fences(cref_array_view<fence> fences);

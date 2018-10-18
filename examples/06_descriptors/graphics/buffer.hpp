@@ -26,222 +26,55 @@ public:
     using size_type              = index_type;
     using difference_type        = ptrdiff_t;
 
-    mapped(device& d) : _device(&d)
-    {
-        std::unordered_set<u32> families;
-        families.emplace(_device->compute_family());
-        families.emplace(_device->graphics_family());
-        families.emplace(_device->transfer_family());
-        _families = std::vector<u32>(families.begin(), families.end());
-    }
+	mapped(device& d);
 
     template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
-    mapped(device& d, size_type size) : mapped(d)
-    {
-        resize(size);
-    }
-    mapped(device& d, size_type size, T&& value) : mapped(d) { resize(size, std::forward<T&&>(value)); }
+	mapped(device& d, size_type size);
+	mapped(device& d, size_type size, T&& value);
+	mapped(device& d, std::initializer_list<T> ilist);
 
-    mapped(const mapped& other)
-    {
-        allocate(other._capacity);
-        reset_storage(this->data(), other.size());
-        std::copy(other.begin(), other.end(), this->begin());
-    }
-    mapped& operator=(const mapped& other)
-    {
-        std::destroy(this->begin(), this->end());
-        allocate(other._capacity);
-        reset_storage(this->data(), other.size());
-        std::copy(other.begin(), other.end(), this->begin());
-        return *this;
-    }
-    mapped(mapped&& other)
-    {
-        reset_storage(other.data(), other.size());
-        _families   = std::move(other._families);
-        _buffer     = std::move(other._buffer);
-        _allocation = std::move(other._allocation);
-        _capacity   = other._capacity;
-        _device     = other._device;
+	mapped(const mapped& other);
+	mapped(mapped&& other);
+	mapped& operator=(const mapped& other);
+	mapped& operator=(mapped&& other);
+	~mapped();
 
-        other.reset_storage(nullptr, 0);
-        other._buffer     = nullptr;
-        other._allocation = nullptr;
-        other._capacity   = 0;
-    }
-    mapped& operator=(mapped&& other) 
-	{
-		std::destroy(this->begin(), this->end());
-		reset_storage(other.data(), other.size());
-		_families = std::move(other._families);
-		_buffer = std::move(other._buffer);
-		_allocation = std::move(other._allocation);
-		_capacity = other._capacity;
-		_device = other._device;
+	void reserve(size_type capacity);
+	void resize(size_type size, T&& value);
+	void resize(size_type size, const T& value);
 
-		other.reset_storage(nullptr, 0);
-		other._buffer = nullptr;
-		other._allocation = nullptr;
-		other._capacity = 0;
-	}
-	~mapped()
-	{
-		std::destroy(this->begin(), this->end());
-		if (_buffer)
-			vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
-	}
-
-    void reserve(size_type capacity) { allocate(capacity); }
-
-    void resize(size_type size, T&& value)
-    {
-        while (size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-        const auto old_size = this->size();
-        reset_storage(this->data(), size);
-        if (size > old_size) init_range(this->begin() + old_size, this->end(), std::forward<T&&>(value));
-    }
-
-    void resize(size_type size, const T& value)
-    {
-        while (size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-        const auto old_size = this->size();
-        reset_storage(this->data(), size);
-        if (size > old_size) init_range(this->begin() + old_size, this->end(), std::forward<const T&>(value));
-    }
-
-    void push_back(T&& value) { resize(this->size() + 1, std::forward<T&&>(value)); }
-    void push_back(const T& value) { resize(this->size() + 1, std::forward<const T&>(value)); }
-    void pop_back()
-    {
-        std::destroy_at(std::addressof(back()));
-        reset_storage(this->data(), this->size() - 1);
-    }
-
-    iterator erase(const_iterator at)
-    {
-        const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-        auto       result_it    = this->begin() + start_offset;
-        std::destroy_at(std::addressof(*result_it));
-        std::move(std::next(result_it), this->end(), result_it);
-        reset_storage(this->data(), this->size() - 1);
-        return result_it;
-    }
-    iterator erase(const_iterator begin, const_iterator end)
-    {
-        const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-        const auto delta        = std::distance(begin, end);
-        auto       dbegin       = this->begin() + std::distance(this->begin(), begin);
-        auto       dend         = this->begin() + std::distance(this->begin(), end);
-        auto result_it          = this->begin() + start_offset std::destroy(dbegin, dend);
-        std::move(result_it + delta, this->end(), result_it);
-        reset_storage(this->data(), this->size() - delta);
-        return result_it;
-    }
+	void push_back(T&& value);
+	void push_back(const T& value);
+	void pop_back();
 
     template<typename... Args>
-    T& emplace_back(Args&&... args)
-    {
-        while (this->size() + 1 > _capacity) allocate(std::max(2 * _capacity, 1ll));
-        reset_storage(this->data(), this->size() + 1);
-        return *new (&*std::prev(this->end())) value_type(std::forward<Args&&>(args)...);
-    }
+	T& emplace_back(Args&&... args);
 
     template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
-    void resize(size_type size)
-    {
-        resize(size, T());
-    }
+	void resize(size_type size);
 
-    value_type&       front() { return this->data()[0]; }
-    value_type&       back() { return this->data()[this->size() - 1]; }
-    const value_type& front() const { return this->data()[0]; }
-    const value_type& back() const { return this->data()[this->size() - 1]; }
-    size_type         capacity() const { return _capacity; }
-    void              shrink_to_fit() { allocate(this->size(), true); }
-    void              clear() { std::destroy(this->begin(), this->end()); }
+	value_type&       front();
+	value_type&       back();
+	const value_type& front() const;
+	const value_type& back() const;
+	size_type         capacity() const;
+	void              shrink_to_fit();
+	void              clear();
 
-    iterator insert(const_iterator at, const T& value)
-    {
-        const auto delta        = 1;
-        const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-        const auto move_section = std::distance<const_iterator>(at, this->end());
-        const auto new_size     = this->size() + delta;
-        while (new_size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-        reset_storage(this->data(), this->size() + delta);
-        auto result_it = this->begin() + start_offset;
-        std::move_backward(result_it, result_it + move_section, result_it + move_section);
-        *result_it = std::forward<const T&>(value);
-        return this->begin() + start_offset;
-    }
-    iterator insert(const_iterator at, T&& value)
-    {
-        const auto delta        = 1;
-        const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-        const auto move_section = std::distance<const_iterator>(at, this->end());
-        const auto new_size     = this->size() + delta;
-        while (new_size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-        reset_storage(this->data(), this->size() + delta);
-        auto result_it = this->begin() + start_offset;
-        std::move_backward(result_it, result_it + move_section, result_it + move_section);
-        *result_it = std::forward<T&&>(value);
-        return result_it;
-    }
+	iterator insert(const_iterator at, const T& value);
+	iterator insert(const_iterator at, T&& value);
     template<class InputIt>
-    iterator insert(const_iterator at, InputIt begin, InputIt end)
-    {
-        const auto delta        = std::distance(begin, end);
-        const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-        const auto move_section = std::distance<const_iterator>(at, this->end());
-        const auto new_size     = this->size() + delta;
-        while (new_size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-        reset_storage(this->data(), this->size() + delta);
-        auto result_it = this->begin() + start_offset;
-        std::move_backward(result_it, result_it + move_section, result_it + move_section);
-        std::copy(begin, end, result_it);
-        return result_it;
-    }
-    iterator insert(const_iterator at, std::initializer_list<T> ilist) { return insert(at, std::begin(ilist), std::end(ilist)); }
+	iterator insert(const_iterator at, InputIt begin, InputIt end);
+	iterator insert(const_iterator at, std::initializer_list<T> ilist);
+	iterator erase(const_iterator at);
+	iterator erase(const_iterator begin, const_iterator end);
+
+	const vk::Buffer& get_buffer() const;
 
 private:
-    void allocate(size_type capacity, bool force = false)
-    {
-        if (force || _capacity < capacity)
-        {
-            _capacity = capacity;
-            VmaAllocationInfo       ai{};
-            VmaAllocationCreateInfo aci{};
-            aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-            aci.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-            using bu  = vk::BufferUsageFlagBits;
-            vk::BufferCreateInfo bci({}, capacity,
-                                     bu::eConditionalRenderingEXT | bu::eIndexBuffer | bu::eIndirectBuffer | bu::eRaytracingNVX
-                                         | bu::eRaytracingNVX | bu::eStorageBuffer | bu::eStorageTexelBuffer | bu::eTransferDst
-                                         | bu::eTransferSrc | bu::eUniformBuffer | bu::eUniformTexelBuffer | bu::eVertexBuffer,
-                                     _families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
-                                     u32(_families.size()), _families.data());
-            VkBuffer             nb;
-            VmaAllocation        na;
-            vmaCreateBuffer(_device->alloc(), reinterpret_cast<VkBufferCreateInfo*>(&bci), &aci, &nb, &na, &ai);
-            value_type* new_storage = static_cast<value_type*>(ai.pMappedData);
-            std::move(this->begin(), this->end(), new_storage);
-            reset_storage(new_storage, this->size());
-
-            vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
-            _buffer     = nb;
-            _allocation = na;
-        }
-    }
-
-    void init_range(iterator begin, iterator end, T&& value)
-    {
-        if (end > begin) std::fill(begin, end, value);
-    }
-
-    void reset_storage(value_type* storage, size_type size)
-    {
-        gsl::span<T>::operator=(gsl::span<T>{storage, static_cast<ptrdiff_t>(size)});
-    }
+	void allocate(size_type capacity, bool force = false);
+	void init_range(iterator begin, iterator end, T&& value);
+	void reset_storage(value_type* storage, size_type size);
 
     std::vector<u32> _families;
     vk::Buffer       _buffer     = nullptr;
@@ -249,5 +82,228 @@ private:
     size_type        _capacity   = 0;
     device*          _device     = nullptr;
 };
+
+template<typename T>
+class buffer
+{
+public:
+	using element_type = T;
+	using value_type = std::remove_cv_t<T>;
+	using index_type = std::ptrdiff_t;
+	using pointer = element_type * ;
+	using reference = element_type & ;
+	using size_type = index_type;
+	using difference_type = ptrdiff_t;
+
+	buffer(device& d) : _device(&d)
+	{
+		std::unordered_set<u32> families;
+		families.emplace(_device->compute_family());
+		families.emplace(_device->graphics_family());
+		families.emplace(_device->transfer_family());
+		_families = std::vector<u32>(families.begin(), families.end());
+	}
+	buffer(device& d, const mapped<T>& source)
+		: buffer(d)
+	{
+		commands transfer_cmd = d.allocate_transfer_command();
+		transfer_cmd.cmd().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		allocate(source.size(), false, transfer_cmd.cmd());
+		_size = source.size();
+		transfer_cmd.cmd().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+		transfer_cmd.cmd().end();
+		d.transfer_queue().submit({ transfer_cmd }, {}, {});
+		d.transfer_queue().wait();
+	}
+	buffer(device& d, const mapped<T>& source, commands& transfer_cmd)
+		: buffer(d)
+	{
+		allocate(source.size(), false, transfer_cmd.cmd());
+		_size = source.size();
+		transfer_cmd.cmd().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+	}
+	buffer(device& d, const vk::ArrayProxy<const T>& proxy)
+		: buffer(d)
+	{
+		const auto bytes = proxy.size() * sizeof(T);
+		commands transfer_cmd = d.allocate_transfer_command();
+		transfer_cmd.cmd().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		allocate(proxy.size(), false, transfer_cmd.cmd());
+		_size = proxy.size();
+		if (bytes <= 65536)
+		{
+			transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(proxy));
+		}
+		else
+		{
+			mapped<T> stage(d);
+			stage.insert(stage.end(), proxy.begin(), proxy.end());
+			transfer_cmd.cmd().copyBuffer(stage.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+		}
+		transfer_cmd.cmd().end();
+		d.transfer_queue().submit({ transfer_cmd }, {}, {});
+		d.transfer_queue().wait();
+	}
+	buffer(device& d, const vk::ArrayProxy<const T>& proxy, commands& transfer_cmd)
+		: buffer(d)
+	{
+		const auto bytes = proxy.size() * sizeof(T);
+		allocate(proxy.size(), false, transfer_cmd.cmd());
+		_size = proxy.size();
+		if (bytes <= 65536)
+		{
+			transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(proxy));
+		}
+		else
+		{
+			mapped<T> stage(d);
+			stage.insert(stage.end(), proxy.begin(), proxy.end());
+			transfer_cmd.cmd().copyBuffer(stage.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+		}
+	}
+	buffer(device& d, const std::initializer_list<T>& source)
+		: buffer(d)
+	{
+		const auto bytes = std::size(source) * sizeof(T);
+		commands transfer_cmd = d.allocate_transfer_command();
+		transfer_cmd.cmd().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		allocate(source.size(), false, transfer_cmd.cmd());
+		_size = source.size();
+		if (bytes <= 65536)
+		{
+			transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(source));
+		}
+		else
+		{
+			mapped<T> stage(d, source);
+			transfer_cmd.cmd().copyBuffer(stage.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+		}
+		transfer_cmd.cmd().end();
+		d.transfer_queue().submit(transfer_cmd, {}, {});
+		d.transfer_queue().wait();
+	}
+	buffer(device& d, const std::initializer_list<T>& source, commands& transfer_cmd)
+		: buffer(d)
+	{
+		const auto bytes = std::size(source) * sizeof(T);
+		allocate(source.size(), false, transfer_cmd.cmd());
+		_size = source.size();
+		if (bytes <= 65536)
+		{
+			transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(source));
+		}
+		else
+		{
+			mapped<T> stage(d, source);
+			transfer_cmd.cmd().copyBuffer(stage.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+		}
+	}
+	~buffer() {
+		if(_buffer)
+			vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
+	}
+
+	buffer(const buffer& other)
+		: buffer(*other._device, other.map())
+	{
+
+	}
+	buffer(buffer&& other)
+	{
+		_buffer = std::move(other._buffer);
+		_allocation = std::move(other._allocation);
+		_capacity = other._capacity;
+		_size = other._size;
+
+		other._buffer = nullptr;
+		other._allocation = nullptr;
+		other._capacity = 0;
+		other._size = 0;
+	}
+	buffer& operator=(const buffer& other)
+	{
+		_device = other._device;
+		auto source = other.map();
+		commands transfer_cmd = _device->allocate_transfer_command();
+		transfer_cmd.cmd().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		allocate(source.size(), false, transfer_cmd.cmd());
+		_size = source.size();
+		transfer_cmd.cmd().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+		transfer_cmd.cmd().end();
+		_device->transfer_queue().submit({ transfer_cmd }, {}, {});
+		_device->transfer_queue().wait();
+		return *this;
+	}
+	buffer& operator=(buffer&& other)
+	{
+		_buffer = std::move(other._buffer);
+		_allocation = std::move(other._allocation);
+		_capacity = other._capacity;
+		_size = other._size;
+
+		other._buffer = nullptr;
+		other._allocation = nullptr;
+		other._capacity = 0;
+		other._size = 0;
+		return *this;
+	}
+	mapped<T> map() const {
+		mapped<T> result(*_device, _size);
+		commands transfer_cmd = _device->allocate_transfer_command();
+		transfer_cmd.cmd().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		transfer_cmd.cmd().copyBuffer(_buffer, result.get_buffer(), vk::BufferCopy(0, 0, _size));
+		transfer_cmd.cmd().end();
+		_device->transfer_queue().submit({ transfer_cmd }, {}, {});
+		_device->transfer_queue().wait();
+		return result;
+	}
+	size_type size() const { return _size; }
+	size_type capacity() const { return _capacity; }
+	const vk::Buffer& get_buffer() const { return _buffer; }
+
+private:
+	void allocate(size_type capacity, bool force, vk::CommandBuffer copy_cmd)
+	{
+		if (force || _capacity < capacity)
+		{
+			_capacity = capacity;
+			VmaAllocationInfo       ai{};
+			VmaAllocationCreateInfo aci{};
+			aci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+			using bu = vk::BufferUsageFlagBits;
+			vk::BufferCreateInfo bci({}, sizeof(value_type) * capacity,
+				bu::eIndexBuffer | bu::eIndirectBuffer | bu::eStorageBuffer
+				| bu::eStorageTexelBuffer
+				/*|  bu::eConditionalRenderingEXT | bu::eRaytracingNVX | bu::eRaytracingNVX*/
+				| bu::eTransferDst | bu::eTransferSrc | bu::eUniformBuffer | bu::eUniformTexelBuffer
+				| bu::eVertexBuffer,
+				_families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
+				u32(_families.size()), _families.data());
+			VkBuffer             nb;
+			VmaAllocation        na;
+			vmaCreateBuffer(_device->alloc(), reinterpret_cast<VkBufferCreateInfo*>(&bci), &aci, &nb, &na, &ai);
+
+			if(_buffer)
+				copy_cmd.copyBuffer(_buffer, nb, vk::BufferCopy(0, 0, _size));
+
+			vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
+			_buffer = nb;
+			_allocation = na;
+		}
+	}
+
+	std::vector<u32> _families;
+	vk::Buffer       _buffer = nullptr;
+	VmaAllocation    _allocation = nullptr;
+	size_type        _capacity = 0;
+	size_type		 _size = 0;
+	device*          _device = nullptr;
+};
+
+template<typename Buf> constexpr bool is_buffer_v = false;
+template<typename T> constexpr bool is_buffer_v<mapped<T>> = true;
+template<typename T> constexpr bool is_buffer_v<buffer<T>> = true;
 }    // namespace v1
 }    // namespace gfx
+
+#include "buffer.inl"

@@ -187,17 +187,20 @@ int main(int argc, char** argv)
 
         float f;
     };
+	vk::PhysicalDeviceProperties2 props = gpu.gpu().getProperties2();
+	const auto ve = gfx::to_version(props.properties.apiVersion);
 
-    gfx::mapped<T> my_floats(gpu);
+    std::vector<T> my_floats;
     for (int i = 0; i < 10; ++i) my_floats.emplace_back().f = i;
 
 	my_floats.insert(my_floats.begin(), { T{}, T{}, T{} });
 	my_floats.erase(my_floats.begin() + 4);
-    T* f = my_floats.data();
+
+	gfx::buffer<T> tbuf(gpu, my_floats);
+	gfx::buffer<T> tbuf2 = tbuf;
 
     for (size_t i = 0; i < gpu_cmd.size(); ++i) cmd_fences.emplace_back(gpu, true);
 
-    vk::PhysicalDeviceProperties2 props       = gpu.gpu().getProperties2();
     const char*                   device_type = [&] {
         using dt = vk::PhysicalDeviceType;
         switch (props.properties.deviceType)
@@ -343,19 +346,11 @@ int main(int argc, char** argv)
     pipe_info.pColorBlendState = &bln_state;
 
     vk::UniquePipeline pipe = gpu.dev().createGraphicsPipelineUnique(nullptr, pipe_info);
-
-    vk::Buffer              buf;
-    VmaAllocation           alloc;
-    VmaAllocationInfo       alloc_res;
-    VmaAllocationCreateInfo alloc_info{0};
-    alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    vk::BufferCreateInfo buf_inf({}, sizeof(glm::mat4), vk::BufferUsageFlagBits::eUniformBuffer);
-    vmaCreateBuffer(gpu.alloc(), reinterpret_cast<VkBufferCreateInfo*>(&buf_inf), &alloc_info, reinterpret_cast<VkBuffer*>(&buf), &alloc,
-                    &alloc_res);
+	gfx::mapped<glm::mat4> buf(gpu, 1);
     vk::DescriptorSetAllocateInfo mat_set_alloc(dpool.get(), 1, &mat_set_layout.get());
     vk::UniqueDescriptorSet       mat_set = std::move(gpu.dev().allocateDescriptorSetsUnique(mat_set_alloc)[0]);
 
-    vk::DescriptorBufferInfo mat_buf_info(buf, 0, sizeof(glm::mat4));
+    vk::DescriptorBufferInfo mat_buf_info(buf.get_buffer(), 0, sizeof(glm::mat4));
     vk::WriteDescriptorSet   mat_write(mat_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &mat_buf_info);
     gpu.dev().updateDescriptorSets(mat_write, {});
 
@@ -393,6 +388,8 @@ int main(int argc, char** argv)
         gpu.reset_fences({cmd_fences[img]});
         gpu_cmd[img].cmd().reset({});
         gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+		const auto data = { glm::rotate(glm::radians<float>(time_sec.count() * 180.f), glm::vec3(0, 0, 1)) };
+		gpu_cmd[img].cmd().updateBuffer(buf.get_buffer(), 0ull, std::size(data) * sizeof(glm::mat4), std::data(data));
 
         vk::ClearValue          clr(vk::ClearColorValue{clear_color});
         vk::RenderPassBeginInfo beg;
@@ -407,8 +404,6 @@ int main(int argc, char** argv)
         gpu_cmd[img].cmd().setScissor(0, vk::Rect2D({0, 0}, chain.extent()));
         gpu_cmd[img].cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, pipe.get());
 
-        const auto data = {glm::rotate(glm::radians<float>(time_sec.count() * 180.f), glm::vec3(0, 0, 1))};
-        gpu_cmd[img].cmd().updateBuffer(buf, 0ull, std::size(data) * sizeof(glm::mat4), std::data(data));
         gpu_cmd[img].cmd().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0, mat_set.get(), nullptr);
         gpu_cmd[img].cmd().draw(3, 1, 0, 0);
 
@@ -432,6 +427,4 @@ int main(int argc, char** argv)
     });
 
     app.exec();
-
-    vmaDestroyBuffer(gpu.alloc(), buf, alloc);
 }

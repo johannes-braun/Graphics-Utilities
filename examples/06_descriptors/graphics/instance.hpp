@@ -1,37 +1,35 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-#include "version.hpp"
 #include "extensions.hpp"
+#include "version.hpp"
+#include <vulkan/vulkan.hpp>
 
-namespace gfx
+namespace gfx {
+inline namespace v1 {
+class instance
 {
-	inline namespace v1
-	{
-		class instance
-		{
-		public:
-			explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support);
-			~instance() = default;
+public:
+    explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support);
+    ~instance() = default;
 
-			vk::Instance          inst() const noexcept { return _instance.get(); }
-		    const extension_dispatch& dispatcher() const noexcept;
+    vk::Instance              inst() const noexcept { return _instance.get(); }
+    const extension_dispatch& dispatcher() const noexcept;
 
-		    bool is_debug() const noexcept;
-		    bool is_surface_supported() const noexcept;
+    bool is_debug() const noexcept;
+    bool is_surface_supported() const noexcept;
 
-		private:
-			vk::UniqueInstance                                           _instance;
-			vk::UniqueHandle<vk::DebugUtilsMessengerEXT, extension_dispatch> _debug_messenger;
-			extension_dispatch                                               _dispatcher;
-			vk::UniqueHandle<vk::DebugReportCallbackEXT, extension_dispatch> _debug_callback;
+private:
+    vk::UniqueInstance                                               _instance;
+    vk::UniqueHandle<vk::DebugUtilsMessengerEXT, extension_dispatch> _debug_messenger;
+    extension_dispatch                                               _dispatcher;
+    vk::UniqueHandle<vk::DebugReportCallbackEXT, extension_dispatch> _debug_callback;
 
-			struct
-			{
-				bool debug = false;
-				bool surface_support = false;
-			} _capabilities;
-		};
+    struct
+    {
+        bool debug           = false;
+        bool surface_support = false;
+    } _capabilities;
+};
 
-	}
-}
+}    // namespace v1
+}    // namespace gfx

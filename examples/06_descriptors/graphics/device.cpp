@@ -116,6 +116,11 @@ namespace gfx
 	    _dispatcher.load(_device.get());
 	    std::unordered_map<u32, u32> queue_counter;
 
+		_queue_families[u32(queue_type::graphics)] = fgraphics;
+		_queue_families[u32(queue_type::compute)] = fcompute;
+		_queue_families[u32(queue_type::transfer)] = ftransfer;
+		_queue_families[u32(queue_type::present)] = fpresent;
+
 	    for (size_t index = 0; index < graphics_priorities.size(); ++index)
 	        _queues[u32(queue_type::graphics)].push_back(_device->getQueue(fgraphics, queue_counter[fgraphics]++));
 	    _command_pools[u32(queue_type::graphics)] =
@@ -214,6 +219,26 @@ namespace gfx
 	{
 	    const vk::CommandBufferAllocateInfo alloc{
 	        _command_pools[u32(queue_type::graphics)].get(),
+	        primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1
+	    };
+	    auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+	    return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
+	}
+
+	std::vector<commands> device::allocate_transfer_commands(u32 count, bool primary) const noexcept
+	{
+	    const vk::CommandBufferAllocateInfo alloc{
+	        _command_pools[u32(queue_type::transfer)].get(),
+	        primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count
+	    };
+	    auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+	    return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
+	}
+
+	commands device::allocate_transfer_command(bool primary) const noexcept
+	{
+	    const vk::CommandBufferAllocateInfo alloc{
+	        _command_pools[u32(queue_type::transfer)].get(),
 	        primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1
 	    };
 	    auto cmd_bufs = _device->allocateCommandBuffersUnique(alloc);

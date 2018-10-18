@@ -55,21 +55,21 @@ instance::instance(std::string_view app_name, version_t app_version, bool debug,
             });
         _debug_callback = _instance->createDebugReportCallbackEXTUnique(callback_info, nullptr, _dispatcher);
 
-        using sev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-        const vk::DebugUtilsMessengerCreateInfoEXT debug_messenger_info(
-            {}, sev::eError | sev::eWarning | sev::eInfo, vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral,
-            [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) -> VkBool32 {
-                switch (sev(messageSeverity))
-                {
-                case sev::eError: gfx::elog << pCallbackData->pMessage; break;
-                case sev::eWarning: gfx::wlog << pCallbackData->pMessage; break;
-                case sev::eInfo: gfx::ilog << pCallbackData->pMessage; break;
-                case sev::eVerbose: gfx::dlog << pCallbackData->pMessage; break;
-                }
-                return true;
-            });
-        _debug_messenger = _instance->createDebugUtilsMessengerEXTUnique(debug_messenger_info, nullptr, _dispatcher);
+        //using sev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        //const vk::DebugUtilsMessengerCreateInfoEXT debug_messenger_info(
+        //    {}, sev::eError | sev::eWarning | sev::eInfo, vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral,
+        //    [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
+        //       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) -> VkBool32 {
+        //        switch (sev(messageSeverity))
+        //        {
+        //        case sev::eError: gfx::elog << pCallbackData->pMessage; break;
+        //        case sev::eWarning: gfx::wlog << pCallbackData->pMessage; break;
+        //        case sev::eInfo: gfx::ilog << pCallbackData->pMessage; break;
+        //        case sev::eVerbose: gfx::dlog << pCallbackData->pMessage; break;
+        //        }
+        //        return true;
+        //    });
+        //_debug_messenger = _instance->createDebugUtilsMessengerEXTUnique(debug_messenger_info, nullptr, _dispatcher);
     }
 }
 

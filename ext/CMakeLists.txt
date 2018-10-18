@@ -36,6 +36,7 @@ add_subdirectory_log(eigen)
 add_library(eigen::eigen ALIAS eigen)
 
 cmake_policy(SET CMP0048 OLD)
+set(ASSIMP_BUILD_ZLIB ON)
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF)
 set(ASSIMP_BUILD_TESTS OFF)
 set(ASSIMP_NO_EXPORT ON)
