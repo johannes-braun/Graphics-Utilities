@@ -20,8 +20,6 @@
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 
-#include <vulkan/vk_mem_alloc.h>
-
 class worker
 {
 public:
@@ -168,39 +166,17 @@ int main(int argc, char** argv)
     gfx::semaphore             render_finish_signal(gpu);
     std::vector<gfx::fence>    cmd_fences;
 
-    struct T
-    {
-        T(T&& t) { gfx::ilog << "T&&"; }
-        T(const T& t) { gfx::ilog << "const T&"; }
-        T& operator=(T&& t)
-        {
-            gfx::ilog << "T&&";
-            return *this;
-        }
-        T& operator=(const T& t)
-        {
-            gfx::ilog << "const T&";
-            return *this;
-        }
-        T() { gfx::ilog << "T"; }
-		~T() { gfx::ilog << "~T"; }
-
-        float f;
-    };
-	vk::PhysicalDeviceProperties2 props = gpu.gpu().getProperties2();
-	const auto ve = gfx::to_version(props.properties.apiVersion);
-
-    std::vector<T> my_floats;
-    for (int i = 0; i < 10; ++i) my_floats.emplace_back().f = i;
-
-	my_floats.insert(my_floats.begin(), { T{}, T{}, T{} });
+    gfx::mapped<float> my_floats(gpu);
+    for (int i = 0; i < 10; ++i) my_floats.emplace_back(i);
+	my_floats.insert(my_floats.begin(), { 0.f, 1.f, 0.3f });
 	my_floats.erase(my_floats.begin() + 4);
 
-	gfx::buffer<T> tbuf(gpu, my_floats);
-	gfx::buffer<T> tbuf2 = tbuf;
+	gfx::buffer<float> tbuf(gpu, my_floats);
+	gfx::buffer<float> tbuf2 = tbuf;
 
     for (size_t i = 0; i < gpu_cmd.size(); ++i) cmd_fences.emplace_back(gpu, true);
 
+	const auto props = gpu.gpu().getProperties2();
     const char*                   device_type = [&] {
         using dt = vk::PhysicalDeviceType;
         switch (props.properties.deviceType)
