@@ -9,7 +9,7 @@ inline namespace v1 {
 shader::shader(device& dev, const std::filesystem::path& path)
 	: _path(path)
 {
-	load(dev.dev());
+	load(dev.get_device());
 }
 
 shader::shader(const shader& other)
