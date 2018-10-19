@@ -12,10 +12,10 @@ namespace gfx
 
     swapchain::swapchain(device& d, surface& s, bool general_images)
         : _general_images(general_images)
-        , _dispatcher(&d.dispatcher())
-        , _device(d.dev())
-        , _gpu(d.gpu())
-        , _surface(s.surf())
+        , _dispatcher(&d.get_dispatcher())
+        , _device(d.get_device())
+        , _gpu(d.get_physical_device())
+        , _surface(s.get_surface())
     {
         std::unordered_set<u32> families;
         families.emplace(d.present_family());
@@ -26,7 +26,7 @@ namespace gfx
         }
         _condensed_families = std::vector<u32>(families.begin(), families.end());
 
-		if (!d.gpu().getSurfaceSupportKHR(d.present_family(), s.surf()))
+		if (!d.get_physical_device().getSurfaceSupportKHR(d.present_family(), s.get_surface()))
 			throw "";
 
         recreate(std::nullopt);

@@ -7,7 +7,11 @@
 namespace gfx {
 inline namespace v1 {
 instance::instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support)
-      : _capabilities{debug, surface_support}
+      : _app_name(app_name), _app_version(app_version), _capabilities{debug, surface_support}
+{
+	initialize(app_name, app_version, debug, surface_support);
+}
+void instance::initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support)
 {
     vk::ApplicationInfo app_info;
     app_info.apiVersion         = version_t(1, 1, 0);
@@ -39,7 +43,7 @@ instance::instance(std::string_view app_name, version_t app_version, bool debug,
     if (debug)
     {
         using dcf = vk::DebugReportFlagBitsEXT;
-        vk::DebugReportCallbackCreateInfoEXT callback_info(
+        const vk::DebugReportCallbackCreateInfoEXT callback_info(
             dcf::eWarning | dcf::eDebug | dcf::eInformation | dcf::ePerformanceWarning | dcf::eError,
             [](VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode,
                const char* pLayerPrefix, const char* pMessage, void* pUserData) -> VkBool32 {
@@ -55,8 +59,8 @@ instance::instance(std::string_view app_name, version_t app_version, bool debug,
             });
         _debug_callback = _instance->createDebugReportCallbackEXTUnique(callback_info, nullptr, _dispatcher);
 
-        //using sev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-        //const vk::DebugUtilsMessengerCreateInfoEXT debug_messenger_info(
+        // using sev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        // const vk::DebugUtilsMessengerCreateInfoEXT debug_messenger_info(
         //    {}, sev::eError | sev::eWarning | sev::eInfo, vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral,
         //    [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
         //       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) -> VkBool32 {
@@ -73,7 +77,53 @@ instance::instance(std::string_view app_name, version_t app_version, bool debug,
     }
 }
 
-const extension_dispatch& instance::dispatcher() const noexcept
+instance::instance(const instance& other)
+      : instance(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support)
+{}
+
+instance::instance(instance&& other) noexcept
+{
+    _app_name        = std::move(other._app_name);
+    _app_version     = std::move(other._app_version);
+    _capabilities    = std::move(other._capabilities);
+    _debug_callback  = std::move(other._debug_callback);
+    _debug_messenger = std::move(other._debug_messenger);
+    _dispatcher      = std::move(other._dispatcher);
+    _instance        = std::move(other._instance);
+
+    other._app_version                  = {0, 0, 0};
+    other._capabilities.debug           = false;
+    other._capabilities.surface_support = false;
+}
+
+instance& instance::operator=(const instance& other)
+{
+	initialize(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support);
+	return *this;
+}
+
+instance& instance::operator=(instance&& other) noexcept
+{
+    _app_name        = std::move(other._app_name);
+    _app_version     = std::move(other._app_version);
+    _capabilities    = std::move(other._capabilities);
+    _debug_callback  = std::move(other._debug_callback);
+    _debug_messenger = std::move(other._debug_messenger);
+    _dispatcher      = std::move(other._dispatcher);
+    _instance        = std::move(other._instance);
+
+    other._app_version                  = {0, 0, 0};
+    other._capabilities.debug           = false;
+    other._capabilities.surface_support = false;
+    return *this;
+}
+
+const vk::Instance& instance::get_instance() const noexcept
+{
+    return _instance.get();
+}
+
+const extension_dispatch& instance::get_dispatcher() const noexcept
 {
     return _dispatcher;
 }

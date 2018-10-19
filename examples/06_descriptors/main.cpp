@@ -157,6 +157,22 @@ int main(int argc, char** argv)
     win.connect(slider_b, &QSlider::valueChanged, [&](int val) { clear_color[2] = val / 255.f; });
     win.show();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), true, true);
     gfx::surface               surf1(my_app, render_surface);
     gfx::device                gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf1);
@@ -164,7 +180,7 @@ int main(int argc, char** argv)
     std::vector<gfx::commands> gpu_cmd = gpu.allocate_graphics_commands(chain.count());
     gfx::semaphore             acquire_image_signal(gpu);
     gfx::semaphore             render_finish_signal(gpu);
-    std::vector<gfx::fence>    cmd_fences;
+    std::vector<gfx::fence>    cmd_fences(gpu_cmd.size(), gfx::fence(gpu, true));
 
     gfx::mapped<float> my_floats(gpu);
     for (int i = 0; i < 10; ++i) my_floats.emplace_back(i);
@@ -174,9 +190,7 @@ int main(int argc, char** argv)
 	gfx::buffer<float> tbuf(gpu, my_floats);
 	gfx::buffer<float> tbuf2 = tbuf;
 
-    for (size_t i = 0; i < gpu_cmd.size(); ++i) cmd_fences.emplace_back(gpu, true);
-
-	const auto props = gpu.gpu().getProperties2();
+	const auto props = gpu.get_physical_device().getProperties2();
     const char*                   device_type = [&] {
         using dt = vk::PhysicalDeviceType;
         switch (props.properties.deviceType)
@@ -234,7 +248,7 @@ int main(int argc, char** argv)
     rp_info.pSubpasses      = &main_subpass;
     rp_info.dependencyCount = 1;
     rp_info.pDependencies   = &main_subpass_dep;
-    const auto pass         = gpu.dev().createRenderPassUnique(rp_info);
+    const auto pass         = gpu.get_device().createRenderPassUnique(rp_info);
 
     std::vector<vk::UniqueImageView>   imvs;
     std::vector<vk::UniqueFramebuffer> fbos;
@@ -249,7 +263,7 @@ int main(int argc, char** argv)
             imv_create.image            = chain.imgs()[i];
             imv_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
             imv_create.viewType         = vk::ImageViewType::e2D;
-            imvs.emplace_back(gpu.dev().createImageViewUnique(imv_create));
+            imvs.emplace_back(gpu.get_device().createImageViewUnique(imv_create));
 
             vk::FramebufferCreateInfo fbo_create;
             fbo_create.attachmentCount = 1;
@@ -258,7 +272,7 @@ int main(int argc, char** argv)
             fbo_create.height          = chain.extent().height;
             fbo_create.layers          = 1;
             fbo_create.pAttachments    = &imvs[i].get();
-            fbos.emplace_back(gpu.dev().createFramebufferUnique(fbo_create));
+            fbos.emplace_back(gpu.get_device().createFramebufferUnique(fbo_create));
         }
     };
     build_fbos();
@@ -270,23 +284,23 @@ int main(int argc, char** argv)
     pipe_info.subpass    = 0;
     pipe_info.renderPass = pass.get();
     const auto stages    = {
-        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vert.mod(), "main"),
-        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, frag.mod(), "main"),
+        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vert.get_module(), "main"),
+        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, frag.get_module(), "main"),
     };
     pipe_info.stageCount = gfx::u32(std::size(stages));
     pipe_info.pStages    = std::data(stages);
 
     vk::DescriptorPoolSize       dpool_size(vk::DescriptorType::eUniformBuffer, 256);
     vk::DescriptorPoolCreateInfo dpool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 2048, 1, &dpool_size);
-    vk::UniqueDescriptorPool     dpool = gpu.dev().createDescriptorPoolUnique(dpool_info);
+    vk::UniqueDescriptorPool     dpool = gpu.get_device().createDescriptorPoolUnique(dpool_info);
 
     vk::DescriptorSetLayoutBinding    mat_binding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eAll);
     vk::DescriptorSetLayoutCreateInfo dset_create({}, 1, &mat_binding);
-    vk::UniqueDescriptorSetLayout     mat_set_layout = gpu.dev().createDescriptorSetLayoutUnique(dset_create);
+    vk::UniqueDescriptorSetLayout     mat_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(dset_create);
 
     vk::PipelineLayoutCreateInfo pipe_layout_info({}, 1, &mat_set_layout.get());
 
-    vk::UniquePipelineLayout pipe_layout = gpu.dev().createPipelineLayoutUnique(pipe_layout_info);
+    vk::UniquePipelineLayout pipe_layout = gpu.get_device().createPipelineLayoutUnique(pipe_layout_info);
     pipe_info.layout                     = pipe_layout.get();
 
     vk::PipelineViewportStateCreateInfo vp_state({}, 1, nullptr, 1, nullptr);
@@ -321,14 +335,14 @@ int main(int argc, char** argv)
     vk::PipelineColorBlendStateCreateInfo bln_state({}, false, {}, 1, &blend_col_att0);
     pipe_info.pColorBlendState = &bln_state;
 
-    vk::UniquePipeline pipe = gpu.dev().createGraphicsPipelineUnique(nullptr, pipe_info);
+    vk::UniquePipeline pipe = gpu.get_device().createGraphicsPipelineUnique(nullptr, pipe_info);
 	gfx::mapped<glm::mat4> buf(gpu, 1);
     vk::DescriptorSetAllocateInfo mat_set_alloc(dpool.get(), 1, &mat_set_layout.get());
-    vk::UniqueDescriptorSet       mat_set = std::move(gpu.dev().allocateDescriptorSetsUnique(mat_set_alloc)[0]);
+    vk::UniqueDescriptorSet       mat_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(mat_set_alloc)[0]);
 
     vk::DescriptorBufferInfo mat_buf_info(buf.get_buffer(), 0, sizeof(glm::mat4));
     vk::WriteDescriptorSet   mat_write(mat_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &mat_buf_info);
-    gpu.dev().updateDescriptorSets(mat_write, {});
+    gpu.get_device().updateDescriptorSets(mat_write, {});
 
     std::chrono::duration<double> time_sec    = std::chrono::duration<double>::zero();
     std::chrono::duration<double> delta       = std::chrono::duration<double>::zero();

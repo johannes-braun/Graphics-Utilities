@@ -24,6 +24,11 @@ class swapchain
 {
 public:
     explicit swapchain(device& d, surface& s, bool general_images = true);
+	swapchain(const swapchain&) = delete;
+	swapchain& operator=(const swapchain&) = delete;
+	swapchain(swapchain&&) = default;
+	swapchain& operator=(swapchain&&) = default;
+
     bool                    recreate();
     const vk::SwapchainKHR& chain() const noexcept;
 

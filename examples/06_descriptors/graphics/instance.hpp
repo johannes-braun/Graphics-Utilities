@@ -12,13 +12,22 @@ public:
     explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support);
     ~instance() = default;
 
-    vk::Instance              inst() const noexcept { return _instance.get(); }
-    const extension_dispatch& dispatcher() const noexcept;
+	instance(const instance& other);
+	instance(instance&& other) noexcept;
+	instance& operator=(const instance& other);
+	instance& operator=(instance&& other) noexcept;
+
+    const vk::Instance&       get_instance() const noexcept;
+    const extension_dispatch& get_dispatcher() const noexcept;
 
     bool is_debug() const noexcept;
     bool is_surface_supported() const noexcept;
 
 private:
+	void initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support);
+
+    std::string                                                      _app_name;
+    version_t                                                        _app_version;
     vk::UniqueInstance                                               _instance;
     vk::UniqueHandle<vk::DebugUtilsMessengerEXT, extension_dispatch> _debug_messenger;
     extension_dispatch                                               _dispatcher;

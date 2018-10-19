@@ -12,6 +12,11 @@ namespace gfx
 		{
 		public:
 		    explicit semaphore(device& dev);
+			semaphore(const semaphore& other);
+			semaphore& operator=(const semaphore& other) noexcept;
+			semaphore(semaphore&& other) noexcept = default;
+			semaphore& operator=(semaphore&& other) noexcept = default;
+
 		    const vk::Semaphore& sem() const noexcept;
 
 		private:
@@ -22,6 +27,11 @@ namespace gfx
 		{
 		public:
 		    explicit fence(device& dev, bool signaled = false);
+			fence(const fence& other);
+			fence& operator=(const fence& other) noexcept;
+			fence(fence&& other) noexcept = default;
+			fence& operator=(fence&& other) noexcept = default;
+
 		    const vk::Fence& fen() const noexcept;
 
 		private:

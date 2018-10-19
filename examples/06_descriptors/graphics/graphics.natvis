@@ -4,8 +4,79 @@
     vim: syntax=xml
 -->
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-    <Type Name="gfx::v1::mapped&lt;*&gt;">
-        <DisplayString>{{ size = {storage_.size_} }}</DisplayString>
+  <Type Name="gfx::v1::instance">
+    <DisplayString>{{ name={_app_name} }}</DisplayString>
+    <Expand>
+      <Item Name="[app name]">_app_name</Item>
+      <Item Name="[app version]">_app_version</Item>
+      <Item Name="[handle]">_instance.m_value.m_instance</Item>
+      <Item Name="[debug]">_capabilities.debug</Item>
+      <Item Name="[supports surfaces]">_capabilities.surface_support</Item>
+    </Expand>
+  </Type>
+  <Type Name="gfx::v1::surface">
+    <DisplayString>{{ handle={_surface.m_value.m_surfaceKHR} }}</DisplayString>
+    <Expand>
+      <Item Name="[handle]">_surface.m_value.m_surfaceKHR</Item>
+    </Expand>
+  </Type>
+  <Type Name="gfx::v1::swapchain">
+    <DisplayString>{{ width={_extent.width}, height={_extent.height} }}</DisplayString>
+    <Expand>
+      <Item Name="[handle]">_swapchain.m_value.m_swapchainKHR</Item>
+      <Item Name="[extent]">_extent</Item>
+      <Item Name="[format]">_format</Item>
+      <Item Name="[color space]">_color_space</Item>
+      <Item Name="[present mode]">_present_mode</Item>
+    </Expand>
+  </Type>
+  <Type Name="gfx::v1::semaphore">
+    <DisplayString>{{ handle={_sem.m_value.m_semaphore} }}</DisplayString>
+    <Expand></Expand>
+  </Type>
+  <Type Name="gfx::v1::fence">
+    <DisplayString>{{ handle={_fence.m_value.m_fence} }}</DisplayString>
+    <Expand></Expand>
+  </Type>
+  <Type Name="gfx::v1::commands">
+    <DisplayString>{{ handle={_buf.m_value.m_commandBuffer} }}</DisplayString>
+    <Expand></Expand>
+  </Type>
+  <Type Name="gfx::v1::queue">
+    <DisplayString>{{ handle={_queue.m_queue} }}</DisplayString>
+    <Expand></Expand>
+  </Type>
+  <Type Name="gfx::v1::version_t">
+    <DisplayString>{{ version={major}.{minor}.{patch} }}</DisplayString>
+    <Expand>
+      <Item Name="[major]">major</Item>
+      <Item Name="[minor]">minor</Item>
+      <Item Name="[patch]">patch</Item>
+    </Expand>
+  </Type>
+  <Type Name="gfx::v1::device">
+    <DisplayString>{{ handle={_device.m_value.m_device} }}</DisplayString>
+    <Expand>
+      <Item Name="[handle]">_device.m_value.m_device</Item>
+      <Item Name="[physical device]">_gpu.m_physicalDevice</Item>
+      <Item Name="[allocator]">_allocator._Mypair._Myval2</Item>
+      <CustomListItems>
+        <Variable InitialValue="0" Name="index"/>
+        <Loop>
+          <If Condition="index &gt; 3">
+            <Break/>
+          </If>
+          <Item Condition="index == 0" Name="[graphics family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Item Condition="index == 1" Name="[compute family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Item Condition="index == 2" Name="[transfer family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Item Condition="index == 3" Name="[present family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
+          <Exec>index++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  <Type Name="gfx::v1::mapped&lt;*&gt;">
+        <DisplayString>{{ size={storage_.size_} }}</DisplayString>
         <Expand>
             <Item Name="[size]">storage_.size_</Item>
             <Item Name="[capacity]">_capacity</Item>
@@ -17,51 +88,11 @@
         </Expand>
     </Type>
   <Type Name="gfx::v1::buffer&lt;*&gt;">
-    <DisplayString>{{ size = {_size} }}</DisplayString>
+    <DisplayString>{{ size={_size} }}</DisplayString>
     <Expand>
       <Item Name="[size]">_size</Item>
       <Item Name="[capacity]">_capacity</Item>
       <Item Name="[queue families]">_families</Item>
     </Expand>
   </Type>
-
-  <Type Name="gfx::v1::device">
-    <DisplayString>{ device }</DisplayString>
-    <Expand>
-      <Item Name="[handle]">_device.m_value</Item>
-      <Item Name="[physical device]">_gpu</Item>
-      <Item Name="[allocator]">_allocator._Mypair._Myval2</Item>
-
-      <CustomListItems>
-        <Variable InitialValue="0" Name="index"/>
-        <Loop>
-          <If Condition="index &gt; 3">
-            <Break/>
-          </If>
-          <Item Condition="index == 0" Name="[graphics family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
-          <Item Condition="index == 1" Name="[compute family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
-          <Item Condition="index == 2" Name="[transfer family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
-          <Item Condition="index == 3" Name="[present family: {_queue_families._Elems[index]}]">_queues._Elems[index]</Item>
-          <!--<Item Name="command pool">_command_pools._Elems[index].m_value</Item>-->
-          <Exec>index++</Exec>
-        </Loop>
-      </CustomListItems>
-    </Expand>
-  </Type>
-  
 </AutoVisualizer>  
-
-<!--
-    vk::PhysicalDevice                                 _gpu = nullptr;
-    vk::UniqueDevice                                   _device;
-    std::unique_ptr<VmaAllocator_T, vma_alloc_deleter> _allocator;
-    extension_dispatch                                 _dispatcher;
-    std::array<std::vector<vk::Queue>, 4>              _queues;
-    std::array<vk::UniqueCommandPool, 4>               _command_pools;
-    std::array<u32, 4>                                 _queue_families{};
-    
-graphics,
-compute,
-transfer,
-present
--->

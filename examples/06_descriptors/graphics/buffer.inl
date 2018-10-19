@@ -80,7 +80,7 @@ mapped<T>::~mapped()
 {
 	if constexpr (!std::is_trivially_destructible_v<T>)
         std::destroy(this->begin(), this->end());
-    if (_buffer) vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
+    if (_buffer) vmaDestroyBuffer(_device->get_allocator(), _buffer, _allocation);
 }
 template<typename T>
 void mapped<T>::reserve(size_type capacity)
@@ -247,12 +247,12 @@ void mapped<T>::allocate(size_type capacity, bool force)
             _families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent, u32(_families.size()), _families.data());
         VkBuffer      nb;
         VmaAllocation na;
-        vmaCreateBuffer(_device->alloc(), reinterpret_cast<VkBufferCreateInfo*>(&bci), &aci, &nb, &na, &ai);
+        vmaCreateBuffer(_device->get_allocator(), reinterpret_cast<VkBufferCreateInfo*>(&bci), &aci, &nb, &na, &ai);
         value_type* new_storage = static_cast<value_type*>(ai.pMappedData);
         std::move(this->begin(), this->end(), new_storage);
         reset_storage(new_storage, this->size());
 
-        vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
+        vmaDestroyBuffer(_device->get_allocator(), _buffer, _allocation);
         _buffer     = nb;
         _allocation = na;
     }
@@ -406,7 +406,7 @@ buffer<T>::buffer(device& d, const std::initializer_list<T>& source, commands& t
 template<typename T>
 buffer<T>::~buffer()
 {
-    if (_buffer) vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
+    if (_buffer) vmaDestroyBuffer(_device->get_allocator(), _buffer, _allocation);
 }
 
 template<typename T>
@@ -516,11 +516,11 @@ void buffer<T>::allocate(size_type capacity, bool force, vk::CommandBuffer copy_
             _families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent, u32(_families.size()), _families.data());
         VkBuffer      nb;
         VmaAllocation na;
-        vmaCreateBuffer(_device->alloc(), reinterpret_cast<VkBufferCreateInfo*>(&bci), &aci, &nb, &na, &ai);
+        vmaCreateBuffer(_device->get_allocator(), reinterpret_cast<VkBufferCreateInfo*>(&bci), &aci, &nb, &na, &ai);
 
         if (_buffer) copy_cmd.copyBuffer(_buffer, nb, vk::BufferCopy(0, 0, _size));
 
-        vmaDestroyBuffer(_device->alloc(), _buffer, _allocation);
+        vmaDestroyBuffer(_device->get_allocator(), _buffer, _allocation);
         _buffer     = nb;
         _allocation = na;
     }

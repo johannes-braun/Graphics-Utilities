@@ -27,7 +27,7 @@ public:
         present(vk::ArrayProxy<const std::pair<u32, const std::reference_wrapper<const swapchain>>> swapchains,
                 cref_array_view<semaphore>                                                          wait_for) const;
 
-	const vk::Queue& get() const noexcept;
+	const vk::Queue& get_queue() const noexcept;
 	void             wait() const noexcept;
 
 private:

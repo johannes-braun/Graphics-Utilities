@@ -8,17 +8,23 @@ inline namespace v1 {
 class commands
 {
 public:
+    commands() = delete;
+	commands(const commands&) = delete;
+	commands& operator=(const commands&) = delete;
+	commands(commands&&) = default;
+	commands& operator=(commands&&) = default;
+
     const vk::CommandBuffer& cmd() const noexcept;
 
     template<template<typename> typename SBuf, template<typename> typename DBuf, typename T>
-    void copy(const SBuf<T>& src, const DBuf<T>& dst, std::optional<u32> count = std::nullopt,
-              std::optional<u32> src_offset = std::nullopt, std::optional<u32> dst_offset = std::nullopt)
+    void copy(const SBuf<T>& src, const DBuf<T>& dst, std::optional<u32> count = std::nullopt, std::optional<u32> src_offset = std::nullopt,
+              std::optional<u32> dst_offset = std::nullopt)
     {
         const u32 srco = (src_offset ? *src_offset : 0u) * sizeof(T);
         const u32 dsto = (dst_offset ? *dst_offset : 0u) * sizeof(T);
         const u32 size = (count ? *count : std::min(src.size(), dst.size())) * sizeof(T);
 
-		_buf->copyBuffer(src.get_buffer(), dst.get_buffer(), vk::BufferCopy(srco, dsto, size));
+        _buf->copyBuffer(src.get_buffer(), dst.get_buffer(), vk::BufferCopy(srco, dsto, size));
     }
 
 private:

@@ -16,7 +16,12 @@ namespace gfx
 			explicit surface(instance& i, GLFWwindow* glfw_window);
 			explicit surface(instance& i, QWidget* qt_window);
 
-			const vk::SurfaceKHR& surf() const noexcept;
+			surface(const surface& other) = delete;
+			surface& operator=(const surface& other) = delete;
+		    surface(surface&& other) = default;
+			surface& operator=(surface&& other) = default;
+
+			const vk::SurfaceKHR& get_surface() const noexcept;
 
 		private:
 			vk::UniqueSurfaceKHR _surface;

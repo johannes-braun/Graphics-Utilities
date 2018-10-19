@@ -15,11 +15,11 @@ namespace gfx
 	{
 		surface::surface(instance& i, GLFWwindow* glfw_window)
 		{
-			_surface = i.inst().createWin32SurfaceKHRUnique({ {}, nullptr, glfwGetWin32Window(glfw_window) });
+			_surface = i.get_instance().createWin32SurfaceKHRUnique({ {}, nullptr, glfwGetWin32Window(glfw_window) });
 		}
 
-		surface::surface(instance& i, QWidget* qt_window) { _surface = i.inst().createWin32SurfaceKHRUnique({ {}, nullptr, HWND(qt_window->winId()) }); }
+		surface::surface(instance& i, QWidget* qt_window) { _surface = i.get_instance().createWin32SurfaceKHRUnique({ {}, nullptr, HWND(qt_window->winId()) }); }
 
-		const vk::SurfaceKHR& surface::surf() const noexcept { return _surface.get(); }
+		const vk::SurfaceKHR& surface::get_surface() const noexcept { return _surface.get(); }
 	}
 }

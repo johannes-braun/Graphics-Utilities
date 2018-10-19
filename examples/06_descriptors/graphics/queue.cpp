@@ -49,7 +49,7 @@ namespace gfx
 			return r == vk::Result::eSuccess ? std::nullopt : std::optional<present_error>{ present_error(u32(r)) };
 		}
 
-		const vk::Queue& queue::get() const noexcept { return _queue; }
+		const vk::Queue& queue::get_queue() const noexcept { return _queue; }
 		void             queue::wait() const noexcept { _queue.waitIdle(); }
 	}
 }
