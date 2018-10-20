@@ -80,7 +80,7 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
     layer_dimensions         = as_attachment ? 2 : layer_dimensions;
 
     if (layer_dimensions == 2) {
-        img_create.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+        //img_create.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
         if (size.depth >= 6 && size.depth % 6 == 0) img_create.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     }
 

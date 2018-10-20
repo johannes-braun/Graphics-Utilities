@@ -263,6 +263,7 @@ int main(int argc, char** argv)
             imv_create.image            = chain.imgs()[i];
             imv_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
             imv_create.viewType         = vk::ImageViewType::e2D;
+			imv_create.components.r = vk::ComponentSwizzle::eIdentity;
             imvs.emplace_back(gpu.get_device().createImageViewUnique(imv_create));
 
             vk::FramebufferCreateInfo fbo_create;

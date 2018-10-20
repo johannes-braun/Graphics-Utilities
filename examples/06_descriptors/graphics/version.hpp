@@ -25,5 +25,10 @@ namespace gfx
 		{
 			return std::to_string(version.major) + "." + std::to_string(version.minor) + "." + std::to_string(version.patch);
 		}
+
+        inline std::ostream& operator<<(std::ostream& in, version_t version)
+		{
+			return (in << 'v' << version.major << '.' << version.minor << '.' << version.patch);
+		}
     }
 }

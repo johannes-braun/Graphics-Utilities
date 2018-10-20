@@ -170,7 +170,7 @@ void commands_implementation::end_pass()
 }
 void commands_implementation::bind_pipeline(const graphics_pipeline& p, std::initializer_list<binding_set*> bindings)
 {
-    pipeline_state.bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+    pipeline_state.bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
     pipeline_state.layout     = static_cast<graphics_pipeline_implementation*>(&*p.implementation())->layout();
     pipeline_state.pipeline   = handle_cast<VkPipeline>(p);
 
