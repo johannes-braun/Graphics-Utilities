@@ -26,6 +26,13 @@ mapped<T>::mapped(device& d, std::initializer_list<T> ilist) : mapped(d)
     std::move(std::begin(ilist), std::end(ilist), this->begin());
 }
 template<typename T>
+mapped<T>::mapped(device& d, gsl::span<const T> ilist) : mapped(d)
+{
+    reserve(std::size(ilist));
+    reset_storage(this->data(), std::size(ilist));
+    std::copy(std::begin(ilist), std::end(ilist), this->begin());
+}
+template<typename T>
 mapped<T>::mapped(const mapped& other)
 {
     allocate(other._capacity);

@@ -33,6 +33,7 @@ public:
 	explicit mapped(device& d, size_type size);
 	explicit mapped(device& d, size_type size, T&& value);
 	explicit mapped(device& d, std::initializer_list<T> ilist);
+	explicit mapped(device& d, gsl::span<const T> ilist);
 
 	mapped(const mapped& other);
 	mapped(mapped&& other) noexcept;
