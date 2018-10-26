@@ -1,14 +1,20 @@
 #include "graphics/graphics.hpp"
+#include "camera.hpp"
+#include "input.hpp"
+#include "mesh.hpp"
 
 #include <QApplication>
 #include <QBoxLayout>
 #include <QCheckBox>
+#include <QCoreApplication>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGroupBox>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMenuBar>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QSlider>
 #include <QSplitter>
@@ -100,6 +106,7 @@ int main(int argc, char** argv)
     render_frame_layout->setContentsMargins(QMargins(1, 1, 1, 1));
     QWidget* render_surface = new QWidget;
     render_frame_layout->addWidget(render_surface);
+    render_surface->setFocusPolicy(Qt::FocusPolicy::ClickFocus);
 
     QVBoxLayout* right_panel_layout = new QVBoxLayout;
     QWidget*     right_panel        = new QWidget;
@@ -157,21 +164,8 @@ int main(int argc, char** argv)
     win.connect(slider_b, &QSlider::valueChanged, [&](int val) { clear_color[2] = val / 255.f; });
     win.show();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    gfx::key_event_filter* keys = new gfx::key_event_filter(render_surface);
+    render_surface->installEventFilter(keys);
 
     gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), true, true);
     gfx::surface               surf1(my_app, render_surface);
@@ -184,14 +178,14 @@ int main(int argc, char** argv)
 
     gfx::mapped<float> my_floats(gpu);
     for (int i = 0; i < 10; ++i) my_floats.emplace_back(i);
-	my_floats.insert(my_floats.begin(), { 0.f, 1.f, 0.3f });
-	my_floats.erase(my_floats.begin() + 4);
+    my_floats.insert(my_floats.begin(), {0.f, 1.f, 0.3f});
+    my_floats.erase(my_floats.begin() + 4);
 
-	gfx::buffer<float> tbuf(gpu, my_floats);
-	gfx::buffer<float> tbuf2 = tbuf;
+    gfx::buffer<float> tbuf(gpu, my_floats);
+    gfx::buffer<float> tbuf2 = tbuf;
 
-	const auto props = gpu.get_physical_device().getProperties2();
-    const char*                   device_type = [&] {
+    const auto  props       = gpu.get_physical_device().getProperties2();
+    const char* device_type = [&] {
         using dt = vk::PhysicalDeviceType;
         switch (props.properties.deviceType)
         {
@@ -263,7 +257,7 @@ int main(int argc, char** argv)
             imv_create.image            = chain.imgs()[i];
             imv_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
             imv_create.viewType         = vk::ImageViewType::e2D;
-			imv_create.components.r = vk::ComponentSwizzle::eIdentity;
+            imv_create.components.r     = vk::ComponentSwizzle::eIdentity;
             imvs.emplace_back(gpu.get_device().createImageViewUnique(imv_create));
 
             vk::FramebufferCreateInfo fbo_create;
@@ -278,8 +272,8 @@ int main(int argc, char** argv)
     };
     build_fbos();
 
-    const gfx::shader vert(gpu, "06_descriptors/do.vert.vk.spv");
-    const gfx::shader frag(gpu, "06_descriptors/do.frag.vk.spv");
+    const gfx::shader vert(gpu, "postfx/screen.vert.vk.spv");
+    const gfx::shader frag(gpu, "06_descriptors/spectral.frag.vk.spv");
 
     vk::GraphicsPipelineCreateInfo pipe_info;
     pipe_info.subpass    = 0;
@@ -291,15 +285,65 @@ int main(int argc, char** argv)
     pipe_info.stageCount = gfx::u32(std::size(stages));
     pipe_info.pStages    = std::data(stages);
 
-    vk::DescriptorPoolSize       dpool_size(vk::DescriptorType::eUniformBuffer, 256);
-    vk::DescriptorPoolCreateInfo dpool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 2048, 1, &dpool_size);
+    ////////////////////////////////////////////////////////////////////////////
+    ////
+    ////		Descriptor Pool
+    ////
+    ////////////////////////////////////////////////////////////////////////////
+    using dct = vk::DescriptorType;
+    using gfx::u32;
+    vk::DescriptorPoolSize       dpool_sizes[] = {{dct::eUniformBuffer, 1}, {dct::eStorageBuffer, 8}};
+    vk::DescriptorPoolCreateInfo dpool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 3, u32(std::size(dpool_sizes)),
+                                            std::data(dpool_sizes));
     vk::UniqueDescriptorPool     dpool = gpu.get_device().createDescriptorPoolUnique(dpool_info);
 
+    ////////////////////////////////////////////////////////////////////////////
+    ////
+    ////		ECS
+    ////
+    ////////////////////////////////////////////////////////////////////////////
+    gfx::ecs::ecs         ecs;
+    gfx::ecs::system_list control_systems;
+	gfx::user_camera_system camera_system(*keys);
+    control_systems.add(*keys);
+	control_systems.add(camera_system);
+    gfx::ecs::unique_entity user_entity = ecs.create_entity_unique(gfx::camera_component(), gfx::camera_controls(), gfx::transform_component(), gfx::grabbed_cursor_component());
+
+	////////////////////////////////////////////////////////////////////////////
+	////
+	////		Meshes
+	////
+	////////////////////////////////////////////////////////////////////////////
+	mesh_allocator mesh_alloc(gpu);
+	mesh_handle bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("bunny.dae"))[0];
+
+	mesh_alloc.clear_instances_of(bunny_handle);
+	mesh_alloc.add_instance(bunny_handle, gfx::transform(), glm::vec4(1, 0, 1, 1), 0.1f, 0.f);
+
+	////////////////////////////////////////////////////////////////////////////
+	////
+	////		Descriptor Set Layouts
+	////
+	////////////////////////////////////////////////////////////////////////////
     vk::DescriptorSetLayoutBinding    mat_binding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eAll);
     vk::DescriptorSetLayoutCreateInfo dset_create({}, 1, &mat_binding);
     vk::UniqueDescriptorSetLayout     mat_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(dset_create);
 
-    vk::PipelineLayoutCreateInfo pipe_layout_info({}, 1, &mat_set_layout.get());
+	vk::DescriptorSetLayoutBinding    mesh_bindings[] = {
+		{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment},
+		{1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment},
+		{2, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment},
+		{3, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment},
+	};
+	vk::DescriptorSetLayoutCreateInfo mesh_set_create({}, u32(std::size(mesh_bindings)), std::data(mesh_bindings));
+	vk::UniqueDescriptorSetLayout     mesh_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(mesh_set_create);
+
+    vk::DescriptorSetLayoutBinding   globals_binding(0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment);
+    vk::DescriptorSetLayoutCreateInfo globals_set_create({}, 1, &globals_binding);
+    vk::UniqueDescriptorSetLayout     globals_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(globals_set_create);
+
+	const auto used_layouts = { mat_set_layout.get(), mesh_set_layout.get(), globals_set_layout.get() };
+    vk::PipelineLayoutCreateInfo pipe_layout_info({}, u32(std::size(used_layouts)), std::data(used_layouts));
 
     vk::UniquePipelineLayout pipe_layout = gpu.get_device().createPipelineLayoutUnique(pipe_layout_info);
     pipe_info.layout                     = pipe_layout.get();
@@ -336,25 +380,64 @@ int main(int argc, char** argv)
     vk::PipelineColorBlendStateCreateInfo bln_state({}, false, {}, 1, &blend_col_att0);
     pipe_info.pColorBlendState = &bln_state;
 
-    vk::UniquePipeline pipe = gpu.get_device().createGraphicsPipelineUnique(nullptr, pipe_info);
-	gfx::mapped<glm::mat4> buf(gpu, 1);
+    vk::UniquePipeline            pipe = gpu.get_device().createGraphicsPipelineUnique(nullptr, pipe_info);
+	gfx::mapped<gfx::camera_matrices>        buf(gpu, { *gfx::get_camera_info(*user_entity) });
+
     vk::DescriptorSetAllocateInfo mat_set_alloc(dpool.get(), 1, &mat_set_layout.get());
     vk::UniqueDescriptorSet       mat_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(mat_set_alloc)[0]);
 
-    vk::DescriptorBufferInfo mat_buf_info(buf.get_buffer(), 0, sizeof(glm::mat4));
+	vk::DescriptorSetAllocateInfo mesh_set_alloc(dpool.get(), 1, &mesh_set_layout.get());
+	vk::UniqueDescriptorSet       mesh_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(mesh_set_alloc)[0]);
+
+	vk::DescriptorSetAllocateInfo globals_set_alloc(dpool.get(), 1, &globals_set_layout.get());
+	vk::UniqueDescriptorSet       globals_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(globals_set_alloc)[0]);
+
+    vk::DescriptorBufferInfo mat_buf_info(buf.get_buffer(), 0, sizeof(gfx::camera_matrices));
     vk::WriteDescriptorSet   mat_write(mat_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &mat_buf_info);
     gpu.get_device().updateDescriptorSets(mat_write, {});
 
+	vk::DescriptorBufferInfo mesh_buf_info0(mesh_alloc.bvh_buffer().get_buffer(), 0, mesh_alloc.bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
+	vk::WriteDescriptorSet   mesh_write0(mesh_set.get(), 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &mesh_buf_info0);
+	vk::DescriptorBufferInfo mesh_buf_info1(mesh_alloc.vertex_buffer().get_buffer(), 0, mesh_alloc.vertex_buffer().size() * sizeof(gfx::vertex3d));
+	vk::WriteDescriptorSet   mesh_write1(mesh_set.get(), 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &mesh_buf_info1);
+	vk::DescriptorBufferInfo mesh_buf_info2(mesh_alloc.index_buffer().get_buffer(), 0, mesh_alloc.index_buffer().size() * sizeof(gfx::index32));
+	vk::WriteDescriptorSet   mesh_write2(mesh_set.get(), 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &mesh_buf_info2);
+	vk::DescriptorBufferInfo mesh_buf_info3(mesh_alloc.instances().get_buffer(), 0, mesh_alloc.instances().size() * sizeof(mesh_allocator::instance));
+	vk::WriteDescriptorSet   mesh_write3(mesh_set.get(), 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &mesh_buf_info3);
+	gpu.get_device().updateDescriptorSets({ mesh_write0, mesh_write1, mesh_write2, mesh_write3 }, {});
+
+	struct globals
+	{
+		glm::ivec2 viewport;
+		float random;
+	};
+	gfx::buffer<globals> globals_buffer(gpu, { globals{} });
+	std::mt19937 gen;
+	std::uniform_real_distribution<float> dist;
+	vk::DescriptorBufferInfo globals_buf_info(globals_buffer.get_buffer(), 0, sizeof(globals));
+	vk::WriteDescriptorSet   globals_write(globals_set.get(), 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &globals_buf_info);
+	gpu.get_device().updateDescriptorSets(globals_write, {});
+
     std::chrono::duration<double> time_sec    = std::chrono::duration<double>::zero();
     std::chrono::duration<double> delta       = std::chrono::duration<double>::zero();
+	std::chrono::duration<double> delta_frame = std::chrono::duration<double>::zero();
     size_t                        frame_count = 0;
     std::chrono::time_point       begin       = std::chrono::steady_clock::now();
     std::chrono::time_point       frame_begin = std::chrono::steady_clock::now();
-    worker                        render_thread([&](worker& self) {
+	std::chrono::time_point       last_time = std::chrono::steady_clock::now();
+
+    worker render_thread([&](worker& self) {
+		delta_frame = std::chrono::steady_clock::now() - last_time;
+		last_time = std::chrono::steady_clock::now();
+
+		ecs.update(delta_frame.count(), control_systems);
+		keys->post_update();
+
         using namespace std::chrono_literals;
         time_sec = std::chrono::steady_clock::now() - begin;
         ++frame_count;
         delta = std::chrono::steady_clock::now() - frame_begin;
+
         if (delta > 1s)
         {
             fps_counter->setText(QString::fromStdString(std::to_string(frame_count / delta.count())));
@@ -379,8 +462,17 @@ int main(int argc, char** argv)
         gpu.reset_fences({cmd_fences[img]});
         gpu_cmd[img].cmd().reset({});
         gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
-		const auto data = { glm::rotate(glm::radians<float>(time_sec.count() * 180.f), glm::vec3(0, 0, 1)) };
-		gpu_cmd[img].cmd().updateBuffer(buf.get_buffer(), 0ull, std::size(data) * sizeof(glm::mat4), std::data(data));
+
+		user_entity->get<gfx::camera_component>()->projection.perspective().screen_width = chain.extent().width;
+		user_entity->get<gfx::camera_component>()->projection.perspective().screen_height = chain.extent().height;
+        const auto data = { *gfx::get_camera_info(*user_entity) };
+        gpu_cmd[img].cmd().updateBuffer(buf.get_buffer(), 0ull, std::size(data) * sizeof(gfx::camera_matrices), std::data(data));
+
+		globals ng;
+		ng.random = dist(gen);
+		ng.viewport[0] = chain.extent().width;
+		ng.viewport[1] = chain.extent().height;
+		gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &ng);
 
         vk::ClearValue          clr(vk::ClearColorValue{clear_color});
         vk::RenderPassBeginInfo beg;
@@ -395,7 +487,7 @@ int main(int argc, char** argv)
         gpu_cmd[img].cmd().setScissor(0, vk::Rect2D({0, 0}, chain.extent()));
         gpu_cmd[img].cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, pipe.get());
 
-        gpu_cmd[img].cmd().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0, mat_set.get(), nullptr);
+		gpu_cmd[img].cmd().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0, { mat_set.get(), mesh_set.get(), globals_set.get() }, nullptr);
         gpu_cmd[img].cmd().draw(3, 1, 0, 0);
 
         gpu_cmd[img].cmd().endRenderPass();

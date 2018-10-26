@@ -39,7 +39,9 @@ public:
     template<typename Component, typename... Components>
     bool remove();
     template<typename Component>
-    Component* get();
+	std::decay_t<Component>* get();
+	template<typename Component>
+	const std::decay_t<Component>* get() const;
 
     operator entity_handle() const noexcept;
     operator bool() const noexcept;

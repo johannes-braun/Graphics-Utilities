@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../gfx.hpp"
 #include "../../input/input.hpp"
 #include "../../math/math.hpp"
+#include "../../math/geometry.hpp"
 #include "../ecs.hpp"
 
 namespace gfx {
@@ -28,6 +28,14 @@ inline std::optional<camera_matrices> get_camera_info(ecs::ecs& ecs, ecs::entity
 {
 	auto* cam = ecs.get_component<camera_component>(entity);
 	auto* tfm = ecs.get_component<transform_component>(entity);
+	if (!cam || !tfm)
+		return std::nullopt;
+	return camera_matrices{ inverse(tfm->value.matrix()), cam->projection.matrix(), tfm->value.position, 1 };
+}
+inline std::optional<camera_matrices> get_camera_info(const ecs::entity& entity)
+{
+	const auto* const cam = entity.get<camera_component>();
+	const auto* const tfm = entity.get<transform_component>();
 	if (!cam || !tfm)
 		return std::nullopt;
 	return camera_matrices{ inverse(tfm->value.matrix()), cam->projection.matrix(), tfm->value.position, 1 };

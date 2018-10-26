@@ -50,8 +50,7 @@ mapped<T>::mapped(mapped&& other) noexcept
 template<typename T>
 mapped<T>& mapped<T>::operator=(const mapped<T>& other)
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-        std::destroy(this->begin(), this->end());
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(this->begin(), this->end());
     allocate(other._capacity);
     reset_storage(this->data(), other.size());
     std::copy(other.begin(), other.end(), this->begin());
@@ -60,8 +59,7 @@ mapped<T>& mapped<T>::operator=(const mapped<T>& other)
 template<typename T>
 mapped<T>& mapped<T>::operator=(mapped<T>&& other) noexcept
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-        std::destroy(this->begin(), this->end());
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(this->begin(), this->end());
     reset_storage(other.data(), other.size());
     _families   = std::move(other._families);
     _buffer     = std::move(other._buffer);
@@ -73,13 +71,12 @@ mapped<T>& mapped<T>::operator=(mapped<T>&& other) noexcept
     other._buffer     = nullptr;
     other._allocation = nullptr;
     other._capacity   = 0;
-	return *this;
+    return *this;
 }
 template<typename T>
 mapped<T>::~mapped()
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-        std::destroy(this->begin(), this->end());
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(this->begin(), this->end());
     if (_buffer) vmaDestroyBuffer(_device->get_allocator(), _buffer, _allocation);
 }
 template<typename T>
@@ -90,9 +87,8 @@ void mapped<T>::reserve(size_type capacity)
 template<typename T>
 void mapped<T>::resize(size_type size, T&& value)
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-		if (size < this->size())
-			std::destroy(this->begin() + size, this->end());
+    if constexpr (!std::is_trivially_destructible_v<T>)
+        if (size < this->size()) std::destroy(this->begin() + size, this->end());
     while (size > _capacity) allocate(std::max(2 * _capacity, 1ll));
     const auto old_size = this->size();
 
@@ -102,9 +98,8 @@ void mapped<T>::resize(size_type size, T&& value)
 template<typename T>
 void mapped<T>::resize(size_type size, const T& value)
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-		if (size < this->size())
-			std::destroy(this->begin() + size, this->end());
+    if constexpr (!std::is_trivially_destructible_v<T>)
+        if (size < this->size()) std::destroy(this->begin() + size, this->end());
     while (size > _capacity) allocate(std::max(2 * _capacity, 1ll));
     const auto old_size = this->size();
     reset_storage(this->data(), size);
@@ -123,8 +118,7 @@ void mapped<T>::push_back(const T& value)
 template<typename T>
 void mapped<T>::pop_back()
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-        std::destroy_at(std::addressof(back()));
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy_at(std::addressof(back()));
     reset_storage(this->data(), this->size() - 1);
 }
 template<typename T>
@@ -137,8 +131,7 @@ typename mapped<T>::iterator mapped<T>::erase(const_iterator at)
 {
     const auto start_offset = std::distance<const_iterator>(this->begin(), at);
     auto       result_it    = this->begin() + start_offset;
-    if constexpr(!std::is_trivially_destructible_v<T>)
-        std::destroy_at(std::addressof(*result_it));
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy_at(std::addressof(*result_it));
     std::move(std::next(result_it), this->end(), result_it);
     reset_storage(this->data(), this->size() - 1);
     return result_it;
@@ -151,8 +144,7 @@ typename mapped<T>::iterator mapped<T>::erase(const_iterator begin, const_iterat
     auto       dbegin       = this->begin() + std::distance(this->begin(), begin);
     auto       dend         = this->begin() + std::distance(this->begin(), end);
     auto       result_it    = this->begin() + start_offset;
-	if constexpr (!std::is_trivially_destructible_v<T>)
-        std::destroy(dbegin, dend);
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(dbegin, dend);
     std::move(result_it + delta, this->end(), result_it);
     reset_storage(this->data(), this->size() - delta);
     return result_it;
@@ -190,9 +182,8 @@ void mapped<T>::shrink_to_fit()
 template<typename T>
 void mapped<T>::clear()
 {
-	if constexpr (!std::is_trivially_destructible_v<T>)
-        std::destroy(this->begin(), this->end());
-	reset_storage(this->data(), 0);
+    if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(this->begin(), this->end());
+    reset_storage(this->data(), 0);
 }
 template<typename T>
 typename mapped<T>::iterator mapped<T>::insert(const_iterator at, const T& value)
@@ -321,7 +312,7 @@ buffer<T>::buffer(device& d, const mapped<T>& source) : buffer(d)
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
     allocate(source.size(), false, transfer_cmd.cmd());
     _size = source.size();
-	transfer_cmd.copy(source, *this);
+    transfer_cmd.copy(source, *this);
     transfer_cmd.cmd().end();
     d.transfer_queue().submit({transfer_cmd}, {}, {});
     d.transfer_queue().wait();
@@ -348,7 +339,7 @@ buffer<T>::buffer(device& d, const vk::ArrayProxy<const T>& proxy) : buffer(d)
     else
     {
         stage.insert(stage.end(), proxy.begin(), proxy.end());
-		transfer_cmd.copy(stage, *this);
+        transfer_cmd.copy(stage, *this);
     }
     transfer_cmd.cmd().end();
     d.transfer_queue().submit({transfer_cmd}, {}, {});
@@ -366,7 +357,7 @@ buffer<T>::buffer(device& d, const vk::ArrayProxy<const T>& proxy, commands& tra
     else
     {
         stage.insert(stage.end(), proxy.begin(), proxy.end());
-		transfer_cmd.copy(stage, *this);
+        transfer_cmd.copy(stage, *this);
     }
 }
 
@@ -382,7 +373,7 @@ buffer<T>::buffer(device& d, const std::initializer_list<T>& source) : buffer(d)
     else
     {
         mapped<T> stage(d, source);
-		transfer_cmd.copy(stage, *this);
+        transfer_cmd.copy(stage, *this);
     }
     transfer_cmd.cmd().end();
     d.transfer_queue().submit({transfer_cmd}, {}, {});
@@ -399,7 +390,7 @@ buffer<T>::buffer(device& d, const std::initializer_list<T>& source, commands& t
     else
     {
         mapped<T> stage(d, source);
-		transfer_cmd.copy(stage, *this);
+        transfer_cmd.copy(stage, *this);
     }
 }
 
@@ -416,7 +407,7 @@ buffer<T>::buffer(const buffer& other) : buffer(*other._device)
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
     allocate(other.size(), false, transfer_cmd.cmd());
     _size = other.size();
-	transfer_cmd.copy(other, *this);
+    transfer_cmd.copy(other, *this);
     transfer_cmd.cmd().end();
     _device->transfer_queue().submit({transfer_cmd}, {}, {});
     _device->transfer_queue().wait();
@@ -429,11 +420,14 @@ buffer<T>::buffer(buffer&& other) noexcept
     _allocation = std::move(other._allocation);
     _capacity   = other._capacity;
     _size       = other._size;
+    _device     = other._device;
+    _families   = std::move(other._families);
 
     other._buffer     = nullptr;
     other._allocation = nullptr;
     other._capacity   = 0;
     other._size       = 0;
+    other._device     = nullptr;
 }
 
 template<typename T>
@@ -444,7 +438,7 @@ buffer<T>& buffer<T>::operator=(const buffer& other)
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
     allocate(other.size(), false, transfer_cmd.cmd());
     _size = other.size();
-	transfer_cmd.copy(other, *this);
+    transfer_cmd.copy(other, *this);
     transfer_cmd.cmd().end();
     _device->transfer_queue().submit({transfer_cmd}, {}, {});
     _device->transfer_queue().wait();
@@ -458,11 +452,14 @@ buffer<T>& buffer<T>::operator=(buffer&& other) noexcept
     _allocation = std::move(other._allocation);
     _capacity   = other._capacity;
     _size       = other._size;
+    _device     = other._device;
+    _families   = std::move(other._families);
 
     other._buffer     = nullptr;
     other._allocation = nullptr;
     other._capacity   = 0;
     other._size       = 0;
+    other._device     = nullptr;
     return *this;
 }
 
@@ -472,7 +469,7 @@ mapped<T> buffer<T>::download() const
     mapped<T> result(*_device, _size);
     commands  transfer_cmd = _device->allocate_transfer_command();
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-	transfer_cmd.copy(*this, result);
+    transfer_cmd.copy(*this, result);
     transfer_cmd.cmd().end();
     _device->transfer_queue().submit({transfer_cmd}, {}, {});
     _device->transfer_queue().wait();

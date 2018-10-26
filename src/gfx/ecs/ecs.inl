@@ -16,9 +16,18 @@ bool entity::remove()
 }
 
 template<typename Component>
-Component* entity::get()
+std::decay_t<Component>* entity::get()
 {
-    auto* const c = static_cast<Component*>(_ecs->get_component_impl(_handle, _ecs->_components[Component::id], Component::id));
+	using type = std::decay_t<Component>;
+    auto* const c = static_cast<type*>(_ecs->get_component_impl(_handle, _ecs->_components[type::id], type::id));
+	assert(c);
+	return c;
+}
+template<typename Component>
+const std::decay_t<Component>* entity::get() const
+{
+	using type = const std::decay_t<Component>;
+	auto* const c = static_cast<type*>(_ecs->get_component_impl(_handle, _ecs->_components[type::id], type::id));
 	assert(c);
 	return c;
 }

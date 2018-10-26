@@ -47,7 +47,6 @@ namespace gfx
     private:
         glm::dvec2 _last_position;
         glm::dvec2 _current_position{ NAN, NAN };
-
     };
 }
 
