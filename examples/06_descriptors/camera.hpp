@@ -6,6 +6,7 @@
 #include "gfx/math/geometry.hpp"
 #include "gfx/math/math.hpp"
 #include "input.hpp"
+#include <optional>
 
 namespace gfx {
 inline namespace v1 {

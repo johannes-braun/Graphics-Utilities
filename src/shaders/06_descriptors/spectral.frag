@@ -2,7 +2,6 @@
 //! #extension GL_KHR_vulkan_glsl : enable
 
 layout(location=0) in vec2 uv;
-layout(location = 0) out vec4 color;
 
 layout(std140, set=0, binding=0) uniform Camera
 {
@@ -62,6 +61,7 @@ struct glb
 {
 	ivec2 viewport;
 	float random;
+	int rendered_count;
 };
 layout(std430, set=2, binding=0) restrict readonly buffer Globals
 {
@@ -69,16 +69,22 @@ layout(std430, set=2, binding=0) restrict readonly buffer Globals
 };
 
 layout(set = 2, binding = 1) uniform sampler1D cie_spectrum;
+layout(set = 2, binding = 2) uniform sampler2D accumulation_image;
+
+////////////////////////////////////////////////////////////////////////////////////
+////
+////		Attachment Outputs
+////
+////////////////////////////////////////////////////////////////////////////////////
+layout(location = 0) out vec4 color;
+layout(location = 1) out vec4 accumulation_output;
 
 #include "bvh.glsl"
 #include "random.glsl"
 
 const mat3 cie_xyz_to_rgb = mat3(2.3706743, -0.9000405, -0.4706338,
-							-0.5138850,  1.4253036,  0.0885814,
-							 0.0052982, -0.0146949,  1.0093968);
-const mat3 cie_rgb_to_xyz = mat3( 0.4887180,  0.3106803,  0.2006017,
-							0.1762044 , 0.8129847,  0.0108109,
-							0.0000000,  0.0102048 , 0.9897952);
+								-0.5138850,  1.4253036,  0.0885814,
+								 0.0052982, -0.0146949,  1.0093968);
 
 void main()
 {
@@ -92,7 +98,8 @@ void main()
                              1.f / (1212121));
 
 	float freq = next_random();
-	vec3  rgb_color = cie_xyz_to_rgb * texture(cie_spectrum, freq).xyz;
+	vec3 rgb_color = 4 * transpose(cie_xyz_to_rgb) * texture(cie_spectrum, freq).xyz;
+	vec4 old_rgb = texelFetch(accumulation_image, pixel, 0);
 
 	vec2 uvx = vec2(uv + ((random_value - 0.5f) / vec2(img_size)));
 
@@ -116,10 +123,13 @@ void main()
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
 		hit_vert.normal = faceforward(hit_vert.normal, direction.xyz, hit_vert.normal);
 
-		color = vec4(hit_vert.normal, 1);
+		old_rgb += vec4(rgb_color * vec3(1, 0, 0), 1);
 	}
 	else
 	{
-		color = vec4(rgb_color, 1);
+		old_rgb += vec4(rgb_color, 1);
 	}
+	
+	color = old_rgb / globals.rendered_count;
+	accumulation_output = old_rgb;
 }
