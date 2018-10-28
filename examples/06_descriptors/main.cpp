@@ -51,6 +51,8 @@ private:
     std::thread      _worker_thread;
 };
 
+gfx::exp::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root);
+
 int main(int argc, char** argv)
 {
     using gfx::u32;
@@ -228,6 +230,9 @@ int main(int argc, char** argv)
     color_accum_create.usage =
         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst;
     gfx::exp::image color_accum(gpu, color_accum_create);
+	gfx::exp::image bounce_accum(gpu, color_accum_create);
+	gfx::exp::image positions_bounce(gpu, color_accum_create);
+	gfx::exp::image directions_sample(gpu, color_accum_create);
 
     vk::ImageViewCreateInfo color_accum_view_create;
     color_accum_view_create.format           = color_accum_create.format;
@@ -235,21 +240,33 @@ int main(int argc, char** argv)
     color_accum_view_create.viewType         = vk::ImageViewType::e2D;
     color_accum_view_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
     vk::UniqueImageView color_accum_view     = gpu.get_device().createImageViewUnique(color_accum_view_create);
+    color_accum_view_create.image            = bounce_accum.get_image();
+    vk::UniqueImageView bounce_accum_view     = gpu.get_device().createImageViewUnique(color_accum_view_create);
+    color_accum_view_create.image            = positions_bounce.get_image();
+    vk::UniqueImageView positions_bounce_view     = gpu.get_device().createImageViewUnique(color_accum_view_create);
+    color_accum_view_create.image            = directions_sample.get_image();
+    vk::UniqueImageView directions_sample_view     = gpu.get_device().createImageViewUnique(color_accum_view_create);
 
     gfx::commands switch_layout = gpu.allocate_transfer_command();
     switch_layout.cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     {
-        vk::ImageMemoryBarrier cie_barrier;
-        cie_barrier.oldLayout           = vk::ImageLayout::eUndefined;
-        cie_barrier.srcAccessMask       = {};
-        cie_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        cie_barrier.newLayout           = vk::ImageLayout::eGeneral;
-        cie_barrier.dstAccessMask       = {};
-        cie_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        cie_barrier.image               = color_accum.get_image();
-        cie_barrier.subresourceRange    = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+        vk::ImageMemoryBarrier attachment_barrier;
+		attachment_barrier.oldLayout           = vk::ImageLayout::eUndefined;
+		attachment_barrier.srcAccessMask       = {};
+		attachment_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		attachment_barrier.newLayout           = vk::ImageLayout::eGeneral;
+		attachment_barrier.dstAccessMask       = {};
+		attachment_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		attachment_barrier.image               = color_accum.get_image();
+		attachment_barrier.subresourceRange    = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+        vk::ImageMemoryBarrier attachment_barrier_bounce = attachment_barrier;
+		attachment_barrier_bounce.image               = bounce_accum.get_image();
+		vk::ImageMemoryBarrier positions_bounce_barrier = attachment_barrier;
+		positions_bounce_barrier.image = positions_bounce.get_image();
+		vk::ImageMemoryBarrier directions_sample_barrier = attachment_barrier;
+		directions_sample_barrier.image = directions_sample.get_image();
         switch_layout.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
-                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
+                                            vk::DependencyFlagBits::eByRegion, {}, {}, { attachment_barrier, attachment_barrier_bounce, positions_bounce_barrier, directions_sample_barrier });
     }
     switch_layout.cmd().end();
     gpu.transfer_queue().submit({switch_layout}, {}, {});
@@ -265,10 +282,14 @@ int main(int argc, char** argv)
         enum
         {
             color,
-            accum
+            accum,
+            bounce,
+            pos_bounce,
+            dir_sample,
+			_count
         };
     };
-    vk::AttachmentDescription attachment_descriptions[2];
+    vk::AttachmentDescription attachment_descriptions[att_desc::_count];
     attachment_descriptions[att_desc::color].initialLayout  = vk::ImageLayout::eUndefined;
     attachment_descriptions[att_desc::color].finalLayout    = vk::ImageLayout::ePresentSrcKHR;
     attachment_descriptions[att_desc::color].format         = chain.format();
@@ -287,8 +308,15 @@ int main(int argc, char** argv)
 	attachment_descriptions[att_desc::accum].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 	attachment_descriptions[att_desc::accum].samples        = vk::SampleCountFlagBits::e1;
 
+	attachment_descriptions[att_desc::bounce] = attachment_descriptions[att_desc::accum];
+	attachment_descriptions[att_desc::pos_bounce] = attachment_descriptions[att_desc::accum];
+	attachment_descriptions[att_desc::dir_sample] = attachment_descriptions[att_desc::accum];
+
     const vk::AttachmentReference color_attachments[] = {vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal),
-                                                         vk::AttachmentReference(1, vk::ImageLayout::eGeneral)};
+                                                         vk::AttachmentReference(1, vk::ImageLayout::eGeneral),
+														 vk::AttachmentReference(2, vk::ImageLayout::eGeneral),
+														 vk::AttachmentReference(3, vk::ImageLayout::eGeneral),
+														 vk::AttachmentReference(4, vk::ImageLayout::eGeneral) };
 
     vk::SubpassDescription main_subpass;
     main_subpass.colorAttachmentCount = u32(std::size(color_attachments));
@@ -329,7 +357,7 @@ int main(int argc, char** argv)
             imv_create.components.r     = vk::ComponentSwizzle::eIdentity;
             imvs.emplace_back(gpu.get_device().createImageViewUnique(imv_create));
 
-			const auto attachments = { imvs[i].get(), color_accum_view.get() };
+			const auto attachments = { imvs[i].get(), color_accum_view.get(), bounce_accum_view.get(), positions_bounce_view.get(), directions_sample_view.get() };
 
             vk::FramebufferCreateInfo fbo_create;
             fbo_create.attachmentCount = u32(std::size(attachments));
@@ -379,6 +407,7 @@ int main(int argc, char** argv)
     control_systems.add(camera_system);
     gfx::ecs::unique_entity user_entity = ecs.create_entity_unique(gfx::camera_component(), gfx::camera_controls(),
                                                                    gfx::transform_component(), gfx::grabbed_cursor_component());
+	user_entity->get<gfx::transform_component>()->value.position.z = -4.f;
 
     ////////////////////////////////////////////////////////////////////////////
     ////
@@ -387,9 +416,35 @@ int main(int argc, char** argv)
     ////////////////////////////////////////////////////////////////////////////
     mesh_allocator mesh_alloc(gpu);
     mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("bunny.dae"))[0];
+    mesh_handle    floor_handle = mesh_alloc.allocate_meshes(gfx::scene_file("floor.dae"))[0];
 
     mesh_alloc.clear_instances_of(bunny_handle);
-    mesh_alloc.add_instance(bunny_handle, gfx::transform(), glm::vec4(1, 0, 1, 1), 0.1f, 0.f);
+    mesh_alloc.add_instance(bunny_handle, gfx::transform({ 0, 0.f, 0 }, { 1, 1, 1 }, glm::angleAxis(glm::radians(0*90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 0, 1, 1), 0.0001f, 1.f);
+	mesh_alloc.add_instance(floor_handle, gfx::transform({0, -1.1f, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 0, 1, 1), 0.0001f, 0.f);
+
+    ////////////////////////////////////////////////////////////////////////////
+    ////
+    ////		Environment
+    ////
+    ////////////////////////////////////////////////////////////////////////////
+	gfx::exp::image cubemap = load_cubemap(gpu, "studio_small_02_16k.hdr/hdr");
+	vk::ImageViewCreateInfo cubemap_view_create;
+	cubemap_view_create.image = cubemap.get_image();
+	cubemap_view_create.format = vk::Format::eR32G32B32A32Sfloat;
+	cubemap_view_create.viewType = vk::ImageViewType::eCube;
+	cubemap_view_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 6);
+	vk::UniqueImageView cubemap_view = gpu.get_device().createImageViewUnique(cubemap_view_create);
+	vk::SamplerCreateInfo cubemap_sampler_create;
+	cubemap_sampler_create.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+	cubemap_sampler_create.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+	cubemap_sampler_create.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+	cubemap_sampler_create.anisotropyEnable = true;
+	cubemap_sampler_create.maxAnisotropy = 16.f;
+	cubemap_sampler_create.compareEnable = false;
+	cubemap_sampler_create.magFilter = vk::Filter::eLinear;
+	cubemap_sampler_create.minFilter = vk::Filter::eLinear;
+	cubemap_sampler_create.mipmapMode = vk::SamplerMipmapMode::eLinear;
+	vk::UniqueSampler cubemap_sampler = gpu.get_device().createSamplerUnique(cubemap_sampler_create);
 
     ////////////////////////////////////////////////////////////////////////////
     ////
@@ -480,7 +535,11 @@ int main(int argc, char** argv)
     vk::DescriptorSetLayoutBinding globals_bindings[] = {
         {0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eFragment},           // Globals
         {1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // CIE values
-        {2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Accum
+        {2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Cubemap
+        {3, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Accum
+        {4, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Bounce
+		{5, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Pos + bounce
+		{6, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Dir + sample
     };
     vk::DescriptorSetLayoutCreateInfo globals_set_create({}, u32(std::size(globals_bindings)), std::data(globals_bindings));
     vk::UniqueDescriptorSetLayout     globals_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(globals_set_create);
@@ -516,11 +575,14 @@ int main(int argc, char** argv)
     vk::PipelineMultisampleStateCreateInfo msaa_state;
     pipe_info.pMultisampleState = &msaa_state;
 
-    vk::PipelineColorBlendAttachmentState blend_col_atts[2];
+    vk::PipelineColorBlendAttachmentState blend_col_atts[5];
 	blend_col_atts[0].blendEnable = false;
 	blend_col_atts[0].colorWriteMask =
         vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
 	blend_col_atts[1] = blend_col_atts[0];
+	blend_col_atts[2] = blend_col_atts[0];
+	blend_col_atts[3] = blend_col_atts[0];
+	blend_col_atts[4] = blend_col_atts[0];
     vk::PipelineColorBlendStateCreateInfo bln_state({}, false, {}, u32(std::size(blend_col_atts)), std::data(blend_col_atts));
     pipe_info.pColorBlendState = &bln_state;
 
@@ -567,9 +629,17 @@ int main(int argc, char** argv)
     vk::WriteDescriptorSet  globals_write0(globals_set.get(), 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &globals_buf_info0);
     vk::DescriptorImageInfo globals_buf_info1(cie_sampler.get(), cie_spectrum_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
     vk::WriteDescriptorSet  globals_write1(globals_set.get(), 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info1);
-    vk::DescriptorImageInfo globals_buf_info2(cie_sampler.get(), color_accum_view.get(), vk::ImageLayout::eGeneral);
-    vk::WriteDescriptorSet  globals_write2(globals_set.get(), 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info2);
-    gpu.get_device().updateDescriptorSets({globals_write0, globals_write1, globals_write2}, {});
+	vk::DescriptorImageInfo globals_buf_info2(cubemap_sampler.get(), cubemap_view.get(), vk::ImageLayout::eGeneral);
+	vk::WriteDescriptorSet  globals_write2(globals_set.get(), 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info2);
+    vk::DescriptorImageInfo globals_buf_info3(cie_sampler.get(), color_accum_view.get(), vk::ImageLayout::eGeneral);
+    vk::WriteDescriptorSet  globals_write3(globals_set.get(), 3, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info3);
+    vk::DescriptorImageInfo globals_buf_info4(cie_sampler.get(), bounce_accum_view.get(), vk::ImageLayout::eGeneral);
+    vk::WriteDescriptorSet  globals_write4(globals_set.get(), 4, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info4);
+	vk::DescriptorImageInfo globals_buf_info5(cie_sampler.get(), positions_bounce_view.get(), vk::ImageLayout::eGeneral);
+	vk::WriteDescriptorSet  globals_write5(globals_set.get(), 5, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info5);
+	vk::DescriptorImageInfo globals_buf_info6(cie_sampler.get(), directions_sample_view.get(), vk::ImageLayout::eGeneral);
+	vk::WriteDescriptorSet  globals_write6(globals_set.get(), 6, 0, 1, vk::DescriptorType::eCombinedImageSampler, &globals_buf_info6);
+    gpu.get_device().updateDescriptorSets({globals_write0, globals_write1, globals_write2, globals_write3, globals_write4, globals_write5, globals_write6 }, {});
 
     std::chrono::duration<double> time_sec    = std::chrono::duration<double>::zero();
     std::chrono::duration<double> delta       = std::chrono::duration<double>::zero();
@@ -673,4 +743,65 @@ int main(int argc, char** argv)
     });
 
     app.exec();
+}
+
+gfx::exp::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)
+{
+	gfx::image_file posx(root / "posx.hdr", gfx::bits::b32, 4);
+	gfx::image_file negx(root / "negx.hdr", gfx::bits::b32, 4);
+	gfx::image_file posy(root / "posy.hdr", gfx::bits::b32, 4);
+	gfx::image_file negy(root / "negy.hdr", gfx::bits::b32, 4);
+	gfx::image_file posz(root / "posz.hdr", gfx::bits::b32, 4);
+	gfx::image_file negz(root / "negz.hdr", gfx::bits::b32, 4);
+
+	vk::ImageCreateInfo cube_create;
+	cube_create.flags = vk::ImageCreateFlagBits::eCubeCompatible;
+	cube_create.arrayLayers = 6;
+	cube_create.extent = vk::Extent3D(posx.width, posx.height, 1);
+	cube_create.format = vk::Format::eR32G32B32A32Sfloat;
+	cube_create.imageType = vk::ImageType::e2D;
+	cube_create.mipLevels = 1;// log2(std::max(posx.width, posx.height)) + 1;
+	cube_create.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+	gfx::exp::image cube(gpu, cube_create);
+
+	const auto ptr = [](const gfx::image_file& f) { return static_cast<glm::vec4*>(f.bytes()); };
+	const auto count = posx.width * posx.height;
+	gfx::mapped<glm::vec4> data(gpu);
+	data.insert(data.end(), ptr(posx), ptr(posx) + count);
+	data.insert(data.end(), ptr(negx), ptr(negx) + count);
+	data.insert(data.end(), ptr(posy), ptr(posy) + count);
+	data.insert(data.end(), ptr(negy), ptr(negy) + count);
+	data.insert(data.end(), ptr(posz), ptr(posz) + count);
+	data.insert(data.end(), ptr(negz), ptr(negz) + count);
+
+	gfx::commands copy = gpu.allocate_graphics_command();
+
+	copy.cmd().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+
+	vk::ImageMemoryBarrier img_barrier;
+	img_barrier.oldLayout = vk::ImageLayout::eUndefined;
+	img_barrier.srcAccessMask = {};
+	img_barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+	img_barrier.dstAccessMask = vk::AccessFlagBits::eMemoryWrite;
+	img_barrier.image = cube.get_image();
+	img_barrier.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 6);
+	copy.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlagBits::eByRegion, {}, {}, img_barrier);
+
+	vk::BufferImageCopy buf_copy;
+	buf_copy.imageExtent = cube_create.extent;
+	buf_copy.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 6);
+	copy.cmd().copyBufferToImage(data.get_buffer(), cube.get_image(), vk::ImageLayout::eTransferDstOptimal, buf_copy);
+
+    // gen mipmaps.
+	img_barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+	img_barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
+	img_barrier.newLayout = vk::ImageLayout::eGeneral;
+	img_barrier.dstAccessMask = {};
+	img_barrier.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 6);
+	copy.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlagBits::eByRegion, {}, {}, img_barrier);
+
+    copy.cmd().end();
+	gpu.graphics_queue().submit({ copy }, {}, {});
+	gpu.graphics_queue().wait();
+	return cube;
 }
