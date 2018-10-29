@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 set(var_project_name            GFX)
 set(var_project_version         0.1.0.0)
-set(var_enabled_languages       C CXX)
+set(var_enabled_languages       C CXX SPV)
 
 option(GFX_USE_INSTALL "Enable install targets" OFF)
 option(GFX_USE_TESTS   "Enable test targets"	ON)
@@ -37,7 +39,9 @@ endif()
 add_subdirectory(ext)
 add_subdirectory(src)
 add_subdirectory(examples)
+#[[
 if(GFX_USE_TESTS)
 	enable_testing()
 	add_subdirectory(tests)
 endif()
+]]

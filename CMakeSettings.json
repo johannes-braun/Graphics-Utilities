@@ -1,9 +1,10 @@
 {
+  // Visual Studio 15 2017 Win64
   "environments": [
     {
       "cmakeCommandArgs": "-Wno-dev",
-      "buildCommandArgs": "/nologo /verbosity:minimal",
-      "generatorx64": "Visual Studio 15 2017 Win64"
+      "buildCommandArgs": "",//"/nologo /verbosity:normal",
+      "generatorx64": "Ninja"
     }
   ],
   "configurations": [

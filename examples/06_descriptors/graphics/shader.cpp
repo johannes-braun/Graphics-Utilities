@@ -1,7 +1,7 @@
 #include "shader.hpp"
 #include "device.hpp"
-#include <gfx/graphics/shader_include.hpp>
-#include <gfx/log.hpp>
+#include <gfx.legacy/../../src/graphics/shader_include.hpp>
+#include <gfx.core/log.hpp>
 #include <fstream>
 
 namespace gfx {

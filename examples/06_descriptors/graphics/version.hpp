@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gfx/type.hpp>
+#include <gfx.core/types.hpp>
 #include <string>
 
 namespace gfx

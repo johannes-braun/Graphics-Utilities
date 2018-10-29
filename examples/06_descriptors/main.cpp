@@ -23,7 +23,7 @@
 #include <QStyleFactory>
 #include <QWidget>
 #include <QWindow>
-#include <gfx/log.hpp>
+#include <gfx.core/log.hpp>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 

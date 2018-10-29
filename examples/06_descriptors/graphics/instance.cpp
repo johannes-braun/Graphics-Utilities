@@ -2,7 +2,7 @@
 #include "extensions.hpp"
 #include "info.hpp"
 
-#include <gfx/log.hpp>
+#include <gfx.core/log.hpp>
 
 namespace gfx {
 inline namespace v1 {

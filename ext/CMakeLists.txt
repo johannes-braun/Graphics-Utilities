@@ -12,8 +12,12 @@ function (add_subdirectory_log dir)
 endfunction()
 
 set(MESSAGE_QUIET ON)
+set(GLM_TEST_ENABLE OFF)
 add_subdirectory_log(glm)
 add_library(glm::glm ALIAS glm)
+
+add_subdirectory_log(gsl)
+add_library(microsoft::gsl ALIAS GSL)
 
 add_subdirectory_log(mygl)
 add_subdirectory_log(glshader)

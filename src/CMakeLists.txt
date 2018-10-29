@@ -1,3 +1,16 @@
+add_subdirectory(gfx.core)
+add_subdirectory(gfx.math)
+add_subdirectory(gfx.file)
+add_subdirectory(gfx.ecs)
+add_subdirectory(gfx.legacy)
+add_subdirectory(gfx.ecs.defaults)
+
+add_subdirectory(shaders)
+
+add_library(gfx.shader.test STATIC test.frag test.vert)
+set_target_properties(gfx.shader.test PROPERTIES LINKER_LANGUAGE SPV)
+
+#[[
 set(gfx_dir ${var_source_dir}/gfx)
 
 file(GLOB_RECURSE gfx_sources *.cpp *.c *.h *.hpp )
@@ -170,3 +183,4 @@ if(GFX_USE_INSTALL)
 		DESTINATION lib/cmake/gfx
 	)
 endif()
+]]

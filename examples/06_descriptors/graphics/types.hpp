@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include <optional>
-#include <gfx/type.hpp>
+#include <gfx.core/types.hpp>
 
 namespace gfx
 {

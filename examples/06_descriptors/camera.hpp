@@ -1,10 +1,10 @@
 #pragma once
 
-#include "gfx/ecs/ecs.hpp"
-#include "gfx/input/input.hpp"
-#include "gfx/log.hpp"
-#include "gfx/math/geometry.hpp"
-#include "gfx/math/math.hpp"
+#include "gfx.ecs/ecs.hpp"
+#include "gfx.legacy/input/input.hpp"
+#include "gfx.core/log.hpp"
+#include "gfx.math/geometry.hpp"
+#include "gfx.math/math.hpp"
 #include "input.hpp"
 #include <optional>
 

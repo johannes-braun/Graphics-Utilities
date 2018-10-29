@@ -1,3 +1,5 @@
+
+
 # Find the QtWidgets library
 set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
 find_package(Qt5Widgets)
@@ -42,7 +44,7 @@ function(mark_as_executable exe_name)
 			RUNTIME DESTINATION bin
 		)
 	endif()
-    target_link_libraries(${exe_name} PRIVATE jbraun::gfx
+    target_link_libraries(${exe_name} PRIVATE jbraun::gfx.core jbraun::gfx.math jbraun::gfx.ecs jbraun::gfx.ecs.defaults jbraun::gfx.file jbraun::gfx.legacy 
 		)
 	if(WIN32)
 		target_link_libraries(${exe_name} PRIVATE comctl32)
@@ -96,13 +98,14 @@ string(TIMESTAMP CURRENT_YEAR %Y UTC)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc @ONLY)
 
+mark_as_executable(06_descriptors)
+#[[
 mark_as_executable(00_equilateral_to_cubemap)
 mark_as_executable(01_color_normalization)
 mark_as_executable(02_sound)
 mark_as_executable(03_ai)
 mark_as_executable(04_marching_squares)
 mark_as_executable(05_qt)
-mark_as_executable(06_descriptors)
 mark_as_executable(07_meshing)
 mark_as_executable(08_point_detection)
 mark_as_executable(09_bv_stuff)
@@ -113,3 +116,4 @@ mark_as_executable(13_ibl)
 mark_as_executable(14_cubemapper)
 mark_as_executable(15_win32_window)
 mark_as_executable(17_proto)
+]]

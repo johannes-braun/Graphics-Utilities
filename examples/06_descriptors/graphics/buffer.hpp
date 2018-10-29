@@ -20,8 +20,8 @@ public:
     using index_type             = std::ptrdiff_t;
     using pointer                = element_type*;
     using reference              = element_type&;
-    using iterator               = gsl::details::span_iterator<span<T, gsl::dynamic_extent>, false>;
-    using const_iterator         = gsl::details::span_iterator<span<T, gsl::dynamic_extent>, true>;
+    using iterator               = gsl::details::span_iterator<gsl::span<T, gsl::dynamic_extent>, false>;
+    using const_iterator         = gsl::details::span_iterator<gsl::span<T, gsl::dynamic_extent>, true>;
     using reverse_iterator       = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     using size_type              = index_type;

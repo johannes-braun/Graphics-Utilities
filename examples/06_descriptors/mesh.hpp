@@ -2,9 +2,9 @@
 
 #include "graphics/graphics.hpp"
 #include <cinttypes>
-#include <gfx/data/bvh.hpp>
-#include <gfx/file/file.hpp>
-#include <gfx/math/geometry.hpp>
+#include <gfx.legacy/../../src/data/bvh.hpp>
+#include <gfx.file/file.hpp>
+#include <gfx.math/geometry.hpp>
 #include <random>
 
 class mesh_allocator;

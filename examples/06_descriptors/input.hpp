@@ -4,7 +4,7 @@
 #include <QEvent>
 #include <QMouseEvent>
 #include <QKeyEvent>
-#include <gfx/ecs/ecs.hpp>
+#include <gfx.ecs/ecs.hpp>
 
 namespace gfx {
 inline namespace v1 {

@@ -16,3 +16,6 @@
 [submodule "ext/assimp"]
 	path = ext/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "ext/gsl"]
+	path = ext/gsl
+	url = https://github.com/Microsoft/GSL.git
