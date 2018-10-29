@@ -171,7 +171,7 @@ int main(int argc, char** argv)
     gfx::key_event_filter* keys = new gfx::key_event_filter(render_surface);
     render_surface->installEventFilter(keys);
 
-    gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), true, true);
+    gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), false, true);
     gfx::surface               surf1(my_app, render_surface);
     gfx::device                gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf1);
     gfx::swapchain             chain(gpu, surf1);
@@ -415,19 +415,21 @@ int main(int argc, char** argv)
     ////
     ////////////////////////////////////////////////////////////////////////////
     mesh_allocator mesh_alloc(gpu);
-    mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("bunny.dae"))[0];
+    mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("lens.dae"))[0];
     mesh_handle    floor_handle = mesh_alloc.allocate_meshes(gfx::scene_file("floor.dae"))[0];
+	mesh_handle    box_handle = mesh_alloc.allocate_meshes(gfx::scene_file("box.dae"))[0];
 
     mesh_alloc.clear_instances_of(bunny_handle);
-    mesh_alloc.add_instance(bunny_handle, gfx::transform({ 0, 0.f, 0 }, { 1, 1, 1 }, glm::angleAxis(glm::radians(0*90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 0, 1, 1), 0.0001f, 1.f);
-	mesh_alloc.add_instance(floor_handle, gfx::transform({0, -1.1f, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 0, 1, 1), 0.0001f, 0.f);
+    mesh_alloc.add_instance(bunny_handle, gfx::transform({ 0, 2.5f, 0 }, { 1, 1.f, 1.f }, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 1.f);
+    mesh_alloc.add_instance(box_handle, gfx::transform({ 0, 0.9f, 0 }, { 1, 1, 1 }, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 0.f);
+	mesh_alloc.add_instance(floor_handle, gfx::transform({0, -1.1f, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 0.f);
 
     ////////////////////////////////////////////////////////////////////////////
     ////
     ////		Environment
     ////
     ////////////////////////////////////////////////////////////////////////////
-	gfx::exp::image cubemap = load_cubemap(gpu, "studio_small_02_16k.hdr/hdr");
+	gfx::exp::image cubemap = load_cubemap(gpu, "moulton_station_train_tunnel_west_16k.hdr/hdr");
 	vk::ImageViewCreateInfo cubemap_view_create;
 	cubemap_view_create.image = cubemap.get_image();
 	cubemap_view_create.format = vk::Format::eR32G32B32A32Sfloat;
@@ -649,6 +651,7 @@ int main(int argc, char** argv)
     std::chrono::time_point       frame_begin = std::chrono::steady_clock::now();
     std::chrono::time_point       last_time   = std::chrono::steady_clock::now();
 
+	gfx::transform last_transform;
     globals ng;
     ng.rendered_count = 0;
     worker render_thread([&](worker& self) {
@@ -693,8 +696,9 @@ int main(int argc, char** argv)
         const auto data                                                                   = {*gfx::get_camera_info(*user_entity)};
         gpu_cmd[img].cmd().updateBuffer(buf.get_buffer(), 0ull, std::size(data) * sizeof(gfx::camera_matrices), std::data(data));
 
-        if (keys->key_down(Qt::Key_R))
+        if (keys->key_down(Qt::Key_R) || last_transform != user_entity->get<gfx::transform_component>()->value)
         {
+			last_transform = user_entity->get<gfx::transform_component>()->value;
             gpu_cmd[img].cmd().clearColorImage(color_accum.get_image(), vk::ImageLayout::eGeneral,
                                                vk::ClearColorValue(std::array{0.f, 0.f, 0.f, 0.f}),
                                                vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));

@@ -162,7 +162,8 @@ vec3 freq_to_xyz(float freq)
 
 float ior(float freq)
 {
-	float i = 1.3 + 0.4*freq;
+	float x = freq;
+	float i = pow((1/(x+0.2) + pow((x+0.2), 2)) / 2 + 0.5, 0.1) + 0.2f;
 	return i;
 }
 
@@ -207,28 +208,24 @@ void main()
 			float ior_in = incoming ? 1.f : ior_f;
 			float ior_out = incoming ? ior_f : 1.f;
 			float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
-			//vec3 fresnel = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(dot(-ray_state.direction, hit_vert.normal), 0), 5.0);
+			vec3 fresnel = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(dot(-ray_state.direction, hit_vert.normal), 0), 5.0);
 			
 			vec3 msnormal = normalize(local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), hit_vert.normal));
 			new_direction     = refract(ray_state.direction, msnormal, ior_in / ior_out);
-			if(length(new_direction) == 0)
+			if(length(new_direction) == 0 || (fresnel.x + fresnel.y + fresnel.z)/3.f > next_random())
 				new_direction     = reflect(ray_state.direction, msnormal);
 
 			new_direction = normalize(new_direction);
 				
-//
-//			if((fresnel.x + fresnel.y + fresnel.z)/3.f > next_random())
-//			{
-//				new_direction     = normalize(refract(ray_state.direction, msnormal, ior_in / ior_out));
-//			} else {
-//				new_direction     = normalize(reflect(ray_state.direction, msnormal));
-//			}
 			ray_state.intensity *= 1.f;
 		}
 		else
 		{
 			new_direction = normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal));
-			ray_state.intensity *= 1.f;//max(dot(hit_vert.normal, new_direction), 0.f);
+			ray_state.intensity *= 1.f;
+		
+			vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
+			ray_state.intensity *= max(dot(normalize(freq_to_xyz(ray_state.frequency)), normalize(xyz)), 0);
 		}
 
 
@@ -236,7 +233,7 @@ void main()
 		ray_state.origin = hit_vert.position + 1e-4f * ray_state.direction;
 		ray_state.bounce_n += 1;
 
-		if(ray_state.bounce_n > 8)
+		if(ray_state.bounce_n > 12)
 		{
 			vec3 env = clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f);
 			ray_state.accum_color += ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1);

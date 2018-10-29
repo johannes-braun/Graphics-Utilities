@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    This will make GitHub and some editors recognize this code as XML: 
+    vim: syntax=xml
+-->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="vk::RenderPassCreateInfo">
+        <DisplayString>{{  }}</DisplayString>
+        <Expand>
+            <ArrayItems>
+                <Size>attachmentCount</Size>
+                <ValuePointer>pAttachments</ValuePointer>
+            </ArrayItems>
+          <ArrayItems>
+            <Size>subpassCount</Size>
+            <ValuePointer>pSubpasses</ValuePointer>
+          </ArrayItems>
+          <ArrayItems>
+            <Size>dependencyCount</Size>
+            <ValuePointer>pDependencies</ValuePointer>
+          </ArrayItems>
+        </Expand>
+    </Type>
+</AutoVisualizer>  
