@@ -4,7 +4,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 set(var_project_name            GFX)
 set(var_project_version         0.1.0.0)
-set(var_enabled_languages       C CXX SPV)
+set(var_enabled_languages       SPV C CXX)
 
 option(GFX_USE_INSTALL "Enable install targets" OFF)
 option(GFX_USE_TESTS   "Enable test targets"	ON)

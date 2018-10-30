@@ -6,5 +6,5 @@
 
 namespace gfx
 {
-    constexpr const char* relative_path = "@CMAKE_CURRENT_SOURCE_DIR@/";
+    constexpr const char* relative_path = "@PROJECT_SOURCE_DIR@/";
 }

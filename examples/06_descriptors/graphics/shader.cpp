@@ -1,6 +1,6 @@
 #include "shader.hpp"
 #include "device.hpp"
-#include <gfx.legacy/../../src/graphics/shader_include.hpp>
+#include <gfx.shaders/paths.hpp>
 #include <gfx.core/log.hpp>
 #include <fstream>
 
@@ -38,17 +38,20 @@ void shader::reload()
 void shader::load(vk::Device dev)
 {
 	const std::filesystem::path combined = _path.string();
-	std::filesystem::path final_path;
+	std::filesystem::path final_path = _path;
 
-	bool path_valid = _path.is_absolute();
+	bool path_valid = _path.is_absolute() || exists(_path);
 	if (!path_valid)
-		for (auto&& inc : gfx::shader_includes::directories) {
+	{
+		const auto inc = gfx::shader_paths::local_base_path;
+		//for (auto&& inc : gfx::shader_includes::directories) {
 			if (exists(inc / combined) && !path_valid) {
 				final_path = inc / combined;
 				path_valid = true;
 			}
-			if (path_valid) break;
-		}
+			//if (path_valid) break;
+		//}
+	}
 
 	if (!path_valid) {
 		elog << "Shader not found: " << _path;

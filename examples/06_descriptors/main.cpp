@@ -26,6 +26,7 @@
 #include <gfx.core/log.hpp>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
+#include <gfx.shaders/paths.hpp>
 
 class worker
 {
@@ -371,8 +372,8 @@ int main(int argc, char** argv)
     };
     build_fbos();
 
-    const gfx::shader vert(gpu, "postfx/screen.vert.vk.spv");
-    const gfx::shader frag(gpu, "06_descriptors/spectral.frag.vk.spv");
+    const gfx::shader vert(gpu, gfx::shader_paths::screen_vert);
+    const gfx::shader frag(gpu, gfx::shader_paths::spectral_renderer::spectral_frag);
 
     vk::GraphicsPipelineCreateInfo pipe_info;
     pipe_info.subpass    = 0;

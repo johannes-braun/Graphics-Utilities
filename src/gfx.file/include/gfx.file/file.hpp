@@ -1,7 +1,7 @@
 #pragma once
 
-#include <gfx.math/geometry.hpp>
 #include <gfx.core/types.hpp>
+#include <gfx.math/geometry.hpp>
 
 #include <filesystem>
 #include <map>
@@ -53,9 +53,10 @@ enum class msg_result
 
 struct file
 {
-    constexpr static const char* local_res_directory = "../res";
+    constexpr static const char* local_res_directory = "res";
 
-                operator const files::path&() const noexcept;
+    operator const files::path&() const noexcept;
+
     files::path path;
 
     file() = default;
@@ -140,11 +141,11 @@ struct scene_file : file
     struct material
     {
         std::string     name;
-        glm::vec4       color_diffuse {0};
-        glm::vec4       color_emissive {0};
-        glm::vec4       color_reflective {0};
-        glm::vec4       color_specular {0};
-        glm::vec4       color_transparent {0};
+        glm::vec4       color_diffuse{0};
+        glm::vec4       color_emissive{0};
+        glm::vec4       color_reflective{0};
+        glm::vec4       color_specular{0};
+        glm::vec4       color_transparent{0};
         gfx::image_file texture_diffuse;
         gfx::image_file texture_bump;
     };

@@ -44,7 +44,7 @@ function(mark_as_executable exe_name)
 			RUNTIME DESTINATION bin
 		)
 	endif()
-    target_link_libraries(${exe_name} PRIVATE jbraun::gfx.core jbraun::gfx.math jbraun::gfx.ecs jbraun::gfx.ecs.defaults jbraun::gfx.file jbraun::gfx.legacy 
+    target_link_libraries(${exe_name} PRIVATE jbraun::gfx.core jbraun::gfx.math jbraun::gfx.ecs jbraun::gfx.ecs.defaults jbraun::gfx.file jbraun::gfx.legacy gfx.shaders
 		)
 	if(WIN32)
 		target_link_libraries(${exe_name} PRIVATE comctl32)
@@ -98,6 +98,7 @@ string(TIMESTAMP CURRENT_YEAR %Y UTC)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc @ONLY)
 
+mark_as_executable(00_equilateral_to_cubemap)
 mark_as_executable(06_descriptors)
 #[[
 mark_as_executable(00_equilateral_to_cubemap)
