@@ -1,6 +1,6 @@
 #include "shader.hpp"
 #include "device.hpp"
-#include <gfx.shaders/paths.hpp>
+#include <gfx.shaders/path.hpp>
 #include <gfx.core/log.hpp>
 #include <fstream>
 

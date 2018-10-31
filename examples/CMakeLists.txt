@@ -13,26 +13,31 @@ else()
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
 
+function(copy_dll target lib)
+	add_custom_command(
+		TARGET ${target}
+		POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy
+			$<TARGET_FILE:${lib}>
+			$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:${lib}>
+		)
+endfunction()
+
+set(app_res_path ${CMAKE_CURRENT_SOURCE_DIR}/res/)
 function(mark_as_executable exe_name)
-    file(GLOB_RECURSE CPPS ${exe_name}/*.cpp ${exe_name}/*.natvis)
+    file(GLOB_RECURSE CPPS *.cpp *.natvis)
 
 	if(Qt5Widgets_FOUND)
-		file(GLOB UIS ${exe_name}/*.ui)
-		file(GLOB MOCS ${exe_name}/*.moc.h)
-		file(GLOB RESS ${exe_name}/*.qrc)
+		file(GLOB UIS *.ui)
+		file(GLOB MOCS *.moc.h)
+		file(GLOB RESS *.qrc)
 		
 		list(APPEND CPPS ${RES_SOURCES} ${UI_HEADERS} ${MOC_SRCS})
 	endif()
-
-	if(NOT TARGET ${exe_name})
-		add_executable(${exe_name})
-	endif()
-	target_sources(${exe_name} PUBLIC ${CPPS})
-
-	message(${CPPS})
+	add_executable(${exe_name} ${CPPS})
 
     if(WIN32)
-        target_sources(${exe_name} PUBLIC res/app.rc)
+        target_sources(${exe_name} PUBLIC ${app_res_path}/app.rc)
     endif()
     target_compile_features(${exe_name} PRIVATE cxx_std_17)
     target_include_directories(${exe_name} PUBLIC
@@ -52,44 +57,24 @@ function(mark_as_executable exe_name)
     
     target_compile_options(${exe_name} PRIVATE ${compile_options})
     set_target_properties(${exe_name} PROPERTIES LINK_FLAGS_RELEASE "-subsystem:windows -entry:mainCRTStartup")
-
-    add_custom_command(
-        TARGET ${exe_name} 
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            $<TARGET_FILE:assimp>
-            $<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:assimp>
-        COMMAND ${CMAKE_COMMAND} -E copy
-            $<TARGET_FILE:glfw>
-            $<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:glfw>
-    )
+	
+	copy_dll(${exe_name} assimp)
+	copy_dll(${exe_name} glfw)
 	
 	if(Qt5Widgets_FOUND)
 		target_link_libraries(${exe_name}
 			PUBLIC Qt5::Widgets Qt5::Concurrent)
 		
-		add_custom_command(
-			TARGET ${exe_name} 
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy
-				$<TARGET_FILE:Qt5::Core>
-				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Core>
-			COMMAND ${CMAKE_COMMAND} -E copy
-				$<TARGET_FILE:Qt5::Widgets>
-				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Widgets>
-			COMMAND ${CMAKE_COMMAND} -E copy
-				$<TARGET_FILE:Qt5::Gui>
-				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Gui>
-			COMMAND ${CMAKE_COMMAND} -E copy
-				$<TARGET_FILE:Qt5::Concurrent>
-				$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:Qt5::Concurrent>
-			)
+		copy_dll(${exe_name} Qt5::Core)
+		copy_dll(${exe_name} Qt5::Widgets)
+		copy_dll(${exe_name} Qt5::Gui)
+		copy_dll(${exe_name} Qt5::Concurrent)
 	endif()
 
-	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
-		add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ../src/shaders/${exe_name})
-		add_dependencies(${exe_name} shaders_${exe_name})
-	endif()
+#	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
+		#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ../src/shaders/${exe_name})
+		#add_dependencies(${exe_name} shaders_${exe_name})
+	#endif()
 endfunction()
 
 set(GFX_RES_VERSION ${GFX_VERSION})
@@ -99,7 +84,7 @@ string(TIMESTAMP CURRENT_YEAR %Y UTC)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc @ONLY)
 
 mark_as_executable(00_equilateral_to_cubemap)
-mark_as_executable(06_descriptors)
+add_subdirectory(06_descriptors)
 #[[
 mark_as_executable(00_equilateral_to_cubemap)
 mark_as_executable(01_color_normalization)

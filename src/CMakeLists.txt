@@ -7,10 +7,10 @@ add_subdirectory(gfx.ecs.defaults)
 
 add_subdirectory(gfx.shaders)
 
-add_subdirectory(shaders)
+#add_subdirectory(shaders)
 
-add_library(gfx.shader.test STATIC test.frag test.vert)
-set_target_properties(gfx.shader.test PROPERTIES LINKER_LANGUAGE SPV)
+#add_library(gfx.shader.test STATIC test.frag test.vert)
+#set_target_properties(gfx.shader.test PROPERTIES LINKER_LANGUAGE SPV)
 
 #[[
 set(gfx_dir ${var_source_dir}/gfx)

@@ -1,5 +1,6 @@
 #version 460 core
 //! #extension GL_KHR_vulkan_glsl : enable
+const float PI = 3.14159265359;
 
 layout(location=0) in vec2 uv;
 
@@ -10,6 +11,17 @@ layout(std140, set=0, binding=0) uniform Camera
     vec3 position;
     int  do_cull;
 } camera;
+
+const float focal_length = 3.f;
+const float aperture = 0.22f;
+const float sensor_response = 1.f; // may be received from texture
+const float exposure = 1.f;
+const float gamma = 1.8f;
+
+const int output_default = 0;
+const int output_norm_samples = 1;
+
+layout(set=0, binding=1) uniform sampler2D bokeh_shape;
 
 struct bvh_node
 {
@@ -57,16 +69,13 @@ layout(set = 1, binding = 3) restrict readonly buffer ModelInstances
     instance model_instances[];
 };
 
-struct glb
+layout(std430, set=2, binding=0) restrict readonly buffer Globals
 {
 	ivec2 viewport;
 	float random;
 	int rendered_count;
-};
-layout(std430, set=2, binding=0) restrict readonly buffer Globals
-{
-	glb globals;
-};
+	int render_output;
+} globals;
 
 layout(set = 2, binding = 1) uniform sampler1D cie_spectrum;
 layout(set = 2, binding = 2) uniform samplerCube environment_map;
@@ -108,6 +117,27 @@ struct ray_state_t
 	vec4 accum_color;
 } ray_state;
 
+vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out float y)
+{
+    // Sample a point on a unit disk
+    float r = sqrt(u);
+    float theta = 2 * PI * v;
+    x = r * cos(theta);
+    y = r * sin (theta);
+
+	// multiply radius
+    vec3 dir = vec3( radius * x, radius * y, 0 );
+
+    // Create an orthonormal basis around the surface normal
+   vec3 s = abs(normal.x) > abs(normal.y) ?
+            vec3(-normal.z, 0, normal.x) / sqrt(normal.x * normal.x + normal.z * normal.z):
+            vec3(0, normal.z, -normal.y) / sqrt(normal.y * normal.y + normal.z * normal.z);
+    vec3 t = cross(normal, s);
+
+    // Transform into local shading coordinate system
+    return dir.x * s + dir.y * t;
+}
+
 void load_state(vec2 random_value)
 {
 	ivec2 pixel    = ivec2(gl_FragCoord.xy);
@@ -133,10 +163,26 @@ void load_state(vec2 random_value)
 		const mat4 inv_vp = inverse(camera.projection * mat4(mat3(camera.view)));
 		ivec2 img_size = ivec2(globals.viewport);
 		vec2 uvx = vec2(uv + ((random_value - 0.5f) / vec2(img_size)));
-		ray_state.direction = normalize(vec3(inv_vp * vec4(uvx * 2 - 1, 0.f, 1.f)));
+		ray_state.direction = vec3(inv_vp * vec4(uvx * 2 - 1, 0.f, 1.f));
 		ray_state.origin = camera.position;
+
+		// Apply DOF
+		vec2 random_value_dof =
+			random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (1212121),
+								 1.f / (1212121));
+
+		const vec3 focal_point = ray_state.origin + focal_length * ray_state.direction;
+		vec2 offset;
+		const vec3 disk_sampled_point = randDisk(random_value_dof.x, random_value_dof.y, vec3(inv_vp * vec4(0, 0, 0.f, 1.f)), 1.f, offset.x, offset.y);
+
+		ray_state.origin = ray_state.origin + aperture * disk_sampled_point;
+		ray_state.direction = focal_point - ray_state.origin;
+
+		const float bokeh_intensity = texture(bokeh_shape, vec2(0.5f) + offset).r;
+
+		ray_state.direction = normalize(ray_state.direction);
 		ray_state.frequency = next_random();
-		ray_state.intensity = 1;
+		ray_state.intensity = bokeh_intensity * sensor_response;
 	}
 	else
 	{
@@ -163,7 +209,7 @@ vec3 freq_to_xyz(float freq)
 float ior(float freq)
 {
 	float x = freq;
-	float i = pow((1/(x+0.2) + pow((x+0.2), 2)) / 2 + 0.5, 0.1) + 0.2f;
+	float i = pow((1/(x+0.2) + pow((x+0.2), 2)) / 2 + 0.5, 0.4) + 0.5f;
 	return i;
 }
 
@@ -249,10 +295,18 @@ void main()
 		ray_state.sample_n += 1;
 		ray_state.bounce_n = 0;	
 	}
-
-	color = ray_state.accum_color / max(ray_state.sample_n + 1, 1);
-	color = 1.f - exp(-color * 0.8f);
-	color = pow(color, vec4(1.f / 1.8f));
+	
+	switch(globals.render_output)
+	{
+	case output_default:
+		color = ray_state.accum_color / max(ray_state.sample_n + 1, 1);
+		color = 1.f - exp(-color * exposure);
+		color = pow(color, vec4(1.f / gamma));
+		break;
+	case output_norm_samples:
+		color = vec4(vec3(ray_state.sample_n / float(globals.rendered_count)), 1.f);
+		break;
+	};
 
 	store_state();
 }

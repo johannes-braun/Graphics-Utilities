@@ -3,6 +3,7 @@
 #include "graphics/graphics.hpp"
 #include "input.hpp"
 #include "mesh.hpp"
+#include "shaders/path.hpp"
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -21,12 +22,14 @@
 #include <QSplitter>
 #include <QStatusBar>
 #include <QStyleFactory>
+#include <QButtonGroup>
 #include <QWidget>
 #include <QWindow>
+#include <QRadioButton>
 #include <gfx.core/log.hpp>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
-#include <gfx.shaders/paths.hpp>
+#include <gfx.shaders/path.hpp>
 
 class worker
 {
@@ -212,6 +215,20 @@ int main(int argc, char** argv)
     perf_info_layout->addRow("Framerate", fps_counter);
     perf_info_layout->addRow("Frametime", ftm_counter);
 
+	QGroupBox *groupBox = new QGroupBox("Output");
+	QButtonGroup *render_outputs = new QButtonGroup;
+	QRadioButton *radio_default = new QRadioButton("Default");
+	QRadioButton *radio_samples = new QRadioButton("Samples");
+	radio_default->setChecked(true);
+
+	QVBoxLayout *vbox = new QVBoxLayout;
+	render_outputs->addButton(radio_default);
+	render_outputs->addButton(radio_samples);
+	vbox->addWidget(radio_default);
+	vbox->addWidget(radio_samples);
+	vbox->addStretch(1);
+	groupBox->setLayout(vbox);
+	perf_info_layout->addWidget(groupBox);
 
     ////////////////////////////////////////////////////////////////////////////
     ////
@@ -372,8 +389,8 @@ int main(int argc, char** argv)
     };
     build_fbos();
 
-    const gfx::shader vert(gpu, gfx::shader_paths::screen_vert);
-    const gfx::shader frag(gpu, gfx::shader_paths::spectral_renderer::spectral_frag);
+    const gfx::shader vert(gpu, gfx::shader_paths::core::screen_vert);
+    const gfx::shader frag(gpu, gfx::shader_paths::spectral::spectral_frag);
 
     vk::GraphicsPipelineCreateInfo pipe_info;
     pipe_info.subpass    = 0;
@@ -416,14 +433,16 @@ int main(int argc, char** argv)
     ////
     ////////////////////////////////////////////////////////////////////////////
     mesh_allocator mesh_alloc(gpu);
-    mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("lens.dae"))[0];
+    mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("bunny.dae"))[0];
+	mesh_handle    lens_handle = mesh_alloc.allocate_meshes(gfx::scene_file("lens.dae"))[0];
     mesh_handle    floor_handle = mesh_alloc.allocate_meshes(gfx::scene_file("floor.dae"))[0];
 	mesh_handle    box_handle = mesh_alloc.allocate_meshes(gfx::scene_file("box.dae"))[0];
 
     mesh_alloc.clear_instances_of(bunny_handle);
-    mesh_alloc.add_instance(bunny_handle, gfx::transform({ 0, 2.5f, 0 }, { 1, 1.f, 1.f }, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 1.f);
-    mesh_alloc.add_instance(box_handle, gfx::transform({ 0, 0.9f, 0 }, { 1, 1, 1 }, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 0.f);
-	mesh_alloc.add_instance(floor_handle, gfx::transform({0, -1.1f, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 0.f);
+    /*mesh_alloc.add_instance(lens_handle, gfx::transform({ 0, 2.5f, 0 }, { 1, 1.f, 1.f }, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 1.f);
+    mesh_alloc.add_instance(box_handle, gfx::transform({ 0, 0.9f, 0 }, { 1, 1, 1 }, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 0.f);*/
+	mesh_alloc.add_instance(bunny_handle, gfx::transform({0, 0, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 1.f);
+	mesh_alloc.add_instance(floor_handle, gfx::transform({ 0, -0.5f, 0 }, { 1, 1, 1 }, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))), glm::vec4(1, 1, 1, 1), 0.0001f, 0.f);
 
     ////////////////////////////////////////////////////////////////////////////
     ////
@@ -467,8 +486,25 @@ int main(int argc, char** argv)
     cie_spectrum_create.usage         = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
     gfx::exp::image cie_spectrum(gpu, cie_spectrum_create);
 
+	gfx::image_file bokeh_image("bokeh.jpeg", gfx::bits::b8, 1);
+	vk::ImageCreateInfo bokeh_create;
+	bokeh_create.arrayLayers = 1;
+	bokeh_create.extent = vk::Extent3D(bokeh_image.width, bokeh_image.height, 1);
+	bokeh_create.format = vk::Format::eR8Unorm;
+	bokeh_create.imageType = vk::ImageType::e2D;
+	bokeh_create.initialLayout = vk::ImageLayout::eUndefined;
+	bokeh_create.mipLevels = 1;
+	bokeh_create.samples = vk::SampleCountFlagBits::e1;
+	bokeh_create.sharingMode = vk::SharingMode::eExclusive;
+	bokeh_create.tiling = vk::ImageTiling::eOptimal;
+	bokeh_create.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst;
+	gfx::exp::image bokeh(gpu, bokeh_create);
+
     gfx::mapped<glm::vec4> cie_values(gpu, gfx::cie_curves);
     gfx::commands           transfer_cie = gpu.allocate_transfer_command();
+
+	gfx::mapped<uint8_t> bokeh_values(gpu, gsl::make_span(static_cast<uint8_t*>(bokeh_image.bytes()), bokeh_image.width * bokeh_image.height));
+
     transfer_cie.cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     {
         vk::ImageMemoryBarrier cie_barrier;
@@ -482,19 +518,31 @@ int main(int argc, char** argv)
         cie_barrier.subresourceRange    = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
         transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
+        cie_barrier.image               = bokeh.get_image();
+		transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
+			vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
 
         vk::BufferImageCopy cie_copy;
         cie_copy.imageExtent      = cie_spectrum_create.extent;
         cie_copy.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
         transfer_cie.cmd().copyBufferToImage(cie_values.get_buffer(), cie_spectrum.get_image(), vk::ImageLayout::eTransferDstOptimal,
                                              cie_copy);
+		vk::BufferImageCopy bokeh_copy;
+		bokeh_copy.imageExtent = bokeh_create.extent;
+		bokeh_copy.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
+		transfer_cie.cmd().copyBufferToImage(bokeh_values.get_buffer(), bokeh.get_image(), vk::ImageLayout::eTransferDstOptimal,
+			bokeh_copy);
 
         cie_barrier.oldLayout     = vk::ImageLayout::eTransferDstOptimal;
         cie_barrier.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
         cie_barrier.newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal;
         cie_barrier.dstAccessMask = {};
+		cie_barrier.image = cie_spectrum.get_image();
         transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
+		cie_barrier.image = bokeh.get_image();
+		transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
+			vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
     }
     transfer_cie.cmd().end();
     gpu.transfer_queue().submit({transfer_cie}, {}, {});
@@ -505,6 +553,13 @@ int main(int argc, char** argv)
     cie_spectrum_view_create.viewType         = vk::ImageViewType::e1D;
     cie_spectrum_view_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
     vk::UniqueImageView cie_spectrum_view     = gpu.get_device().createImageViewUnique(cie_spectrum_view_create);
+
+    vk::ImageViewCreateInfo bokeh_view_create;
+	bokeh_view_create.format           = bokeh_create.format;
+	bokeh_view_create.image            = bokeh.get_image();
+	bokeh_view_create.viewType         = vk::ImageViewType::e2D;
+	bokeh_view_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+    vk::UniqueImageView bokeh_view = gpu.get_device().createImageViewUnique(bokeh_view_create);
 
     vk::SamplerCreateInfo cie_sampler_create;
     cie_sampler_create.addressModeU     = vk::SamplerAddressMode::eClampToEdge;
@@ -522,8 +577,11 @@ int main(int argc, char** argv)
     ////		Descriptor Set Layouts
     ////
     ////////////////////////////////////////////////////////////////////////////
-    vk::DescriptorSetLayoutBinding    mat_binding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eAll);
-    vk::DescriptorSetLayoutCreateInfo dset_create({}, 1, &mat_binding);
+    vk::DescriptorSetLayoutBinding mat_bindings[] = {
+        {0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment},    // Camera Data
+        {1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment},    // Bokeh Shape
+    };
+    vk::DescriptorSetLayoutCreateInfo dset_create({}, u32(std::size(mat_bindings)), std::data(mat_bindings));
     vk::UniqueDescriptorSetLayout     mat_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(dset_create);
 
     vk::DescriptorSetLayoutBinding mesh_bindings[] = {
@@ -603,7 +661,9 @@ int main(int argc, char** argv)
 
     vk::DescriptorBufferInfo mat_buf_info(buf.get_buffer(), 0, sizeof(gfx::camera_matrices));
     vk::WriteDescriptorSet   mat_write(mat_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &mat_buf_info);
-    gpu.get_device().updateDescriptorSets(mat_write, {});
+	vk::DescriptorImageInfo mat_buf_info2(cie_sampler.get(), bokeh_view.get(), vk::ImageLayout::eGeneral);
+	vk::WriteDescriptorSet   mat_write2(mat_set.get(), 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &mat_buf_info2);
+	gpu.get_device().updateDescriptorSets({ mat_write, mat_write2 }, {});
 
     vk::DescriptorBufferInfo mesh_buf_info0(mesh_alloc.bvh_buffer().get_buffer(), 0,
                                             mesh_alloc.bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
@@ -619,12 +679,20 @@ int main(int argc, char** argv)
     vk::WriteDescriptorSet   mesh_write3(mesh_set.get(), 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &mesh_buf_info3);
     gpu.get_device().updateDescriptorSets({mesh_write0, mesh_write1, mesh_write2, mesh_write3}, {});
 
+	enum class output_type : int
+	{
+		standard = 0,
+		samples = 1
+	};
+
     struct globals
     {
         glm::ivec2 viewport;
         float      random;
         int        rendered_count;
+		output_type render_output;
     };
+
     gfx::buffer<globals>                  globals_buffer(gpu, {globals{}});
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
@@ -709,6 +777,7 @@ int main(int argc, char** argv)
         ng.random      = dist(gen);
         ng.viewport[0] = chain.extent().width;
         ng.viewport[1] = chain.extent().height;
+		ng.render_output = output_type::standard;
         ng.rendered_count++;
         gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &ng);
 

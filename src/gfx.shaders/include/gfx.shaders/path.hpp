@@ -3,9 +3,18 @@
 #include <filesystem>
 
 namespace gfx { inline namespace v1 { namespace shader_paths {
+#ifndef GFX_HAS_LOCAL_BASE_PATH
+#define GFX_HAS_LOCAL_BASE_PATH
     const std::filesystem::path local_base_path = "D:/johannesbraun/C++/graphics_utilities/build/x64-Debug/src/gfx.shaders";
+#endif //GFX_HAS_LOCAL_BASE_PATH
+    namespace core {
+#ifndef GFX_HAS_PATH_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_FRAG
+#define GFX_HAS_PATH_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_FRAG
     namespace imgui { constexpr std::string_view imgui_frag = "imgui/imgui_frag.spv"; }
-    namespace spectral_renderer { constexpr std::string_view spectral_frag = "spectral_renderer/spectral_frag.spv"; }
+#endif //GFX_HAS_PATH_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_FRAG
+#ifndef GFX_HAS_PATH_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_VERT
+#define GFX_HAS_PATH_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_VERT
     namespace imgui { constexpr std::string_view imgui_vert = "imgui/imgui_vert.spv"; }
+#endif //GFX_HAS_PATH_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_VERT
     constexpr std::string_view screen_vert = "screen_vert.spv";
-}}}
+}}}}
