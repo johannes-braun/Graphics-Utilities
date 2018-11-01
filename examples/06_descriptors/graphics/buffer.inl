@@ -261,6 +261,11 @@ void mapped<T>::init_range(iterator begin, iterator end, T&& value)
     if (end > begin) std::fill(begin, end, value);
 }
 template<typename T>
+void mapped<T>::init_range(iterator begin, iterator end, const T& value)
+{
+	if (end > begin) std::fill(begin, end, value);
+}
+template<typename T>
 void mapped<T>::reset_storage(value_type* storage, size_type size)
 {
     gsl::span<T>::operator=(gsl::span<T>{storage, static_cast<ptrdiff_t>(size)});

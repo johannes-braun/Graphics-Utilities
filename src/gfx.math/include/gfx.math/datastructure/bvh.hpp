@@ -13,7 +13,7 @@
 #include <stack>
 #include <glm/glm.hpp>
 
-#include <gfx.math/geometry.hpp>
+#include "../geometry.hpp"
 
 namespace gfx
 {
@@ -131,4 +131,4 @@ namespace gfx
     };
 }
 
-#include "impl/bvh.inl"
+#include "bvh.inl"

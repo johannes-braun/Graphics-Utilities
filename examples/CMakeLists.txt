@@ -6,11 +6,18 @@ find_package(Qt5Widgets)
 find_package(Qt5Concurrent)
 if(NOT Qt5Widgets_FOUND)
 	gfx_msg("Qt5 not found. Compiling without Qt5.")
+	set(GFX_HAS_QT5 FALSE)
 else()
+	set(GFX_HAS_QT5 TRUE)
 	set(CMAKE_AUTOMOC ON)
 	set(CMAKE_AUTOUIC ON)
 	set(CMAKE_AUTORCC ON)
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
+endif()
+
+set(GFX_APP_RESOURCE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/res/)
+if(WIN32)
+    set(GFX_APP_RESOURCES ${GFX_APP_RESOURCE_PATH}/app.rc)
 endif()
 
 function(copy_dll target lib)
@@ -19,11 +26,10 @@ function(copy_dll target lib)
 		POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy
 			$<TARGET_FILE:${lib}>
-			$<TARGET_FILE_DIR:${exe_name}>/$<TARGET_FILE_NAME:${lib}>
+			$<TARGET_FILE_DIR:${target}>/$<TARGET_FILE_NAME:${lib}>
 		)
 endfunction()
 
-set(app_res_path ${CMAKE_CURRENT_SOURCE_DIR}/res/)
 function(mark_as_executable exe_name)
     file(GLOB_RECURSE CPPS *.cpp *.natvis)
 
@@ -37,7 +43,7 @@ function(mark_as_executable exe_name)
 	add_executable(${exe_name} ${CPPS})
 
     if(WIN32)
-        target_sources(${exe_name} PUBLIC ${app_res_path}/app.rc)
+        target_sources(${exe_name} PUBLIC ${GFX_APP_RESOURCE_PATH}/app.rc)
     endif()
     target_compile_features(${exe_name} PRIVATE cxx_std_17)
     target_include_directories(${exe_name} PUBLIC
@@ -71,20 +77,17 @@ function(mark_as_executable exe_name)
 		copy_dll(${exe_name} Qt5::Concurrent)
 	endif()
 
-#	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name}/CMakeLists.txt)
-		#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/${exe_name} ../src/shaders/${exe_name})
-		#add_dependencies(${exe_name} shaders_${exe_name})
-	#endif()
 endfunction()
 
+# Setup Resource File
 set(GFX_RES_VERSION ${GFX_VERSION})
 string(REGEX REPLACE "\\." "," GFX_RES_VERSION ${GFX_RES_VERSION})
 string(TIMESTAMP CURRENT_YEAR %Y UTC)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc @ONLY)
 
-mark_as_executable(00_equilateral_to_cubemap)
+add_subdirectory(00_equilateral_to_cubemap)
 add_subdirectory(06_descriptors)
+
 #[[
 mark_as_executable(00_equilateral_to_cubemap)
 mark_as_executable(01_color_normalization)

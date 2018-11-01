@@ -1,4 +1,4 @@
-#include "../line_space.hpp"
+#include "datastructure/line_space.hpp"
 
 namespace gfx
 {

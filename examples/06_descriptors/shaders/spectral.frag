@@ -12,8 +12,8 @@ layout(std140, set=0, binding=0) uniform Camera
     int  do_cull;
 } camera;
 
-const float focal_length = 3.f;
-const float aperture = 0.22f;
+const float focal_length = 6.f;
+const float aperture = 0.32f;
 const float sensor_response = 1.f; // may be received from texture
 const float exposure = 1.f;
 const float gamma = 1.8f;
@@ -41,15 +41,25 @@ struct vertex
 	vec2 uv;
 	uint metadata_uv;
 };
+
+const uint bsdf_opaque = 0;
+const uint bsdf_transparent = 1;
+const uint bsdf_emissive = 2;
 struct instance
 {
-	uint base_index;
-	uint base_vertex;
-	uint base_bvh_node;
-	uint color;
+    uint index_count;
+    uint instance_count;
+    uint base_index;
+    int  base_vertex;
+    uint base_instance;
+    uint base_bvh_node;
+    uint vertex_count;
+    uint bvh_node_count;
 	mat4 transform;
+	uint color;
 	float roughness;
 	float reflectivity;
+	uint bsdf;
 };
 
 layout(set = 1, binding = 0) restrict readonly buffer ModelBVH
@@ -213,6 +223,19 @@ float ior(float freq)
 	return i;
 }
 
+void emit_ray(vec3 origin, vec3 direction, float intensity)
+{
+	ray_state.direction = direction;
+	ray_state.origin = origin + 1e-4f * ray_state.direction;
+	ray_state.bounce_n += 1;
+	ray_state.intensity *= intensity;
+}
+
+void end_ray()
+{
+	ray_state.bounce_n = 1000;
+}
+
 void main()
 {
 	ivec2 pixel    = ivec2(gl_FragCoord.xy);
@@ -230,9 +253,9 @@ void main()
     if (hit.hits)
     {
 		instance inst = model_instances[hit.instance];
-		uint v0  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 1];
-		uint v1  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 2];
-		uint v2  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 0];
+		uint v0  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 1];
+		uint v1  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 2];
+		uint v2  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 0];
 		vertex hit_vert;
 		hit_vert.position = (inst.transform * vec4(hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].position, 1)).xyz;
@@ -242,10 +265,16 @@ void main()
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
 		bool incoming = dot(hit_vert.normal, ray_state.direction.xyz) < 0;
 		hit_vert.normal = faceforward(hit_vert.normal, ray_state.direction.xyz, hit_vert.normal);
-
+		
 		vec3 new_direction;
 		
-		if(inst.reflectivity == 1.f)
+		if(inst.bsdf == bsdf_emissive)
+		{
+			ray_state.accum_color += vec4(inst.reflectivity * freq_to_xyz(ray_state.frequency), 0);
+			ray_state.sample_n += 1;
+			ray_state.bounce_n = 0;
+		}
+		else
 		{
 			float roughness = inst.roughness;
 			float alpha2    = roughness * roughness;
@@ -254,26 +283,28 @@ void main()
 			float ior_in = incoming ? 1.f : ior_f;
 			float ior_out = incoming ? ior_f : 1.f;
 			float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
-			vec3 fresnel = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(dot(-ray_state.direction, hit_vert.normal), 0), 5.0);
+			vec3 fresnel = F0 + (max(vec3(1.0 - inst.reflectivity) * F0, F0) - F0) * pow(1.0 - max(dot(-ray_state.direction, hit_vert.normal), 0), 5.0);
 			
 			vec3 msnormal = normalize(local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), hit_vert.normal));
-			new_direction     = refract(ray_state.direction, msnormal, ior_in / ior_out);
-			if(length(new_direction) == 0 || (fresnel.x + fresnel.y + fresnel.z)/3.f > next_random())
+			if((fresnel.x + fresnel.y + fresnel.z)/3.f <= next_random())
+			{
+				if(inst.bsdf == bsdf_transparent)
+					new_direction     = refract(ray_state.direction, msnormal, ior_in / ior_out);
+				else
+				{
+					new_direction = normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal));
+					vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
+					vec3 ava = freq_to_xyz(ray_state.frequency) * xyz;
+					ray_state.intensity *= length(ava);
+				}
+			}
+			else
+			{
 				new_direction     = reflect(ray_state.direction, msnormal);
+			}
 
 			new_direction = normalize(new_direction);
-				
-			ray_state.intensity *= 1.f;
 		}
-		else
-		{
-			new_direction = normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal));
-			ray_state.intensity *= 1.f;
-		
-			vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
-			ray_state.intensity *= max(dot(normalize(freq_to_xyz(ray_state.frequency)), normalize(xyz)), 0);
-		}
-
 
 		ray_state.direction = new_direction;
 		ray_state.origin = hit_vert.position + 1e-4f * ray_state.direction;
@@ -299,7 +330,7 @@ void main()
 	switch(globals.render_output)
 	{
 	case output_default:
-		color = ray_state.accum_color / max(ray_state.sample_n + 1, 1);
+		color = vec4(transpose(cie_xyz_to_rgb) * (ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb, 1);
 		color = 1.f - exp(-color * exposure);
 		color = pow(color, vec4(1.f / gamma));
 		break;

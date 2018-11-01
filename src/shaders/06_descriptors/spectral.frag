@@ -29,15 +29,25 @@ struct vertex
 	vec2 uv;
 	uint metadata_uv;
 };
+
+const uint bsdf_opaque = 0;
+const uint bsdf_transparent = 0;
+const uint bsdf_emissive = 0;
 struct instance
 {
-	uint base_index;
-	uint base_vertex;
-	uint base_bvh_node;
-	uint color;
+    uint index_count;
+    uint instance_count;
+    uint base_index;
+    int  base_vertex;
+    uint base_instance;
+    uint base_bvh_node;
+    uint vertex_count;
+    uint bvh_node_count;
 	mat4 transform;
+	uint color;
 	float roughness;
 	float reflectivity;
+	uint bsdf;
 };
 
 layout(set = 1, binding = 0) restrict readonly buffer ModelBVH
@@ -167,6 +177,19 @@ float ior(float freq)
 	return i;
 }
 
+void emit_ray(vec3 origin, vec3 direction, float intensity)
+{
+	ray_state.direction = direction;
+	ray_state.origin = origin + 1e-4f * ray_state.direction;
+	ray_state.bounce_n += 1;
+	ray_state.intensity *= intensity;
+}
+
+void end_ray()
+{
+	ray_state.bounce_n = 1000;
+}
+
 void main()
 {
 	ivec2 pixel    = ivec2(gl_FragCoord.xy);
@@ -184,9 +207,9 @@ void main()
     if (hit.hits)
     {
 		instance inst = model_instances[hit.instance];
-		uint v0  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 1];
-		uint v1  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 2];
-		uint v2  = inst.base_vertex + model_indices[inst.base_index + hit.near_triangle * 3 + 0];
+		uint v0  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 1];
+		uint v1  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 2];
+		uint v2  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 0];
 		vertex hit_vert;
 		hit_vert.position = (inst.transform * vec4(hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].position, 1)).xyz;
@@ -197,9 +220,11 @@ void main()
 		bool incoming = dot(hit_vert.normal, ray_state.direction.xyz) < 0;
 		hit_vert.normal = faceforward(hit_vert.normal, ray_state.direction.xyz, hit_vert.normal);
 
-		vec3 new_direction;
-		
-		if(inst.reflectivity == 1.f)
+		if(inst.bsdf == bsdf_emissive)
+		{
+			end_ray();
+		}
+		else
 		{
 			float roughness = inst.roughness;
 			float alpha2    = roughness * roughness;
@@ -209,29 +234,20 @@ void main()
 			float ior_out = incoming ? ior_f : 1.f;
 			float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
 			vec3 fresnel = F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(dot(-ray_state.direction, hit_vert.normal), 0), 5.0);
-			
 			vec3 msnormal = normalize(local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), hit_vert.normal));
-			new_direction     = refract(ray_state.direction, msnormal, ior_in / ior_out);
-			if(length(new_direction) == 0 || (fresnel.x + fresnel.y + fresnel.z)/3.f > next_random())
-				new_direction     = reflect(ray_state.direction, msnormal);
-
-			new_direction = normalize(new_direction);
-				
-			ray_state.intensity *= 1.f;
+			
+			if((fresnel.x + fresnel.y + fresnel.z)/3.f < next_random())
+			{
+				if(inst.bsdf == bsdf_transparent)
+					emit_ray(hit_vert.position, normalize(refract(ray_state.direction, msnormal, ior_in / ior_out)), 1.f);
+				else if(inst.bsdf == bsdf_opaque)
+					emit_ray(hit_vert.position, normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal)), 1.f);
+			}
+			else
+			{
+				emit_ray(hit_vert.position, normalize(reflect(ray_state.direction, msnormal)), 1.f);
+			}
 		}
-		else
-		{
-			new_direction = normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal));
-			ray_state.intensity *= 1.f;
-		
-			vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
-			ray_state.intensity *= max(dot(normalize(freq_to_xyz(ray_state.frequency)), normalize(xyz)), 0);
-		}
-
-
-		ray_state.direction = new_direction;
-		ray_state.origin = hit_vert.position + 1e-4f * ray_state.direction;
-		ray_state.bounce_n += 1;
 
 		if(ray_state.bounce_n > 12)
 		{

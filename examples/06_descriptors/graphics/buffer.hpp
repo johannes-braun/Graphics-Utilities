@@ -76,6 +76,7 @@ public:
 private:
 	void allocate(size_type capacity, bool force = false);
 	void init_range(iterator begin, iterator end, T&& value);
+	void init_range(iterator begin, iterator end, const T& value);
 	void reset_storage(value_type* storage, size_type size);
 
     std::vector<u32> _families;
