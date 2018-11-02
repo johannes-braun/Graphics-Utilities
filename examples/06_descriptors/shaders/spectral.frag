@@ -148,6 +148,16 @@ vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out floa
     return dir.x * s + dir.y * t;
 }
 
+float from_nanometers(float nm)
+{
+	return (nm - 380) / (860 - 380);
+}
+
+float gauss(float sigma, float e, float x)
+{
+	return 1/(sigma * sqrt(2 * PI)) * exp(-0.5f * pow((x - e) / sigma, 2));
+}
+
 void load_state(vec2 random_value)
 {
 	ivec2 pixel    = ivec2(gl_FragCoord.xy);
@@ -191,7 +201,7 @@ void load_state(vec2 random_value)
 		const float bokeh_intensity = texture(bokeh_shape, vec2(0.5f) + offset).r;
 
 		ray_state.direction = normalize(ray_state.direction);
-		ray_state.frequency = next_random();
+		ray_state.frequency = from_nanometers(400 + 360 * next_random());
 		ray_state.intensity = bokeh_intensity * sensor_response;
 	}
 	else
@@ -270,7 +280,9 @@ void main()
 		
 		if(inst.bsdf == bsdf_emissive)
 		{
-			ray_state.accum_color += vec4(inst.reflectivity * freq_to_xyz(ray_state.frequency), 0);
+			vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
+			float ava = dot(transpose(cie_xyz_to_rgb) * freq_to_xyz(ray_state.frequency), transpose(cie_xyz_to_rgb) * xyz);
+			ray_state.accum_color += vec4(inst.reflectivity * ava * freq_to_xyz(ray_state.frequency), 0);
 			ray_state.sample_n += 1;
 			ray_state.bounce_n = 0;
 		}
@@ -293,9 +305,11 @@ void main()
 				else
 				{
 					new_direction = normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal));
-					vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
-					vec3 ava = freq_to_xyz(ray_state.frequency) * xyz;
-					ray_state.intensity *= length(ava);
+					vec3 rgb = unpackUnorm4x8(inst.color).rgb;
+					vec3 xyz = normalize(transpose(cie_rgb_to_xyz) * rgb);
+
+					float d = dot(xyz, freq_to_xyz(ray_state.frequency));
+					ray_state.intensity *= d;
 				}
 			}
 			else
@@ -304,13 +318,13 @@ void main()
 			}
 
 			new_direction = normalize(new_direction);
+			ray_state.bounce_n += 1;
 		}
 
 		ray_state.direction = new_direction;
 		ray_state.origin = hit_vert.position + 1e-4f * ray_state.direction;
-		ray_state.bounce_n += 1;
 
-		if(ray_state.bounce_n > 12)
+		if(ray_state.bounce_n > 12 || ray_state.intensity < 0.01f)
 		{
 			vec3 env = clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f);
 			ray_state.accum_color += ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1);

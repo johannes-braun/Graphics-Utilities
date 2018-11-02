@@ -1,5 +1,5 @@
 
-function(create_spirv target_name source_dir header_output namespace)
+function(create_spirv target_name source_dir header_output spv_output namespace)
 	file(GLOB_RECURSE gfx_current_vert ${source_dir}/*.vert)
 	file(GLOB_RECURSE gfx_current_frag ${source_dir}/*.frag)
 	file(GLOB_RECURSE gfx_current_geom ${source_dir}/*.geom)
@@ -29,7 +29,7 @@ function(create_spirv target_name source_dir header_output namespace)
 		string(REPLACE "-" "_" current_filename ${current_filename})
 		string(REPLACE " " "_" current_filename ${current_filename})
 		string(REPLACE "." "_" current_filename ${current_filename})
-		file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${default_subdir})
+		file(MAKE_DIRECTORY ${spv_output}/${default_subdir})
 		if(current_dir)
 			string(REPLACE "-" "_" current_dir ${current_dir})
 			string(REPLACE " " "_" current_dir ${current_dir})
@@ -50,12 +50,13 @@ function(create_spirv target_name source_dir header_output namespace)
 		endif()
 		string(REPLACE " " ";" FILE_DEPENDENCIES_L ${FILE_DEPENDENCIES})
 		list(REMOVE_AT FILE_DEPENDENCIES_L 0)
-
+		
+		message(${spv_output}/${relative_file}.spv)
 		add_custom_command(
-			OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${relative_file}.spv
-			COMMAND ${GLSLC_COMMAND} "${file}" -o "${CMAKE_CURRENT_BINARY_DIR}/${relative_file}.spv" -c
+			OUTPUT ${spv_output}/${relative_file}.spv
+			COMMAND ${GLSLC_COMMAND} "${file}" -o "${spv_output}/${relative_file}.spv" -c
 			DEPENDS ${FILE_DEPENDENCIES_L})
-		list(APPEND SPIRV_vulkan ${CMAKE_CURRENT_BINARY_DIR}/${relative_file}.spv)
+		list(APPEND SPIRV_vulkan ${spv_output}/${relative_file}.spv)
 	endforeach()
 	add_custom_target(${target_name}.spirv DEPENDS ${SPIRV_vulkan})
 

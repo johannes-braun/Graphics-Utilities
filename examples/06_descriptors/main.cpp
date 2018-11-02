@@ -392,7 +392,7 @@ int main(int argc, char** argv)
     build_fbos();
 
     const gfx::shader vert(gpu, gfx::shader_paths::core::screen_vert);
-    const gfx::shader frag(gpu, gfx::shader_paths::spectral::spectral_frag);
+    const gfx::shader frag(gpu, gfx::shader_paths::spectral::shaders::spectral_frag);
 
     vk::GraphicsPipelineCreateInfo pipe_info;
     pipe_info.subpass    = 0;
@@ -463,7 +463,7 @@ int main(int argc, char** argv)
 									glm::u8vec4(255, 255, 255, 255), 0.001f, 0.f, instance_info::bsdf::opaque });
 	instantiator
 		.instantiate(floor_handle, { gfx::transform({0.f, 0.f, 2.f}, {0.2f, 0.2f, 0.2f}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
-									glm::u8vec4(255, 0, 0, 255), 0.001f, 1.0f, instance_info::bsdf::opaque });
+									glm::u8vec4(255, 0, 0, 255), 0.001f, 8.0f, instance_info::bsdf::opaque });
     
     ////////////////////////////////////////////////////////////////////////////
     ////

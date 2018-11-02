@@ -1,4 +1,5 @@
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_CURRENT_BINARY_DIR}>)
 
 # Find the QtWidgets library
 set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
@@ -87,6 +88,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_
 
 add_subdirectory(00_equilateral_to_cubemap)
 add_subdirectory(06_descriptors)
+
+add_subdirectory(AMR_assignment01)
 
 #[[
 mark_as_executable(00_equilateral_to_cubemap)

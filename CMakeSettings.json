@@ -3,8 +3,8 @@
   "environments": [
     {
       "cmakeCommandArgs": "-Wno-dev",
-      "buildCommandArgs": "",///nologo /verbosity:normal",
-      "generatorx64": "Ninja" //Visual Studio 15 2017 Win64"
+      "buildCommandArgs": "",//nologo /verbosity:normal",
+      "generatorx64": "Ninja"//Visual Studio 15 2017 Win64"
     }
   ],
   "configurations": [
