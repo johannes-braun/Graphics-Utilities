@@ -1,5 +1,5 @@
 #pragma once
-#include <gfx/gfx.hpp>
+#include <gfx.legacy/gfx.hpp>
 
 struct terrain_info
 {

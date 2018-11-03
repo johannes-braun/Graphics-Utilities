@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gfx/gfx.hpp>
+#include <gfx.legacy/gfx.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -80,7 +80,7 @@ public:
     {
         return allocate_prototype(std::move(name), gsl::make_span(std::data(meshes), std::size(meshes)));
     }
-    prototype* allocate_prototype(std::string name, const gfx::span<mesh* const>& meshes)
+    prototype* allocate_prototype(std::string name, const gsl::span<mesh* const>& meshes)
     {
         auto& proto = *_prototypes.emplace(name, std::make_unique<prototype>()).first->second;
         int   i     = 0;
@@ -94,12 +94,12 @@ public:
         _prototypes.erase(proto->name);
     }
 
-    unique_prototype allocate_prototype_unique(std::string name, const gfx::span<mesh*>& meshes)
+    unique_prototype allocate_prototype_unique(std::string name, const gsl::span<mesh*>& meshes)
     {
         return unique_prototype(allocate_prototype(name, meshes), prototype_deleter(*this));
     }
 
-    mesh* allocate_mesh(const gfx::span<gfx::vertex3d>& vertices, const gfx::span<gfx::index32>& indices,
+    mesh* allocate_mesh(const gsl::span<gfx::vertex3d>& vertices, const gsl::span<gfx::index32>& indices,
                         std::optional<gfx::bounds3f> bounds = std::nullopt)
     {
         mesh* m = [this] { return &*_meshes.emplace_back(std::make_unique<mesh>()); }();
@@ -159,7 +159,7 @@ public:
         }
     }
 
-    unique_mesh allocate_mesh_unique(const gfx::span<gfx::vertex3d>& vertices, const gfx::span<gfx::index32>& indices)
+    unique_mesh allocate_mesh_unique(const gsl::span<gfx::vertex3d>& vertices, const gsl::span<gfx::index32>& indices)
     {
         return unique_mesh(allocate_mesh(vertices, indices), mesh_deleter(*this));
     }
@@ -180,7 +180,7 @@ public:
 		_draw_counts[_current_instance] = 0;
     }
 
-    void enqueue(prototype* p, const gfx::transform& t, gfx::span<prototype_mesh_property> properties)
+    void enqueue(prototype* p, const gfx::transform& t, gsl::span<prototype_mesh_property> properties)
     {
         int i = 0;
         for (const auto& m : p->meshes)

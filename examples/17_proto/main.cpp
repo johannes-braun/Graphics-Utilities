@@ -1,7 +1,7 @@
 #include <executable.hpp>
-#include <gfx/file/json.hpp>
 #include <random>
 
+#include "shaders/shaders.hpp"
 #include "csm.hpp"
 #include "graphics.hpp"
 #include "interaction.hpp"
@@ -13,7 +13,7 @@
 void executable::init(gfx::context_options& opt)
 {
     opt.window_title        = "[17] Instanced";
-    opt.debug               = true;
+    opt.debug               = false;
     opt.framebuffer_samples = gfx::sample_count::x4;
     opt.graphics_api        = gfx::gapi::vulkan;
     opt.max_framerate       = 10000;
@@ -62,13 +62,13 @@ void executable::run()
     }
 
 	gfx::scene_file tree_file("tree.dae");
-	gfx::span<gfx::vertex3d> tree_vertices = tree_file.mesh.vertices;
-	gfx::span<gfx::index32> tree_indices = tree_file.mesh.indices;
+	gsl::span<gfx::vertex3d> tree_vertices = tree_file.mesh.vertices;
+	gsl::span<gfx::index32> tree_indices = tree_file.mesh.indices;
 
-	const gfx::span<gfx::vertex3d> tree_trunk_vertices = tree_vertices.subspan(tree_file.mesh.geometries[0].base_vertex, tree_file.mesh.geometries[0].vertex_count);
-	const gfx::span<gfx::index32> tree_trunk_indices = tree_indices.subspan(tree_file.mesh.geometries[0].base_index, tree_file.mesh.geometries[0].index_count);
-	const gfx::span<gfx::vertex3d> tree_leaves_vertices = tree_vertices.subspan(tree_file.mesh.geometries[1].base_vertex, tree_file.mesh.geometries[1].vertex_count);
-	const gfx::span<gfx::index32> tree_leaves_indices = tree_indices.subspan(tree_file.mesh.geometries[1].base_index, tree_file.mesh.geometries[1].index_count);
+	const gsl::span<gfx::vertex3d> tree_trunk_vertices = tree_vertices.subspan(tree_file.mesh.geometries[0].base_vertex, tree_file.mesh.geometries[0].vertex_count);
+	const gsl::span<gfx::index32> tree_trunk_indices = tree_indices.subspan(tree_file.mesh.geometries[0].base_index, tree_file.mesh.geometries[0].index_count);
+	const gsl::span<gfx::vertex3d> tree_leaves_vertices = tree_vertices.subspan(tree_file.mesh.geometries[1].base_vertex, tree_file.mesh.geometries[1].vertex_count);
+	const gsl::span<gfx::index32> tree_leaves_indices = tree_indices.subspan(tree_file.mesh.geometries[1].base_index, tree_file.mesh.geometries[1].index_count);
 
 	unique_mesh trunk = prototypes.allocate_mesh_unique(tree_trunk_vertices, tree_trunk_indices);
 	unique_mesh leaves = prototypes.allocate_mesh_unique(tree_leaves_vertices, tree_leaves_indices);

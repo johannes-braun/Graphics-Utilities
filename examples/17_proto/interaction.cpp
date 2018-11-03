@@ -1,4 +1,6 @@
 #include "interaction.hpp"
+#include "gfx.ecs.defaults/camera.hpp"
+#include "gfx.math/intersect.hpp"
 
 void interaction_processor::add_entity(gfx::ecs::entity e)
 {

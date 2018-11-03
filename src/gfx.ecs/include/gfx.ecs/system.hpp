@@ -17,6 +17,8 @@ using component_flags = gfx::flags<uint32_t, component_flag>;
 class system_base
 {
 public:
+	using duration_type = std::chrono::duration<double>;
+
     virtual ~system_base()                = default;
     system_base()                         = default;
     system_base(const system_base& other) = default;
@@ -24,7 +26,10 @@ public:
     system_base& operator=(const system_base& other) = default;
     system_base& operator=(system_base&& other) = default;
 
-    virtual void                        update(double delta, component_base** components) const;
+	virtual void pre_update() {}
+    virtual void update(duration_type delta, component_base** components) const;
+	virtual void post_update() {}
+
     const std::vector<id_t>&            types() const;
     const std::vector<component_flags>& flags() const;
 

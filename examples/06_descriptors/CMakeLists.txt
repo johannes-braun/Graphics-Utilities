@@ -21,3 +21,7 @@ copy_dll(${current_executable} Qt5::Core)
 copy_dll(${current_executable} Qt5::Widgets)
 copy_dll(${current_executable} Qt5::Gui)
 copy_dll(${current_executable} Qt5::Concurrent)
+
+# Needed for Ninja :(
+set_target_properties(${current_executable} PROPERTIES LINK_FLAGS 
+	"-natvis:${CMAKE_CURRENT_SOURCE_DIR}/graphics/graphics.natvis")

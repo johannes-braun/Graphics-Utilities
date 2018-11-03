@@ -6,6 +6,7 @@
 #include <execution>
 #include <unordered_map>
 #include <cassert>
+#include <chrono>
 
 namespace gfx {
 inline namespace v1 {
@@ -15,6 +16,8 @@ class ecs
     friend class entity;
 
 public:
+	using duration_type = std::chrono::duration<double>;
+
     ecs()                 = default;
     ecs(const ecs& other) = default;
     ecs(ecs&& other)      = default;
@@ -47,7 +50,8 @@ public:
 	
 	component_base* get_component(entity_handle handle, id_t cid);
 
-    void update(double delta, system_list& list);
+    void update(double delta_seconds, system_list& list);
+    void update(duration_type delta, system_list& list);
 
 private:
     std::unordered_map<id_t, std::vector<std::byte>> _components;
@@ -58,7 +62,7 @@ private:
     bool            remove_component_impl(entity_handle e, id_t component_id);
     void            add_component_impl(entity_handle e, id_t component_id, const component_base* component);
     component_base* get_component_impl(entity_handle e, std::vector<std::byte>& carr, id_t component_id);
-    void update_multi_system(system_base& system, double delta, const std::vector<id_t>& types, std::vector<component_base*>& components,
+    void update_multi_system(system_base& system, duration_type delta, const std::vector<id_t>& types, std::vector<component_base*>& components,
                              std::vector<std::vector<std::byte>*>& component_arrays);
 
     static indexed_entity* as_entity_ptr(entity_handle handle);

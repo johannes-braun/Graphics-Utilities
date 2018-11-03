@@ -1,6 +1,7 @@
 #pragma once
 
-#include <gfx/gfx.hpp>
+#include <gfx.legacy/gfx.hpp>
+#include <gfx.ecs/ecs.hpp>
 #include <glm/glm.hpp>
 
 struct movement_component : gfx::ecs::component<movement_component>

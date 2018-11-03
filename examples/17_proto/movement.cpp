@@ -1,5 +1,6 @@
 #include "movement.hpp"
 #include "interaction.hpp"
+#include <gfx.ecs.defaults/camera.hpp>
 
 movement_system::movement_system()
 {

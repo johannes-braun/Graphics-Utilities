@@ -13,9 +13,9 @@ layout(std140, set=0, binding=0) uniform Camera
 } camera;
 
 const float focal_length = 6.f;
-const float aperture = 0.32f;
-const float sensor_response = 1.f; // may be received from texture
-const float exposure = 1.f;
+const float aperture = 0.02f;
+const float sensor_response = 7.f; // may be received from texture
+const float exposure = 1.0f;
 const float gamma = 1.8f;
 
 const int output_default = 0;
@@ -187,9 +187,9 @@ void load_state(vec2 random_value)
 		ray_state.origin = camera.position;
 
 		// Apply DOF
-		vec2 random_value_dof =
-			random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (1212121),
-								 1.f / (1212121));
+		vec2 random_value_dof = vec2(next_random(), next_random());
+		//random_hammersley_2d(int(next_random() * 2825037277) % (2825037277),
+			//					 1.f / (2825037277));
 
 		const vec3 focal_point = ray_state.origin + focal_length * ray_state.direction;
 		vec2 offset;
@@ -253,9 +253,10 @@ void main()
     if (any(greaterThanEqual(pixel, img_size))) return;
 
     init_random(ivec2(0, 0) + pixel, int(3000 * globals.random));
-    vec2 random_value =
-        random_hammersley_2d(int(next_random() * img_size.x * img_size.y) % (1212121),
-                             1.f / (1212121));
+//    vec2 random_value =
+//        random_hammersley_2d(int(next_random() * 8344759) % (8344759),
+//                             1.f / (8344759));
+	vec2 random_value = vec2(next_random(), next_random());
 
 	load_state(random_value);
 	
@@ -308,8 +309,9 @@ void main()
 					vec3 rgb = unpackUnorm4x8(inst.color).rgb;
 					vec3 xyz = normalize(transpose(cie_rgb_to_xyz) * rgb);
 
-					float d = dot(xyz, freq_to_xyz(ray_state.frequency));
-					ray_state.intensity *= d;
+//					float d = distance(normalize(rgb), normalize(transpose(cie_xyz_to_rgb)* freq_to_xyz(ray_state.frequency)));
+//					d = 1/(32*d+1);
+					ray_state.intensity *= 1.f;
 				}
 			}
 			else
@@ -323,11 +325,14 @@ void main()
 
 		ray_state.direction = new_direction;
 		ray_state.origin = hit_vert.position + 1e-4f * ray_state.direction;
+		
+		#define pack_color(v4) 10.f*atan(0.1f*(v4))
+		#define unpack_color(v4) 10.f*tan(0.1f*(v4))
 
 		if(ray_state.bounce_n > 12 || ray_state.intensity < 0.01f)
 		{
 			vec3 env = clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f);
-			ray_state.accum_color += ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1);
+			ray_state.accum_color += pack_color(ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1));
 			ray_state.sample_n += 1;
 			ray_state.bounce_n = 0;
 		}
@@ -335,7 +340,7 @@ void main()
 	else
 	{
 		vec3 env = clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f);
-		ray_state.accum_color += ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1);
+		ray_state.accum_color += pack_color(ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1));
 	
 		ray_state.sample_n += 1;
 		ray_state.bounce_n = 0;	
@@ -344,7 +349,7 @@ void main()
 	switch(globals.render_output)
 	{
 	case output_default:
-		color = vec4(transpose(cie_xyz_to_rgb) * (ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb, 1);
+		color = vec4(transpose(cie_xyz_to_rgb) * unpack_color((ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb), 1);
 		color = 1.f - exp(-color * exposure);
 		color = pow(color, vec4(1.f / gamma));
 		break;

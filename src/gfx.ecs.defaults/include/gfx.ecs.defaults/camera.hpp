@@ -71,7 +71,7 @@ public:
         add_component_type(camera_controls::id);
     }
 
-    void update(double delta, ecs::component_base** components) const override
+    void update(duration_type delta, ecs::component_base** components) const override
     {
         camera_component& cam  = components[0]->as<camera_component>();
 		transform_component& trn  = components[1]->as<transform_component>();
@@ -123,9 +123,9 @@ public:
             * (glfwGetKey(_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
                    ? 10.f
                    : (glfwGetKey(_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0.1f : 1.f))
-            * static_cast<float>(delta) * ctrl.movement_speed;
+            * static_cast<float>(delta.count()) * ctrl.movement_speed;
 
-        const float alpha      = float(glm::clamp(15.0 * delta, 0.0, 1.0));
+        const float alpha      = float(glm::clamp(15.0 * delta.count(), 0.0, 1.0));
 		trn.value.position = mix(trn.value.position, ctrl.target_transform.position, alpha);
 		trn.value.scale    = mix(trn.value.scale, ctrl.target_transform.scale, alpha);
 		trn.value.rotation = glm::slerp(trn.value.rotation, ctrl.target_transform.rotation, alpha);

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "gfx/ecs/ecs.hpp"
-#include <gfx/gfx.hpp>
+#include <gfx.ecs/ecs.hpp>
+#include <gfx.legacy/gfx.hpp>
 
 struct collider_component : gfx::ecs::component<collider_component>
 {

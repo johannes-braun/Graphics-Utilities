@@ -58,23 +58,29 @@ public:
         _mouse_button_callbacks[btn].push_back(callback);
     }
 
-    void post_update() { 
+    void post_update() override { 
 		_moved = false;
 		_position_last_update = { double(QCursor::pos().x()), double(QCursor::pos().y()) };
 	}
 
-    void update(double delta, gfx::ecs::component_base** components) const
+    void update(duration_type delta, gfx::ecs::component_base** components) const
     {
-        if (_parent->hasMouseTracking())
-        {
-            gfx::grabbed_cursor_component* gcur = components[0]->as_ptr<gfx::grabbed_cursor_component>();
+		gfx::grabbed_cursor_component* gcur = components[0]->as_ptr<gfx::grabbed_cursor_component>();
 
-            if (gcur)
-            {
+		if (gcur)
+		{
+			if (_parent->hasMouseTracking())
+			{
                 gcur->last_position    = _position_last_update;
                 gcur->current_position = {double(QCursor::pos().x()), double(QCursor::pos().y())};
-                gcur->delta            = gcur->current_position - gcur->last_position;
+				gcur->delta = gcur->current_position - gcur->last_position;
             }
+			else
+			{
+				gcur->last_position = _position_last_update;
+				gcur->current_position = _position_last_update;
+				gcur->delta = gcur->current_position - gcur->last_position;
+			}
         }
     }
 

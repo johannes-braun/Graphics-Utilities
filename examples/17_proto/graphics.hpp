@@ -1,6 +1,7 @@
 #pragma once
 #include <executable.hpp>
-#include <gfx/gfx.hpp>
+#include <gfx.legacy/gfx.hpp>
+#include "shaders/shaders.hpp"
 
 class graphics
 {
@@ -55,11 +56,11 @@ public:
         mesh_state.state_rasterizer    = &raster;
         mesh_state.state_vertex_input  = &mesh_input;
         const auto shaders             = {
-            gfx::shader(gfx::shader_type::vert, "17_proto/mesh.vert"),
-            gfx::shader(gfx::shader_type::frag, "17_proto/mesh.frag"),
+            gfx::shader(gfx::shader_type::vert, gfx::spirv::proto::shaders::mesh_vert),
+            gfx::shader(gfx::shader_type::frag, gfx::spirv::proto::shaders::mesh_frag),
         };
         mesh_render_pipeline = std::make_unique<gfx::graphics_pipeline>(mesh_state, exe.pass_layout, shaders);
-        mesh_cull_pipeline   = std::make_unique<gfx::compute_pipeline>(layouts, gfx::shader(gfx::shader_type::comp, "17_proto/cull.comp"));
+        mesh_cull_pipeline   = std::make_unique<gfx::compute_pipeline>(layouts, gfx::shader(gfx::shader_type::comp, gfx::spirv::proto::shaders::cull_comp));
 
         raster.cull                       = gfx::cull_mode::none;
         mesh_state.state_multisample      = nullptr;
@@ -67,8 +68,8 @@ public:
         raster.depth_bias_constant_factor = -1.f;
         raster.depth_bias_slope_factor    = -1.f;
         const auto shadow_shaders         = {
-            gfx::shader(gfx::shader_type::vert, "17_proto/mesh_shadow.vert"),
-            gfx::shader(gfx::shader_type::frag, "17_proto/mesh_shadow.frag"),
+            gfx::shader(gfx::shader_type::vert, gfx::spirv::proto::shaders::mesh_shadow_vert),
+            gfx::shader(gfx::shader_type::frag, gfx::spirv::proto::shaders::mesh_shadow_frag),
         };
         mesh_shadow_pipeline = std::make_unique<gfx::graphics_pipeline>(mesh_state, shadow_pass_layout, shadow_shaders);
     }
@@ -84,8 +85,8 @@ public:
         sky_state.state_bindings      = &sky_binding_state;
         sky_state.state_depth_stencil = &sky_depth;
         sky_state.state_multisample   = &exe.msaa_state;
-        const auto shaders            = {gfx::shader(gfx::shader_type::vert, "17_proto/skybox.vert"),
-                              gfx::shader(gfx::shader_type::frag, "17_proto/skybox.frag")};
+        const auto shaders            = {gfx::shader(gfx::shader_type::vert, gfx::spirv::proto::shaders::skybox_vert),
+                              gfx::shader(gfx::shader_type::frag, gfx::spirv::proto::shaders::skybox_frag)};
         sky_pipeline                  = std::make_unique<gfx::graphics_pipeline>(sky_state, exe.pass_layout, shaders);
     }
     void create_terrain_pipelines()
@@ -140,16 +141,16 @@ public:
         terrain_rasterizer.depth_bias_slope_factor    = -8.f;
 
         const auto terrain_shaders_shadow = {
-            gfx::shader(gfx::shader_type::vert, "17_proto/terrain_shadow.vert"),
-            gfx::shader(gfx::shader_type::frag, "17_proto/mesh_shadow.frag"),
+            gfx::shader(gfx::shader_type::vert, gfx::spirv::proto::shaders::terrain_shadow_vert),
+            gfx::shader(gfx::shader_type::frag, gfx::spirv::proto::shaders::mesh_shadow_frag),
         };
         terrain_shadow_pipeline = std::make_unique<gfx::graphics_pipeline>(terrain_state, shadow_pass_layout, terrain_shaders_shadow);
 
         terrain_rasterizer.depth_bias_enable = false;
 
         const auto terrain_shaders = {
-            gfx::shader(gfx::shader_type::vert, "17_proto/terrain.vert"),
-            gfx::shader(gfx::shader_type::frag, "17_proto/terrain.frag"),
+            gfx::shader(gfx::shader_type::vert, gfx::spirv::proto::shaders::terrain_vert),
+            gfx::shader(gfx::shader_type::frag, gfx::spirv::proto::shaders::terrain_frag),
         };
         terrain_state.state_multisample = &exe.msaa_state;
 		terrain_layouts.layouts.push_back(&terrain_style_bindings);

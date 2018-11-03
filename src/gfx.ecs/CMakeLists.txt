@@ -28,7 +28,6 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)
 
 # Link against dependencies
 target_link_libraries(gfx.${gfx_current_module} PUBLIC glm::glm)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC glfw::glfw)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

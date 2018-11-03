@@ -118,28 +118,35 @@ component_base* ecs::get_component(entity_handle handle, id_t cid)
 	return get_component_impl(handle, _components.at(cid), cid);
 }
 
-void ecs::update(double delta, system_list& list)
+void ecs::update(duration_type delta, system_list& list)
 {
-    std::vector<component_base*>         multi_components;
-    std::vector<std::vector<std::byte>*> component_arrays;
-    for (int64_t i = 0; i < static_cast<int64_t>(list.size()); ++i)
-    {
-        const auto& component_types = list[static_cast<uint32_t>(i)].types();
-        if (component_types.size() == 1)
-        {
-            const auto size = component_base::type_size(component_types[0]);
-            auto&      arr  = _components[component_types[0]];
-            for (auto ci = 0ull; ci < arr.size(); ci += size)
-            {
-                auto* c = reinterpret_cast<component_base*>(&arr[ci]);
-                list[static_cast<uint32_t>(i)].update(delta, &c);
-            }
-        }
-        else
-        {
-            update_multi_system(list[static_cast<uint32_t>(i)], delta, component_types, multi_components, component_arrays);
-        }
-    }
+	std::vector<component_base*>         multi_components;
+	std::vector<std::vector<std::byte>*> component_arrays;
+	for (int64_t i = 0; i < static_cast<int64_t>(list.size()); ++i)
+	{
+		list[static_cast<uint32_t>(i)].pre_update();
+		const auto& component_types = list[static_cast<uint32_t>(i)].types();
+		if (component_types.size() == 1)
+		{
+			const auto size = component_base::type_size(component_types[0]);
+			auto&      arr = _components[component_types[0]];
+			for (auto ci = 0ull; ci < arr.size(); ci += size)
+			{
+				auto* c = reinterpret_cast<component_base*>(&arr[ci]);
+				list[static_cast<uint32_t>(i)].update(delta, &c);
+			}
+		}
+		else
+		{
+			update_multi_system(list[static_cast<uint32_t>(i)], delta, component_types, multi_components, component_arrays);
+		}
+		list[static_cast<uint32_t>(i)].post_update();
+	}
+}
+
+void ecs::update(double delta_seconds, system_list& list)
+{
+	update(duration_type(delta_seconds), list);
 }
 
 void ecs::delete_component(id_t id, size_t index)
@@ -216,7 +223,7 @@ component_base* ecs::get_component_impl(entity_handle e, std::vector<std::byte>&
     { return reinterpret_cast<component_base*>(&carr[it->second]); } return nullptr;
 }
 
-void ecs::update_multi_system(system_base& system, double delta, const std::vector<id_t>& types, std::vector<component_base*>& components,
+void ecs::update_multi_system(system_base& system, duration_type delta, const std::vector<id_t>& types, std::vector<component_base*>& components,
                               std::vector<std::vector<std::byte>*>& component_arrays)
 {
     const auto& system_flags = system.flags();

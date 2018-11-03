@@ -9,7 +9,7 @@ void system_base::add_component_type(id_t id, component_flags flags)
     _component_flags.push_back(flags);
 }
 
-void system_base::update(double delta, component_base** components) const {}
+void system_base::update(duration_type delta, component_base** components) const {}
 
 const std::vector<id_t>& system_base::types() const
 {

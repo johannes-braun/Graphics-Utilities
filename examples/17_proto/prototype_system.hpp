@@ -2,7 +2,7 @@
 
 #include "interaction.hpp"
 #include "prototype.hpp"
-#include <gfx/gfx.hpp>
+#include <gfx.ecs.defaults/camera.hpp>
 
 struct prototype_component : gfx::ecs::component<prototype_component>
 {

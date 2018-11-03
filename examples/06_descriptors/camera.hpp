@@ -73,7 +73,7 @@ public:
         add_component_type(grabbed_cursor_component::id);
     }
 
-    void update(double delta, ecs::component_base** components) const override
+    void update(duration_type delta, ecs::component_base** components) const override
     {
         camera_component&         cam  = components[0]->as<camera_component>();
         transform_component&      trn  = components[1]->as<transform_component>();
@@ -100,9 +100,9 @@ public:
                               - static_cast<float>(_keys->key_down(ctrl.inverse_y ? ctrl.key_up : ctrl.key_down)),
                           static_cast<float>(_keys->key_down(ctrl.key_backward)) - static_cast<float>(_keys->key_down(ctrl.key_forward))})
             * (_keys->key_down(ctrl.key_mod_faster) ? ctrl.fast_factor : (_keys->key_down(ctrl.key_mod_slower) ? ctrl.slow_factor : 1.f))
-            * static_cast<float>(delta) * ctrl.movement_speed;
+            * static_cast<float>(delta.count()) * ctrl.movement_speed;
 
-        const float alpha  = float(glm::clamp(15.0 * delta, 0.0, 1.0));
+        const float alpha  = float(glm::clamp(15.0 * delta.count(), 0.0, 1.0));
         trn.value.position = mix(trn.value.position, ctrl.target_transform.position, alpha);
         trn.value.scale    = mix(trn.value.scale, ctrl.target_transform.scale, alpha);
         trn.value.rotation = glm::slerp(trn.value.rotation, ctrl.target_transform.rotation, alpha);

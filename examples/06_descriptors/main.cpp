@@ -3,6 +3,7 @@
 #include "graphics/graphics.hpp"
 #include "input.hpp"
 #include "mesh.hpp"
+#include "worker.hpp"
 #include "shaders/shaders.hpp"
 
 #include <QApplication>
@@ -30,30 +31,9 @@
 #include <gfx.shaders/shaders.hpp>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
+#include <future>
 
-class worker
-{
-public:
-    template<typename Fun>
-    worker(Fun&& fun)
-          : _stopped(false), _worker_thread([&] {
-              while (!_stopped && fun(*this))
-                  ;
-          })
-    {}
-    ~worker()
-    {
-        _stopped = true;
-        _worker_thread.join();
-    }
-
-    const std::atomic_bool& has_stopped() const noexcept { return _stopped; }
-    void                    trigger_stop() noexcept { _stopped = true; }
-
-private:
-    std::atomic_bool _stopped;
-    std::thread      _worker_thread;
-};
+using namespace std::chrono_literals;
 
 gfx::exp::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root);
 
@@ -182,14 +162,6 @@ int main(int argc, char** argv)
     gfx::semaphore             acquire_image_signal(gpu);
     gfx::semaphore             render_finish_signal(gpu);
     std::vector<gfx::fence>    cmd_fences(gpu_cmd.size(), gfx::fence(gpu, true));
-
-    gfx::mapped<float> my_floats(gpu);
-    for (int i = 0; i < 10; ++i) my_floats.emplace_back(i);
-    my_floats.insert(my_floats.begin(), {0.f, 1.f, 0.3f});
-    my_floats.erase(my_floats.begin() + 4);
-
-    gfx::buffer<float> tbuf(gpu, my_floats);
-    gfx::buffer<float> tbuf2 = tbuf;
 
     const auto  props       = gpu.get_physical_device().getProperties2();
     const char* device_type = [&] {
@@ -390,13 +362,12 @@ int main(int argc, char** argv)
         }
     };
     build_fbos();
-
-    const gfx::shader vert(gpu, gfx::spirv::core::screen_vert);
-    const gfx::shader frag(gpu, gfx::spirv::spectral::shaders::spectral_frag);
-
     vk::GraphicsPipelineCreateInfo pipe_info;
     pipe_info.subpass    = 0;
     pipe_info.renderPass = pass.get();
+
+    const gfx::shader vert(gpu, gfx::spirv::core::screen_vert);
+    const gfx::shader frag(gpu, gfx::spirv::spectral::shaders::spectral_frag);
     const auto stages    = {
         vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vert.get_module(), "main"),
         vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, frag.get_module(), "main"),
@@ -435,35 +406,48 @@ int main(int argc, char** argv)
     ////
     ////////////////////////////////////////////////////////////////////////////
     mesh_allocator mesh_alloc(gpu);
-    mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("bunny.dae"))[0];
-    mesh_handle    lens_handle  = mesh_alloc.allocate_meshes(gfx::scene_file("lens.dae"))[0];
-    mesh_handle    floor_handle = mesh_alloc.allocate_meshes(gfx::scene_file("floor.dae"))[0];
-    mesh_handle    box_handle   = mesh_alloc.allocate_meshes(gfx::scene_file("box.dae"))[0];
+	struct instance_info
+	{
+		glm::mat4 transform;
+		glm::u8vec4 color;
+		float       roughness;
+		float       strength;
+		enum class bsdf : uint
+		{
+			opaque,
+			transparent,
+			emissive
+		} type;
+	};
+	mesh_instantiator<instance_info> instantiator(mesh_alloc);
 
-    struct instance_info
-    {
-        glm::mat4 transform;
-        glm::u8vec4 color;
-        float       roughness;
-        float       strength;
-        enum class bsdf : uint
-        {
-            opaque,
-            transparent,
-            emissive
-        } type;
-    };
+	std::async(std::launch::async, [&] {
+		mesh_handle    bunny_handle = mesh_alloc.allocate_meshes(gfx::scene_file("bunny.dae"))[0];
+		mesh_handle    sphere_handle = mesh_alloc.allocate_meshes(gfx::scene_file("sphere.dae"))[0];
+		mesh_handle    lens_handle = mesh_alloc.allocate_meshes(gfx::scene_file("lens.dae"))[0];
+		mesh_handle    floor_handle = mesh_alloc.allocate_meshes(gfx::scene_file("floor.dae"))[0];
+		mesh_handle    box_handle = mesh_alloc.allocate_meshes(gfx::scene_file("box.dae"))[0];
 
-    mesh_instantiator<instance_info> instantiator(mesh_alloc);
-	instantiator
-		.instantiate(bunny_handle, { gfx::transform({0, 0, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
-									glm::u8vec4(255, 255, 255, 255), 0.001f, 1.f, instance_info::bsdf::transparent });
-	instantiator
-		.instantiate(floor_handle, { gfx::transform({0, -0.5f, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))),
-									glm::u8vec4(255, 255, 255, 255), 0.001f, 0.f, instance_info::bsdf::opaque });
-	instantiator
-		.instantiate(floor_handle, { gfx::transform({0.f, 0.f, 2.f}, {0.2f, 0.2f, 0.2f}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
-									glm::u8vec4(255, 0, 0, 255), 0.001f, 8.0f, instance_info::bsdf::opaque });
+		instantiator
+			.instantiate(bunny_handle, { gfx::transform({0, 0, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
+										glm::u8vec4(255, 255, 255, 255), 0.001f, 1.f, instance_info::bsdf::transparent });
+		instantiator
+			.instantiate(floor_handle, { gfx::transform({0, -0.5f, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))),
+										glm::u8vec4(255, 255, 255, 255), 0.001f, 0.f, instance_info::bsdf::opaque });
+		instantiator
+			.instantiate(floor_handle, { gfx::transform({0.f, 0.f, 2.f}, {0.2f, 0.2f, 0.2f}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
+										glm::u8vec4(255, 0, 0, 255), 0.001f, 8.0f, instance_info::bsdf::opaque });
+
+	/*	for (int i = 0; i < 9; ++i)
+		{
+			instantiator
+				.instantiate(sphere_handle, { gfx::transform({-6 + 2.5f * i, 1, 0}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
+											glm::u8vec4(255, 255, 255, 255), 0.125f * i, 1.f, instance_info::bsdf::transparent });
+			instantiator
+				.instantiate(sphere_handle, { gfx::transform({-6 + 2.5f * i, 1, 2.5f}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))),
+											glm::u8vec4(255, 255, 255, 255), 0.125f * i, 1.f, instance_info::bsdf::opaque });
+		}*/
+	});
     
     ////////////////////////////////////////////////////////////////////////////
     ////
@@ -735,36 +719,31 @@ int main(int argc, char** argv)
     gpu.get_device().updateDescriptorSets(
         {globals_write0, globals_write1, globals_write2, globals_write3, globals_write4, globals_write5, globals_write6}, {});
 
-    std::chrono::duration<double> time_sec    = std::chrono::duration<double>::zero();
-    std::chrono::duration<double> delta       = std::chrono::duration<double>::zero();
-    std::chrono::duration<double> delta_frame = std::chrono::duration<double>::zero();
-    size_t                        frame_count = 0;
-    std::chrono::time_point       begin       = std::chrono::steady_clock::now();
-    std::chrono::time_point       frame_begin = std::chrono::steady_clock::now();
-    std::chrono::time_point       last_time   = std::chrono::steady_clock::now();
+	constexpr auto min_update_time_controls = 16.0ms;
+	constexpr auto min_update_time_frame	= 8.0ms;
 
-    gfx::transform last_transform;
-    globals        ng;
-    ng.rendered_count = 0;
-    worker render_thread([&](worker& self) {
-        delta_frame = std::chrono::steady_clock::now() - last_time;
-        last_time   = std::chrono::steady_clock::now();
+	worker control_thread([&](worker& self, const worker::duration& delta)
+	{
+        ecs.update(delta, control_systems);
+		return self.value_after(true, min_update_time_controls);
+	});
 
-        ecs.update(delta_frame.count(), control_systems);
-        keys->post_update();
+	size_t                        frame_count = 0;
+	std::chrono::duration<double> delta_accum = std::chrono::duration<double>::zero();
+	gfx::transform last_transform;
+	globals        ng;
+	ng.rendered_count = 0;
+	worker render_thread([&](worker& self, const worker::duration& delta) {
 
-        using namespace std::chrono_literals;
-        time_sec = std::chrono::steady_clock::now() - begin;
         ++frame_count;
-        delta = std::chrono::steady_clock::now() - frame_begin;
+		delta_accum += delta;
 
-        if (delta > 1s)
+        if (delta_accum > 1s)
         {
-            fps_counter->setText(QString::fromStdString(std::to_string(frame_count / delta.count())));
-            ftm_counter->setText(QString::fromStdString(std::to_string(1'000.0 * delta.count() / frame_count) + "ms"));
-            frame_begin = std::chrono::steady_clock::now();
+            fps_counter->setText(QString::fromStdString(std::to_string(frame_count / delta_accum.count())));
+            ftm_counter->setText(QString::fromStdString(std::to_string(1'000.0 * delta_accum.count() / frame_count) + "ms"));
             frame_count = 0;
-            delta       = std::chrono::duration<double>::zero();
+			delta_accum = std::chrono::duration<double>::zero();
         }
 
         const auto [img, acquire_error] = chain.next_image(acquire_image_signal);
@@ -836,7 +815,7 @@ int main(int argc, char** argv)
             }
             build_fbos();
         }
-        return true;
+		return self.value_after(true, min_update_time_frame);
     });
 
     app.exec();
@@ -844,12 +823,26 @@ int main(int argc, char** argv)
 
 gfx::exp::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)
 {
-    gfx::image_file posx(root / "posx.hdr", gfx::bits::b32, 4);
-    gfx::image_file negx(root / "negx.hdr", gfx::bits::b32, 4);
-    gfx::image_file posy(root / "posy.hdr", gfx::bits::b32, 4);
-    gfx::image_file negy(root / "negy.hdr", gfx::bits::b32, 4);
-    gfx::image_file posz(root / "posz.hdr", gfx::bits::b32, 4);
-    gfx::image_file negz(root / "negz.hdr", gfx::bits::b32, 4);
+	std::future<gfx::image_file> posx_future = std::async(std::launch::async, [&root]() { return gfx::image_file(root / "posx.hdr", gfx::bits::b32, 4); });
+	std::future<gfx::image_file> negx_future = std::async(std::launch::async, [&root]() { return gfx::image_file(root / "negx.hdr", gfx::bits::b32, 4); });
+	std::future<gfx::image_file> posy_future = std::async(std::launch::async, [&root]() { return gfx::image_file(root / "posy.hdr", gfx::bits::b32, 4); });
+	std::future<gfx::image_file> negy_future = std::async(std::launch::async, [&root]() { return gfx::image_file(root / "negy.hdr", gfx::bits::b32, 4); });
+	std::future<gfx::image_file> posz_future = std::async(std::launch::async, [&root]() { return gfx::image_file(root / "posz.hdr", gfx::bits::b32, 4); });
+	std::future<gfx::image_file> negz_future = std::async(std::launch::async, [&root]() { return gfx::image_file(root / "negz.hdr", gfx::bits::b32, 4); });
+
+	posx_future.wait();
+	negx_future.wait();
+	posy_future.wait();
+	negy_future.wait();
+	posz_future.wait();
+	negz_future.wait();
+
+	auto posx = posx_future.get();
+	auto negx = negx_future.get();
+	auto posy = posy_future.get();
+	auto negy = negy_future.get();
+	auto posz = posz_future.get();
+	auto negz = negz_future.get();
 
     vk::ImageCreateInfo cube_create;
     cube_create.flags       = vk::ImageCreateFlagBits::eCubeCompatible;
