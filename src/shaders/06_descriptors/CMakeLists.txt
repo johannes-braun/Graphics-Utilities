@@ -1,2 +1,0 @@
-compile_spirv_all(vulkan)
-create_shaders_target()

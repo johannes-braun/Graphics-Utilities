@@ -42,41 +42,16 @@ function(mark_as_executable exe_name)
 		list(APPEND CPPS ${RES_SOURCES} ${UI_HEADERS} ${MOC_SRCS})
 	endif()
 	add_executable(${exe_name} ${CPPS})
-
+	set_target_properties(${exe_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}/${exe_name})
     if(WIN32)
         target_sources(${exe_name} PUBLIC ${GFX_APP_RESOURCE_PATH}/app.rc)
     endif()
     target_compile_features(${exe_name} PRIVATE cxx_std_17)
-    target_include_directories(${exe_name} PUBLIC
-        $<BUILD_INTERFACE:${var_include_dir}>
-        $<INSTALL_INTERFACE:include>
-    )
-	if(GFX_USE_INSTALL)
-		install(TARGETS ${exe_name} EXPORT ${exe_name}Targets
-			RUNTIME DESTINATION bin
-		)
-	endif()
-    target_link_libraries(${exe_name} PRIVATE jbraun::gfx.core jbraun::gfx.math jbraun::gfx.ecs jbraun::gfx.ecs.defaults jbraun::gfx.file jbraun::gfx.legacy gfx.shaders
-		)
 	if(WIN32)
 		target_link_libraries(${exe_name} PRIVATE comctl32)
 	endif()
-    
     target_compile_options(${exe_name} PRIVATE ${compile_options})
     set_target_properties(${exe_name} PROPERTIES LINK_FLAGS_RELEASE "-subsystem:windows -entry:mainCRTStartup")
-	
-	copy_dll(${exe_name} assimp)
-	copy_dll(${exe_name} glfw)
-	
-	if(Qt5Widgets_FOUND)
-		target_link_libraries(${exe_name}
-			PUBLIC Qt5::Widgets Qt5::Concurrent)
-		
-		copy_dll(${exe_name} Qt5::Core)
-		copy_dll(${exe_name} Qt5::Widgets)
-		copy_dll(${exe_name} Qt5::Gui)
-		copy_dll(${exe_name} Qt5::Concurrent)
-	endif()
 
 endfunction()
 
@@ -86,10 +61,7 @@ string(REGEX REPLACE "\\." "," GFX_RES_VERSION ${GFX_RES_VERSION})
 string(TIMESTAMP CURRENT_YEAR %Y UTC)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc @ONLY)
 
-add_subdirectory(00_equilateral_to_cubemap)
-add_subdirectory(06_descriptors)
-
-add_subdirectory(AMR_assignment01)
+include(all_executables.cmake)
 
 #[[
 mark_as_executable(00_equilateral_to_cubemap)

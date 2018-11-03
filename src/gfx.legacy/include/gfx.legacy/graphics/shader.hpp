@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <gsl/span>
 
 namespace gfx {
 	inline namespace v1 {
@@ -24,6 +25,7 @@ namespace gfx {
 		{
 		public:
 			shader(shader_type stage, const std::filesystem::path& path);
+			shader(shader_type stage, const gsl::span<const uint32_t>& spirv);
 
 			const std::vector<std::byte>& data() const noexcept;
 			shader_format                 format() const noexcept;

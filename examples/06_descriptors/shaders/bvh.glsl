@@ -1,4 +1,4 @@
-//! #version 460 core
+//? #version 460 core
 
 const uint bvh_node_type_inner = 0;
 const uint bvh_node_type_leaf  = 1;

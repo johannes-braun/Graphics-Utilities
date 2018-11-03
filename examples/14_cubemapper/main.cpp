@@ -1,4 +1,5 @@
 #include <executable.hpp>
+#include "shaders/shaders.hpp"
 
 void executable::init(gfx::context_options& options)
 {
@@ -26,14 +27,14 @@ void executable::run()
     state.state_depth_stencil = &depth;
     state.state_multisample   = &msaa_state;
     gfx::graphics_pipeline pipeline(state, pass_layout,
-                                    {gfx::shader(gfx::shader_type::vert, "14_cubemapper/skybox.vert"),
-                                     gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});
+                                    {gfx::shader(gfx::shader_type::vert, gfx::spirv::cubemapper::shaders::skybox_vert),
+                                     gfx::shader(gfx::shader_type::frag, gfx::spirv::cubemapper::shaders::skybox_frag)});
 
     context->key_callback.add([&](GLFWwindow*, int k, int sc, int a, int m) {
         if (k == GLFW_KEY_F5 && a == GLFW_PRESS)
             pipeline = gfx::graphics_pipeline(state, pass_layout,
-                                              {gfx::shader(gfx::shader_type::vert, "14_cubemapper/skybox.vert"),
-                                               gfx::shader(gfx::shader_type::frag, "14_cubemapper/skybox.frag")});
+                                              { gfx::shader(gfx::shader_type::vert, gfx::spirv::cubemapper::shaders::skybox_vert),
+									 gfx::shader(gfx::shader_type::frag, gfx::spirv::cubemapper::shaders::skybox_frag)});
     });
 
     while (frame()) {

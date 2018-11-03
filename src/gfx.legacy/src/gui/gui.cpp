@@ -2,6 +2,7 @@
 #include <gui/imgui/imgui.h>
 #include "imgui/imgui_internal.h"
 #include <gfx.file/file.hpp>
+#include <gfx.shaders/shaders.hpp>
 
 namespace gfx {
 gui::gui() noexcept
@@ -107,7 +108,7 @@ gui::gui() noexcept
 		}
 	});
 
-    auto shaders2 = {shader(shader_type::vert, "imgui/imgui.vert"), shader(shader_type::frag, "imgui/imgui.frag")};
+    auto shaders2 = {shader(shader_type::vert, gfx::spirv::core::imgui::imgui_vert), shader(shader_type::frag, gfx::spirv::core::imgui::imgui_frag)};
 
     pipe_state::binding_layouts bnd;
     _pipe_state.state_bindings = &bnd;

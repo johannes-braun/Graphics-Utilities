@@ -1,5 +1,5 @@
 #version 460 core
-#include "../api.glsl"
+#include <gfx.shaders/api.glsl> //! #include "../../include/gfx.shaders/api.glsl"
 
 layout(location = 0) in vec2 uv;
 layout(location = 1) in vec4 color;

@@ -1,4 +1,4 @@
-//! #version 460 core
+//? #version 460 core
 
 const float inverse_max_uint = 1.f / float(0xFFFFFFFFu);
 const float random_primes[6] = {69019.f, 96013.f, 32159.f, 22783.f, 87011.f, 45263.f};

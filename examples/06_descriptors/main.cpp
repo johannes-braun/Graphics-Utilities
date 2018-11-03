@@ -3,7 +3,7 @@
 #include "graphics/graphics.hpp"
 #include "input.hpp"
 #include "mesh.hpp"
-#include "shaders/path.hpp"
+#include "shaders/shaders.hpp"
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -27,7 +27,7 @@
 #include <QWidget>
 #include <QWindow>
 #include <gfx.core/log.hpp>
-#include <gfx.shaders/path.hpp>
+#include <gfx.shaders/shaders.hpp>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 
@@ -391,8 +391,8 @@ int main(int argc, char** argv)
     };
     build_fbos();
 
-    const gfx::shader vert(gpu, gfx::shader_paths::core::screen_vert);
-    const gfx::shader frag(gpu, gfx::shader_paths::spectral::shaders::spectral_frag);
+    const gfx::shader vert(gpu, gfx::spirv::core::screen_vert);
+    const gfx::shader frag(gpu, gfx::spirv::spectral::shaders::spectral_frag);
 
     vk::GraphicsPipelineCreateInfo pipe_info;
     pipe_info.subpass    = 0;

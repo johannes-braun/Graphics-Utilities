@@ -1,0 +1,10 @@
+#pragma once
+#include <array>
+#include <cinttypes>
+
+namespace gfx { inline namespace v1 { namespace spirv {
+    namespace core {
+    namespace imgui { constexpr uint32_t imgui_frag[] = @GFX_SHADER_SOURCE_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_FRAG@; }
+    namespace imgui { constexpr uint32_t imgui_vert[] = @GFX_SHADER_SOURCE_SRC_GFX_SHADERS_SRC_IMGUI_IMGUI_VERT@; }
+    constexpr uint32_t screen_vert[] = @GFX_SHADER_SOURCE_SRC_GFX_SHADERS_SRC_SCREEN_VERT@;
+}}}}

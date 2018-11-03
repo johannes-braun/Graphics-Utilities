@@ -1,0 +1,16 @@
+set(current_executable 04_marching_squares)
+mark_as_executable(${current_executable})
+
+include(${CMAKE_MODULE_PATH}/spv/compile_spv.cmake)
+create_spirv(${current_executable}.shaders ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shaders.hpp msq)
+
+target_link_libraries(${current_executable} PRIVATE ${current_executable}.shaders)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.math)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs.defaults)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.file)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.legacy)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.shaders)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.legacy.executable)
+copy_dll(${current_executable} assimp::assimp)

@@ -1,5 +1,4 @@
 #pragma once
-#include <fstream>
 #include <functional>
 #include <iostream>
 #include <queue>
@@ -358,24 +357,12 @@ template<>
 struct enable_styling<std::ostream> : std::true_type
 {};
 
-inline std::ofstream& log_err()
-{
-    static std::ofstream o{"errors.log"};
-    return o;
-}
-
-inline std::ofstream& log_all()
-{
-    static std::ofstream o{"output.log"};
-    return o;
-}
-
 template<color_bg C, logger_label L = log_label("user")>
 logger<std::ostream> cclog{highlighter(expand_label(L), uint32_t(C)), false, std::cout};
 template<color_bg C, logger_label L = log_label("user")>
-logger<std::ostream, std::ofstream> calog{highlighter(expand_label(L), uint32_t(C)), false, std::cout, log_all()};
+logger<std::ostream> calog{highlighter(expand_label(L), uint32_t(C)), false, std::cout};
 template<color_bg C, logger_label L = log_label("user")>
-logger<std::ostream, std::ofstream, std::ofstream> celog{highlighter(expand_label(L), uint32_t(C)), true, std::cout, log_all(), log_err()};
+logger<std::ostream> celog{highlighter(expand_label(L), uint32_t(C)), true, std::cerr};
 
 inline static auto& dlog = cclog<color_bg(31), log_label("debug")>;
 inline static auto& hlog = cclog<color_bg(59), log_label("hint")>;

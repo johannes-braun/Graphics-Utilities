@@ -1,4 +1,5 @@
 #include <executable.hpp>
+#include "shaders/shaders.hpp"
 #include <random>
 
 void executable::init(gfx::context_options& opt)
@@ -51,7 +52,7 @@ void executable::run()
 
     gfx::pipe_state::binding_layouts layout;
 	layout.layouts.push_back(&base_binding_layout);
-    gfx::compute_pipeline boid_update(layout, gfx::shader(gfx::shader_type::comp, "12_boids/update.comp"));
+    gfx::compute_pipeline boid_update(layout, gfx::shader(gfx::shader_type::comp, gfx::spirv::boids::shaders::update_comp));
 
 	gfx::pipe_state::vertex_input input;
 	input.attributes.emplace_back(0, 0, gfx::rg32f, offsetof(boid, position));
@@ -75,9 +76,9 @@ void executable::run()
 	state.state_depth_stencil = &dep;
 
 	gfx::graphics_pipeline boid_render(state, pass_layout, {
-		gfx::shader(gfx::shader_type::vert, "12_boids/render_points.vert"),
-		gfx::shader(gfx::shader_type::geom, "12_boids/render_points.geom"),
-		gfx::shader(gfx::shader_type::frag, "12_boids/render_points.frag"),
+		gfx::shader(gfx::shader_type::vert, gfx::spirv::boids::shaders::render_points_vert),
+		gfx::shader(gfx::shader_type::geom, gfx::spirv::boids::shaders::render_points_geom),
+		gfx::shader(gfx::shader_type::frag, gfx::spirv::boids::shaders::render_points_frag),
 	});
 
     gfx::hbuffer<mouse> mouse_pos(1);

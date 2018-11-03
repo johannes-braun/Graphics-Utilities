@@ -1,0 +1,16 @@
+#pragma once
+#include <array>
+#include <cinttypes>
+
+namespace gfx { inline namespace v1 { namespace spirv {
+    namespace ibl {
+    namespace shaders { constexpr uint32_t brdf_lut_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_BRDF_LUT_FRAG@; }
+    namespace shaders { constexpr uint32_t cubemap_filter_diffuse_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_CUBEMAP_FILTER_DIFFUSE_FRAG@; }
+    namespace shaders { constexpr uint32_t cubemap_filter_specular_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_CUBEMAP_FILTER_SPECULAR_FRAG@; }
+    namespace shaders { constexpr uint32_t mesh_unique_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_MESH_UNIQUE_FRAG@; }
+    namespace shaders { constexpr uint32_t skybox_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_SKYBOX_FRAG@; }
+    namespace shaders { constexpr uint32_t cubemap_filter_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_CUBEMAP_FILTER_VERT@; }
+    namespace shaders { constexpr uint32_t mesh_unique_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_MESH_UNIQUE_VERT@; }
+    namespace shaders { constexpr uint32_t skybox_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_SKYBOX_VERT@; }
+    namespace shaders { constexpr uint32_t cubemap_filter_geom[] = @GFX_SHADER_SOURCE_EXAMPLES_13_IBL_SHADERS_CUBEMAP_FILTER_GEOM@; }
+}}}}

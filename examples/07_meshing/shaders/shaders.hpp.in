@@ -1,0 +1,13 @@
+#pragma once
+#include <array>
+#include <cinttypes>
+
+namespace gfx { inline namespace v1 { namespace spirv {
+    namespace meshing {
+    namespace shaders { constexpr uint32_t mesh_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_MESH_FRAG@; }
+    namespace shaders { constexpr uint32_t outline_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_OUTLINE_FRAG@; }
+    namespace shaders { constexpr uint32_t points_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_POINTS_FRAG@; }
+    namespace shaders { constexpr uint32_t mesh_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_MESH_VERT@; }
+    namespace shaders { constexpr uint32_t outline_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_OUTLINE_VERT@; }
+    namespace shaders { constexpr uint32_t points_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_POINTS_VERT@; }
+}}}}

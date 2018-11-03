@@ -1,5 +1,6 @@
 #include <executable.hpp>
 #include <unordered_set>
+#include "shaders/shaders.hpp"
 
 struct half_edge_structure
 {
@@ -120,15 +121,15 @@ void executable::run()
 
     gfx::graphics_pipeline mesh_pipeline(state, pass_layout,
                                          {
-                                             gfx::shader(gfx::shader_type::vert, "07_meshing/mesh.vert"),
-                                             gfx::shader(gfx::shader_type::frag, "07_meshing/mesh.frag"),
+                                             gfx::shader(gfx::shader_type::vert, gfx::spirv::meshing::shaders::mesh_vert),
+                                             gfx::shader(gfx::shader_type::frag, gfx::spirv::meshing::shaders::mesh_frag),
                                          });
 
 	rast.cull = gfx::cull_mode::front;
 	gfx::graphics_pipeline outline_pipeline(state, pass_layout,
 		{
-			gfx::shader(gfx::shader_type::vert, "07_meshing/outline.vert"),
-			gfx::shader(gfx::shader_type::frag, "07_meshing/outline.frag"),
+			gfx::shader(gfx::shader_type::vert, gfx::spirv::meshing::shaders::outline_vert),
+			gfx::shader(gfx::shader_type::frag, gfx::spirv::meshing::shaders::outline_frag),
 		});
 
 	state.state_input_assembly = &point_assembly;
@@ -139,8 +140,8 @@ void executable::run()
 	state.state_vertex_input = &input;
 	gfx::graphics_pipeline points_pipeline(state, pass_layout,
 		{
-			gfx::shader(gfx::shader_type::vert, "07_meshing/points.vert"),
-			gfx::shader(gfx::shader_type::frag, "07_meshing/points.frag"),
+			gfx::shader(gfx::shader_type::vert, gfx::spirv::meshing::shaders::points_vert),
+			gfx::shader(gfx::shader_type::frag, gfx::spirv::meshing::shaders::points_frag),
 		});
 
     gfx::hbuffer<glm::vec3> point_buffer(50000);

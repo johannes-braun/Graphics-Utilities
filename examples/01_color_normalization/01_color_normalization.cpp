@@ -1,4 +1,6 @@
 #include <executable.hpp>
+#include <gfx.shaders/shaders.hpp>
+#include "shaders/shaders.hpp"
 
 struct axis_transformation
 {
@@ -137,23 +139,23 @@ void executable::run()
     pipe_state.state_rasterizer     = &raster;
 
     auto shaders0 = {
-        gfx::shader{gfx::shader_type::vert, "01_color_normalization/points.vert"},
-        gfx::shader{gfx::shader_type::frag, "01_color_normalization/points.frag"},
+        gfx::shader{gfx::shader_type::vert, gfx::spirv::normalization::shaders::points_vert},
+        gfx::shader{gfx::shader_type::frag, gfx::spirv::normalization::shaders::points_frag},
     };
     gfx::graphics_pipeline points_pipe(pipe_state, pass_layout, shaders0);
 
     dep.depth_test_enable = false;
     auto shaders1         = {
-        gfx::shader{gfx::shader_type::vert, "01_color_normalization/center_point.vert"},
-        gfx::shader{gfx::shader_type::frag, "01_color_normalization/center_point.frag"},
+        gfx::shader{gfx::shader_type::vert, gfx::spirv::normalization::shaders::center_point_vert},
+        gfx::shader{gfx::shader_type::frag, gfx::spirv::normalization::shaders::center_point_frag},
     };
     gfx::graphics_pipeline center_pipe(pipe_state, pass_layout, shaders1);
 
     dep.depth_test_enable  = true;
     ass.primitive_topology = gfx::topology::line_list;
     auto shaders2          = {
-        gfx::shader{gfx::shader_type::vert, "01_color_normalization/gizmo.vert"},
-        gfx::shader{gfx::shader_type::frag, "01_color_normalization/gizmo.frag"},
+        gfx::shader{gfx::shader_type::vert, gfx::spirv::normalization::shaders::gizmo_vert},
+        gfx::shader{gfx::shader_type::frag, gfx::spirv::normalization::shaders::gizmo_frag},
     };
     gfx::graphics_pipeline gizmo_pipe(pipe_state, pass_layout, shaders2);
 
@@ -161,8 +163,8 @@ void executable::run()
     ass.primitive_topology = gfx::topology::triangle_list;
     raster.cull            = gfx::cull_mode::none;
     auto shaders3          = {
-        gfx::shader{gfx::shader_type::vert, "postfx/screen.vert"},
-        gfx::shader{gfx::shader_type::frag, "01_color_normalization/image.frag"},
+        gfx::shader{gfx::shader_type::vert, gfx::spirv::core::screen_vert},
+        gfx::shader{gfx::shader_type::frag, gfx::spirv::normalization::shaders::image_frag},
     };
     gfx::graphics_pipeline picture_pipe(pipe_state, pass_layout, shaders3);
 
@@ -176,15 +178,15 @@ void executable::run()
 
     raster.front_face = gfx::orientation::cw;
     auto shaders4     = {
-        gfx::shader{gfx::shader_type::vert, "01_color_normalization/cube.vert"},
-        gfx::shader{gfx::shader_type::frag, "01_color_normalization/cube.frag"},
+        gfx::shader{gfx::shader_type::vert, gfx::spirv::normalization::shaders::cube_vert},
+		gfx::shader{gfx::shader_type::frag, gfx::spirv::normalization::shaders::cube_frag},
     };
     gfx::graphics_pipeline cube_back_pipe(pipe_state, pass_layout, shaders4);
 
     raster.front_face = gfx::orientation::ccw;
     auto shaders5     = {
-        gfx::shader{gfx::shader_type::vert, "01_color_normalization/cube.vert"},
-        gfx::shader{gfx::shader_type::frag, "01_color_normalization/cube_front.frag"},
+        gfx::shader{gfx::shader_type::vert, gfx::spirv::normalization::shaders::cube_vert},
+        gfx::shader{gfx::shader_type::frag, gfx::spirv::normalization::shaders::cube_front_frag},
     };
     gfx::pipe_state::blending blend;
     pipe_state.state_blending                     = &blend;

@@ -1,4 +1,6 @@
 #include <executable.hpp>
+#include "shaders/shaders.hpp"
+#include <gfx.shaders/shaders.hpp>
 
 struct material
 {
@@ -107,9 +109,9 @@ void executable::run()
 		filter_state.state_render_area    = &filter_area;
 
 		gfx::graphics_pipeline filter_pipeline(filter_state, prefilter_pass_layout,
-			{ gfx::shader(gfx::shader_type::vert, "13_ibl/cubemap_filter.vert"),
-			 gfx::shader(gfx::shader_type::geom, "13_ibl/cubemap_filter.geom"),
-			 gfx::shader(gfx::shader_type::frag, "13_ibl/cubemap_filter_diffuse.frag") });
+			{ gfx::shader(gfx::shader_type::vert, gfx::spirv::ibl::shaders::cubemap_filter_vert),
+			 gfx::shader(gfx::shader_type::geom,  gfx::spirv::ibl::shaders::cubemap_filter_geom),
+			 gfx::shader(gfx::shader_type::frag, gfx::spirv::ibl::shaders::cubemap_filter_diffuse_frag) });
 
 		gfx::binding_layout filter_layout_spec;
 		filter_layout_spec.push(gfx::binding_type::sampled_image).push(gfx::binding_type::uniform_buffer);
@@ -117,9 +119,9 @@ void executable::run()
 		filter_state.state_render_area = nullptr;
 
 		gfx::graphics_pipeline specular_pipeline(filter_state, prefilter_pass_layout,
-			{ gfx::shader(gfx::shader_type::vert, "13_ibl/cubemap_filter.vert"),
-			 gfx::shader(gfx::shader_type::geom, "13_ibl/cubemap_filter.geom"),
-			 gfx::shader(gfx::shader_type::frag, "13_ibl/cubemap_filter_specular.frag") });
+			{ gfx::shader(gfx::shader_type::vert, gfx::spirv::ibl::shaders::cubemap_filter_vert),
+			 gfx::shader(gfx::shader_type::geom,  gfx::spirv::ibl::shaders::cubemap_filter_geom),
+			 gfx::shader(gfx::shader_type::frag, gfx::spirv::ibl::shaders::cubemap_filter_specular_frag) });
 
 
 		gfx::binding_set filter_set(filter_layout);
@@ -188,7 +190,7 @@ void executable::run()
 		gfx::viewport(0, 0, 512, 512, 0.01f, 100.f);
 		gfx::graphics_pipeline lut_pipeline(
 			lut_state, lut_pass_layout,
-			{ gfx::shader(gfx::shader_type::vert, "postfx/screen.vert"), gfx::shader(gfx::shader_type::frag, "13_ibl/brdf_lut.frag") });
+			{ gfx::shader(gfx::shader_type::vert, gfx::spirv::core::screen_vert), gfx::shader(gfx::shader_type::frag, gfx::spirv::ibl::shaders::brdf_lut_frag) });
 
 		gfx::commands cmd_lut(gfx::commands_type::graphics);
 		cmd_lut.reset();
@@ -255,13 +257,13 @@ void executable::run()
 
     gfx::graphics_pipeline mesh_pipeline(
         mesh_state, pass_layout,
-        {gfx::shader(gfx::shader_type::vert, "13_ibl/mesh_unique.vert"), gfx::shader(gfx::shader_type::frag, "13_ibl/mesh_unique.frag")});
+        {gfx::shader(gfx::shader_type::vert, gfx::spirv::ibl::shaders::mesh_unique_vert), gfx::shader(gfx::shader_type::frag, gfx::spirv::ibl::shaders::mesh_unique_frag)});
 
     bindings.layouts[0] = &cubemap_binding_layout;
 
     gfx::graphics_pipeline cubemap_pipeline(
         cubemap_state, pass_layout,
-        {gfx::shader(gfx::shader_type::vert, "13_ibl/skybox.vert"), gfx::shader(gfx::shader_type::frag, "13_ibl/skybox.frag")});
+        {gfx::shader(gfx::shader_type::vert, gfx::spirv::ibl::shaders::skybox_vert), gfx::shader(gfx::shader_type::frag, gfx::spirv::ibl::shaders::skybox_frag)});
 
     struct lighting
     {

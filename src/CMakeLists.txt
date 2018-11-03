@@ -3,8 +3,8 @@ add_subdirectory(gfx.math)
 add_subdirectory(gfx.file)
 add_subdirectory(gfx.ecs)
 add_subdirectory(gfx.legacy)
+add_subdirectory(gfx.legacy.executable)
 add_subdirectory(gfx.ecs.defaults)
-
 add_subdirectory(gfx.shaders)
 
 #add_subdirectory(shaders)

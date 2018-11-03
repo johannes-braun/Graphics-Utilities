@@ -1,0 +1,17 @@
+#pragma once
+#include <array>
+#include <cinttypes>
+
+namespace gfx { inline namespace v1 { namespace spirv {
+    namespace normalization {
+    namespace shaders { constexpr uint32_t center_point_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_CENTER_POINT_FRAG@; }
+    namespace shaders { constexpr uint32_t cube_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_CUBE_FRAG@; }
+    namespace shaders { constexpr uint32_t cube_front_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_CUBE_FRONT_FRAG@; }
+    namespace shaders { constexpr uint32_t gizmo_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_GIZMO_FRAG@; }
+    namespace shaders { constexpr uint32_t image_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_IMAGE_FRAG@; }
+    namespace shaders { constexpr uint32_t points_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_POINTS_FRAG@; }
+    namespace shaders { constexpr uint32_t center_point_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_CENTER_POINT_VERT@; }
+    namespace shaders { constexpr uint32_t cube_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_CUBE_VERT@; }
+    namespace shaders { constexpr uint32_t gizmo_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_GIZMO_VERT@; }
+    namespace shaders { constexpr uint32_t points_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_01_COLOR_NORMALIZATION_SHADERS_POINTS_VERT@; }
+}}}}

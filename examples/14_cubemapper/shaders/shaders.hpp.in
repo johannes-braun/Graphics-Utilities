@@ -1,0 +1,9 @@
+#pragma once
+#include <array>
+#include <cinttypes>
+
+namespace gfx { inline namespace v1 { namespace spirv {
+    namespace cubemapper {
+    namespace shaders { constexpr uint32_t skybox_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_14_CUBEMAPPER_SHADERS_SKYBOX_FRAG@; }
+    namespace shaders { constexpr uint32_t skybox_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_14_CUBEMAPPER_SHADERS_SKYBOX_VERT@; }
+}}}}

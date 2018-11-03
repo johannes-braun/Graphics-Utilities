@@ -1,0 +1,11 @@
+#pragma once
+#include <array>
+#include <cinttypes>
+
+namespace gfx { inline namespace v1 { namespace spirv {
+    namespace boids {
+    namespace shaders { constexpr uint32_t render_points_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_12_BOIDS_SHADERS_RENDER_POINTS_FRAG@; }
+    namespace shaders { constexpr uint32_t render_points_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_12_BOIDS_SHADERS_RENDER_POINTS_VERT@; }
+    namespace shaders { constexpr uint32_t render_points_geom[] = @GFX_SHADER_SOURCE_EXAMPLES_12_BOIDS_SHADERS_RENDER_POINTS_GEOM@; }
+    namespace shaders { constexpr uint32_t update_comp[] = @GFX_SHADER_SOURCE_EXAMPLES_12_BOIDS_SHADERS_UPDATE_COMP@; }
+}}}}

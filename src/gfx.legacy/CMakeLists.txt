@@ -31,6 +31,7 @@ configure_file(src/graphics/shader_include.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/sr
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.file)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.shaders)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC glfw::glfw)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::mygl)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::glsp)

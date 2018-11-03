@@ -1,4 +1,5 @@
 #include <executable.hpp>
+#include "shaders/shaders.hpp"
 
 void executable::init(gfx::context_options& opt)
 {
@@ -38,17 +39,17 @@ void executable::run()
     state.state_bindings       = &bindings;
 
     gfx::graphics_pipeline pipeline(state, pass_layout,
-                                    {gfx::shader(gfx::shader_type::vert, "04_marching_squares/seg.vert"),
-                                     gfx::shader(gfx::shader_type::geom, "04_marching_squares/seg.geom"),
-                                     gfx::shader(gfx::shader_type::frag, "04_marching_squares/seg.frag")});
+                                    {gfx::shader(gfx::shader_type::vert, gfx::spirv::msq::shaders::seg_vert),
+                                     gfx::shader(gfx::shader_type::geom, gfx::spirv::msq::shaders::seg_geom),
+                                     gfx::shader(gfx::shader_type::frag, gfx::spirv::msq::shaders::seg_frag)});
 
     context->key_callback.add([&](GLFWwindow*, int k, int s, int a, int m) {
         if (k == GLFW_KEY_R && a == GLFW_PRESS)
         {
             pipeline = gfx::graphics_pipeline(state, pass_layout,
-                                              {gfx::shader(gfx::shader_type::vert, "04_marching_squares/seg.vert"),
-                                               gfx::shader(gfx::shader_type::geom, "04_marching_squares/seg.geom"),
-                                               gfx::shader(gfx::shader_type::frag, "04_marching_squares/seg.frag")});
+                                              { gfx::shader(gfx::shader_type::vert, gfx::spirv::msq::shaders::seg_vert),
+									 gfx::shader(gfx::shader_type::geom, gfx::spirv::msq::shaders::seg_geom),
+									 gfx::shader(gfx::shader_type::frag, gfx::spirv::msq::shaders::seg_frag)});
         }
     });
 

@@ -2,9 +2,16 @@
 #include <context.hpp>
 #include "shader_include.hpp"
 #include <glsp/glsp.hpp>
+#include <fstream>
 
 namespace gfx {
 inline namespace v1 {
+shader::shader(shader_type stage, const gsl::span<const uint32_t>& spirv) : _stage(stage)
+{
+	_data.resize(spirv.size_bytes());
+	memcpy(_data.data(), spirv.data(), spirv.size_bytes());
+}
+
 shader::shader(shader_type stage, const std::filesystem::path& path) : _stage(stage), _path(path)
 {
     std::string gapi_str;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "graphics/device_image.hpp"
-#include <gfx/file/file.hpp>
+#include <gfx.file/file.hpp>
 #include <string_view>
 #include <unordered_map>
 
