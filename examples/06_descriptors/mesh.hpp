@@ -106,11 +106,17 @@ public:
         instance_info_type info;
     };
 
-    mesh_instantiator(mesh_allocator& alloc) : _alloc(&alloc), _instance_descriptions(*alloc._device) {}
+    mesh_instantiator(mesh_allocator& alloc) : _alloc(&alloc), _instance_descriptions(*alloc._device, 1) {}
+
+	void clear()
+	{
+		_instance_descriptions.clear();
+		_instance_descriptions.emplace_back();
+	}
 
     void instantiate(const mesh_handle& m, instance_info_type info)
     {
-        basic_instance new_instance;
+		basic_instance& new_instance = _instance_descriptions.emplace_back();
         new_instance.base_index     = m._mesh->_base_index;
         new_instance.index_count    = m._mesh->_index_count;
         new_instance.base_instance  = 0;
@@ -120,11 +126,6 @@ public:
         new_instance.base_bvh_node  = m._mesh->_base_bvh_node;
         new_instance.bvh_node_count = m._mesh->_bvh_node_count;
         new_instance.info           = std::move(info);
-
-        _instance_descriptions.insert(
-            std::upper_bound(_instance_descriptions.begin(), _instance_descriptions.end(), new_instance,
-                             [](const basic_instance& a, const basic_instance& b) { return a.base_index < b.base_index; }),
-            new_instance);
     }
 
     const gfx::mapped<basic_instance>& instances() const noexcept { return _instance_descriptions; }

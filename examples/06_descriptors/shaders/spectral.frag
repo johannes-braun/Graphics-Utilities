@@ -1,6 +1,7 @@
 #version 460 core
 //! #extension GL_KHR_vulkan_glsl : enable
 const float PI = 3.14159265359;
+#include "geometry.glsl"
 
 layout(location=0) in vec2 uv;
 
@@ -23,52 +24,13 @@ const int output_norm_samples = 1;
 
 layout(set=0, binding=1) uniform sampler2D bokeh_shape;
 
-struct bvh_node
-{
-    vec4 bounds_min;
-    vec4 bounds_max;
-    uint type;
-    uint left;
-    uint right;
-    uint parent;
-};
-struct vertex
-{
-	vec3 position;
-	uint metadata_position;
-	vec3 normal;
-	uint metadata_normal;
-	vec2 uv;
-	uint metadata_uv;
-};
-
-const uint bsdf_opaque = 0;
-const uint bsdf_transparent = 1;
-const uint bsdf_emissive = 2;
-struct instance
-{
-    uint index_count;
-    uint instance_count;
-    uint base_index;
-    int  base_vertex;
-    uint base_instance;
-    uint base_bvh_node;
-    uint vertex_count;
-    uint bvh_node_count;
-	mat4 transform;
-	uint color;
-	float roughness;
-	float reflectivity;
-	uint bsdf;
-};
-
 layout(set = 1, binding = 0) restrict readonly buffer ModelBVH
 {
     bvh_node nodes[];
 } model_bvh;
 layout(set = 1, binding = 1) restrict readonly buffer ModelVertices
 {
-    vertex model_vertices[];
+    vertex_t model_vertices[];
 };
 layout(set = 1, binding = 2) restrict readonly buffer ModelIndices
 {
@@ -76,7 +38,7 @@ layout(set = 1, binding = 2) restrict readonly buffer ModelIndices
 };
 layout(set = 1, binding = 3) restrict readonly buffer ModelInstances
 {
-    instance model_instances[];
+    instance_t model_instances[];
 };
 
 layout(std430, set=2, binding=0) restrict readonly buffer Globals
@@ -93,6 +55,7 @@ layout(set = 2, binding = 3) uniform sampler2D accumulation_image;
 layout(set = 2, binding = 4) uniform sampler2D bounce_image;
 layout(set = 2, binding = 5) uniform sampler2D positions_bounce_image;
 layout(set = 2, binding = 6) uniform sampler2D directions_sample_image;
+layout(set = 2, binding = 7) uniform sampler2D randoms_image;
 
 ////////////////////////////////////////////////////////////////////////////////////
 ////
@@ -104,6 +67,7 @@ layout(location = 1) out vec4 accumulation_output;
 layout(location = 2) out vec4 bounce_accumulation_output;
 layout(location = 3) out vec4 positions_bounce_output;
 layout(location = 4) out vec4 directions_sample_output;
+layout(location = 5) out vec4 randoms_output;
 
 #include "bvh.glsl"
 #include "random.glsl"
@@ -116,16 +80,11 @@ const mat3 cie_rgb_to_xyz = mat3(0.4887180,  0.3106803,  0.2006017,
 								 0.1762044,  0.8129847,  0.0108109,
 								 0.0000000,  0.0102048,  0.9897952);
 
-struct ray_state_t
-{
-	vec3 origin;
-	vec3 direction;
-	int bounce_n;
-	int sample_n;
-	float frequency;
-	float intensity;
-	vec4 accum_color;
-} ray_state;
+ray_state_t ray_state;
+vertex_t	hit_state;
+instance_t	instance_state;
+
+#include "bsdf.glsl"
 
 vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out float y)
 {
@@ -158,38 +117,46 @@ float gauss(float sigma, float e, float x)
 	return 1/(sigma * sqrt(2 * PI)) * exp(-0.5f * pow((x - e) / sigma, 2));
 }
 
-void load_state(vec2 random_value)
+void load_state()
 {
 	ivec2 pixel    = ivec2(gl_FragCoord.xy);
 	vec4 packed_positions_bounces = texelFetch(positions_bounce_image, pixel, 0);
 	vec4 packed_directions_samples = texelFetch(directions_sample_image, pixel, 0);
 	vec4 packed_bounce_accum = texelFetch(bounce_image, pixel, 0);
+	vec4 accum_prob = texelFetch(accumulation_image, pixel, 0);
+	vec4 randoms = texelFetch(randoms_image, pixel, 0);
+	
+	const int max_samples = 800;
+	init_random(ivec2(0, 0) + pixel, max_samples * globals.random);
 
 	if(globals.rendered_count == 1)
 	{
+		randoms.w = ray_state.random.w = uintBitsToFloat(_rng_state);
 		ray_state.bounce_n = 0;
 		ray_state.sample_n = 0;
-		ray_state.accum_color = vec4(0);
+		ray_state.accum_color = vec3(0);
 	}
 	else
 	{
 		ray_state.bounce_n = floatBitsToInt(packed_positions_bounces.w);
 		ray_state.sample_n = floatBitsToInt(packed_directions_samples.w);
-		ray_state.accum_color = texelFetch(accumulation_image, pixel, 0);
+		ray_state.accum_color = accum_prob.rgb;
 	}
 
-	if(ray_state.bounce_n == 0)
+	if(ray_state.bounce_n == 0) 
 	{
+		ray_state.random.xy = random_hammersley_2d(int(next_random() * max_samples + ray_state.sample_n * 641) % max_samples, 1.f/max_samples);
+		ray_state.random.w = uintBitsToFloat(_rng_state);
+		ray_state.random.z =  max_samples;
+	
 		const mat4 inv_vp = inverse(camera.projection * mat4(mat3(camera.view)));
 		ivec2 img_size = ivec2(globals.viewport);
-		vec2 uvx = vec2(uv + ((random_value - 0.5f) / vec2(img_size)));
+		vec2 uvx = vec2(uv + ((ray_state.random.xy - 0.5f) / vec2(img_size)));
 		ray_state.direction = vec3(inv_vp * vec4(uvx * 2 - 1, 0.f, 1.f));
 		ray_state.origin = camera.position;
 
 		// Apply DOF
-		vec2 random_value_dof = vec2(next_random(), next_random());
-		//random_hammersley_2d(int(next_random() * 2825037277) % (2825037277),
-			//					 1.f / (2825037277));
+		vec2 random_value_dof = ray_state.random.xy;
 
 		const vec3 focal_point = ray_state.origin + focal_length * ray_state.direction;
 		vec2 offset;
@@ -201,49 +168,33 @@ void load_state(vec2 random_value)
 		const float bokeh_intensity = texture(bokeh_shape, vec2(0.5f) + offset).r;
 
 		ray_state.direction = normalize(ray_state.direction);
-		ray_state.frequency = from_nanometers(400 + 360 * next_random());
-		ray_state.intensity = bokeh_intensity * sensor_response;
+		ray_state.frequency = globals.random * next_random();
+		ray_state.intensity_xyz = vec3(bokeh_intensity * sensor_response);
+		ray_state.probability = 1.f;
 	}
 	else
 	{
 		ray_state.direction = packed_directions_samples.xyz;
 		ray_state.origin = packed_positions_bounces.xyz;
 		ray_state.frequency = packed_bounce_accum.r;
-		ray_state.intensity = packed_bounce_accum.g;
+		ray_state.intensity_xyz = packed_bounce_accum.gba;
+		ray_state.probability = accum_prob.a;
+		ray_state.random = randoms.xyzw;
 	}
 }
 
 void store_state()
 {
-	accumulation_output = ray_state.accum_color;
-	bounce_accumulation_output = vec4(ray_state.frequency, ray_state.intensity, 0, 0);
+	accumulation_output = vec4(ray_state.accum_color, ray_state.probability);
+	bounce_accumulation_output = vec4(ray_state.frequency, ray_state.intensity_xyz);
 	positions_bounce_output = vec4(ray_state.origin, intBitsToFloat(ray_state.bounce_n));
 	directions_sample_output = vec4(ray_state.direction, intBitsToFloat(ray_state.sample_n));
+	randoms_output = ray_state.random;
 }
 
 vec3 freq_to_xyz(float freq)
 {
 	return texture(cie_spectrum, freq).xyz;
-}
-
-float ior(float freq)
-{
-	float x = freq;
-	float i = pow((1/(x+0.2) + pow((x+0.2), 2)) / 2 + 0.5, 0.4) + 0.5f;
-	return i;
-}
-
-void emit_ray(vec3 origin, vec3 direction, float intensity)
-{
-	ray_state.direction = direction;
-	ray_state.origin = origin + 1e-4f * ray_state.direction;
-	ray_state.bounce_n += 1;
-	ray_state.intensity *= intensity;
-}
-
-void end_ray()
-{
-	ray_state.bounce_n = 1000;
 }
 
 void main()
@@ -252,104 +203,61 @@ void main()
     ivec2 img_size = ivec2(globals.viewport);
     if (any(greaterThanEqual(pixel, img_size))) return;
 
-    init_random(ivec2(0, 0) + pixel, int(3000 * globals.random));
-//    vec2 random_value =
-//        random_hammersley_2d(int(next_random() * 8344759) % (8344759),
-//                             1.f / (8344759));
-	vec2 random_value = vec2(next_random(), next_random());
-
-	load_state(random_value);
+	load_state();
 	
     bvh_result hit = bvh_hit_instanced(ray_state.origin.xyz, ray_state.direction.xyz, 1.f / 0.f);
     if (hit.hits)
     {
-		instance inst = model_instances[hit.instance];
-		uint v0  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 1];
-		uint v1  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 2];
-		uint v2  = uint(inst.base_vertex) + model_indices[inst.base_index + hit.near_triangle * 3 + 0];
-		vertex hit_vert;
-		hit_vert.position = (inst.transform * vec4(hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
+		instance_state = model_instances[hit.instance];
+		uint v0  = uint(instance_state.base_vertex) + model_indices[instance_state.base_index + hit.near_triangle * 3 + 1];
+		uint v1  = uint(instance_state.base_vertex) + model_indices[instance_state.base_index + hit.near_triangle * 3 + 2];
+		uint v2  = uint(instance_state.base_vertex) + model_indices[instance_state.base_index + hit.near_triangle * 3 + 0];
+		hit_state.position = (instance_state.transform * vec4(hit.near_barycentric.x * model_vertices[v0].position + hit.near_barycentric.y * model_vertices[v1].position
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].position, 1)).xyz;
-		hit_vert.normal = normalize((inst.transform * vec4(hit.near_barycentric.x * model_vertices[v0].normal + hit.near_barycentric.y * model_vertices[v1].normal
+		hit_state.normal = normalize((instance_state.transform * vec4(hit.near_barycentric.x * model_vertices[v0].normal + hit.near_barycentric.y * model_vertices[v1].normal
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].normal, 0)).xyz);
-		hit_vert.uv = hit.near_barycentric.x * model_vertices[v0].uv + hit.near_barycentric.y * model_vertices[v1].uv
+		hit_state.uv = hit.near_barycentric.x * model_vertices[v0].uv + hit.near_barycentric.y * model_vertices[v1].uv
 					+ (1 - hit.near_barycentric.x - hit.near_barycentric.y) * model_vertices[v2].uv;
-		bool incoming = dot(hit_vert.normal, ray_state.direction.xyz) < 0;
-		hit_vert.normal = faceforward(hit_vert.normal, ray_state.direction.xyz, hit_vert.normal);
+		hit_state.metadata_position = dot(hit_state.normal, ray_state.direction.xyz) < 0 ? 1 : 0;
+		hit_state.normal = faceforward(hit_state.normal, ray_state.direction.xyz, hit_state.normal);
 		
-		vec3 new_direction;
+		bsdf_result bsdf = compute_bsdf();
+
+		ray_state.direction = normalize(bsdf.sampled_direction);
+		ray_state.origin = hit_state.position + 1e-4f * ray_state.direction;
+
+		ray_state.probability *= bsdf.pdf;
+		ray_state.intensity_xyz *= bsdf.bsdf;
+		ray_state.bounce_n += 1;
 		
-		if(inst.bsdf == bsdf_emissive)
-		{
-			vec3 xyz = transpose(cie_rgb_to_xyz) * unpackUnorm4x8(inst.color).rgb;
-			float ava = dot(transpose(cie_xyz_to_rgb) * freq_to_xyz(ray_state.frequency), transpose(cie_xyz_to_rgb) * xyz);
-			ray_state.accum_color += vec4(inst.reflectivity * ava * freq_to_xyz(ray_state.frequency), 0);
+		#define pack_color(v4) (v4)
+		//100.f*atan(0.01f*(v4))
+		#define unpack_color(v4) (v4)
+		//100.f*tan(0.01f*(v4))
+
+		if(ray_state.bounce_n > 16 || ray_state.probability < 0.001f)
+		{       
+			vec3 env = pow(clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f), vec3(1.f));
+			ray_state.accum_color += pack_color(vec3((transpose(cie_rgb_to_xyz) * freq_to_xyz(ray_state.frequency)) * ray_state.intensity_xyz / max(ray_state.probability, 0.00001f)));
 			ray_state.sample_n += 1;
 			ray_state.bounce_n = 0;
 		}
-		else
-		{
-			float roughness = inst.roughness;
-			float alpha2    = roughness * roughness;
-			float ior_f = ior(ray_state.frequency);
-
-			float ior_in = incoming ? 1.f : ior_f;
-			float ior_out = incoming ? ior_f : 1.f;
-			float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
-			vec3 fresnel = F0 + (max(vec3(1.0 - inst.reflectivity) * F0, F0) - F0) * pow(1.0 - max(dot(-ray_state.direction, hit_vert.normal), 0), 5.0);
-			
-			vec3 msnormal = normalize(local_to_world(ggx_importance_hemisphere(ggx_importance_sample(random_value, alpha2)), hit_vert.normal));
-			if((fresnel.x + fresnel.y + fresnel.z)/3.f <= next_random())
-			{
-				if(inst.bsdf == bsdf_transparent)
-					new_direction     = refract(ray_state.direction, msnormal, ior_in / ior_out);
-				else
-				{
-					new_direction = normalize(local_to_world(sample_cosine_hemisphere(random_value), hit_vert.normal));
-					vec3 rgb = unpackUnorm4x8(inst.color).rgb;
-					vec3 xyz = normalize(transpose(cie_rgb_to_xyz) * rgb);
-
-//					float d = distance(normalize(rgb), normalize(transpose(cie_xyz_to_rgb)* freq_to_xyz(ray_state.frequency)));
-//					d = 1/(32*d+1);
-					ray_state.intensity *= 1.f;
-				}
-			}
-			else
-			{
-				new_direction     = reflect(ray_state.direction, msnormal);
-			}
-
-			new_direction = normalize(new_direction);
-			ray_state.bounce_n += 1;
-		}
-
-		ray_state.direction = new_direction;
-		ray_state.origin = hit_vert.position + 1e-4f * ray_state.direction;
+	}  
+	else 
+	{   
+		vec3 env = pow(clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f), vec3(1.f));
 		
-		#define pack_color(v4) 10.f*atan(0.1f*(v4))
-		#define unpack_color(v4) 10.f*tan(0.1f*(v4))
-
-		if(ray_state.bounce_n > 12 || ray_state.intensity < 0.01f)
-		{
-			vec3 env = clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f);
-			ray_state.accum_color += pack_color(ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1));
-			ray_state.sample_n += 1;
-			ray_state.bounce_n = 0;
-		}
-	}
-	else
-	{
-		vec3 env = clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f);
-		ray_state.accum_color += pack_color(ray_state.intensity * vec4(freq_to_xyz(ray_state.frequency) * (transpose(cie_rgb_to_xyz) * env), 1));
+		ray_state.intensity_xyz *= (env);
+		ray_state.accum_color += pack_color(vec3((transpose(cie_rgb_to_xyz) * freq_to_xyz(ray_state.frequency)) * ray_state.intensity_xyz / ray_state.probability));
 	
 		ray_state.sample_n += 1;
 		ray_state.bounce_n = 0;	
 	}
-	
+	 
 	switch(globals.render_output)
-	{
+	{ 
 	case output_default:
-		color = vec4(transpose(cie_xyz_to_rgb) * unpack_color((ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb), 1);
+		color = vec4(unpack_color((ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb), 1);
 		color = 1.f - exp(-color * exposure);
 		color = pow(color, vec4(1.f / gamma));
 		break;

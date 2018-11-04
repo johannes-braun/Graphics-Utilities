@@ -14,9 +14,9 @@ float random_value(int seed)
     _rng_state += random_wang_hash(uint(seed));
     return clamp(float(random_xorshift()) * inverse_max_uint, 0.f, 1.f);
 }
-void init_random(ivec2 pixel, float seed)
+float init_random(ivec2 pixel, float seed)
 {
-    random_value(int(pixel.x * random_primes[0] + pixel.y * random_primes[1] + random_primes[2] * seed));
+    return random_value(int(pixel.x * random_primes[0] + pixel.y * random_primes[1] + random_primes[2] * seed));
 }
 float next_random()
 {

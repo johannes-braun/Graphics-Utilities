@@ -12,11 +12,17 @@ namespace gfx {
 inline namespace v1 {
 struct transform_component : gfx::ecs::component<transform_component>
 {
+	transform_component() = default;
+	transform_component(gfx::transform value) : value(std::move(value)) {}
+
     gfx::transform value;
 };
 
 struct camera_component : ecs::component<camera_component>
 {
+	camera_component() = default;
+	camera_component(projection value) : projection(std::move(value)) {}
+
     projection projection{glm::radians(70.f), 1280, 720, 0.01f, 1000.f, false, true};
 };
 

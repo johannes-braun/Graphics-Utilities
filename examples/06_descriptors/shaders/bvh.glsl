@@ -1,4 +1,22 @@
 //? #version 460 core
+//? #include "geometry.glsl"
+
+//? layout(set = 1, binding = 0) restrict readonly buffer ModelBVH
+//? {
+//?     bvh_node nodes[];
+//? } model_bvh;
+//? layout(set = 1, binding = 1) restrict readonly buffer ModelVertices
+//? {
+//?     vertex_t model_vertices[];
+//? };
+//? layout(set = 1, binding = 2) restrict readonly buffer ModelIndices
+//? {
+//?     uint model_indices[];
+//? };
+//? layout(set = 1, binding = 3) restrict readonly buffer ModelInstances
+//? {
+//?     instance_t model_instances[];
+//? };
 
 const uint bvh_node_type_inner = 0;
 const uint bvh_node_type_leaf  = 1;
@@ -136,7 +154,7 @@ bvh_result bvh_hit(vec3 origin, vec3 direction, const float max_distance, uint i
     result.hits            = false;
     float current_distance = 0;
 	
-	instance inst = model_instances[instance_id];
+	instance_t inst = model_instances[instance_id];
 	mat4 inv_tf = inverse(inst.transform);
 	origin		= (inv_tf * vec4(origin, 1)).xyz;
 	direction	= ((inv_tf * vec4(direction, 0)).xyz);
