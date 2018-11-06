@@ -68,6 +68,7 @@ layout(location = 2) out vec4 bounce_accumulation_output;
 layout(location = 3) out vec4 positions_bounce_output;
 layout(location = 4) out vec4 directions_sample_output;
 layout(location = 5) out vec4 randoms_output;
+layout(location = 6) out vec4 fp_output;
 
 #include "bvh.glsl"
 #include "random.glsl"
@@ -126,7 +127,7 @@ void load_state()
 	vec4 accum_prob = texelFetch(accumulation_image, pixel, 0);
 	vec4 randoms = texelFetch(randoms_image, pixel, 0);
 	
-	const int max_samples = 800;
+	const int max_samples = 1600;
 	init_random(ivec2(0, 0) + pixel, max_samples * globals.random);
 
 	if(globals.rendered_count == 1)
@@ -151,7 +152,7 @@ void load_state()
 	
 		const mat4 inv_vp = inverse(camera.projection * mat4(mat3(camera.view)));
 		ivec2 img_size = ivec2(globals.viewport);
-		vec2 uvx = vec2(uv + ((ray_state.random.xy - 0.5f) / vec2(img_size)));
+		vec2 uvx = vec2(uv + (2*(ray_state.random.xy - 0.5f) / vec2(img_size)));
 		ray_state.direction = vec3(inv_vp * vec4(uvx * 2 - 1, 0.f, 1.f));
 		ray_state.origin = camera.position;
 
@@ -168,7 +169,7 @@ void load_state()
 		const float bokeh_intensity = texture(bokeh_shape, vec2(0.5f) + offset).r;
 
 		ray_state.direction = normalize(ray_state.direction);
-		ray_state.frequency = globals.random * next_random();
+		ray_state.frequency = next_random();
 		ray_state.intensity_xyz = vec3(bokeh_intensity * sensor_response);
 		ray_state.probability = 1.f;
 	}
@@ -229,16 +230,12 @@ void main()
 		ray_state.probability *= bsdf.pdf;
 		ray_state.intensity_xyz *= bsdf.bsdf;
 		ray_state.bounce_n += 1;
-		
-		#define pack_color(v4) (v4)
-		//100.f*atan(0.01f*(v4))
-		#define unpack_color(v4) (v4)
-		//100.f*tan(0.01f*(v4))
 
 		if(ray_state.bounce_n > 16 || ray_state.probability < 0.001f)
 		{       
 			vec3 env = pow(clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f), vec3(1.f));
-			ray_state.accum_color += pack_color(vec3((transpose(cie_rgb_to_xyz) * freq_to_xyz(ray_state.frequency)) * ray_state.intensity_xyz / max(ray_state.probability, 0.00001f)));
+			vec3 add_result = vec3((transpose(cie_rgb_to_xyz) * freq_to_xyz(ray_state.frequency)) * ray_state.intensity_xyz / ray_state.probability);
+			ray_state.accum_color += add_result;
 			ray_state.sample_n += 1;
 			ray_state.bounce_n = 0;
 		}
@@ -248,8 +245,8 @@ void main()
 		vec3 env = pow(clamp(texture(environment_map, ray_state.direction).rgb, 0, 1000.f), vec3(1.f));
 		
 		ray_state.intensity_xyz *= (env);
-		ray_state.accum_color += pack_color(vec3((transpose(cie_rgb_to_xyz) * freq_to_xyz(ray_state.frequency)) * ray_state.intensity_xyz / ray_state.probability));
-	
+		vec3 add_result = vec3((transpose(cie_rgb_to_xyz) * freq_to_xyz(ray_state.frequency)) * ray_state.intensity_xyz / ray_state.probability);
+		ray_state.accum_color += add_result;
 		ray_state.sample_n += 1;
 		ray_state.bounce_n = 0;	
 	}
@@ -257,9 +254,10 @@ void main()
 	switch(globals.render_output)
 	{ 
 	case output_default:
-		color = vec4(unpack_color((ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb), 1);
+		color = vec4((ray_state.accum_color / max(ray_state.sample_n + 1, 1)).rgb, 1);
 		color = 1.f - exp(-color * exposure);
 		color = pow(color, vec4(1.f / gamma));
+		fp_output = color;
 		break;
 	case output_norm_samples:
 		color = vec4(vec3(ray_state.sample_n / float(globals.rendered_count)), 1.f);

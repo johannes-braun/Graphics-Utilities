@@ -11,7 +11,7 @@ double errFunc(const Vector2d& pt, const Matrix<double, 2, 1>& x, Matrix<double,
 	// TODO
 	const auto diff = pt - x;
 	const auto squared_length = diff.dot(diff);
-	*jac = diff.transpose();
+	*jac = (2*diff).transpose();
 	return squared_length;
 }
 

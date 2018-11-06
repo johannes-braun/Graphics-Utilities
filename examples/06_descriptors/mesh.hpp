@@ -80,9 +80,9 @@ private:
     gfx::mapped<gfx::index32>      _staging_index_buffer;
     gfx::mapped<gfx::bvh<3>::node> _staging_bvh_buffer;
 
-    std::optional<gfx::buffer<gfx::vertex3d>>     _vertex_buffer;
-    std::optional<gfx::buffer<gfx::index32>>      _index_buffer;
-    std::optional<gfx::buffer<gfx::bvh<3>::node>> _bvh_buffer;
+    std::unique_ptr<gfx::buffer<gfx::vertex3d>>     _vertex_buffer;
+    std::unique_ptr<gfx::buffer<gfx::index32>>      _index_buffer;
+    std::unique_ptr<gfx::buffer<gfx::bvh<3>::node>> _bvh_buffer;
 
     gfx::bvh<3> _bvh_generator;
 };
