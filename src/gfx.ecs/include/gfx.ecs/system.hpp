@@ -12,7 +12,7 @@ enum class component_flag : uint32_t
 {
     optional = 1 << 0,
 };
-using component_flags = gfx::flags<uint32_t, component_flag>;
+using component_flags = gfx::flags<component_flag>;
 
 class system_base
 {

@@ -11,4 +11,3 @@
 #include "surface.hpp"
 #include "swapchain.hpp"
 #include "sync.hpp"
-#include "version.hpp"

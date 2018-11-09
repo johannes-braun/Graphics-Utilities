@@ -1,20 +1,29 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
-
-struct GLFWwindow;
-class QWidget;
+#include <any>
 
 namespace gfx
 {
 	inline namespace v1
 	{
+		class native_handle
+		{
+		public:
+			template<typename T, typename = std::enable_if_t<(sizeof(T) <= sizeof(void*))>>
+			native_handle(T hnd) : _hnd(reinterpret_cast<void*>(hnd))
+			{
+			}
+
+		private:
+			void* _hnd;
+		};
+
 		class instance;
 		class surface
 		{
 		public:
-			explicit surface(instance& i, GLFWwindow* glfw_window);
-			explicit surface(instance& i, QWidget* qt_window);
+			explicit surface(instance& i, native_handle surface_handle);
 
 			surface(const surface& other) = delete;
 			surface& operator=(const surface& other) = delete;

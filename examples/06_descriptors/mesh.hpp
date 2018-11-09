@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/graphics.hpp"
+#include <gfx.graphics/graphics.hpp>
 #include <cinttypes>
 #include <gfx.file/file.hpp>
 #include <gfx.math/datastructure/bvh.hpp>

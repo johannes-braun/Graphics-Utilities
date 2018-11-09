@@ -9894,7 +9894,7 @@ void VmaDeviceMemoryBlock::Init(
     m_pMetadata->Init(newSize);
 }
 
-void VmaDeviceMemoryBlock::Destroy(VmaAllocator allocator)
+void VmaDeviceMemoryBlock::Destroy(VmaAllocator allocator) 
 {
     // This is the most important assert in the entire library.
     // Hitting it means you have some memory leak - unreleased VmaAllocation objects.

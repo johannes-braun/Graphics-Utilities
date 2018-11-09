@@ -196,7 +196,7 @@ enum class color_components : u32
     rgb  = r | g | b,
     rgba = r | g | b | a
 };
-using color_component_flags = flags<u32, color_components>;
+using color_component_flags = flags<color_components>;
 inline color_component_flags operator|(color_components a, color_components b)
 {
     return color_component_flags(a) | b;

@@ -44,7 +44,7 @@ namespace gfx
 
     u32 swapchain::count() const noexcept
     {
-        return _images.size();
+        return u32(_images.size());
     }
 
     const std::vector<vk::Image>& swapchain::imgs() const noexcept
@@ -78,6 +78,7 @@ namespace gfx
         vk::SurfaceCapabilitiesKHR scaps{0};
         const auto                 result = _gpu.getSurfaceCapabilitiesKHR(_surface, &scaps);
         if (result == vk::Result::eErrorSurfaceLostKHR) return false;
+
         sc.preTransform     = scaps.currentTransform;
         sc.minImageCount    = scaps.minImageCount;
         sc.imageExtent      = _extent = scaps.currentExtent;
@@ -87,7 +88,7 @@ namespace gfx
         sc.imageUsage = scaps.supportedUsageFlags;
 
 
-        sc.queueFamilyIndexCount = _condensed_families.size();
+        sc.queueFamilyIndexCount = u32(_condensed_families.size());
         sc.pQueueFamilyIndices   = _condensed_families.data();
 
         _present_mode            = find_present_mode(_gpu.getSurfacePresentModesKHR(_surface));

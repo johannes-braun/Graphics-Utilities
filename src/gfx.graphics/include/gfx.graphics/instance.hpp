@@ -1,7 +1,7 @@
 #pragma once
 
 #include "extensions.hpp"
-#include "version.hpp"
+#include <gfx.core/version.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace gfx {

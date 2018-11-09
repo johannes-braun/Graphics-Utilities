@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    This will make GitHub and some editors recognize this code as XML: 
+    vim: syntax=xml
+-->
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="gfx::v1::flags&lt;*&gt;">
+    <DisplayString>{{ value={_flags} }}</DisplayString>
+    <Expand>
+      <Item Name="[value]">_flags</Item>
+    </Expand>
+  </Type>
+  <Type Name="gfx::v1::version_t">
+    <DisplayString>{{ version={major}.{minor}.{patch} }}</DisplayString>
+    <Expand>
+      <Item Name="[major]">major</Item>
+      <Item Name="[minor]">minor</Item>
+      <Item Name="[patch]">patch</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>  

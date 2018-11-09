@@ -80,7 +80,7 @@ device::device(const device& other)
     _priorities         = other._priorities;
     _queue_families     = other._queue_families;
     _enable_present     = other._enable_present;
-    initialize_preset(other._queues[u32(queue_type::graphics)].size(), other._queues[u32(queue_type::compute)].size());
+    initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()));
 }
 
 device& device::operator=(const device& other)
@@ -91,7 +91,7 @@ device& device::operator=(const device& other)
 	_priorities = other._priorities;
 	_queue_families = other._queue_families;
 	_enable_present = other._enable_present;
-	initialize_preset(other._queues[u32(queue_type::graphics)].size(), other._queues[u32(queue_type::compute)].size());
+	initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()));
 	return *this;
 }
 
@@ -203,8 +203,8 @@ void device::reset_fences(cref_array_view<fence> fences)
 
 u32 device::presentation_family(instance& i, const surface& s, gsl::span<const vk::QueueFamilyProperties> props) const noexcept
 {
-    for (auto fam = 0ull; fam < props.size(); ++fam)
-        if (_gpu.getWin32PresentationSupportKHR(fam)) return fam;
+    for (auto fam = 0ll; fam < props.size(); ++fam)
+        if (_gpu.getWin32PresentationSupportKHR(u32(fam))) return u32(fam);
     return 0;
 }
 
@@ -217,21 +217,21 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
 
     auto& graphics_create_info            = _queue_create_infos[fgraphics];
     graphics_create_info.queueFamilyIndex = fgraphics;
-    graphics_create_info.queueCount       = _priorities[fgraphics].size();
+    graphics_create_info.queueCount       = u32(_priorities[fgraphics].size());
     graphics_create_info.pQueuePriorities = _priorities[fgraphics].data();
     auto& compute_create_info             = _queue_create_infos[fcompute];
     compute_create_info.queueFamilyIndex  = fcompute;
-    compute_create_info.queueCount        = _priorities[fcompute].size();
+    compute_create_info.queueCount        = u32(_priorities[fcompute].size());
     compute_create_info.pQueuePriorities  = _priorities[fcompute].data();
     auto& transfer_create_info            = _queue_create_infos[ftransfer];
     transfer_create_info.queueFamilyIndex = ftransfer;
-    transfer_create_info.queueCount       = _priorities[ftransfer].size();
+    transfer_create_info.queueCount       = u32(_priorities[ftransfer].size());
     transfer_create_info.pQueuePriorities = _priorities[ftransfer].data();
     if (_enable_present)
     {
         auto& present_create_info            = _queue_create_infos[fpresent];
         present_create_info.queueFamilyIndex = fpresent;
-        present_create_info.queueCount       = _priorities[fpresent].size();
+        present_create_info.queueCount       = u32(_priorities[fpresent].size());
         present_create_info.pQueuePriorities = _priorities[fpresent].data();
     }
     std::vector<vk::DeviceQueueCreateInfo> queue_infos(_queue_create_infos.size());
@@ -250,11 +250,11 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
     std::vector<const char*> layers;
     if (_instance->is_debug()) layers.push_back("VK_LAYER_LUNARG_standard_validation");
 
-    device_create_info.enabledExtensionCount   = extensions.size();
+    device_create_info.enabledExtensionCount   = u32(extensions.size());
     device_create_info.ppEnabledExtensionNames = extensions.data();
-    device_create_info.enabledLayerCount       = layers.size();
+    device_create_info.enabledLayerCount       = u32(layers.size());
     device_create_info.ppEnabledLayerNames     = layers.data();
-    device_create_info.queueCreateInfoCount    = queue_infos.size();
+    device_create_info.queueCreateInfoCount    = u32(queue_infos.size());
     device_create_info.pQueueCreateInfos       = queue_infos.data();
     _device                                    = _gpu.createDeviceUnique(device_create_info);
     _dispatcher.load(_device.get());

@@ -9,7 +9,8 @@ file(GLOB_RECURSE gfx_current_visuals src/*.natvis)
 add_library(gfx.${gfx_current_module} STATIC)
 target_sources(gfx.${gfx_current_module} PRIVATE ${gfx_current_sources}) # Sources
 target_sources(gfx.${gfx_current_module} PRIVATE ${gfx_current_headers}) # Headers
-target_sources(gfx.${gfx_current_module} PRIVATE ${gfx_current_visuals}) # Natvis
+include(${PROJECT_SOURCE_DIR}/cmake/natvis.cmake)
+target_add_natvis(gfx.${gfx_current_module} PUBLIC ${gfx_current_visuals})
 
 # Features
 target_compile_features(gfx.${gfx_current_module} PRIVATE cxx_std_17)

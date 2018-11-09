@@ -1,6 +1,6 @@
 #pragma once
 
-#include "version.hpp"
+#include <gfx.core/version.hpp>
 #include <string_view>
 
 namespace gfx {

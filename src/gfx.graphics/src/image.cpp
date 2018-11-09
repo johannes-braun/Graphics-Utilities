@@ -3,7 +3,6 @@
 
 namespace gfx {
 inline namespace v1 {
-namespace exp {
 	image::image(device& dev, const vk::ImageCreateInfo& create_info)
 		: _device(&dev)
 	{
@@ -27,6 +26,7 @@ namespace exp {
 		other._image = nullptr;
 		other._alloc = nullptr;
 		other._device = nullptr;
+
 	}
 
 	image& image::operator=(image&& other) noexcept
@@ -40,6 +40,5 @@ namespace exp {
 		other._device = nullptr;
 		return *this;
 	}
-}
 }    // namespace v1
 }    // namespace gfx

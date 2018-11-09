@@ -46,14 +46,6 @@
     <DisplayString>{{ handle={_queue.m_queue} }}</DisplayString>
     <Expand></Expand>
   </Type>
-  <Type Name="gfx::v1::version_t">
-    <DisplayString>{{ version={major}.{minor}.{patch} }}</DisplayString>
-    <Expand>
-      <Item Name="[major]">major</Item>
-      <Item Name="[minor]">minor</Item>
-      <Item Name="[patch]">patch</Item>
-    </Expand>
-  </Type>
   <Type Name="gfx::v1::device">
     <DisplayString>{{ handle={_device.m_value.m_device} }}</DisplayString>
     <Expand>

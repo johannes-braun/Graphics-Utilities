@@ -117,16 +117,16 @@ vec3 evaluate_bsdf(vec3 out_dir, vec2 random_value)
 {
 	const float hdotv = max(dot(_msurf_normal, -ray_state.direction),0.0001);
 	const float hdotl = max(dot(faceforward(hit_state.normal, -out_dir, hit_state.normal), out_dir),0.0001);
-	float inner = _is_transmitted ?  DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness) :
+	float inner = _is_transmitted ? 1+0*DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness) :
 		(1 / (3.14159265359f));
-	float outer = DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness);
-	return (_is_reflected ? _fresnel * outer * mix(vec3(1.f), unpackUnorm4x8(instance_state.color).rgb, sqrt(instance_state.reflectivity)) : (1-_fresnel) * inner*unpackUnorm4x8(instance_state.color).rgb) * hdotl;
+	float outer = 1+0*DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness);
+	return (_is_reflected ? _fresnel * outer * mix(vec3(1.f), unpackUnorm4x8(instance_state.color).rgb, sqrt(instance_state.reflectivity)) : (1-_fresnel) * inner*unpackUnorm4x8(instance_state.color).rgb);// * hdotl;
 }
 float distribution_bsdf(vec3 out_dir, vec2 random_value) 
 {
 	const float hdotl = max(dot(faceforward(hit_state.normal, -out_dir, hit_state.normal), out_dir),0.0001);
-	float inner = _is_transmitted ? DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness) :
+	float inner = _is_transmitted ? 1+0*DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness) :
 		(1 / 3.14159265359f);
-	float outer = DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness);
-	return (_is_reflected ? _fresnel * outer : (1-_fresnel) * inner) * hdotl;
+	float outer = 1+0*DistributionGGX(_msurf_normal, -ray_state.direction, instance_state.roughness);
+	return (_is_reflected ? _fresnel * outer : (1-_fresnel) * inner);// * hdotl;
 }

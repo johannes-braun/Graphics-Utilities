@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/types.hpp"
+#include <gfx.core/types.hpp>
 #include <vulkan/vulkan.hpp>
 
 namespace gfx {
