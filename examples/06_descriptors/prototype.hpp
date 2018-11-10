@@ -1,11 +1,11 @@
 #pragma once
 
-#include <gfx.graphics/graphics.hpp>
+#include <array>
 #include <gfx.core/flags.hpp>
 #include <gfx.file/file.hpp>
+#include <gfx.graphics/graphics.hpp>
 #include <gfx.math/datastructure/bvh.hpp>
 #include <gfx.math/geometry.hpp>
-#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -194,6 +194,8 @@ private:
     gfx::bvh<3> _bvh_generator;
 };
 
+enum class prototype_handle : u64 {};
+
 template<typename InstanceInfo>
 class prototype_instantiator
 {
@@ -261,8 +263,11 @@ public:
 
     prototype* prototype_by_name(const std::string& name) { return &*_prototypes.at(name); }
 
-    void enqueue(prototype* p, const gfx::transform& t, gsl::span<instance_info_type> properties)
+	prototype_handle enqueue(prototype* p, const gfx::transform& t, gsl::span<instance_info_type> properties)
     {
+		static u64 current_handle = 0;
+		const auto next = prototype_handle(current_handle++);
+		std::pair range(_instance_descriptions.size(), 0ull);
         int i = 0;
         for (const auto& m : p->meshes)
         {
@@ -280,10 +285,30 @@ public:
             new_instance.info            = properties[i];
             ++i;
         }
+		range.second = range.first + i;
+		_enqueued_ranges.emplace(next, range);
+		return next;
+    }
+
+    void dequeue(prototype_handle handle)
+    {
+		if(const auto it = _enqueued_ranges.find(handle); it != _enqueued_ranges.end())
+		{
+			_instance_descriptions.erase(_instance_descriptions.begin() + it->second.first, _instance_descriptions.begin() + it->second.second);
+			const auto range = it->second;
+			const auto diff = range.second - range.first;
+            for(auto& el : _enqueued_ranges)
+                if(el.second.first > range.first)
+                {
+					el.second.first -= diff;
+					el.second.second -= diff;
+                }
+		}
     }
 
     void clear()
     {
+		_enqueued_ranges.clear();
         _instance_descriptions.clear();
         _instance_descriptions.emplace_back();
     }
@@ -291,9 +316,10 @@ public:
     const gfx::mapped<basic_instance>& instances() const noexcept { return _instance_descriptions; }
 
 private:
-    mesh_allocator*                                             _alloc;
-    std::unordered_map<std::string, std::unique_ptr<prototype>> _prototypes;
-    gfx::mapped<basic_instance>                                 _instance_descriptions;
+    mesh_allocator*                                                _alloc;
+    std::unordered_map<std::string, std::unique_ptr<prototype>>    _prototypes;
+    std::unordered_map<prototype_handle, std::pair<size_t, size_t>> _enqueued_ranges;
+    gfx::mapped<basic_instance>                                    _instance_descriptions;
 };
 
 }    // namespace v1

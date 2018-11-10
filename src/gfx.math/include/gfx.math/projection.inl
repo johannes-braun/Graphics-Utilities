@@ -2,6 +2,11 @@
 
 namespace gfx
 {
+constexpr projection::projection() noexcept
+    : projection(glm::radians(60.f), 1280, 720, 0.01f, 1000.f, false, true) 
+{
+}
+
 constexpr projection::projection(float fov, int width, int height, float znear, float zfar, bool neg_y, bool inv_z) noexcept
         : _type(type::perspective)
         , _info(perspective_info{fov, width, height, znear, zfar, neg_y, inv_z})

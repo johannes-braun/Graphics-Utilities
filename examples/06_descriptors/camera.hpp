@@ -1,30 +1,20 @@
 #pragma once
 
 #include "gfx.ecs/ecs.hpp"
-#include "gfx.legacy/input/input.hpp"
-#include "gfx.core/log.hpp"
 #include "gfx.math/geometry.hpp"
-#include "gfx.math/math.hpp"
 #include "input.hpp"
 #include <optional>
 
 namespace gfx {
 inline namespace v1 {
-struct transform_component : gfx::ecs::component<transform_component>
+template<typename T>
+struct simple_component : ecs::component<simple_component<T>>, T
 {
-	transform_component() = default;
-	transform_component(gfx::transform value) : value(std::move(value)) {}
-
-    gfx::transform value;
+	using T::T;
 };
 
-struct camera_component : ecs::component<camera_component>
-{
-	camera_component() = default;
-	camera_component(projection value) : projection(std::move(value)) {}
-
-    projection projection{glm::radians(70.f), 1280, 720, 0.01f, 1000.f, false, true};
-};
+using transform_component = simple_component<transform>;
+using camera_component    = simple_component<projection>;
 
 struct camera_matrices
 {
@@ -38,14 +28,14 @@ inline std::optional<camera_matrices> get_camera_info(ecs::ecs& ecs, ecs::entity
     auto* cam = ecs.get_component<camera_component>(entity);
     auto* tfm = ecs.get_component<transform_component>(entity);
     if (!cam || !tfm) return std::nullopt;
-    return camera_matrices{inverse(tfm->value.matrix()), cam->projection.matrix(), tfm->value.position, 1};
+    return camera_matrices{inverse(tfm->matrix()), cam->matrix(), tfm->position, 1};
 }
 inline std::optional<camera_matrices> get_camera_info(const ecs::entity& entity)
 {
     const auto* const cam = entity.get<camera_component>();
     const auto* const tfm = entity.get<transform_component>();
     if (!cam || !tfm) return std::nullopt;
-    return camera_matrices{inverse(tfm->value.matrix()), cam->projection.matrix(), tfm->value.position, 1};
+    return camera_matrices{inverse(tfm->matrix()), cam->matrix(), tfm->position, 1};
 }
 
 struct camera_controls : ecs::component<camera_controls>
@@ -71,7 +61,7 @@ struct camera_controls : ecs::component<camera_controls>
 class user_camera_system : public ecs::system
 {
 public:
-    user_camera_system(key_event_filter& keys) : _keys(&keys)
+    user_camera_system(qt_input_system& keys) : _keys(&keys)
     {
         add_component_type(camera_component::id);
         add_component_type(transform_component::id);
@@ -89,7 +79,7 @@ public:
         if (&cam != ctrl.last_camera)
         {
             ctrl.last_camera      = &cam;
-            ctrl.target_transform = trn.value;
+            ctrl.target_transform = trn;
         }
 
         const auto delta_pos = -gcc.delta;
@@ -109,13 +99,13 @@ public:
             * static_cast<float>(delta.count()) * ctrl.movement_speed;
 
         const float alpha  = float(glm::clamp(15.0 * delta.count(), 0.0, 1.0));
-        trn.value.position = mix(trn.value.position, ctrl.target_transform.position, alpha);
-        trn.value.scale    = mix(trn.value.scale, ctrl.target_transform.scale, alpha);
-        trn.value.rotation = glm::slerp(trn.value.rotation, ctrl.target_transform.rotation, alpha);
+        trn.position = mix(trn.position, ctrl.target_transform.position, alpha);
+        trn.scale    = mix(trn.scale, ctrl.target_transform.scale, alpha);
+        trn.rotation = glm::slerp(trn.rotation, ctrl.target_transform.rotation, alpha);
     }
 
 private:
-    key_event_filter* _keys;
+    qt_input_system* _keys;
 };
 }    // namespace v1
 }    // namespace gfx

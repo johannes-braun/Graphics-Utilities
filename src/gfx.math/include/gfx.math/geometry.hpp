@@ -105,6 +105,7 @@ class projection
     };
 
 public:
+	constexpr projection() noexcept;
     constexpr projection(float fov, int width, int height, float znear, float zfar, bool neg_y = false, bool inv_z = true) noexcept;
     constexpr projection(float left, float right, float bottom, float top, float znear = -1.f, float zfar = -1.f) noexcept;
 

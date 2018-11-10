@@ -15,11 +15,18 @@ struct grabbed_cursor_component : gfx::ecs::component<grabbed_cursor_component>
     glm::dvec2 delta;
 };
 
-class key_event_filter : public QObject, public gfx::ecs::system
+class qt_input_system : public QObject, public gfx::ecs::system
 {
 public:
-    key_event_filter(QWidget* parent) : _parent(parent)
+    ~qt_input_system()
     {
+        if(_parent)
+		    _parent->removeEventFilter(this);
+    }
+
+    qt_input_system(QWidget* parent) : _parent(parent)
+    {
+		parent->installEventFilter(this);
         add_component_type<gfx::grabbed_cursor_component>(gfx::ecs::component_flag::optional);
 
         add_mouse_button_callback(Qt::MouseButton::RightButton, [&](QMouseEvent* ev) {
@@ -47,6 +54,11 @@ public:
         });
     }
 
+	qt_input_system(const qt_input_system&) = delete;
+	qt_input_system& operator=(const qt_input_system&) = delete;
+	qt_input_system(qt_input_system&&) = default;
+	qt_input_system& operator=(qt_input_system&&) = default;
+
     bool key_down(Qt::Key key) const
     {
         if (const auto it = _keys_down.find(key); it != _keys_down.end()) return it->second;
@@ -63,7 +75,7 @@ public:
 		_position_last_update = { double(QCursor::pos().x()), double(QCursor::pos().y()) };
 	}
 
-    void update(duration_type delta, gfx::ecs::component_base** components) const
+    void update(duration_type delta, gfx::ecs::component_base** components) const override
     {
 		gfx::grabbed_cursor_component* gcur = components[0]->as_ptr<gfx::grabbed_cursor_component>();
 
@@ -85,7 +97,7 @@ public:
     }
 
 protected:
-    bool eventFilter(QObject* obj, QEvent* event)
+    bool eventFilter(QObject* obj, QEvent* event) override
     {
         if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
         {
@@ -98,6 +110,7 @@ protected:
             QMouseEvent* mm = static_cast<QMouseEvent*>(event);
             if (const auto it = _mouse_button_callbacks.find(mm->button()); it != _mouse_button_callbacks.end())
                 for (auto& c : it->second) c(mm);
+			return true;
         }
         else if (event->type() == QEvent::MouseMove)
         {
@@ -107,6 +120,7 @@ protected:
                 _position_last_update = {double(QCursor::pos().x()), double(QCursor::pos().y())};
                 _moved                = true;
             }
+			return true;
         }
         else
         {
