@@ -150,20 +150,6 @@ struct scene_file : file
         gfx::image_file texture_bump;
     };
 
-    /*struct mesh
-    {
-        std::string                name;
-        const material*            material_ptr;
-        uint32_t                   material_index;
-        std::vector<gfx::index32>  indices;
-        std::vector<gfx::vertex3d> vertices;
-        gfx::transform             transform;
-    };
-
-    std::vector<mesh>     meshes;
-    std::vector<material> materials;*/
-
-
     mesh3d                              mesh;
     std::vector<material>               materials;
     std::unordered_map<submesh3d*, u32> mesh_material_indices;

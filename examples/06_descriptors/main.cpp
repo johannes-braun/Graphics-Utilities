@@ -540,32 +540,22 @@ int main(int argc, char** argv)
     ////		Meshes
     ////
     ////////////////////////////////////////////////////////////////////////////
-	QWindow meshes_window;
-	meshes_window.resize(300, 400);
+    gfx::unique_prototype bunny  = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae"));
+    gfx::unique_prototype sphere = instances.get_instantiator().allocate_prototype_unique("Sphere", gfx::scene_file("sphere.dae"));
+    gfx::unique_prototype floor  = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("floor.dae"));
 
-	meshes_window.show();
-
-    gfx::prototype* bunny  = instances.get_instantiator().allocate_prototype("Bunny", gfx::scene_file("bunny.dae"));
-    gfx::prototype* sphere = instances.get_instantiator().allocate_prototype("Sphere", gfx::scene_file("sphere.dae"));
-    gfx::prototype* floor  = instances.get_instantiator().allocate_prototype("Floor", gfx::scene_file("floor.dae"));
-
-    // ecs.create_entity(instance_component{ multicube, material_info{glm::u8vec4(255, 255, 255, 255), 0.17f, 1.f, bsdf::transparent}},
-    //                  gfx::transform_component{{{0, 1.f, 0}, {1.f, 1.f, 1.f}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))}});
-    ecs.create_entity(instance_component{floor, material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
+    ecs.create_entity(instance_component{floor.get(), material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
                       gfx::transform_component{{0, -1.f, 0}, {2.f, 2.f, 2.f}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))});
-    // ecs.create_entity(
-    //	        instance_component{ bunny, material_info{glm::u8vec4(0, 50, 255, 255), 0.2f, 0.f, bsdf::transparent}},
-    //	        gfx::transform_component{{{-5.f + 2.5f, 0, -7.5f}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))}});
     for (int i = 0; i < 5; ++i)
     {
         for (int j = 0; j < 5; ++j)
         {
-            ecs.create_entity(instance_component{ sphere, material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.25f * j, bsdf::opaque}},
+            ecs.create_entity(instance_component{ sphere.get(), material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.25f * j, bsdf::opaque}},
                               gfx::transform_component{
                                   {-5.f + 2.5f * i, 0, -5.f + 2.5f * j}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))});
         }
         ecs.create_entity(
-            instance_component{ sphere, material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.f, bsdf::transparent}},
+            instance_component{ sphere.get(), material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.f, bsdf::transparent}},
             gfx::transform_component{{-5.f + 2.5f * i, 0, -7.5f}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))});
     }
     ////////////////////////////////////////////////////////////////////////////

@@ -82,7 +82,6 @@ public:
                         std::optional<gfx::bounds3f> bounds = std::nullopt)
     {
         mesh* m = &*_meshes.emplace_back(std::make_unique<mesh>());
-        assert(m);
         m->_base_index   = static_cast<uint32_t>(_staging_index_buffer.size());
         m->_base_vertex  = static_cast<uint32_t>(_staging_vertex_buffer.size());
         m->_index_count  = static_cast<uint32_t>(indices.size());
