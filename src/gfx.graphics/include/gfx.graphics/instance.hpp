@@ -9,7 +9,7 @@ inline namespace v1 {
 class instance
 {
 public:
-    explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support);
+	explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions = {});
     ~instance() = default;
 
 	instance(const instance& other);
@@ -24,7 +24,7 @@ public:
     bool is_surface_supported() const noexcept;
 
 private:
-	void initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support);
+	void initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions);
 
     std::string                                                      _app_name;
     version_t                                                        _app_version;
@@ -32,6 +32,7 @@ private:
     vk::UniqueHandle<vk::DebugUtilsMessengerEXT, extension_dispatch> _debug_messenger;
     extension_dispatch                                               _dispatcher;
     vk::UniqueHandle<vk::DebugReportCallbackEXT, extension_dispatch> _debug_callback;
+	std::vector<const char*> _extensions;
 
     struct
     {

@@ -35,6 +35,7 @@
 #include <glm/glm.hpp>
 #include <random>
 
+#include "gfx.legacy/input/camera.hpp"
 #include "prototype.hpp"
 
 enum class bsdf : uint
@@ -49,53 +50,6 @@ struct material_info
     float       roughness;
     float       strength;
     bsdf        type;
-};
-
-struct instance_info
-{
-    material_info material;
-};
-
-struct instance_component : gfx::ecs::component<instance_component>
-{
-    instance_component() = default;
-    instance_component(gfx::prototype* hnd, material_info info) : handle(hnd), material(std::move(info)) {}
-
-    gfx::prototype* handle = nullptr;
-	gfx::prototype_handle instance;
-    material_info   material;
-};
-
-class instance_system : public gfx::ecs::system
-{
-public:
-    instance_system(gfx::mesh_allocator& allocator) : _alloc(&allocator), _instantiator(*_alloc)
-    {
-        add_component_type<instance_component>();
-        add_component_type<gfx::transform_component>();
-    }
-
-    void pre_update() override { _instantiator.clear(); }
-
-    void update(duration_type delta, gfx::ecs::component_base** components) const override
-    {
-        auto& inst      = components[0]->as<instance_component>();
-        auto& transform = components[1]->as<gfx::transform_component>();
-
-        std::vector<instance_info> infos;
-        for (int i = 0; i < gfx::prototype::max_submeshes; ++i)
-        {
-            if (!inst.handle->meshes[i]) break;
-            infos.push_back({{inst.material}});
-        }
-        _instantiator.enqueue(inst.handle, transform, infos);
-    }
-
-    gfx::prototype_instantiator<instance_info>& get_instantiator() const noexcept { return _instantiator; }
-
-private:
-    gfx::mesh_allocator*                               _alloc;
-    mutable gfx::prototype_instantiator<instance_info> _instantiator;
 };
 
 using namespace std::chrono_literals;
@@ -205,6 +159,7 @@ int main(int argc, char** argv)
         case dt::eOther: return "Unknown";
         case dt::eVirtualGpu: return "Virtual GPU";
         }
+        return "";
     }();
     gfx_info_layout->addRow("Renderer", new QLabel("Vulkan"));
     gfx_info_layout->addRow("Version", new QLabel(QString::fromStdString(to_string(gfx::to_version(props.properties.apiVersion)))));
@@ -341,8 +296,8 @@ int main(int argc, char** argv)
             switch_layout.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
                                                 vk::DependencyFlagBits::eByRegion, {}, {}, attachment_barrier);
 
-            vk::BufferImageCopy region(0, 0, 0, vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1), {0, 0, 0},
-                                       {chain.extent().width, chain.extent().height, 0});
+            const vk::BufferImageCopy region(0, 0, 0, vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1), {0, 0, 0},
+                                             {chain.extent().width, chain.extent().height, 0});
             switch_layout.cmd().copyImageToBuffer(results->get_image(), vk::ImageLayout::eTransferSrcOptimal, pixels.get_buffer(), region);
 
             attachment_barrier.oldLayout     = vk::ImageLayout::eTransferSrcOptimal;
@@ -373,7 +328,7 @@ int main(int argc, char** argv)
     fileMenu->addAction("Save As", [] { gfx::ilog << "Save as..."; }, QKeySequence::SaveAs);
     fileMenu->addSeparator();
     fileMenu->addAction("Close", [&win] { win.close(); }, QKeySequence::Close);
-    fileMenu->addAction("Quit", [&win] { QCoreApplication::quit(); }, QKeySequence::Quit);
+    fileMenu->addAction("Quit", [] { QCoreApplication::quit(); }, QKeySequence::Quit);
     win.setMenuBar(menuBar);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -525,9 +480,8 @@ int main(int argc, char** argv)
     control_systems.add(camera_system);
 
     // Rendering
-    gfx::mesh_allocator   mesh_alloc(gpu, gfx::mesh_allocator_flag::use_bvh);
-    gfx::ecs::system_list render_systems;
-    instance_system       instances(mesh_alloc);
+    gfx::ecs::system_list               render_systems;
+    gfx::instance_system<material_info> instances(gpu, gfx::mesh_allocator_flag::use_bvh);
     render_systems.add(instances);
 
     // Create user entity
@@ -543,19 +497,21 @@ int main(int argc, char** argv)
     gfx::unique_prototype bunny  = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae"));
     gfx::unique_prototype sphere = instances.get_instantiator().allocate_prototype_unique("Sphere", gfx::scene_file("sphere.dae"));
     gfx::unique_prototype floor  = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("floor.dae"));
-
-    ecs.create_entity(instance_component{floor.get(), material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
-                      gfx::transform_component{{0, -1.f, 0}, {2.f, 2.f, 2.f}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))});
+    
+    auto fe =
+        ecs.create_entity(gfx::instance_component{floor.get(), material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
+                          gfx::transform_component{{0, -1.f, 0}, {2.f, 2.f, 2.f}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))});
     for (int i = 0; i < 5; ++i)
     {
         for (int j = 0; j < 5; ++j)
         {
-            ecs.create_entity(instance_component{ sphere.get(), material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.25f * j, bsdf::opaque}},
-                              gfx::transform_component{
-                                  {-5.f + 2.5f * i, 0, -5.f + 2.5f * j}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))});
+            ecs.create_entity(
+                gfx::instance_component{bunny.get(), material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.25f * j, bsdf::opaque}},
+                gfx::transform_component{
+                    {-5.f + 2.5f * i, 0, -5.f + 2.5f * j}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))});
         }
         ecs.create_entity(
-            instance_component{ sphere.get(), material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.f, bsdf::transparent}},
+            gfx::instance_component{bunny.get(), material_info{glm::u8vec4(0, 50, 255, 255), 0.25f * i, 0.f, bsdf::transparent}},
             gfx::transform_component{{-5.f + 2.5f * i, 0, -7.5f}, {1, 1, 1}, glm::angleAxis(glm::radians(0.f), glm::vec3(1, 0, 0))});
     }
     ////////////////////////////////////////////////////////////////////////////
@@ -780,11 +736,13 @@ int main(int argc, char** argv)
           &vk::DescriptorImageInfo(cie_sampler.get(), bokeh_view.get(), vk::ImageLayout::eGeneral)}},
         {});
 
-    gpu.get_device().updateDescriptorSets(
-        {{mesh_set.get(), 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &gfx::info_for(mesh_alloc.bvh_buffer())},
-         {mesh_set.get(), 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &gfx::info_for(mesh_alloc.vertex_buffer())},
-         {mesh_set.get(), 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &gfx::info_for(mesh_alloc.index_buffer())}},
-        {});
+    gpu.get_device().updateDescriptorSets({{mesh_set.get(), 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+                                            &gfx::info_for(instances.get_mesh_allocator().bvh_buffer())},
+                                           {mesh_set.get(), 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+                                            &gfx::info_for(instances.get_mesh_allocator().vertex_buffer())},
+                                           {mesh_set.get(), 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+                                            &gfx::info_for(instances.get_mesh_allocator().index_buffer())}},
+                                          {});
 
     if (!instances.get_instantiator().instances().empty())
     {
@@ -805,9 +763,9 @@ int main(int argc, char** argv)
         float       random;
         int         rendered_count;
         output_type render_output;
-    };
+    } current_globals{};
 
-    gfx::buffer<globals> globals_buffer(gpu, {globals{}});
+    gfx::buffer<globals> globals_buffer(gpu, {current_globals});
 
     const auto update_target_inputs = [&] {
         gpu.get_device().updateDescriptorSets(
@@ -840,9 +798,11 @@ int main(int argc, char** argv)
 
     size_t                        frame_count = 0;
     std::chrono::duration<double> delta_accum = std::chrono::duration<double>::zero();
-    gfx::transform                last_transform;
-    globals                       ng;
-    ng.rendered_count = 0;
+    gfx::transform_component      last_transform;
+
+    gfx::ecs::entity* current_view_entity = &*user_entity;
+
+    current_globals.rendered_count = 0;
     gfx::worker render_thread([&](gfx::worker& self, const gfx::worker::duration& delta) {
         ++frame_count;
         delta_accum += delta;
@@ -864,7 +824,8 @@ int main(int argc, char** argv)
                 return false;
             }
             build_fbos();
-            ng.rendered_count = 0;
+            current_globals.rendered_count = 0;
+            return true;
         }
 
         ecs.update(delta, render_systems);
@@ -877,26 +838,26 @@ int main(int argc, char** argv)
         gpu_cmd[img].cmd().reset({});
         gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
-        user_entity->get<gfx::camera_component>()->perspective().screen_width  = chain.extent().width;
-        user_entity->get<gfx::camera_component>()->perspective().screen_height = chain.extent().height;
+        current_view_entity->get<gfx::camera_component>()->perspective().screen_width  = chain.extent().width;
+        current_view_entity->get<gfx::camera_component>()->perspective().screen_height = chain.extent().height;
         gpu_cmd[img].cmd().updateBuffer(camera_info_buffer.get_buffer(), 0ull,
-                                        vk::ArrayProxy<const gfx::camera_matrices>{*gfx::get_camera_info(*user_entity)});
+                                        vk::ArrayProxy<const gfx::camera_matrices>{*gfx::get_camera_info(*current_view_entity)});
 
-        if (keys.key_down(Qt::Key_R) || last_transform != *user_entity->get<gfx::transform_component>())
+        if (keys.key_down(Qt::Key_R) || last_transform != *current_view_entity->get<gfx::transform_component>())
         {
-            last_transform = *user_entity->get<gfx::transform_component>();
+            last_transform = *current_view_entity->get<gfx::transform_component>();
             gpu_cmd[img].cmd().clearColorImage(color_accum->get_image(), vk::ImageLayout::eGeneral,
                                                vk::ClearColorValue(std::array{0.f, 0.f, 0.f, 0.f}),
                                                vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-            ng.rendered_count = 0;
+            current_globals.rendered_count = 0;
         }
 
-        ng.random        = dist(gen);
-        ng.viewport[0]   = chain.extent().width;
-        ng.viewport[1]   = chain.extent().height;
-        ng.render_output = output_type(render_outputs->checkedId());
-        ng.rendered_count++;
-        gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &ng);
+        current_globals.random        = dist(gen);
+        current_globals.viewport[0]   = chain.extent().width;
+        current_globals.viewport[1]   = chain.extent().height;
+        current_globals.render_output = output_type(render_outputs->checkedId());
+        current_globals.rendered_count++;
+        gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &current_globals);
 
         vk::ClearValue clear_values[] = {{vk::ClearColorValue{std::array{0.f, 1.f, 0.f, 1.f}}}};
         gpu_cmd[img].cmd().beginRenderPass(
@@ -925,7 +886,8 @@ int main(int argc, char** argv)
                 return false;
             }
             build_fbos();
-            ng.rendered_count = 0;
+            current_globals.rendered_count = 0;
+            return true;
         }
         return self.value_after(true, min_update_time_frame);
     });
@@ -955,12 +917,12 @@ gfx::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)
     posz_future.wait();
     negz_future.wait();
 
-    auto posx = posx_future.get();
-    auto negx = negx_future.get();
-    auto posy = posy_future.get();
-    auto negy = negy_future.get();
-    auto posz = posz_future.get();
-    auto negz = negz_future.get();
+    const auto posx = posx_future.get();
+    const auto negx = negx_future.get();
+    const auto posy = posy_future.get();
+    const auto negy = negy_future.get();
+    const auto posz = posz_future.get();
+    const auto negz = negz_future.get();
 
     vk::ImageCreateInfo cube_create;
     cube_create.flags       = vk::ImageCreateFlagBits::eCubeCompatible;

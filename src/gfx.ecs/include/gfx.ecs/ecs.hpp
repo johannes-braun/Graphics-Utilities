@@ -69,6 +69,25 @@ private:
     static uint32_t        index_of(entity_handle handle);
     static entity_info&    as_entity(entity_handle handle);
 };
+
+template<typename T>
+bool move_component(entity src, entity dst)
+{
+    if(auto* cp = src.get<T>(); cp)
+    {
+        dst.add(std::move(*cp));
+        src.remove<T>();
+        return true;
+    }
+    return false;
+}
+
+template<typename... Ts>
+bool move_components(entity& src, entity& dst)
+{
+    return (move_component<Ts>(src, dst) && ...);
+}
+
 }    // namespace ecs
 }    // namespace v1
 }    // namespace gfx

@@ -41,7 +41,7 @@ public:
     friend class mapped;
 
     explicit device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
-                    vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface = std::nullopt);
+		vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface = std::nullopt, vk::ArrayProxy<const char* const> additional_extensions = {});
 
     device(const device& other);
     device& operator=(const device& other);
@@ -75,7 +75,7 @@ public:
 
 private:
     u32  presentation_family(instance& i, const surface& s, gsl::span<const vk::QueueFamilyProperties> props) const noexcept;
-    void initialize_preset(u32 graphics_queue_count, u32 compute_queue_count);
+    void initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<const char* const> additional_extensions);
     static std::tuple<u32, u32, u32> dedicated_families(gsl::span<const vk::QueueFamilyProperties> props);
 
     struct vma_alloc_deleter
@@ -94,6 +94,7 @@ private:
     extension_dispatch                                 _dispatcher;
     std::array<std::vector<vk::Queue>, 4>              _queues;
     std::array<vk::UniqueCommandPool, 4>               _command_pools;
+	std::vector<const char*>						   _extensions;
 };
 }    // namespace v1
 }    // namespace gfx

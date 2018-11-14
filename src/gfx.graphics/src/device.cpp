@@ -12,7 +12,8 @@
 namespace gfx {
 inline namespace v1 {
 device::device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
-               vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface)
+               vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface,
+               vk::ArrayProxy<const char* const> additional_extensions)
       : _instance(&i)
 {
     const auto                   gpus        = i.get_instance().enumeratePhysicalDevices();
@@ -69,7 +70,7 @@ device::device(instance& i, device_target target, vk::ArrayProxy<const float> gr
     _priorities[ftransfer].emplace_back(1.f);
     if (_enable_present) _priorities[fpresent].emplace_back(1.f);
 
-    initialize_preset(graphics_priorities.size(), compute_priorities.size());
+    initialize_preset(graphics_priorities.size(), compute_priorities.size(), additional_extensions);
 }
 
 device::device(const device& other)
@@ -80,19 +81,19 @@ device::device(const device& other)
     _priorities         = other._priorities;
     _queue_families     = other._queue_families;
     _enable_present     = other._enable_present;
-    initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()));
+    initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()), other._extensions);
 }
 
 device& device::operator=(const device& other)
 {
-	_instance = other._instance;
-	_gpu = other._gpu;
-	_queue_create_infos = other._queue_create_infos;
-	_priorities = other._priorities;
-	_queue_families = other._queue_families;
-	_enable_present = other._enable_present;
-	initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()));
-	return *this;
+    _instance           = other._instance;
+    _gpu                = other._gpu;
+    _queue_create_infos = other._queue_create_infos;
+    _priorities         = other._priorities;
+    _queue_families     = other._queue_families;
+    _enable_present     = other._enable_present;
+    initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()), other._extensions);
+    return *this;
 }
 
 const queue& device::graphics_queue(u32 index) const noexcept
@@ -208,7 +209,7 @@ u32 device::presentation_family(instance& i, const surface& s, gsl::span<const v
     return 0;
 }
 
-void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count)
+void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<const char* const> additional_extensions)
 {
     const auto fgraphics = _queue_families[u32(queue_type::graphics)];
     const auto fcompute  = _queue_families[u32(queue_type::compute)];
@@ -244,14 +245,21 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
     vk::DeviceCreateInfo       device_create_info;
     device_create_info.pEnabledFeatures = &features;
 
-    std::vector<const char*> extensions{VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
-                                        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME};
-    if (_instance->is_surface_supported()) extensions.push_back("VK_KHR_swapchain");
+    std::unordered_set<std::string_view> extensions(additional_extensions.begin(), additional_extensions.end());
+
+    extensions.insert({VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+                       VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME});
+
+    if (_instance->is_surface_supported()) extensions.emplace(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     std::vector<const char*> layers;
     if (_instance->is_debug()) layers.push_back("VK_LAYER_LUNARG_standard_validation");
 
-    device_create_info.enabledExtensionCount   = u32(extensions.size());
-    device_create_info.ppEnabledExtensionNames = extensions.data();
+	_extensions.clear();
+	for (const auto& s : extensions)
+		_extensions.push_back(s.data());
+
+    device_create_info.enabledExtensionCount   = u32(_extensions.size());
+    device_create_info.ppEnabledExtensionNames = _extensions.data();
     device_create_info.enabledLayerCount       = u32(layers.size());
     device_create_info.ppEnabledLayerNames     = layers.data();
     device_create_info.queueCreateInfoCount    = u32(queue_infos.size());

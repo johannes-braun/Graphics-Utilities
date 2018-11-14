@@ -3,15 +3,16 @@
 #include "info.hpp"
 
 #include <gfx.core/log.hpp>
+#include <unordered_set>
 
 namespace gfx {
 inline namespace v1 {
-instance::instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support)
+instance::instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions)
       : _app_name(app_name), _app_version(app_version), _capabilities{debug, surface_support}
 {
-	initialize(app_name, app_version, debug, surface_support);
+	initialize(app_name, app_version, debug, surface_support, additional_extensions);
 }
-void instance::initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support)
+void instance::initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions)
 {
     vk::ApplicationInfo app_info;
     app_info.apiVersion         = version_t(1, 1, 0);
@@ -20,23 +21,27 @@ void instance::initialize(std::string_view app_name, version_t app_version, bool
     app_info.pEngineName        = detail::engine_name.data();
     app_info.pApplicationName   = app_name.data();
 
-    std::vector<const char*> extensions;
+	std::unordered_set<std::string_view> extensions(additional_extensions.begin(), additional_extensions.end());
     if (surface_support)
     {
-        extensions.push_back("VK_KHR_surface");
-        extensions.push_back("VK_KHR_win32_surface");
+		extensions.emplace("VK_KHR_surface");
+		extensions.emplace("VK_KHR_win32_surface");
     }
     if (debug)
     {
-        extensions.push_back("VK_EXT_debug_utils");
-        extensions.push_back("VK_EXT_debug_report");
+		extensions.emplace("VK_EXT_debug_utils");
+		extensions.emplace("VK_EXT_debug_report");
     }
+	_extensions.clear();
+	_extensions.reserve(extensions.size());
+	for (const auto& s : extensions)
+		_extensions.push_back(s.data());
 
     std::vector<const char*> layers;
     if (debug) layers.push_back("VK_LAYER_LUNARG_standard_validation");
 
     const vk::InstanceCreateInfo instance_info({}, &app_info, static_cast<u32>(layers.size()), layers.data(),
-                                               static_cast<u32>(extensions.size()), extensions.data());
+                                               static_cast<u32>(_extensions.size()), _extensions.data());
     _instance = vk::createInstanceUnique(instance_info);
     _dispatcher.load(_instance.get());
 
@@ -98,7 +103,7 @@ instance::instance(instance&& other) noexcept
 
 instance& instance::operator=(const instance& other)
 {
-	initialize(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support);
+	initialize(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support, other._extensions);
 	return *this;
 }
 
@@ -111,6 +116,7 @@ instance& instance::operator=(instance&& other) noexcept
     _debug_messenger = std::move(other._debug_messenger);
     _dispatcher      = std::move(other._dispatcher);
     _instance        = std::move(other._instance);
+	_extensions		 = std::move(other._extensions);
 
     other._app_version                  = {0, 0, 0};
     other._capabilities.debug           = false;

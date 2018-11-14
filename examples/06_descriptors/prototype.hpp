@@ -321,5 +321,53 @@ private:
     gfx::mapped<basic_instance>                                    _instance_descriptions;
 };
 
+template<typename Info>
+struct instance_component : gfx::ecs::component<instance_component<Info>>
+{
+	instance_component() = default;
+	instance_component(gfx::prototype* hnd, Info info) : handle(hnd), info(std::move(info)) {}
+
+	gfx::prototype* handle = nullptr;
+	gfx::prototype_handle instance = {};
+	Info   info;
+};
+
+template<typename Info>
+class instance_system : public gfx::ecs::system
+{
+public:
+	using instance_type = instance_component<Info>;
+
+	explicit instance_system(gfx::device& device, mesh_allocator_flags flags = {}) : _alloc(device, flags), _instantiator(_alloc)
+	{
+		add_component_type<instance_type>();
+		add_component_type<gfx::transform_component>();
+	}
+
+	void pre_update() override { _instantiator.clear(); }
+
+	void update(duration_type delta, gfx::ecs::component_base** components) const override
+	{
+		auto& inst = components[0]->as<instance_type>();
+		auto& transform = components[1]->as<gfx::transform_component>();
+
+		std::vector<Info> infos;
+		for (int i = 0; i < gfx::prototype::max_submeshes; ++i)
+		{
+			if (!inst.handle->meshes[i]) break;
+			infos.push_back({ inst.info });
+		}
+		_instantiator.enqueue(inst.handle, transform, infos);
+	}
+
+	const gfx::prototype_instantiator<Info>& get_instantiator() const noexcept { return _instantiator; }
+    const gfx::mesh_allocator& get_mesh_allocator() const noexcept { return _alloc; }
+    gfx::prototype_instantiator<Info>& get_instantiator() noexcept { return _instantiator; }
+    gfx::mesh_allocator& get_mesh_allocator() noexcept { return _alloc; }
+
+private:
+	gfx::mesh_allocator                               _alloc;
+	mutable gfx::prototype_instantiator<Info> _instantiator;
+};
 }    // namespace v1
 }    // namespace gfx
