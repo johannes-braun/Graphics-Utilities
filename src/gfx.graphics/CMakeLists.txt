@@ -25,15 +25,14 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC _SCL_SECURE_NO_WARNI
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC _WIN32_WINNT=0x0501)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)
 
+find_package(range-v3 REQUIRED)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.file)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.shaders)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC glfw::glfw)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::mygl)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::glsp)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC opengl32)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC vulkan::vulkan)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC microsoft::gsl)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC range-v3)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

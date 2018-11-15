@@ -24,6 +24,5 @@ target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.legacy)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.ecs)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC glfw::glfw)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

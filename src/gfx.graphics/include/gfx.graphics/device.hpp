@@ -1,7 +1,8 @@
 #pragma once
 
 #include "extensions.hpp"
-#include "gsl/span"
+#include <range/v3/span.hpp>
+#include <gsl/span>
 #include "types.hpp"
 #include <chrono>
 #include <unordered_map>
@@ -74,9 +75,9 @@ public:
     void reset_fences(cref_array_view<fence> fences);
 
 private:
-    u32  presentation_family(instance& i, const surface& s, gsl::span<const vk::QueueFamilyProperties> props) const noexcept;
+    u32  presentation_family(instance& i, const surface& s, ranges::span<const vk::QueueFamilyProperties> props) const noexcept;
     void initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<const char* const> additional_extensions);
-    static std::tuple<u32, u32, u32> dedicated_families(gsl::span<const vk::QueueFamilyProperties> props);
+    static std::tuple<u32, u32, u32> dedicated_families(ranges::span<const vk::QueueFamilyProperties> props);
 
     struct vma_alloc_deleter
     {

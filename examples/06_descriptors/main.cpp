@@ -572,9 +572,10 @@ int main(int argc, char** argv)
 
     gfx::mapped<glm::vec4> cie_values(gpu, gfx::cie_curves);
     gfx::commands          transfer_cie = gpu.allocate_transfer_command();
-
+     
     gfx::mapped<uint8_t> bokeh_values(gpu,
                                       gsl::make_span(static_cast<uint8_t*>(bokeh_image.bytes()), bokeh_image.width * bokeh_image.height));
+
 
     transfer_cie.cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     {

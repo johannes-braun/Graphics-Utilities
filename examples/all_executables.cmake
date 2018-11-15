@@ -8,6 +8,3 @@ add_subdirectory(12_boids)
 add_subdirectory(13_ibl)
 add_subdirectory(14_cubemapper)
 add_subdirectory(17_proto)
-
-add_subdirectory(AMR_assignment01)
-add_subdirectory(AMR_assignment02)

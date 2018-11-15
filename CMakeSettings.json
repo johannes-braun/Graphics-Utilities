@@ -2,9 +2,9 @@
   // Visual Studio 15 2017 Win64
   "environments": [
     {
-      "cmakeCommandArgs": "-Wno-dev",
-      "buildCommandArgs": "-v",//nologo /verbosity:normal",
-      "generatorx64": "Ninja"//Visual Studio 15 2017 Win64"
+      "cmakeCommandArgs": "-Wno-dev -DCMAKE_TOOLCHAIN_FILE=C:/Users/johan/Documents/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows",
+      "buildCommandArgs": "", //nologo /verbosity:normal",
+      "generatorx64": "Ninja" //Visual Studio 15 2017 Win64"
     }
   ],
   "configurations": [

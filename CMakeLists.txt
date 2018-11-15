@@ -36,6 +36,8 @@ if(GFX_USE_INSTALL)
 			PATTERN ".gitignore" EXCLUDE)
 endif()
 
+SET(BUILD_SHARED_LIBS OFF)
+
 add_subdirectory(ext)
 add_subdirectory(src)
 add_subdirectory(examples)

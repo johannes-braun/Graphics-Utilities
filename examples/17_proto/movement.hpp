@@ -17,5 +17,5 @@ class movement_system : public gfx::ecs::system
 {
 public:
     movement_system();
-    void update(double delta, gfx::ecs::component_base** components) const override;
+    void update(duration_type delta, gfx::ecs::component_base** components) const override;
 };

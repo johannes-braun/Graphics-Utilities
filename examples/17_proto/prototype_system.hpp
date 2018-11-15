@@ -19,7 +19,7 @@ public:
         add_component_type<gfx::transform_component>();
     }
 
-    void update(double delta, gfx::ecs::component_base** components) const override
+    void update(duration_type delta, gfx::ecs::component_base** components) const override
     {
         auto& proto = components[0]->as<prototype_component>();
         auto& trans = components[1]->as<gfx::transform_component>();

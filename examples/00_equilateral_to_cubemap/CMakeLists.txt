@@ -1,11 +1,8 @@
-if(NOT GFX_HAS_QT5)
-	message(FATAL_ERROR "Cannot build this sample without Qt.")
-endif()
-
 set(current_executable 00_equilateral_to_cubemap)
 mark_as_executable(${current_executable})
 
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.file)
+
 target_link_libraries(${current_executable} PRIVATE Qt5::Core)
 target_link_libraries(${current_executable} PRIVATE Qt5::Widgets)
 target_link_libraries(${current_executable} PRIVATE Qt5::Gui)

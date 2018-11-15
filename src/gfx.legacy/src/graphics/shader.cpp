@@ -8,6 +8,7 @@ namespace gfx {
 inline namespace v1 {
 shader::shader(shader_type stage, const gsl::span<const uint32_t>& spirv) : _stage(stage)
 {
+    _format = gfx::shader_format::spirv;
 	_data.resize(spirv.size_bytes());
 	memcpy(_data.data(), spirv.data(), spirv.size_bytes());
 }

@@ -202,7 +202,7 @@ void device::reset_fences(cref_array_view<fence> fences)
     _device->resetFences(fn);
 }
 
-u32 device::presentation_family(instance& i, const surface& s, gsl::span<const vk::QueueFamilyProperties> props) const noexcept
+u32 device::presentation_family(instance& i, const surface& s, ranges::span<const vk::QueueFamilyProperties> props) const noexcept
 {
     for (auto fam = 0ll; fam < props.size(); ++fam)
         if (_gpu.getWin32PresentationSupportKHR(u32(fam))) return u32(fam);
@@ -291,7 +291,7 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
     _allocator.reset(alloc);
 }
 
-std::tuple<u32, u32, u32> device::dedicated_families(gsl::span<const vk::QueueFamilyProperties> props)
+std::tuple<u32, u32, u32> device::dedicated_families(ranges::span<const vk::QueueFamilyProperties> props)
 {
     using qp            = vk::QueueFlagBits;
     u32 graphics_family = ~0u;

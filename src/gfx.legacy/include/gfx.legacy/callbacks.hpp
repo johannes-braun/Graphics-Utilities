@@ -69,10 +69,10 @@ namespace gfx
             glfwSetMouseButtonCallback(window, [](GLFWwindow* w, int k, int a, int m) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->mouse_button_callback.call_all(w, k, a, m); });
             glfwSetScrollCallback(window, [](GLFWwindow* w, double x, double y) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->scroll_callback.call_all(w, x, y); });
             glfwSetWindowCloseCallback(window, [](GLFWwindow* w) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_close_callback.call_all(w); });
-            glfwSetWindowContentScaleCallback(window, [](GLFWwindow* w, float x, float y) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_content_scale_callback.call_all(w, x, y); });
+            //glfwSetWindowContentScaleCallback(window, [](GLFWwindow* w, float x, float y) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_content_scale_callback.call_all(w, x, y); });
             glfwSetWindowFocusCallback(window, [](GLFWwindow* w, int f) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_focus_callback.call_all(w, f); });
             glfwSetWindowIconifyCallback(window, [](GLFWwindow* w, int i) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_iconity_callback.call_all(w, i); });
-            glfwSetWindowMaximizeCallback(window, [](GLFWwindow* w, int m) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_maximize_callback.call_all(w, m); });
+            //glfwSetWindowMaximizeCallback(window, [](GLFWwindow* w, int m) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_maximize_callback.call_all(w, m); });
             glfwSetWindowPosCallback(window, [](GLFWwindow* w, int x, int y) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_pos_callback.call_all(w, x, y); });
             glfwSetWindowRefreshCallback(window, [](GLFWwindow* w) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_refresh_callback.call_all(w); });
             glfwSetWindowSizeCallback(window, [](GLFWwindow* w, int x, int y) { static_cast<callbacks*>(glfwGetWindowUserPointer(w))->window_size_callback.call_all(w, x, y); });
@@ -88,10 +88,10 @@ namespace gfx
         callback<GLFWmousebuttonfun> mouse_button_callback;
         callback<GLFWscrollfun> scroll_callback;
         callback<GLFWwindowclosefun> window_close_callback;
-        callback<GLFWwindowcontentscalefun> window_content_scale_callback;
+        // callback<GLFWwindowcontentscalefun> window_content_scale_callback;
         callback<GLFWwindowfocusfun> window_focus_callback;
         callback<GLFWwindowiconifyfun> window_iconity_callback;
-        callback<GLFWwindowmaximizefun> window_maximize_callback;
+        // callback<GLFWwindowmaximizefun> window_maximize_callback;
         callback<GLFWwindowposfun> window_pos_callback;
         callback<GLFWwindowrefreshfun> window_refresh_callback;
         callback<GLFWwindowsizefun> window_size_callback;

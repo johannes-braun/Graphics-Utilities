@@ -15,7 +15,7 @@
 vec2 get_uv(const in vec2 u)
 {
 	return vec2(u.x, 1.0-u.y);
-}
+} 
 
 #endif
 #endif //API_GLSL

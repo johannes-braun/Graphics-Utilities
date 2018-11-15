@@ -23,3 +23,4 @@ endforeach()
 
 file(WRITE ${GFX_BINARY_DIR}/spv.lock "locked!")
 configure_file(${GFX_IN} ${GFX_OUT} @ONLY)
+message(${GFX_OUT})

@@ -16,6 +16,7 @@ function(create_spirv target_name source_dir header_output namespace)
 	foreach(file ${gfx_current_frag} ${gfx_current_vert} ${gfx_current_geom} ${gfx_current_tese} ${gfx_current_tesc} ${gfx_current_comp})
 		file(RELATIVE_PATH full_relative_file ${PROJECT_SOURCE_DIR}/ ${file})
 		file(RELATIVE_PATH relative_file ${source_dir}/ ${file})
+
 		get_filename_component(current_dir ${relative_file} DIRECTORY)
 		get_filename_component(current_filename ${relative_file} NAME)
 		string(REPLACE "-" "_" relative_file ${relative_file})
@@ -39,22 +40,25 @@ function(create_spirv target_name source_dir header_output namespace)
 			set(namespace_output "${namespace_output}    constexpr uint32_t ${current_filename}[] = @${full_relative_file}@\\\;\n")
 		endif()
 
-		execute_process(COMMAND ${GLSLC_COMMAND} -M "${file}" -I ${GLOBAL_SPV_INCLUDE_DIR} OUTPUT_VARIABLE FILE_DEPENDENCIES ERROR_VARIABLE FILE_ERROR)
+		unset(FILE_DEPENDENCIES)
+		execute_process(COMMAND ${GLSLC_COMMAND} -I "${GLOBAL_SPV_INCLUDE_DIR}" -M "${file}" OUTPUT_VARIABLE FILE_DEPENDENCIES ERROR_VARIABLE FILE_ERROR)
+		
 		if(FILE_ERROR)
 			message(FATAL_ERROR ${FILE_ERROR})
 		endif()
-		string(REPLACE " " ";" FILE_DEPENDENCIES ${FILE_DEPENDENCIES})
-		list(REMOVE_AT FILE_DEPENDENCIES 0)
-		list(APPEND CURRENT_DEPENDENCIES ${file})
-		list(APPEND CURRENT_DEPENDENCIES ${FILE_DEPENDENCIES})
+		string(REPLACE "\n" "" FILE_DEPENDENCIES ${FILE_DEPENDENCIES})
+		string(REPLACE " " ";" FILE_DEPENDENCY_LIST ${FILE_DEPENDENCIES})
+		list(REMOVE_AT FILE_DEPENDENCY_LIST 0)
+		list(APPEND CURRENT_DEPENDENCIES ${FILE_DEPENDENCY_LIST})
 	endforeach()
+
 	set(lock_file ${CMAKE_CURRENT_BINARY_DIR}/spv.lock)
 	file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/spv.lock)
 	add_custom_command(
 		OUTPUT ${header_output} ${lock_file}
 		COMMAND ${CMAKE_COMMAND} -DGFX_IN=${header_output}.in -DGFX_OUT=${header_output} -DGLOBAL_SPV_INCLUDE_DIR=${GLOBAL_SPV_INCLUDE_DIR} -DGFX_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} -DGFX_PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR} -DGFX_SORUCE_DIR=${source_dir} -P ${CMAKE_MODULE_PATH}/spv/configure.cmake
 		COMMENT "Compiling shaders..."
-		DEPENDS "${CURRENT_DEPENDENCIES}"
+		DEPENDS ${CURRENT_DEPENDENCIES}
 		VERBATIM
 	)
 
@@ -64,11 +68,10 @@ function(create_spirv target_name source_dir header_output namespace)
 	get_filename_component(out_dir ${header_output} DIRECTORY)
 	file(MAKE_DIRECTORY ${out_dir})
 	file(WRITE ${header_output}.in ${namespace_output})
-	configure_file(${header_output}.in ${header_output} @ONLY)
+	if(NOT EXISTS ${header_output})
+		configure_file(${header_output}.in ${header_output} @ONLY)
+	endif()
 
 	add_library(${target_name} INTERFACE)
-	set(gfx_current_module shaders)
-	target_include_directories(gfx.${gfx_current_module} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/)
-	target_include_directories(gfx.${gfx_current_module} INTERFACE $<INSTALL_INTERFACE:include>)
 	add_dependencies(${target_name} ${target_name}.spirv)
 endfunction()

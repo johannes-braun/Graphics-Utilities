@@ -3,8 +3,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_CURRENT_BINARY_DIR}>)
 
 # Find the QtWidgets library
 set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
-find_package(Qt5Widgets)
-find_package(Qt5Concurrent)
+find_package(Qt5Widgets REQUIRED)
+find_package(Qt5Concurrent REQUIRED)
 if(NOT Qt5Widgets_FOUND)
 	gfx_msg("Qt5 not found. Compiling without Qt5.")
 	set(GFX_HAS_QT5 FALSE)
@@ -62,22 +62,3 @@ string(TIMESTAMP CURRENT_YEAR %Y UTC)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in ${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc @ONLY)
 
 include(all_executables.cmake)
-
-#[[
-mark_as_executable(00_equilateral_to_cubemap)
-mark_as_executable(01_color_normalization)
-mark_as_executable(02_sound)
-mark_as_executable(03_ai)
-mark_as_executable(04_marching_squares)
-mark_as_executable(05_qt)
-mark_as_executable(07_meshing)
-mark_as_executable(08_point_detection)
-mark_as_executable(09_bv_stuff)
-mark_as_executable(10_ecs)
-mark_as_executable(11_pathtracer_incremental)
-mark_as_executable(12_boids)
-mark_as_executable(13_ibl)
-mark_as_executable(14_cubemapper)
-mark_as_executable(15_win32_window)
-mark_as_executable(17_proto)
-]]
