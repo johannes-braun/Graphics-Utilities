@@ -7,12 +7,14 @@
 
 namespace gfx {
 inline namespace v1 {
-instance::instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions)
+instance::instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support,
+                   vk::ArrayProxy<char const* const> additional_extensions)
       : _app_name(app_name), _app_version(app_version), _capabilities{debug, surface_support}
 {
-	initialize(app_name, app_version, debug, surface_support, additional_extensions);
+    initialize(app_name, app_version, debug, surface_support, additional_extensions);
 }
-void instance::initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions)
+void instance::initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support,
+                          vk::ArrayProxy<char const* const> additional_extensions)
 {
     vk::ApplicationInfo app_info;
     app_info.apiVersion         = version_t(1, 1, 0);
@@ -21,26 +23,25 @@ void instance::initialize(std::string_view app_name, version_t app_version, bool
     app_info.pEngineName        = detail::engine_name.data();
     app_info.pApplicationName   = app_name.data();
 
-	std::unordered_set<std::string_view> extensions(additional_extensions.begin(), additional_extensions.end());
+    std::unordered_set<std::string_view> extensions(additional_extensions.begin(), additional_extensions.end());
     if (surface_support)
     {
-		extensions.emplace("VK_KHR_surface");
-		extensions.emplace("VK_KHR_win32_surface");
+        extensions.emplace("VK_KHR_surface");
+        extensions.emplace("VK_KHR_win32_surface");
     }
     if (debug)
     {
-		extensions.emplace("VK_EXT_debug_utils");
-		extensions.emplace("VK_EXT_debug_report");
+        extensions.emplace("VK_EXT_debug_utils");
+        extensions.emplace("VK_EXT_debug_report");
     }
-	_extensions.clear();
-	_extensions.reserve(extensions.size());
-	for (const auto& s : extensions)
-		_extensions.push_back(s.data());
+    _extensions.clear();
+    _extensions.reserve(extensions.size());
+    for (auto const& s : extensions) _extensions.push_back(s.data());
 
-    std::vector<const char*> layers;
+    std::vector<char const*> layers;
     if (debug) layers.push_back("VK_LAYER_LUNARG_standard_validation");
 
-    const vk::InstanceCreateInfo instance_info({}, &app_info, static_cast<u32>(layers.size()), layers.data(),
+    vk::InstanceCreateInfo const instance_info({}, &app_info, static_cast<u32>(layers.size()), layers.data(),
                                                static_cast<u32>(_extensions.size()), _extensions.data());
     _instance = vk::createInstanceUnique(instance_info);
     _dispatcher.load(_instance.get());
@@ -51,7 +52,7 @@ void instance::initialize(std::string_view app_name, version_t app_version, bool
         const vk::DebugReportCallbackCreateInfoEXT callback_info(
             dcf::eWarning | dcf::eDebug | dcf::eInformation | dcf::ePerformanceWarning | dcf::eError,
             [](VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode,
-               const char* pLayerPrefix, const char* pMessage, void* pUserData) -> VkBool32 {
+               char const* pLayerPrefix, char const* pMessage, void* pUserData) -> VkBool32 {
                 switch (dcf(flags))
                 {
                 case dcf::eError: gfx::elog << pMessage; break;
@@ -82,7 +83,7 @@ void instance::initialize(std::string_view app_name, version_t app_version, bool
     }
 }
 
-instance::instance(const instance& other)
+instance::instance(instance const& other)
       : instance(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support)
 {}
 
@@ -101,10 +102,10 @@ instance::instance(instance&& other) noexcept
     other._capabilities.surface_support = false;
 }
 
-instance& instance::operator=(const instance& other)
+instance& instance::operator=(instance const& other)
 {
-	initialize(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support, other._extensions);
-	return *this;
+    initialize(other._app_name, other._app_version, other._capabilities.debug, other._capabilities.surface_support, other._extensions);
+    return *this;
 }
 
 instance& instance::operator=(instance&& other) noexcept
@@ -116,7 +117,7 @@ instance& instance::operator=(instance&& other) noexcept
     _debug_messenger = std::move(other._debug_messenger);
     _dispatcher      = std::move(other._dispatcher);
     _instance        = std::move(other._instance);
-	_extensions		 = std::move(other._extensions);
+    _extensions      = std::move(other._extensions);
 
     other._app_version                  = {0, 0, 0};
     other._capabilities.debug           = false;
@@ -124,12 +125,12 @@ instance& instance::operator=(instance&& other) noexcept
     return *this;
 }
 
-const vk::Instance& instance::get_instance() const noexcept
+vk::Instance const& instance::get_instance() const noexcept
 {
     return _instance.get();
 }
 
-const extension_dispatch& instance::get_dispatcher() const noexcept
+extension_dispatch const& instance::get_dispatcher() const noexcept
 {
     return _dispatcher;
 }

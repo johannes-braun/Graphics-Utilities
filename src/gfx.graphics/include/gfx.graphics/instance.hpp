@@ -9,22 +9,23 @@ inline namespace v1 {
 class instance
 {
 public:
-	explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions = {});
+    explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support,
+                      vk::ArrayProxy<char const* const> additional_extensions = {});
     ~instance() = default;
 
-	instance(const instance& other);
-	instance(instance&& other) noexcept;
-	instance& operator=(const instance& other);
-	instance& operator=(instance&& other) noexcept;
+    instance(instance const& other);
+    instance(instance&& other) noexcept;
+    instance& operator=(instance const& other);
+    instance& operator=(instance&& other) noexcept;
 
-    const vk::Instance&       get_instance() const noexcept;
-    const extension_dispatch& get_dispatcher() const noexcept;
-
-    bool is_debug() const noexcept;
-    bool is_surface_supported() const noexcept;
+    [[nodiscard]] auto get_instance() const noexcept -> vk::Instance const&;
+    [[nodiscard]] auto get_dispatcher() const noexcept -> extension_dispatch const&;
+    [[nodiscard]] auto is_debug() const noexcept -> bool;
+    [[nodiscard]] auto is_surface_supported() const noexcept -> bool;
 
 private:
-	void initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support, vk::ArrayProxy<const char* const> additional_extensions);
+    void initialize(std::string_view app_name, version_t app_version, bool debug, bool surface_support,
+                    vk::ArrayProxy<char const* const> additional_extensions);
 
     std::string                                                      _app_name;
     version_t                                                        _app_version;
@@ -32,7 +33,7 @@ private:
     vk::UniqueHandle<vk::DebugUtilsMessengerEXT, extension_dispatch> _debug_messenger;
     extension_dispatch                                               _dispatcher;
     vk::UniqueHandle<vk::DebugReportCallbackEXT, extension_dispatch> _debug_callback;
-	std::vector<const char*> _extensions;
+    std::vector<char const*>                                         _extensions;
 
     struct
     {

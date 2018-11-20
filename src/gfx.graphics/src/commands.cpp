@@ -1,9 +1,10 @@
 #include "commands.hpp"
 
-namespace gfx
+namespace gfx {
+inline namespace v1 {
+vk::CommandBuffer const& commands::cmd() const noexcept
 {
-	inline namespace v1
-	{
-		const vk::CommandBuffer& commands::cmd() const noexcept { return _buf.get(); }
-	}
+    return _buf.get();
 }
+}    // namespace v1
+}    // namespace gfx

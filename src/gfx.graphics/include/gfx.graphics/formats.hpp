@@ -83,7 +83,7 @@ enum format
 	bgra8unorm,
 };
 
-constexpr size_t format_element_size(format fmt);
+[[nodiscard]] constexpr auto format_element_size(format fmt) noexcept -> size_t;
 }    // namespace v1
 }    // namespace gfx
 

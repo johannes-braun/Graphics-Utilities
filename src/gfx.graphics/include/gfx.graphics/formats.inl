@@ -3,7 +3,7 @@
 
 namespace gfx {
 inline namespace v1 {
-constexpr size_t format_element_size(format fmt)
+constexpr size_t format_element_size(format fmt) noexcept
 {
     switch (fmt)
     {

@@ -16,7 +16,7 @@ semaphore& semaphore::operator=(const semaphore& other) noexcept
 	return *this;
 }
 
-const vk::Semaphore& semaphore::sem() const noexcept
+const vk::Semaphore& semaphore::get_semaphore() const noexcept
 {
     return _sem.get();
 }
@@ -39,7 +39,7 @@ fence& fence::operator=(const fence& other) noexcept
     return *this;
 }
 
-const vk::Fence& fence::fen() const noexcept
+const vk::Fence& fence::get_fence() const noexcept
 {
     return _fence.get();
 }

@@ -17,6 +17,7 @@ enum class acquire_error
 class device;
 class surface;
 class semaphore;
+class image;
 class fence;
 struct extension_dispatch;
 
@@ -24,40 +25,40 @@ class swapchain
 {
 public:
     explicit swapchain(device& d, surface& s, bool general_images = true);
-	swapchain(const swapchain&) = delete;
-	swapchain& operator=(const swapchain&) = delete;
-	swapchain(swapchain&&) = default;
-	swapchain& operator=(swapchain&&) = default;
+    swapchain(swapchain const&) = delete;
+    swapchain& operator=(swapchain const&) = delete;
+    swapchain(swapchain&&)                 = default;
+    swapchain& operator=(swapchain&&) = default;
+    ~swapchain()                      = default;
 
-    bool                    recreate();
-    const vk::SwapchainKHR& chain() const noexcept;
+    [[nodiscard]] auto get_swapchain() const noexcept -> vk::SwapchainKHR const&;
+    [[nodiscard]] auto images() const noexcept -> std::vector<gfx::image> const&;
+    [[nodiscard]] auto present_mode() const noexcept -> vk::PresentModeKHR;
+    [[nodiscard]] auto color_space() const noexcept -> vk::ColorSpaceKHR;
+    [[nodiscard]] auto format() const noexcept -> vk::Format;
+    [[nodiscard]] auto extent() const noexcept -> vk::Extent2D;
+    [[nodiscard]] auto count() const noexcept -> u32;
+    [[nodiscard]] auto has_resized() const noexcept -> bool;
 
-    u32                                          count() const noexcept;
-    const std::vector<vk::Image>&                imgs() const noexcept;
-    std::pair<u32, std::optional<acquire_error>> next_image(opt_ref<const semaphore> sem     = std::nullopt,
-                                                            opt_ref<const fence>     fen     = std::nullopt,
-                                                            std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max());
-
-	const vk::PresentModeKHR&                                     present_mode() const noexcept { return _present_mode; }
-	const vk::ColorSpaceKHR&                                      color_space() const noexcept { return _color_space; }
-	const vk::Format&                                             format() const noexcept { return _format; }
-	const vk::Extent2D&                                           extent() const noexcept { return _extent; }
-	
-	bool has_resized() const noexcept;
+    [[maybe_unused]] auto recreate() -> bool;
+    [[nodiscard]] auto    next_image(opt_ref<semaphore const> sem = std::nullopt, opt_ref<fence const> fen = std::nullopt,
+                                     std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max())
+        -> std::pair<u32, std::optional<acquire_error>>;
 
 private:
-    [[maybe_unused]] bool recreate(std::optional<std::reference_wrapper<swapchain>> old);
-    static vk::PresentModeKHR find_present_mode(gsl::span<const vk::PresentModeKHR> modes);
-    static std::pair<vk::ColorSpaceKHR, vk::Format> find_image_properties(gsl::span<const vk::SurfaceFormatKHR> modes);
+    [[maybe_unused]] auto     recreate(std::optional<std::reference_wrapper<swapchain>> old) -> bool;
+    [[nodiscard]] static auto find_present_mode(gsl::span<const vk::PresentModeKHR> modes) -> vk::PresentModeKHR;
+    [[nodiscard]] static auto find_image_properties(gsl::span<const vk::SurfaceFormatKHR> modes)
+        -> std::pair<vk::ColorSpaceKHR, vk::Format>;
 
     bool                                                   _general_images;
-    const extension_dispatch*                              _dispatcher = nullptr;
+    extension_dispatch const*                              _dispatcher = nullptr;
     vk::Device                                             _device;
     vk::PhysicalDevice                                     _gpu;
     vk::SurfaceKHR                                         _surface;
     vk::UniqueHandle<vk::SwapchainKHR, extension_dispatch> _swapchain;
     std::vector<u32>                                       _condensed_families;
-    std::vector<vk::Image>                                 _images;
+    std::vector<gfx::image>                                _images;
     vk::PresentModeKHR                                     _present_mode = {};
     vk::ColorSpaceKHR                                      _color_space  = {};
     vk::Format                                             _format       = {};

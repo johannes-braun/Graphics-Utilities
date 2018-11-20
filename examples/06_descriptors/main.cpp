@@ -10,19 +10,19 @@
 #include <QApplication>
 #include <QBoxLayout>
 #include <QButtonGroup>
-#include <QCheckBox>
 #include <QCoreApplication>
 #include <QFormLayout>
-#include <QFrame>
 #include <QGroupBox>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMenuBar>
-#include <QMouseEvent>
-#include <QPushButton>
 #include <QRadioButton>
+#include <QPushButton>
 #include <QSlider>
+#include <QMouseEvent>
+#include <QCheckBox>
+#include <QFrame>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QStyleFactory>
@@ -404,6 +404,7 @@ int main(int argc, char** argv)
     rp_info.pSubpasses      = &main_subpass;
     rp_info.dependencyCount = 1;
     rp_info.pDependencies   = &main_subpass_dep;
+
     const auto pass         = gpu.get_device().createRenderPassUnique(rp_info);
 
     std::vector<vk::UniqueImageView>   imvs;
@@ -417,7 +418,7 @@ int main(int argc, char** argv)
         {
             vk::ImageViewCreateInfo imv_create;
             imv_create.format           = chain.format();
-            imv_create.image            = chain.imgs()[i];
+            imv_create.image            = chain.images()[i].get_image();
             imv_create.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
             imv_create.viewType         = vk::ImageViewType::e2D;
             imvs.emplace_back(gpu.get_device().createImageViewUnique(imv_create));
@@ -498,8 +499,7 @@ int main(int argc, char** argv)
     gfx::unique_prototype sphere = instances.get_instantiator().allocate_prototype_unique("Sphere", gfx::scene_file("sphere.dae"));
     gfx::unique_prototype floor  = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("floor.dae"));
     
-    auto fe =
-        ecs.create_entity(gfx::instance_component{floor.get(), material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
+    ecs.create_entity(gfx::instance_component{floor.get(), material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
                           gfx::transform_component{{0, -1.f, 0}, {2.f, 2.f, 2.f}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))});
     for (int i = 0; i < 5; ++i)
     {

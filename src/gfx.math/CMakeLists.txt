@@ -22,7 +22,6 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC GLM_FORCE_PURE)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC STBI_MSC_SECURE_CRT)
-target_compile_definitions(gfx.${gfx_current_module} PUBLIC _SCL_SECURE_NO_WARNINGS)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC _WIN32_WINNT=0x0501)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)
 

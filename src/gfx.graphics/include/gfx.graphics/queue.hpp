@@ -20,15 +20,15 @@ class queue
 {
 public:
     queue() = delete;
-    
-	void submit(cref_array_view<commands> cmds, cref_array_view<semaphore> wait_for, cref_array_view<semaphore> signal,
-                opt_ref<const fence> f = std::nullopt) const;
+
+    void submit(cref_array_view<commands> cmds, cref_array_view<semaphore> wait_for, cref_array_view<semaphore> signal,
+                opt_ref<fence const> f = std::nullopt) const;
     [[nodiscard]] std::optional<present_error>
-        present(vk::ArrayProxy<const std::pair<u32, const std::reference_wrapper<const swapchain>>> swapchains,
+        present(vk::ArrayProxy<std::pair<u32, std::reference_wrapper<swapchain const> const> const> swapchains,
                 cref_array_view<semaphore>                                                          wait_for) const;
 
-	const vk::Queue& get_queue() const noexcept;
-	void             wait() const noexcept;
+    [[nodiscard]] auto get_queue() const noexcept -> vk::Queue const&;
+    void               wait() const noexcept;
 
 private:
     vk::Queue _queue;

@@ -1,10 +1,9 @@
 #pragma once
 
 #include "extensions.hpp"
-#include <range/v3/span.hpp>
-#include <gsl/span>
 #include "types.hpp"
 #include <chrono>
+#include <gsl/span>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
@@ -35,6 +34,13 @@ class queue;
 using allocator = VmaAllocator_T*;
 class fence;
 
+class physical_device_handle
+{
+public:
+private:
+    vk::PhysicalDevice _gpu;
+};
+
 class device
 {
 public:
@@ -42,42 +48,45 @@ public:
     friend class mapped;
 
     explicit device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
-		vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface = std::nullopt, vk::ArrayProxy<const char* const> additional_extensions = {});
+                    vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface = std::nullopt,
+                    vk::ArrayProxy<const char* const> additional_extensions = {});
 
-    device(const device& other);
-    device& operator=(const device& other);
-
+    device( device const& other);
     device(device&& other) noexcept = default;
+
+    device& operator=( device const& other);
     device& operator=(device&& other) noexcept = default;
 
-    const queue& graphics_queue(u32 index = 0) const noexcept;
+    ~device() = default;
 
-    const queue& compute_queue(u32 index = 0) const noexcept;
-    const queue& transfer_queue() const noexcept;
-    const queue& present_queue() const noexcept;
+    [[nodiscard]] auto graphics_queue(u32 index = 0) const noexcept -> queue const&;
+    [[nodiscard]] auto compute_queue(u32 index = 0) const noexcept -> queue const&;
+    [[nodiscard]] auto transfer_queue() const noexcept -> queue const&;
+    [[nodiscard]] auto present_queue() const noexcept -> queue const&;
 
-    const u32& graphics_family() const noexcept;
-    const u32& compute_family() const noexcept;
-    const u32& transfer_family() const noexcept;
-    const u32& present_family() const noexcept;
+    [[nodiscard]] auto graphics_family() const noexcept -> u32 const&;
+    [[nodiscard]] auto compute_family() const noexcept -> u32 const&;
+    [[nodiscard]] auto transfer_family() const noexcept -> u32 const&;
+    [[nodiscard]] auto present_family() const noexcept -> u32 const&;
 
-    const vk::Device&         get_device() const noexcept;
-    const vk::PhysicalDevice& get_physical_device() const noexcept;
-    allocator                 get_allocator() const noexcept;
-    const extension_dispatch& get_dispatcher() const noexcept;
+    [[nodiscard]] auto get_device() const noexcept -> vk::Device const&;
+    [[nodiscard]] auto get_physical_device() const noexcept -> vk::PhysicalDevice const&;
+    [[nodiscard]] auto get_allocator() const noexcept -> allocator;
+    [[nodiscard]] auto get_dispatcher() const noexcept -> extension_dispatch const&;
 
-    std::vector<commands> allocate_graphics_commands(u32 count, bool primary = true) const noexcept;
-    commands              allocate_graphics_command(bool primary = true) const noexcept;
-    std::vector<commands> allocate_transfer_commands(u32 count, bool primary = true) const noexcept;
-    commands              allocate_transfer_command(bool primary = true) const noexcept;
+    [[nodiscard]] auto allocate_graphics_commands(u32 count, bool primary = true) const noexcept -> std::vector<commands>;
+    [[nodiscard]] auto allocate_graphics_command(bool primary = true) const noexcept -> commands;
+    [[nodiscard]] auto allocate_transfer_commands(u32 count, bool primary = true) const noexcept -> std::vector<commands>;
+    [[nodiscard]] auto allocate_transfer_command(bool primary = true) const noexcept -> commands;
 
     void wait_for(cref_array_view<fence> fences, bool all = true, std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max());
     void reset_fences(cref_array_view<fence> fences);
 
 private:
-    u32  presentation_family(instance& i, const surface& s, ranges::span<const vk::QueueFamilyProperties> props) const noexcept;
-    void initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<const char* const> additional_extensions);
-    static std::tuple<u32, u32, u32> dedicated_families(ranges::span<const vk::QueueFamilyProperties> props);
+    [[nodiscard]] auto presentation_family(instance& i, surface const& s, gsl::span<vk::QueueFamilyProperties const> props) const noexcept
+        -> u32;
+    [[nodiscard]] static auto dedicated_families(gsl::span<vk::QueueFamilyProperties const> props) -> std::tuple<u32, u32, u32>;
+    void initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<char const* const> additional_extensions);
 
     struct vma_alloc_deleter
     {
@@ -95,7 +104,7 @@ private:
     extension_dispatch                                 _dispatcher;
     std::array<std::vector<vk::Queue>, 4>              _queues;
     std::array<vk::UniqueCommandPool, 4>               _command_pools;
-	std::vector<const char*>						   _extensions;
+    std::vector<const char*>                           _extensions;
 };
 }    // namespace v1
 }    // namespace gfx

@@ -4,19 +4,21 @@
 
 #include "device.hpp"
 #include "vulkan/vk_mem_alloc.h"
-
 #include "commands.hpp"
 #include "instance.hpp"
 #include "sync.hpp"
 
+#include <unordered_set>
+#include <string_view>
+
 namespace gfx {
 inline namespace v1 {
-device::device(instance& i, device_target target, vk::ArrayProxy<const float> graphics_priorities,
-               vk::ArrayProxy<const float> compute_priorities, opt_ref<surface> surface,
-               vk::ArrayProxy<const char* const> additional_extensions)
+device::device(instance& i, device_target target, vk::ArrayProxy< float const> graphics_priorities,
+               vk::ArrayProxy< float const> compute_priorities, opt_ref<surface> surface,
+               vk::ArrayProxy< char const* const> additional_extensions)
       : _instance(&i)
 {
-    const auto                   gpus        = i.get_instance().enumeratePhysicalDevices();
+    auto const                   gpus        = i.get_instance().enumeratePhysicalDevices();
     const vk::PhysicalDeviceType target_type = [target] {
         using dt  = device_target;
         using vdt = vk::PhysicalDeviceType;
@@ -32,7 +34,7 @@ device::device(instance& i, device_target target, vk::ArrayProxy<const float> gr
     vk::PhysicalDevice dgpu;
     vk::PhysicalDevice igpu;
     vk::PhysicalDevice cpu;
-    for (const auto& gpu : gpus)
+    for ( auto const& gpu : gpus)
     {
         if (gpu.getProperties().deviceType == target_type)
         {
@@ -57,9 +59,9 @@ device::device(instance& i, device_target target, vk::ArrayProxy<const float> gr
     }
 
     _enable_present                             = surface && i.is_surface_supported();
-    const auto queue_properties                 = _gpu.getQueueFamilyProperties();
-    const auto [fgraphics, fcompute, ftransfer] = dedicated_families(queue_properties);
-    const auto fpresent                         = _enable_present ? presentation_family(i, *surface, queue_properties) : 0;
+    auto const queue_properties                 = _gpu.getQueueFamilyProperties();
+    auto const [fgraphics, fcompute, ftransfer] = dedicated_families(queue_properties);
+    auto const fpresent                         = _enable_present ? presentation_family(i, *surface, queue_properties) : 0;
     _queue_families[u32(queue_type::graphics)]  = fgraphics;
     _queue_families[u32(queue_type::compute)]   = fcompute;
     _queue_families[u32(queue_type::transfer)]  = ftransfer;
@@ -73,7 +75,7 @@ device::device(instance& i, device_target target, vk::ArrayProxy<const float> gr
     initialize_preset(graphics_priorities.size(), compute_priorities.size(), additional_extensions);
 }
 
-device::device(const device& other)
+device::device( device const& other)
 {
     _instance           = other._instance;
     _gpu                = other._gpu;
@@ -84,7 +86,7 @@ device::device(const device& other)
     initialize_preset(u32(other._queues[u32(queue_type::graphics)].size()), u32(other._queues[u32(queue_type::compute)].size()), other._extensions);
 }
 
-device& device::operator=(const device& other)
+device& device::operator=( device const& other)
 {
     _instance           = other._instance;
     _gpu                = other._gpu;
@@ -96,52 +98,52 @@ device& device::operator=(const device& other)
     return *this;
 }
 
-const queue& device::graphics_queue(u32 index) const noexcept
+queue const& device::graphics_queue(u32 index) const noexcept
 {
-    return reinterpret_cast<const queue&>(_queues[u32(queue_type::graphics)][index]);
+    return reinterpret_cast<queue const&>(_queues[u32(queue_type::graphics)][index]);
 }
 
-const queue& device::compute_queue(u32 index) const noexcept
+queue const& device::compute_queue(u32 index) const noexcept
 {
-    return reinterpret_cast<const queue&>(_queues[u32(queue_type::compute)][index]);
+    return reinterpret_cast<queue const&>(_queues[u32(queue_type::compute)][index]);
 }
 
-const queue& device::transfer_queue() const noexcept
+queue const& device::transfer_queue() const noexcept
 {
-    return reinterpret_cast<const queue&>(_queues[u32(queue_type::transfer)][0]);
+    return reinterpret_cast<queue const&>(_queues[u32(queue_type::transfer)][0]);
 }
 
-const queue& device::present_queue() const noexcept
+queue const& device::present_queue() const noexcept
 {
-    return reinterpret_cast<const queue&>(_queues[u32(queue_type::present)][0]);
+    return reinterpret_cast<queue const&>(_queues[u32(queue_type::present)][0]);
 }
 
-const u32& device::graphics_family() const noexcept
+u32 const& device::graphics_family() const noexcept
 {
     return _queue_families[u32(queue_type::graphics)];
 }
 
-const u32& device::compute_family() const noexcept
+u32 const& device::compute_family() const noexcept
 {
     return _queue_families[u32(queue_type::compute)];
 }
 
-const u32& device::transfer_family() const noexcept
+u32 const& device::transfer_family() const noexcept
 {
     return _queue_families[u32(queue_type::transfer)];
 }
 
-const u32& device::present_family() const noexcept
+u32 const& device::present_family() const noexcept
 {
     return _queue_families[u32(queue_type::present)];
 }
 
-const vk::Device& device::get_device() const noexcept
+ vk::Device const& device::get_device() const noexcept
 {
     return _device.get();
 }
 
-const vk::PhysicalDevice& device::get_physical_device() const noexcept
+ vk::PhysicalDevice const& device::get_physical_device() const noexcept
 {
     return _gpu;
 }
@@ -151,14 +153,14 @@ allocator device::get_allocator() const noexcept
     return _allocator.get();
 }
 
-const extension_dispatch& device::get_dispatcher() const noexcept
+ extension_dispatch const& device::get_dispatcher() const noexcept
 {
     return _dispatcher;
 }
 
 std::vector<commands> device::allocate_graphics_commands(u32 count, bool primary) const noexcept
 {
-    const vk::CommandBufferAllocateInfo alloc{_command_pools[u32(queue_type::graphics)].get(),
+     vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::graphics)].get(),
                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
@@ -166,7 +168,7 @@ std::vector<commands> device::allocate_graphics_commands(u32 count, bool primary
 
 commands device::allocate_graphics_command(bool primary) const noexcept
 {
-    const vk::CommandBufferAllocateInfo alloc{_command_pools[u32(queue_type::graphics)].get(),
+     vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::graphics)].get(),
                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
@@ -174,7 +176,7 @@ commands device::allocate_graphics_command(bool primary) const noexcept
 
 std::vector<commands> device::allocate_transfer_commands(u32 count, bool primary) const noexcept
 {
-    const vk::CommandBufferAllocateInfo alloc{_command_pools[u32(queue_type::transfer)].get(),
+     vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::transfer)].get(),
                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
@@ -182,7 +184,7 @@ std::vector<commands> device::allocate_transfer_commands(u32 count, bool primary
 
 commands device::allocate_transfer_command(bool primary) const noexcept
 {
-    const vk::CommandBufferAllocateInfo alloc{_command_pools[u32(queue_type::transfer)].get(),
+     vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::transfer)].get(),
                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
@@ -191,30 +193,30 @@ commands device::allocate_transfer_command(bool primary) const noexcept
 void device::wait_for(cref_array_view<fence> fences, bool all, std::chrono::nanoseconds timeout)
 {
     std::vector<vk::Fence> fn(fences.size());
-    for (size_t i = 0; i < fn.size(); ++i) fn[i] = fences.data()[i].get().fen();
+    for (size_t i = 0; i < fn.size(); ++i) fn[i] = fences.data()[i].get().get_fence();
     _device->waitForFences(fn, all, timeout.count());
 }
 
 void device::reset_fences(cref_array_view<fence> fences)
 {
     std::vector<vk::Fence> fn(fences.size());
-    for (size_t i = 0; i < fn.size(); ++i) fn[i] = fences.data()[i].get().fen();
+    for (size_t i = 0; i < fn.size(); ++i) fn[i] = fences.data()[i].get().get_fence();
     _device->resetFences(fn);
 }
 
-u32 device::presentation_family(instance& i, const surface& s, ranges::span<const vk::QueueFamilyProperties> props) const noexcept
+u32 device::presentation_family(instance& i,  surface const& s, gsl::span< vk::QueueFamilyProperties const> props) const noexcept
 {
     for (auto fam = 0ll; fam < props.size(); ++fam)
         if (_gpu.getWin32PresentationSupportKHR(u32(fam))) return u32(fam);
     return 0;
 }
 
-void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<const char* const> additional_extensions)
+void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy< char const* const> additional_extensions)
 {
-    const auto fgraphics = _queue_families[u32(queue_type::graphics)];
-    const auto fcompute  = _queue_families[u32(queue_type::compute)];
-    const auto ftransfer = _queue_families[u32(queue_type::transfer)];
-    const auto fpresent  = _queue_families[u32(queue_type::present)];
+    auto const fgraphics = _queue_families[u32(queue_type::graphics)];
+    auto const fcompute  = _queue_families[u32(queue_type::compute)];
+    auto const ftransfer = _queue_families[u32(queue_type::transfer)];
+    auto const fpresent  = _queue_families[u32(queue_type::present)];
 
     auto& graphics_create_info            = _queue_create_infos[fgraphics];
     graphics_create_info.queueFamilyIndex = fgraphics;
@@ -251,11 +253,11 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
                        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME});
 
     if (_instance->is_surface_supported()) extensions.emplace(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    std::vector<const char*> layers;
+    std::vector< char const*> layers;
     if (_instance->is_debug()) layers.push_back("VK_LAYER_LUNARG_standard_validation");
 
 	_extensions.clear();
-	for (const auto& s : extensions)
+	for (auto const& s : extensions)
 		_extensions.push_back(s.data());
 
     device_create_info.enabledExtensionCount   = u32(_extensions.size());
@@ -282,7 +284,7 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
     _command_pools[u32(queue_type::transfer)] = _device->createCommandPoolUnique({vk::CommandPoolCreateFlagBits::eTransient, ftransfer});
     if (_enable_present) _queues[u32(queue_type::present)].push_back(_device->getQueue(fpresent, queue_counter[fpresent]++));
 
-    VmaAllocatorCreateInfo allocator_create_info{0};
+    VmaAllocatorCreateInfo allocator_create_info{};
     allocator_create_info.device         = _device.get();
     allocator_create_info.physicalDevice = _gpu;
     allocator_create_info.flags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
@@ -291,7 +293,7 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
     _allocator.reset(alloc);
 }
 
-std::tuple<u32, u32, u32> device::dedicated_families(ranges::span<const vk::QueueFamilyProperties> props)
+std::tuple<u32, u32, u32> device::dedicated_families(gsl::span< vk::QueueFamilyProperties const> props)
 {
     using qp            = vk::QueueFlagBits;
     u32 graphics_family = ~0u;

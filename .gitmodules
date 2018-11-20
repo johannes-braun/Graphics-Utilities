@@ -1,21 +1,9 @@
-[submodule "ext/pugixml"]
-	path = ext/pugixml
-	url = https://github.com/zeux/pugixml.git
-[submodule "ext/glfw"]
-	path = ext/glfw
-	url = https://github.com/glfw/glfw.git
-[submodule "ext/glm"]
-	path = ext/glm
-	url = https://github.com/g-truc/glm.git
 [submodule "ext/glshader"]
 	path = ext/glshader
 	url = https://github.com/johannes-braun/GLshader.git
 [submodule "ext/vulkan/headers"]
 	path = ext/vulkan/headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers.git
-[submodule "ext/assimp"]
-	path = ext/assimp
-	url = https://github.com/assimp/assimp.git
 [submodule "ext/gsl"]
 	path = ext/gsl
 	url = https://github.com/Microsoft/GSL.git

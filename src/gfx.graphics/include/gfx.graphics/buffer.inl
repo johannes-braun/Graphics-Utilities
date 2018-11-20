@@ -25,14 +25,14 @@ mapped<T>::mapped(device& d, std::initializer_list<T> ilist) : mapped(d)
     std::move(std::begin(ilist), std::end(ilist), this->begin());
 }
 template<typename T>
-mapped<T>::mapped(device& d, gsl::span<const T> ilist) : mapped(d)
+mapped<T>::mapped(device& d, gsl::span< T const> ilist) : mapped(d)
 {
     reserve(std::size(ilist));
     reset_storage(this->data(), std::size(ilist));
     std::copy(std::begin(ilist), std::end(ilist), this->begin());
 }
 template<typename T>
-mapped<T>::mapped(const mapped& other)
+mapped<T>::mapped( mapped const& other)
 {
     allocate(other._capacity);
     reset_storage(this->data(), other.size());
@@ -54,7 +54,7 @@ mapped<T>::mapped(mapped&& other) noexcept
     other._capacity   = 0;
 }
 template<typename T>
-mapped<T>& mapped<T>::operator=(const mapped<T>& other)
+mapped<T>& mapped<T>::operator=( mapped<T> const& other)
 {
     if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(this->begin(), this->end());
     allocate(other._capacity);
@@ -96,18 +96,18 @@ void mapped<T>::resize(size_type size, T&& value)
     if constexpr (!std::is_trivially_destructible_v<T>)
         if (size < this->size()) std::destroy(this->begin() + size, this->end());
     while (size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-    const auto old_size = this->size();
+    auto const old_size = this->size();
 
     reset_storage(this->data(), size);
     if (size > old_size) init_range(this->begin() + old_size, this->end(), std::forward<T&&>(value));
 }
 template<typename T>
-void mapped<T>::resize(size_type size, const T& value)
+void mapped<T>::resize(size_type size,  T const& value)
 {
     if constexpr (!std::is_trivially_destructible_v<T>)
         if (size < this->size()) std::destroy(this->begin() + size, this->end());
     while (size > _capacity) allocate(std::max(2 * _capacity, 1ll));
-    const auto old_size = this->size();
+    auto const old_size = this->size();
     reset_storage(this->data(), size);
     if (size > old_size) init_range(this->begin() + old_size, this->end(), std::forward<const T&>(value));
 }
@@ -117,7 +117,7 @@ void mapped<T>::push_back(T&& value)
     resize(this->size() + 1, std::forward<T&&>(value));
 }
 template<typename T>
-void mapped<T>::push_back(const T& value)
+void mapped<T>::push_back( T const& value)
 {
     resize(this->size() + 1, std::forward<const T&>(value));
 }
@@ -135,7 +135,7 @@ typename mapped<T>::iterator mapped<T>::insert(const_iterator at, std::initializ
 template<typename T>
 typename mapped<T>::iterator mapped<T>::erase(const_iterator at)
 {
-    const auto start_offset = std::distance<const_iterator>(this->begin(), at);
+    auto const start_offset = std::distance<const_iterator>(this->begin(), at);
     auto       result_it    = this->begin() + start_offset;
     if constexpr (!std::is_trivially_destructible_v<T>) std::destroy_at(std::addressof(*result_it));
     std::move(std::next(result_it), this->end(), result_it);
@@ -145,8 +145,8 @@ typename mapped<T>::iterator mapped<T>::erase(const_iterator at)
 template<typename T>
 typename mapped<T>::iterator mapped<T>::erase(const_iterator begin, const_iterator end)
 {
-    const auto start_offset = std::distance<const_iterator>(this->begin(), begin);
-    const auto delta        = std::distance(begin, end);
+    auto const start_offset = std::distance<const_iterator>(this->begin(), begin);
+    auto const delta        = std::distance(begin, end);
     auto       dbegin       = this->begin() + std::distance(this->begin(), begin);
     auto       dend         = this->begin() + std::distance(this->begin(), end);
     auto       result_it    = this->begin() + start_offset;
@@ -176,7 +176,7 @@ const typename mapped<T>::value_type& mapped<T>::back() const
     return this->data()[this->size() - 1];
 }
 template<typename T>
-typename mapped<T>::size_type mapped<T>::capacity() const
+typename mapped<T>::size_type mapped<T>::capacity() const noexcept
 {
     return _capacity;
 }
@@ -192,26 +192,26 @@ void mapped<T>::clear()
     reset_storage(this->data(), 0);
 }
 template<typename T>
-typename mapped<T>::iterator mapped<T>::insert(const_iterator at, const T& value)
+typename mapped<T>::iterator mapped<T>::insert(const_iterator at,  T const& value)
 {
-    const auto delta        = 1;
-    const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-    const auto move_section = std::distance<const_iterator>(at, this->end());
-    const auto new_size     = this->size() + delta;
+    auto const delta        = 1;
+    auto const start_offset = std::distance<const_iterator>(this->begin(), at);
+    auto const move_section = std::distance<const_iterator>(at, this->end());
+    auto const new_size     = this->size() + delta;
     while (new_size > _capacity) allocate(std::max(2 * _capacity, 1ll));
     reset_storage(this->data(), this->size() + delta);
     auto result_it = this->begin() + start_offset;
     std::move_backward(result_it, result_it + move_section, result_it + move_section);
-    *result_it = std::forward<const T&>(value);
+    *result_it = std::forward< T const&>(value);
     return this->begin() + start_offset;
 }
 template<typename T>
 typename mapped<T>::iterator mapped<T>::insert(const_iterator at, T&& value)
 {
-    const auto delta        = 1;
-    const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-    const auto move_section = std::distance<const_iterator>(at, this->end());
-    const auto new_size     = this->size() + delta;
+    auto const delta        = 1;
+    auto const start_offset = std::distance<const_iterator>(this->begin(), at);
+    auto const move_section = std::distance<const_iterator>(at, this->end());
+    auto const new_size     = this->size() + delta;
     while (new_size > _capacity) allocate(std::max(2 * _capacity, 1ll));
     reset_storage(this->data(), this->size() + delta);
     auto result_it = this->begin() + start_offset;
@@ -260,12 +260,12 @@ void mapped<T>::init_range(iterator begin, iterator end, T&& value)
     if (end > begin) std::fill(begin, end, value);
 }
 template<typename T>
-void mapped<T>::init_range(iterator begin, iterator end, const T& value)
+void mapped<T>::init_range(iterator begin, iterator end,  T const& value)
 {
 	if (end > begin) std::fill(begin, end, value);
 }
 template<typename T>
-void mapped<T>::reset_storage(value_type* storage, size_type size)
+void mapped<T>::reset_storage(value_type* storage, size_type size) noexcept
 {
     gsl::span<T>::operator=(gsl::span<T>{storage, static_cast<ptrdiff_t>(size)});
 }
@@ -293,10 +293,10 @@ template<typename T>
 template<class InputIt>
 typename mapped<T>::iterator mapped<T>::insert(const_iterator at, InputIt begin, InputIt end)
 {
-    const auto delta        = std::distance(begin, end);
-    const auto start_offset = std::distance<const_iterator>(this->begin(), at);
-    const auto move_section = std::distance<const_iterator>(at, this->end());
-    const auto new_size     = this->size() + delta;
+    auto const delta        = std::distance(begin, end);
+    auto const start_offset = std::distance<const_iterator>(this->begin(), at);
+    auto const move_section = std::distance<const_iterator>(at, this->end());
+    auto const new_size     = this->size() + delta;
     while (new_size > _capacity) allocate(std::max(2 * _capacity, 1ll));
     reset_storage(this->data(), this->size() + delta);
     auto result_it = this->begin() + start_offset;
@@ -317,7 +317,7 @@ buffer<T>::buffer(device& d) : _device(&d)
 }
 
 template<typename T>
-buffer<T>::buffer(device& d, const mapped<T>& source) : buffer(d)
+buffer<T>::buffer(device& d,  mapped<T> const& source) : buffer(d)
 {
     commands transfer_cmd = d.allocate_transfer_command();
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
@@ -330,7 +330,7 @@ buffer<T>::buffer(device& d, const mapped<T>& source) : buffer(d)
 }
 
 template<typename T>
-buffer<T>::buffer(device& d, const mapped<T>& source, commands& transfer_cmd) : buffer(d)
+buffer<T>::buffer(device& d,  mapped<T> const& source, commands& transfer_cmd) : buffer(d)
 {
     allocate(source.size(), false, transfer_cmd.cmd());
     _size = source.size();
@@ -338,9 +338,9 @@ buffer<T>::buffer(device& d, const mapped<T>& source, commands& transfer_cmd) : 
 }
 
 template<typename T>
-buffer<T>::buffer(device& d, const vk::ArrayProxy<const T>& proxy) : buffer(d)
+buffer<T>::buffer(device& d,  vk::ArrayProxy< T const> const& proxy) : buffer(d)
 {
-    const auto bytes        = proxy.size() * sizeof(T);
+    auto const bytes        = proxy.size() * sizeof(T);
     commands   transfer_cmd = d.allocate_transfer_command();
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
     allocate(proxy.size(), false, transfer_cmd.cmd());
@@ -358,9 +358,9 @@ buffer<T>::buffer(device& d, const vk::ArrayProxy<const T>& proxy) : buffer(d)
 }
 
 template<typename T>
-buffer<T>::buffer(device& d, const vk::ArrayProxy<const T>& proxy, commands& transfer_cmd) : buffer(d)
+buffer<T>::buffer(device& d, vk::ArrayProxy< T const> const& proxy, commands& transfer_cmd) : buffer(d)
 {
-    const auto bytes = proxy.size() * sizeof(T);
+     auto const bytes = proxy.size() * sizeof(T);
     allocate(proxy.size(), false, transfer_cmd.cmd());
     _size = proxy.size();
     mapped<T> stage(d);
@@ -373,9 +373,9 @@ buffer<T>::buffer(device& d, const vk::ArrayProxy<const T>& proxy, commands& tra
 }
 
 template<typename T>
-buffer<T>::buffer(device& d, const std::initializer_list<T>& source) : buffer(d)
+buffer<T>::buffer(device& d,  std::initializer_list<T> const& source) : buffer(d)
 {
-    const auto bytes        = std::size(source) * sizeof(T);
+    auto const bytes        = std::size(source) * sizeof(T);
     commands   transfer_cmd = d.allocate_transfer_command();
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
     allocate(source.size(), false, transfer_cmd.cmd());
@@ -392,9 +392,9 @@ buffer<T>::buffer(device& d, const std::initializer_list<T>& source) : buffer(d)
 }
 
 template<typename T>
-buffer<T>::buffer(device& d, const std::initializer_list<T>& source, commands& transfer_cmd) : buffer(d)
+buffer<T>::buffer(device& d,  std::initializer_list<T> const& source, commands& transfer_cmd) : buffer(d)
 {
-    const auto bytes = std::size(source) * sizeof(T);
+    auto const bytes = std::size(source) * sizeof(T);
     allocate(source.size(), false, transfer_cmd.cmd());
     _size = source.size();
     if (bytes <= 65536) { transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(source)); }
@@ -412,7 +412,7 @@ buffer<T>::~buffer()
 }
 
 template<typename T>
-buffer<T>::buffer(const buffer& other) : buffer(*other._device)
+buffer<T>::buffer( buffer const& other) : buffer(*other._device)
 {
     commands transfer_cmd = _device->allocate_transfer_command();
     transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
@@ -442,7 +442,7 @@ buffer<T>::buffer(buffer&& other) noexcept
 }
 
 template<typename T>
-buffer<T>& buffer<T>::operator=(const buffer& other)
+buffer<T>& buffer<T>::operator=( buffer const& other)
 {
     _device               = other._device;
     commands transfer_cmd = _device->allocate_transfer_command();

@@ -1,12 +1,10 @@
 #pragma once
 
 #include "types.hpp"
-#include <unordered_set>
 #include <vulkan/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
-
+#include <unordered_set>
 #include "device.hpp"
-#include "queue.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -32,59 +30,57 @@ public:
     explicit mapped(device& d, size_type size);
     explicit mapped(device& d, size_type size, T&& value);
     explicit mapped(device& d, std::initializer_list<T> ilist);
-    explicit mapped(device& d, gsl::span<const T> ilist);
+    explicit mapped(device& d, gsl::span<T const> ilist);
 
-    mapped(const mapped& other);
+    mapped(mapped const& other);
     mapped(mapped&& other) noexcept;
-    mapped& operator=(const mapped& other);
+    mapped& operator=(mapped const& other);
     mapped& operator=(mapped&& other) noexcept;
     ~mapped();
 
     void reserve(size_type capacity);
     void resize(size_type size, T&& value);
-    void resize(size_type size, const T& value);
+    void resize(size_type size, T const& value);
 
     void push_back(T&& value);
-    void push_back(const T& value);
+    void push_back(T const& value);
     void pop_back();
 
     template<typename... Args>
-    T& emplace_back(Args&&... args);
+    [[maybe_unused]] auto emplace_back(Args&&... args) -> T&;
 
     template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
     void resize(size_type size);
 
-    value_type&       front();
-    value_type&       back();
-    const value_type& front() const;
-    const value_type& back() const;
-    size_type         capacity() const;
-    void              shrink_to_fit();
-    void              clear();
+    [[nodiscard]] auto front() -> value_type&;
+    [[nodiscard]] auto back() -> value_type&;
+    [[nodiscard]] auto front() const -> const value_type&;
+    [[nodiscard]] auto back() const -> const value_type&;
+    [[nodiscard]] auto capacity() const noexcept -> size_type;
+    void               shrink_to_fit();
+    void               clear();
 
-    iterator insert(const_iterator at, const T& value);
-    iterator insert(const_iterator at, T&& value);
+    [[maybe_unused]] auto insert(const_iterator at, T const& value) -> iterator;
+    [[maybe_unused]] auto insert(const_iterator at, T&& value) -> iterator;
     template<class InputIt>
-    iterator insert(const_iterator at, InputIt begin, InputIt end);
-    iterator insert(const_iterator at, std::initializer_list<T> ilist);
-    iterator erase(const_iterator at);
-    iterator erase(const_iterator begin, const_iterator end);
+    [[maybe_unused]] auto insert(const_iterator at, InputIt begin, InputIt end) -> iterator;
+    [[maybe_unused]] auto insert(const_iterator at, std::initializer_list<T> ilist) -> iterator;
+    [[maybe_unused]] auto erase(const_iterator at) -> iterator;
+    [[maybe_unused]] auto erase(const_iterator begin, const_iterator end) -> iterator;
 
-    const vk::Buffer& get_buffer() const;
+    [[nodiscard]] auto get_buffer() const -> vk::Buffer const&;
 
 private:
     void allocate(size_type capacity, bool force = false);
     void init_range(iterator begin, iterator end, T&& value);
-    void init_range(iterator begin, iterator end, const T& value);
-    void reset_storage(value_type* storage, size_type size);
+    void init_range(iterator begin, iterator end, T const& value);
+    void reset_storage(value_type* storage, size_type size) noexcept;
 
     std::vector<u32> _families;
-
-    vk::Buffer    _buffer     = nullptr;
-    VmaAllocation _allocation = nullptr;
-
-    size_type _capacity = 0;
-    device*   _device   = nullptr;
+    vk::Buffer       _buffer     = nullptr;
+    VmaAllocation    _allocation = nullptr;
+    size_type        _capacity   = 0;
+    device*          _device     = nullptr;
 };
 
 template<typename T>
@@ -100,24 +96,24 @@ public:
     using difference_type = ptrdiff_t;
 
     buffer(device& d);
-    buffer(device& d, const mapped<T>& source);
-    buffer(device& d, const mapped<T>& source, commands& transfer_cmd);
-    buffer(device& d, const vk::ArrayProxy<const T>& proxy);
-    buffer(device& d, const vk::ArrayProxy<const T>& proxy, commands& transfer_cmd);
-    buffer(device& d, const std::initializer_list<T>& source);
-    buffer(device& d, const std::initializer_list<T>& source, commands& transfer_cmd);
+    buffer(device& d, mapped<T> const& source);
+    buffer(device& d, mapped<T> const& source, commands& transfer_cmd);
+    buffer(device& d, vk::ArrayProxy<T const> const& proxy);
+    buffer(device& d, vk::ArrayProxy<T const> const& proxy, commands& transfer_cmd);
+    buffer(device& d, std::initializer_list<T> const& source);
+    buffer(device& d, std::initializer_list<T> const& source, commands& transfer_cmd);
 
     ~buffer();
 
-    buffer(const buffer& other);
+    buffer(buffer const& other);
     buffer(buffer&& other) noexcept;
-    buffer& operator=(const buffer& other);
+    buffer& operator=(buffer const& other);
     buffer& operator=(buffer&& other) noexcept;
 
-    mapped<T>         download() const;
-    size_type         size() const;
-    size_type         capacity() const;
-    const vk::Buffer& get_buffer() const;
+    [[nodiscard]] auto download() const -> mapped<T>;
+    [[nodiscard]] auto size() const -> size_type;
+    [[nodiscard]] auto capacity() const -> size_type;
+    [[nodiscard]] auto get_buffer() const -> vk::Buffer const&;
 
 private:
     void allocate(size_type capacity, bool force, vk::CommandBuffer copy_cmd);
@@ -140,4 +136,3 @@ constexpr bool is_buffer_v<buffer<T>> = true;
 }    // namespace gfx
 
 #include "buffer.inl"
-#include "commands.hpp"

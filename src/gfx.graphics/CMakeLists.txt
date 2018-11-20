@@ -11,8 +11,8 @@ include(${PROJECT_SOURCE_DIR}/cmake/natvis.cmake)
 target_add_natvis(gfx.${gfx_current_module} PUBLIC ${gfx_current_visuals})
 
 # Features
-target_compile_features(gfx.${gfx_current_module} PRIVATE cxx_std_17)
-target_compile_options(gfx.${gfx_current_module} PRIVATE ${compile_options})
+target_compile_features(gfx.${gfx_current_module} PUBLIC cxx_std_20)
+target_compile_options(gfx.${gfx_current_module} PUBLIC ${compile_options})
 target_include_directories(gfx.${gfx_current_module} PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/gfx.${gfx_current_module}/)
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/)
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<INSTALL_INTERFACE:include>)

@@ -9,19 +9,23 @@ class device;
 class image
 {
 public:
-    image(device& dev, const vk::ImageCreateInfo& create_info);
-    ~image();
-    image(const image& other) = delete;
-	image(image&& other) noexcept;
-    image& operator=(const image& other) = delete;
-    image& operator=(image&& other) noexcept;
+    friend class swapchain;
 
-    const vk::Image& get_image() const noexcept { return _image; }
+    image(device& dev, vk::ImageCreateInfo const& create_info);
+    ~image();
+    image(image const& other) = delete;
+    image(image&& other) noexcept;
+    image& operator=(image const& other) = delete;
+    image& operator                      =(image&& other) noexcept;
+
+    [[nodiscard]] auto get_image() const noexcept -> vk::Image const& { return _image; }
 
 private:
-    device*       _device;
+    image() = default;
+
+    device*       _device = nullptr;
     vk::Image     _image;
-    VmaAllocation _alloc;
+    VmaAllocation _alloc = nullptr;
 };
 }    // namespace v1
 }    // namespace gfx

@@ -2,40 +2,40 @@
 
 #include <vulkan/vulkan.hpp>
 
-namespace gfx
+namespace gfx {
+inline namespace v1 {
+class device;
+
+class semaphore
 {
-	inline namespace v1
-	{
-		class device;
+public:
+    explicit semaphore(device& dev);
+    semaphore(semaphore const& other);
+    semaphore& operator                   =(semaphore const& other) noexcept;
+    semaphore(semaphore&& other) noexcept = default;
+    semaphore& operator=(semaphore&& other) noexcept = default;
+    ~semaphore()                                     = default;
 
-		class semaphore
-		{
-		public:
-		    explicit semaphore(device& dev);
-			semaphore(const semaphore& other);
-			semaphore& operator=(const semaphore& other) noexcept;
-			semaphore(semaphore&& other) noexcept = default;
-			semaphore& operator=(semaphore&& other) noexcept = default;
+    const vk::Semaphore& get_semaphore() const noexcept;
 
-		    const vk::Semaphore& sem() const noexcept;
+private:
+    vk::UniqueSemaphore _sem;
+};
 
-		private:
-			vk::UniqueSemaphore _sem;
-		};
+class fence
+{
+public:
+    explicit fence(device& dev, bool signaled = false);
+    fence(fence const& other);
+    fence& operator               =(fence const& other) noexcept;
+    fence(fence&& other) noexcept = default;
+    fence& operator=(fence&& other) noexcept = default;
+    ~fence()                                 = default;
 
-		class fence
-		{
-		public:
-		    explicit fence(device& dev, bool signaled = false);
-			fence(const fence& other);
-			fence& operator=(const fence& other) noexcept;
-			fence(fence&& other) noexcept = default;
-			fence& operator=(fence&& other) noexcept = default;
+    const vk::Fence& get_fence() const noexcept;
 
-		    const vk::Fence& fen() const noexcept;
-
-		private:
-			vk::UniqueFence _fence;
-		};
-	}
-}
+private:
+    vk::UniqueFence _fence;
+};
+}    // namespace v1
+}    // namespace gfx

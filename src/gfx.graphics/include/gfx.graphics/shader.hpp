@@ -1,41 +1,41 @@
 #pragma once
 
 #include <filesystem>
+#include <gfx.core/types.hpp>
+#include <gsl/span>
 #include <optional>
 #include <vulkan/vulkan.hpp>
-#include <gsl/span>
-#include <gfx.core/types.hpp>
 
 namespace gfx {
-	inline namespace v1 {
-		enum class shader_type
-		{
-			vert,
-			frag,
-			geom,
-			tese,
-			tesc,
-			comp
-		};
+inline namespace v1 {
+enum class shader_type
+{
+    vert,
+    frag,
+    geom,
+    tese,
+    tesc,
+    comp
+};
 
-		class device;
-		class shader
-		{
-		public:
-			explicit shader(device& dev, gsl::span<const u32> source);
+class device;
+class shader
+{
+public:
+    explicit shader(device& dev, gsl::span<u32 const> source);
 
-			shader(const shader& other) = delete;
-			shader& operator=(const shader& other) = delete;
-			shader(shader&& other) = default;
-			shader& operator=(shader&& other) = default;
+    shader(shader const& other) = delete;
+    shader& operator=(shader const& other) = delete;
+    shader(shader&& other)                 = default;
+    shader& operator=(shader&& other) = default;
 
-			const std::vector<std::byte>& data() const noexcept;
-			const vk::ShaderModule& get_module() const noexcept;
+    [[nodiscard]] auto data() const noexcept -> std::vector<std::byte> const&;
+    [[nodiscard]] auto get_module() const noexcept -> vk::ShaderModule const&;
 
-		private:
-			void load(vk::Device dev, gsl::span<const u32> source);
+private:
+    void load(vk::Device dev, gsl::span<u32 const> source);
 
-			vk::UniqueShaderModule _module;
-		};
-	}
-}
+    vk::UniqueShaderModule _module;
+};
+}    // namespace v1
+}    // namespace gfx
