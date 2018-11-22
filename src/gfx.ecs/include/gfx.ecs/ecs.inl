@@ -51,6 +51,12 @@ unique_entity ecs::create_entity_unique(const Components&... components)
     return unique_entity(new entity(create_entity(components...)));
 }
 
+template<typename ... Components, typename>
+shared_entity ecs::create_entity_shared(const Components&... components)
+{
+    return shared_entity(new entity(create_entity(components...)), entity_deleter{});
+}
+
 template<typename... Component>
 void ecs::add_components(entity_handle handle, const Component&... component)
 {

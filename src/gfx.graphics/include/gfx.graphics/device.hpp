@@ -37,6 +37,8 @@ class fence;
 class physical_device_handle
 {
 public:
+
+
 private:
     vk::PhysicalDevice _gpu;
 };

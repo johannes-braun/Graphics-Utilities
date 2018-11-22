@@ -113,6 +113,11 @@ unique_entity ecs::create_entity_unique(const component_base** components, const
     return unique_entity(new entity(create_entity(components, component_ids, count)));
 }
 
+shared_entity ecs::create_entity_shared(const component_base** components, const id_t* component_ids, size_t count)
+{
+    return shared_entity(new entity(create_entity(components, component_ids, count)), entity_deleter{});
+}
+
 component_base* ecs::get_component(entity_handle handle, id_t cid)
 {
 	return get_component_impl(handle, _components.at(cid), cid);

@@ -35,9 +35,12 @@ public:
     entity create_entity(const Components&... components);
 
     unique_entity create_entity_unique(const component_base** components, const id_t* component_ids, size_t count);
-
     template<typename... Components, typename = std::void_t<traits::enable_if_component_t<Components>...>>
     unique_entity create_entity_unique(const Components&... components);
+
+    shared_entity create_entity_shared(const component_base** components, const id_t* component_ids, size_t count);
+    template<typename... Components, typename = std::void_t<traits::enable_if_component_t<Components>...>>
+    shared_entity create_entity_shared(const Components&... components);
 
     template<typename... Component>
     void add_components(entity_handle handle, const Component&... component);

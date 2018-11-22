@@ -16,7 +16,7 @@ public:
     semaphore& operator=(semaphore&& other) noexcept = default;
     ~semaphore()                                     = default;
 
-    const vk::Semaphore& get_semaphore() const noexcept;
+    [[nodiscard]] auto get_semaphore() const noexcept -> const vk::Semaphore&;
 
 private:
     vk::UniqueSemaphore _sem;
@@ -32,10 +32,26 @@ public:
     fence& operator=(fence&& other) noexcept = default;
     ~fence()                                 = default;
 
-    const vk::Fence& get_fence() const noexcept;
+    [[nodiscard]] auto get_fence() const noexcept -> const vk::Fence&;
 
 private:
     vk::UniqueFence _fence;
+};
+
+class event
+{
+public:
+    explicit event(device& dev);
+    event(event const& other);
+    event& operator               =(event const& other) noexcept;
+    event(event&& other) noexcept = default;
+    event& operator=(event&& other) noexcept = default;
+    ~event() = default;
+
+    [[nodiscard]] auto get_event() const noexcept -> const vk::Event&;
+
+private:
+    vk::UniqueEvent _event;
 };
 }    // namespace v1
 }    // namespace gfx

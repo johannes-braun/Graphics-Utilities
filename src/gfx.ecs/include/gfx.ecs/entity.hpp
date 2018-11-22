@@ -58,6 +58,7 @@ struct entity_deleter
     void operator()(entity* e) const;
 };
 using unique_entity = std::unique_ptr<entity, entity_deleter>;
+using shared_entity = std::shared_ptr<entity>;
 }    // namespace ecs
 }    // namespace v1
 }    // namespace gfx

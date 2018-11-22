@@ -5,15 +5,12 @@ namespace gfx {
 inline namespace v1 {
 semaphore::semaphore(device& dev) : _sem(dev.get_device().createSemaphoreUnique({})) {}
 
-semaphore::semaphore(const semaphore& other)
-	: _sem(other._sem.getOwner().createSemaphoreUnique({}))
-{
-}
+semaphore::semaphore(const semaphore& other) : _sem(other._sem.getOwner().createSemaphoreUnique({})) {}
 
 semaphore& semaphore::operator=(const semaphore& other) noexcept
 {
-	_sem = other._sem.getOwner().createSemaphoreUnique({});
-	return *this;
+    _sem = other._sem.getOwner().createSemaphoreUnique({});
+    return *this;
 }
 
 const vk::Semaphore& semaphore::get_semaphore() const noexcept
@@ -42,6 +39,21 @@ fence& fence::operator=(const fence& other) noexcept
 const vk::Fence& fence::get_fence() const noexcept
 {
     return _fence.get();
+}
+
+event::event(device& dev) : _event(dev.get_device().createEventUnique(vk::EventCreateInfo())) {}
+
+event::event(event const& other) : _event(other._event.getOwner().createEventUnique(vk::EventCreateInfo())) {}
+
+event& event::operator=(event const& other) noexcept
+{
+    _event = other._event.getOwner().createEventUnique(vk::EventCreateInfo());
+    return *this;
+}
+
+auto event::get_event() const noexcept -> const vk::Event&
+{
+    return _event.get();
 }
 }    // namespace v1
 }    // namespace gfx
