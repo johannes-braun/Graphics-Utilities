@@ -3,6 +3,7 @@
 #endif
 
 #include "device.hpp"
+#define VMA_IMPLEMENTATION
 #include "vulkan/vk_mem_alloc.h"
 #include "commands.hpp"
 #include "instance.hpp"

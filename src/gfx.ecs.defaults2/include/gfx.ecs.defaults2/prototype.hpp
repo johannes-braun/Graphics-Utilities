@@ -2,9 +2,7 @@
 
 #include <array>
 #include <gfx.core/flags.hpp>
-#include <gfx.ecs.defaults/camera.hpp>
 #include <gfx.ecs/ecs.hpp>
-#include <gfx.file/file.hpp>
 #include <gfx.graphics/graphics.hpp>
 #include <gfx.math/datastructure/bvh.hpp>
 #include <gfx.math/geometry.hpp>
@@ -77,12 +75,15 @@ public:
 
     mesh* allocate_mesh(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
                         std::optional<bounds3f> bounds = std::nullopt);
+    mesh* allocate_mesh(const mesh3d& mesh, const submesh3d& submesh);
     void  free_mesh(const mesh* m);
 
     unique_mesh allocate_mesh_unique(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
                                      std::optional<bounds3f> bounds = std::nullopt);
+    unique_mesh allocate_mesh_unique(const mesh3d& mesh, const submesh3d& submesh);
     shared_mesh allocate_mesh_shared(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
                                      std::optional<bounds3f> bounds = std::nullopt);
+    shared_mesh allocate_mesh_shared(const mesh3d& mesh, const submesh3d& submesh);
 
     const device&               get_device() const;
     const buffer<vertex3d>&     vertex_buffer() const noexcept;
@@ -136,13 +137,13 @@ public:
 
     prototype* allocate_prototype(std::string name, std::initializer_list<mesh*> meshes);
     prototype* allocate_prototype(std::string name, const gsl::span<mesh* const>& meshes);
-    prototype* allocate_prototype(std::string name, const scene_file& file);
+    prototype* allocate_prototype(std::string name, const mesh3d& m);
 
     void free_prototype(const prototype* proto);
 
-    unique_prototype allocate_prototype_unique(std::string name, const scene_file& file);
+    unique_prototype allocate_prototype_unique(std::string name, const mesh3d& m);
     unique_prototype allocate_prototype_unique(std::string name, const gsl::span<mesh*>& meshes);
-    shared_prototype allocate_prototype_shared(std::string name, const scene_file& file);
+    shared_prototype allocate_prototype_shared(std::string name, const mesh3d& m);
     shared_prototype allocate_prototype_shared(std::string name, const gsl::span<mesh*>& meshes);
 
     prototype* prototype_by_name(const std::string& name);

@@ -9,6 +9,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include "gsl/span"
 
 namespace gfx {
 namespace files = std::filesystem;
@@ -58,9 +59,11 @@ struct file
     operator const files::path&() const noexcept;
 
     files::path path;
-
+    
     file() = default;
     file(const files::path& path);
+
+    size_t size() const;
 
     static std::optional<file> open_dialog(const std::string& title, const files::path& default_path);
     static std::optional<file> open_dialog(const std::string& title, const files::path& default_path,
@@ -83,6 +86,51 @@ struct file
 
     static void       popup(const std::string& title, const std::string& message, popup_icon icon);
     static msg_result message(const std::string& title, const std::string& message, msg_type type, msg_icon icon, int default_button = 0);
+};
+
+enum class file_access
+{
+    r, rw
+};
+
+class file_mapping
+{
+public:
+    friend class file_mapping_view;
+
+    file_mapping(file f, file_access access, size_t size);
+    ~file_mapping();
+    file_mapping(file_mapping&& other) noexcept;
+    file_mapping& operator=(file_mapping&& other) noexcept;
+    file_mapping(const file_mapping&) = delete;
+    file_mapping& operator=(const file_mapping&) = delete;
+    
+private:
+    file _file;
+    void* _file_handle;
+    void* _mapping_handle;
+    file_access _access;
+};
+
+class file_mapping_view
+{
+public:
+    file_mapping_view(file_mapping& mapping, size_t offset, size_t size);
+    ~file_mapping_view();
+    file_mapping_view(file_mapping_view&& other) noexcept;
+    file_mapping_view& operator=(file_mapping_view&& other) noexcept;
+    file_mapping_view(const file_mapping_view& other);
+    file_mapping_view& operator=(const file_mapping_view& other);
+
+    [[nodiscard]] auto data() noexcept -> void* { return _data; }
+    [[nodiscard]] auto data() const noexcept -> void const* { return _data; }
+
+private:
+    void* _data;
+    void* _handle;
+    size_t _offset;
+    size_t _size;
+    file_access _access;
 };
 
 struct image_info

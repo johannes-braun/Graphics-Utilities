@@ -27,11 +27,15 @@ scene_file::scene_file(const files::path& path) : file(path)
         return;
     }
     Assimp::Importer importer;
-    const aiScene*   scene = importer.ReadFile(
-        file::path.string(), aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality
+
+    auto n = std::chrono::steady_clock::now();
+    file_mapping mapping(*this, file_access::r, size());
+    file_mapping_view mapping_view(mapping, 0, size());
+    const aiScene*   scene = importer.ReadFileFromMemory(
+        mapping_view.data(), size(), aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality
                                  | aiProcess_LimitBoneWeights | aiProcess_RemoveRedundantMaterials | aiProcess_Triangulate
                                  | aiProcess_GenUVCoords | aiProcess_SortByPType | aiProcess_FindDegenerates | aiProcess_FindInvalidData);
-
+    ilog << (std::chrono::steady_clock::now() - n).count();
     materials.resize(scene->mNumMaterials);
 
 #pragma omp parallel for schedule(dynamic)

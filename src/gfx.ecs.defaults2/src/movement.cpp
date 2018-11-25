@@ -1,16 +1,17 @@
 #include "movement.hpp"
-#include "interaction.hpp"
-#include <gfx.ecs.defaults/camera.hpp>
+#include "basic.hpp"
 
+namespace gfx {
+inline namespace v1 {
 movement_system::movement_system()
 {
-    add_component_type(gfx::transform_component::id);
+    add_component_type(transform_component::id);
     add_component_type(movement_component::id);
 }
 
-void movement_system::update(duration_type delta, gfx::ecs::component_base** components) const
+void movement_system::update(duration_type delta, ecs::component_base** components) const
 {
-    auto& tf = components[0]->as<gfx::transform_component>();
+    auto& tf = components[0]->as<transform_component>();
     auto& sp = components[1]->as<movement_component>();
 
     const auto sphere_radius = 1.3f;
@@ -28,11 +29,13 @@ void movement_system::update(duration_type delta, gfx::ecs::component_base** com
 
     sp.impulse = (1.f - movement_drag) * sp.impulse + (sp.force + gravity * mass) * dt;
 
-    tf.value.position += sp.impulse / mass * dt;
+    tf.position += sp.impulse / mass * dt;
 
     sp.rotation_impulse = (1.f - rotation_drag) * sp.rotation_impulse + (sp.torque + sp.torque_acceleration) * dt;
-    tf.value.rotation   = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.value.rotation;
+    tf.rotation   = glm::conjugate(glm::quat(dt * sp.rotation_impulse / weighted_moment)) * tf.rotation;
 
     sp.torque              = glm::vec3(0.f);
     sp.torque_acceleration = glm::vec3(0.f);
 }
+}    // namespace v1
+}    // namespace gfx

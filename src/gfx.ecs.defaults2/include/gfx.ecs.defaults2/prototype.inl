@@ -31,26 +31,21 @@ void prototype_instantiator<InstanceInfo>::free_prototype(const prototype* proto
 }
 
 template<typename InstanceInfo>
-prototype* prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, const scene_file& file)
+prototype* prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, const mesh3d& m)
 {
     auto& proto = *_prototypes.emplace(name, std::make_unique<prototype>()).first->second;
-    for (int i = 0; i < std::min(prototype::max_submeshes, file.mesh.geometries.size()); ++i)
+    for (int i = 0; i < std::min(prototype::max_submeshes, m.geometries.size()); ++i)
     {
-        gsl::span<const index32>  indices(file.mesh.indices.data() + file.mesh.geometries[i].base_index,
-                                         file.mesh.geometries[i].index_count);
-        gsl::span<const vertex3d> vertices(file.mesh.vertices.data() + file.mesh.geometries[i].base_vertex,
-                                           file.mesh.geometries[i].vertex_count);
-
-        proto.meshes[i] = {_alloc->allocate_mesh(vertices, indices), file.mesh.geometries[i].transformation};
+        proto.meshes[i] = {_alloc->allocate_mesh(m, m.geometries[i]), m.geometries[i].transformation};
     }
     proto.name = std::move(name);
     return &proto;
 }
 
 template<typename InstanceInfo>
-unique_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_unique(std::string name, const scene_file& file)
+unique_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_unique(std::string name, const mesh3d& m)
 {
-    return unique_prototype(allocate_prototype(name, file), [this](prototype* proto) { free_prototype(proto); });
+    return unique_prototype(allocate_prototype(name, m), [this](prototype* proto) { free_prototype(proto); });
 }
 
 template<typename InstanceInfo>
@@ -60,9 +55,9 @@ unique_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_unique
 }
 
 template<typename InstanceInfo>
-shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_shared(std::string name, const scene_file& file)
+shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_shared(std::string name, const mesh3d& m)
 {
-    return shared_prototype(allocate_prototype(name, file), [this](prototype* proto) { free_prototype(proto); });
+    return shared_prototype(allocate_prototype(name, m), [this](prototype* proto) { free_prototype(proto); });
 }
 
 template<typename InstanceInfo>

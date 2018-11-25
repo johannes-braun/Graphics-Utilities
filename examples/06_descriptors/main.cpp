@@ -2,6 +2,7 @@
 #include "cie.hpp"
 #include "descriptors.hpp"
 #include "input.hpp"
+#include "input_qt.hpp"
 #include "shaders/shaders.hpp"
 #include <gfx.core/version.hpp>
 #include <gfx.core/worker.hpp>
@@ -35,8 +36,8 @@
 #include <glm/glm.hpp>
 #include <random>
 
-#include "gfx.legacy/input/camera.hpp"
-#include "prototype.hpp"
+#include <gfx.ecs.defaults2/prototype.hpp>
+#include <gfx.file/file.hpp>
 
 enum class bsdf : uint
 {
@@ -486,7 +487,7 @@ int main(int argc, char** argv)
     render_systems.add(instances);
 
     // Create user entity
-    gfx::ecs::unique_entity user_entity                      = ecs.create_entity_unique(gfx::camera_component(), gfx::camera_controls(),
+    gfx::ecs::unique_entity user_entity                      = ecs.create_entity_unique(gfx::projection_component(), gfx::camera_controls(),
                                                                    gfx::transform_component(), gfx::grabbed_cursor_component());
     user_entity->get<gfx::transform_component>()->position.z = -4.f;
 
@@ -495,9 +496,9 @@ int main(int argc, char** argv)
     ////		Meshes
     ////
     ////////////////////////////////////////////////////////////////////////////
-    gfx::unique_prototype bunny  = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae"));
-    gfx::unique_prototype sphere = instances.get_instantiator().allocate_prototype_unique("Sphere", gfx::scene_file("sphere.dae"));
-    gfx::unique_prototype floor  = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("floor.dae"));
+    gfx::unique_prototype bunny  = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae").mesh);
+    gfx::unique_prototype sphere = instances.get_instantiator().allocate_prototype_unique("Sphere", gfx::scene_file("sphere.dae").mesh);
+    gfx::unique_prototype floor  = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("floor.dae").mesh);
     
     ecs.create_entity(gfx::instance_component{floor.get(), material_info{glm::u8vec4(255, 255, 255, 255), 0.2f, 0.f, bsdf::opaque}},
                           gfx::transform_component{{0, -1.f, 0}, {2.f, 2.f, 2.f}, glm::angleAxis(glm::radians(90.f), glm::vec3(1, 0, 0))});
@@ -802,94 +803,94 @@ int main(int argc, char** argv)
     gfx::transform_component      last_transform;
 
     gfx::ecs::entity* current_view_entity = &*user_entity;
-
+    
     current_globals.rendered_count = 0;
     gfx::worker render_thread([&](gfx::worker& self, const gfx::worker::duration& delta) {
-        ++frame_count;
-        delta_accum += delta;
+        //++frame_count;
+        //delta_accum += delta;
 
-        if (delta_accum > 1s)
-        {
-            fps_counter->setText(QString::fromStdString(std::to_string(frame_count / delta_accum.count())));
-            ftm_counter->setText(QString::fromStdString(std::to_string(1'000.0 * delta_accum.count() / frame_count) + "ms"));
-            frame_count = 0;
-            delta_accum = std::chrono::duration<double>::zero();
-        }
+        //if (delta_accum > 1s)
+        //{
+        //    fps_counter->setText(QString::fromStdString(std::to_string(frame_count / delta_accum.count())));
+        //    ftm_counter->setText(QString::fromStdString(std::to_string(1'000.0 * delta_accum.count() / frame_count) + "ms"));
+        //    frame_count = 0;
+        //    delta_accum = std::chrono::duration<double>::zero();
+        //}
 
-        const auto [img, acquire_error] = chain.next_image(acquire_image_signal);
-        if (acquire_error && (*acquire_error == gfx::acquire_error::out_of_date || *acquire_error == gfx::acquire_error::suboptimal))
-        {
-            if (!chain.recreate())
-            {
-                gfx::ilog << "Could not recreate swapchain. Exiting.";
-                return false;
-            }
-            build_fbos();
-            current_globals.rendered_count = 0;
-            return true;
-        }
+        //const auto [img, acquire_error] = chain.next_image(acquire_image_signal);
+        //if (acquire_error && (*acquire_error == gfx::acquire_error::out_of_date || *acquire_error == gfx::acquire_error::suboptimal))
+        //{
+        //    if (!chain.recreate())
+        //    {
+        //        gfx::ilog << "Could not recreate swapchain. Exiting.";
+        //        return false;
+        //    }
+        //    build_fbos();
+        //    current_globals.rendered_count = 0;
+        //    return true;
+        //}
 
-        ecs.update(delta, render_systems);
-        gpu.get_device().updateDescriptorSets({{mesh_set.get(), 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-                                                &gfx::info_for(instances.get_instantiator().instances())}},
-                                              {});
+        //ecs.update(delta, render_systems);
+        //gpu.get_device().updateDescriptorSets({{mesh_set.get(), 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+        //                                        &gfx::info_for(instances.get_instantiator().instances())}},
+        //                                      {});
 
-        gpu.wait_for({cmd_fences[img]});
-        gpu.reset_fences({cmd_fences[img]});
-        gpu_cmd[img].cmd().reset({});
-        gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+        //gpu.wait_for({cmd_fences[img]});
+        //gpu.reset_fences({cmd_fences[img]});
+        //gpu_cmd[img].cmd().reset({});
+        //gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
-        current_view_entity->get<gfx::camera_component>()->perspective().screen_width  = chain.extent().width;
-        current_view_entity->get<gfx::camera_component>()->perspective().screen_height = chain.extent().height;
-        gpu_cmd[img].cmd().updateBuffer(camera_info_buffer.get_buffer(), 0ull,
-                                        vk::ArrayProxy<const gfx::camera_matrices>{*gfx::get_camera_info(*current_view_entity)});
+        //current_view_entity->get<gfx::projection_component>()->perspective().screen_width  = chain.extent().width;
+        //current_view_entity->get<gfx::projection_component>()->perspective().screen_height = chain.extent().height;
+        //gpu_cmd[img].cmd().updateBuffer(camera_info_buffer.get_buffer(), 0ull,
+        //                                vk::ArrayProxy<const gfx::camera_matrices>{*gfx::get_camera_info(*current_view_entity)});
 
-        if (keys.key_down(Qt::Key_R) || last_transform != *current_view_entity->get<gfx::transform_component>())
-        {
-            last_transform = *current_view_entity->get<gfx::transform_component>();
-            gpu_cmd[img].cmd().clearColorImage(color_accum->get_image(), vk::ImageLayout::eGeneral,
-                                               vk::ClearColorValue(std::array{0.f, 0.f, 0.f, 0.f}),
-                                               vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-            current_globals.rendered_count = 0;
-        }
+        //if (keys.key_down(gfx::key::kb_q) || last_transform != *current_view_entity->get<gfx::transform_component>())
+        //{
+        //    last_transform = *current_view_entity->get<gfx::transform_component>();
+        //    gpu_cmd[img].cmd().clearColorImage(color_accum->get_image(), vk::ImageLayout::eGeneral,
+        //                                       vk::ClearColorValue(std::array{0.f, 0.f, 0.f, 0.f}),
+        //                                       vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+        //    current_globals.rendered_count = 0;
+        //}
 
-        current_globals.random        = dist(gen);
-        current_globals.viewport[0]   = chain.extent().width;
-        current_globals.viewport[1]   = chain.extent().height;
-        current_globals.render_output = output_type(render_outputs->checkedId());
-        current_globals.rendered_count++;
-        gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &current_globals);
+        //current_globals.random        = dist(gen);
+        //current_globals.viewport[0]   = chain.extent().width;
+        //current_globals.viewport[1]   = chain.extent().height;
+        //current_globals.render_output = output_type(render_outputs->checkedId());
+        //current_globals.rendered_count++;
+        //gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &current_globals);
 
-        vk::ClearValue clear_values[] = {{vk::ClearColorValue{std::array{0.f, 1.f, 0.f, 1.f}}}};
-        gpu_cmd[img].cmd().beginRenderPass(
-            {pass.get(), fbos[img].get(), {{0, 0}, chain.extent()}, u32(std::size(clear_values)), std::data(clear_values)},
-            vk::SubpassContents::eInline);
+        //vk::ClearValue clear_values[] = {{vk::ClearColorValue{std::array{0.f, 1.f, 0.f, 1.f}}}};
+        //gpu_cmd[img].cmd().beginRenderPass(
+        //    {pass.get(), fbos[img].get(), {{0, 0}, chain.extent()}, u32(std::size(clear_values)), std::data(clear_values)},
+        //    vk::SubpassContents::eInline);
 
-        gpu_cmd[img].cmd().setViewport(0, vk::Viewport(0.f, 0.f, chain.extent().width, chain.extent().height, 0.f, 1.f));
-        gpu_cmd[img].cmd().setScissor(0, vk::Rect2D({0, 0}, chain.extent()));
-        gpu_cmd[img].cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, pipe.get());
+        ////gpu_cmd[img].cmd().setViewport(0, vk::Viewport(0.f, 0.f, chain.extent().width, chain.extent().height, 0.f, 1.f));
+        ////gpu_cmd[img].cmd().setScissor(0, vk::Rect2D({0, 0}, chain.extent()));
+        ////gpu_cmd[img].cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, pipe.get());
 
-        gpu_cmd[img].cmd().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0,
-                                              {mat_set.get(), mesh_set.get(), globals_set.get()}, nullptr);
-        gpu_cmd[img].cmd().draw(3, 1, 0, 0);
+        ////gpu_cmd[img].cmd().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0,
+        ////                                      {mat_set.get(), mesh_set.get(), globals_set.get()}, nullptr);
+        ////gpu_cmd[img].cmd().draw(3, 1, 0, 0);
 
-        gpu_cmd[img].cmd().endRenderPass();
-        gpu_cmd[img].cmd().end();
+        //gpu_cmd[img].cmd().endRenderPass();
+        //gpu_cmd[img].cmd().end();
 
-        gpu.graphics_queue().submit({gpu_cmd[img]}, {acquire_image_signal}, {render_finish_signal}, cmd_fences[img]);
-        gpu.graphics_queue().wait();
-        const auto present_error = gpu.present_queue().present({{img, chain}}, {render_finish_signal});
-        if (present_error)
-        {
-            if (!chain.recreate())
-            {
-                gfx::ilog << "Could not recreate swapchain. Exiting.";
-                return false;
-            }
-            build_fbos();
-            current_globals.rendered_count = 0;
-            return true;
-        }
+        //gpu.graphics_queue().submit({gpu_cmd[img]}, {acquire_image_signal}, {render_finish_signal}, cmd_fences[img]);
+        //gpu.graphics_queue().wait();
+        //const auto present_error = gpu.present_queue().present({{img, chain}}, {render_finish_signal});
+        //if (present_error)
+        //{
+        //    if (!chain.recreate())
+        //    {
+        //        gfx::ilog << "Could not recreate swapchain. Exiting.";
+        //        return false;
+        //    }
+        //    build_fbos();
+        //    current_globals.rendered_count = 0;
+        //    return true;
+        //}
         return self.value_after(true, min_update_time_frame);
     });
 

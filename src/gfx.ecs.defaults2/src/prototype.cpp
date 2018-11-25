@@ -11,6 +11,13 @@ mesh_allocator::mesh_allocator(device& device, mesh_allocator_flags flags)
       , _bvh_generator(shape::triangle)
 {}
 
+mesh* mesh_allocator::allocate_mesh(const mesh3d& mesh, const submesh3d& submesh)
+{
+    const gsl::span<const vertex3d> vertices(mesh.vertices.data() + submesh.base_vertex, submesh.vertex_count);
+    const gsl::span<const index32> indices(mesh.indices.data() + submesh.base_index, submesh.index_count);
+    return allocate_mesh(vertices, indices);
+}
+
 mesh* mesh_allocator::allocate_mesh(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
                                     std::optional<bounds3f> bounds)
 {
@@ -98,6 +105,16 @@ unique_mesh mesh_allocator::allocate_mesh_unique(const gsl::span<const vertex3d>
     std::optional<bounds3f> bounds)
 {
     return unique_mesh(allocate_mesh(vertices, indices, bounds), [this](mesh* m) { free_mesh(m); });
+}
+
+unique_mesh mesh_allocator::allocate_mesh_unique(const mesh3d& mesh, const submesh3d& submesh)
+{
+    return unique_mesh(allocate_mesh(mesh, submesh), [this](gfx::mesh* m) { free_mesh(m); });
+}
+
+shared_mesh mesh_allocator::allocate_mesh_shared(const mesh3d& mesh, const submesh3d& submesh)
+{
+    return shared_mesh(allocate_mesh(mesh, submesh), [this](gfx::mesh* m) { free_mesh(m); });
 }
 
 shared_mesh mesh_allocator::allocate_mesh_shared(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,

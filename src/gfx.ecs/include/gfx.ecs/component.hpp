@@ -99,6 +99,12 @@ const component_creator_fun component<T>::creator = create<T>;
 template<typename T>
 const component_deleter_fun component<T>::deleter = destroy<T>;
 
+template<typename T>
+struct simple_component : component<simple_component<T>>, T
+{
+    using T::T;
+};
+
 }    // namespace ecs
 }    // namespace v1
 }    // namespace gfx

@@ -2,44 +2,72 @@
   // Visual Studio 15 2017 Win64
   "environments": [
     {
-      "cmakeCommandArgs": "-Wno-dev -DCMAKE_TOOLCHAIN_FILE=${env.VCPKG_ROOT}\\scripts\\buildsystems\\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows",
-      "buildCommandArgs": "",
-      "generatorx64": "Ninja"
+      "environment": "gfx_defaults"
     }
   ],
   "configurations": [
     {
       "name": "x64-Debug",
-      "generator": "${env.generatorx64}",
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\install\\${name}",
-      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
-      "buildCommandArgs": "${env.buildCommandArgs}",
-      "ctestCommandArgs": ""
+      "generator": "Ninja",
+      "cmakeCommandArgs": "-Wno-dev",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_TOOLCHAIN_FILE",
+          "value": "${env.VCPKG_ROOT}\\scripts\\buildsystems\\vcpkg.cmake"
+        },
+        {
+          "name": "VCPKG_TARGET_TRIPLET",
+          "value": "x64-windows"
+        }
+      ]
     },
     {
       "name": "x64-RelWithDebInfo",
-      "generator": "${env.generatorx64}",
       "configurationType": "RelWithDebInfo",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\install\\${name}",
-      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
-      "buildCommandArgs": "${env.buildCommandArgs}",
-      "ctestCommandArgs": ""
+      "generator": "Ninja",
+      "cmakeCommandArgs": "-Wno-dev",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_TOOLCHAIN_FILE",
+          "value": "${env.VCPKG_ROOT}\\scripts\\buildsystems\\vcpkg.cmake"
+        },
+        {
+          "name": "VCPKG_TARGET_TRIPLET",
+          "value": "x64-windows"
+        }
+      ]
     },
     {
       "name": "x64-Release",
-      "generator": "${env.generatorx64}",
       "configurationType": "Release",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\install\\${name}",
-      "cmakeCommandArgs": "${env.cmakeCommandArgs}",
-      "buildCommandArgs": "${env.buildCommandArgs}",
-      "ctestCommandArgs": ""
+      "generator": "Ninja",
+      "cmakeCommandArgs": "-Wno-dev",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_TOOLCHAIN_FILE",
+          "value": "${env.VCPKG_ROOT}\\scripts\\buildsystems\\vcpkg.cmake"
+        },
+        {
+          "name": "VCPKG_TARGET_TRIPLET",
+          "value": "x64-windows"
+        }
+      ]
     }
   ]
 }
