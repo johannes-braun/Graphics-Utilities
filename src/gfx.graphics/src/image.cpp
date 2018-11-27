@@ -13,7 +13,7 @@ image::image(device& dev, vk::ImageCreateInfo const& create_info) : _device(&dev
 
 image::~image()
 {
-    if (_image) vmaDestroyImage(_device->get_allocator(), _image, _alloc);
+    if (_image && _device && _alloc) vmaDestroyImage(_device->get_allocator(), _image, _alloc);
 }
 
 image::image(image&& other) noexcept

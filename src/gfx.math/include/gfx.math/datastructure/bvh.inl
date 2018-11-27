@@ -38,7 +38,8 @@ namespace gfx
             bounds[omp_get_thread_num()] += centroid;
         }
         for (const auto& b : bounds)
-            temporaries.centroid_bounds[0] += b;
+            if(!b.empty())
+                temporaries.centroid_bounds[0] += b;
 
         _node_count = 0;
         temporaries.range_position.store(0);

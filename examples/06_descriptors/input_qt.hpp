@@ -2,6 +2,7 @@
 
 #include "input.hpp"
 #include <QWidget>
+#include <QTimer>
 #include <QKeyEvent>
 #include <glm/vec2.hpp>
 
@@ -9,6 +10,7 @@ namespace gfx
 {
     inline namespace v1
     {
+        struct mouse_movement;
         class qt_input_system : public QObject, public input_system
         {
         public:
@@ -27,14 +29,17 @@ namespace gfx
             glm::vec2 cursor_position() const override;
             cursor_state get_cursor_state() const noexcept override;
 
+            glm::vec2 cursor_delta() const override;
             void post_update() override;
 
         protected:
             void add_mouse_button_callback(Qt::MouseButton btn, std::function<void(QMouseEvent* event)> callback);
             bool eventFilter(QObject* obj, QEvent* event) override;
-            
+
+            std::unique_ptr< mouse_movement> _mm;
+            QTimer* _timer;
             cursor_state _last_cursor_state = cursor_state::free;
-            cursor_state _cursor_state = cursor_state::free;
+            std::atomic<cursor_state> _cursor_state = cursor_state::free;
             std::unordered_map<Qt::Key, bool>                                                         _keys_down;
             std::unordered_map<Qt::MouseButton, bool>                                                 _mouse_buttons_down;
             std::unordered_map<Qt::MouseButton, std::vector<std::function<void(QMouseEvent* event)>>> _mouse_button_callbacks;

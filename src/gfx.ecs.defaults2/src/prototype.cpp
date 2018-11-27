@@ -37,10 +37,13 @@ mesh* mesh_allocator::allocate_mesh(const gsl::span<const vertex3d>& vertices, c
     _staging_index_buffer.resize(_staging_index_buffer.size() + indices.size());
     memcpy(_staging_index_buffer.data() + m->_base_index, indices.data(), indices.size() * sizeof(index32));
 
+    _staging_vertex_buffer.resize(_staging_vertex_buffer.size() + vertices.size());
+    memcpy(_staging_vertex_buffer.data() + m->_base_vertex, vertices.data(), vertices.size() * sizeof(vertex3d));
+
     if (_flags.has(mesh_allocator_flag::use_bvh))
     {
         _bvh_generator.sort(_staging_index_buffer.begin() + m->_base_index, _staging_index_buffer.end(),
-                            [&](const index32 i) { return vertices[i].position; });
+                            [&](const index32 i) { return _staging_vertex_buffer[i + m->_base_vertex].position; });
 
         m->_base_bvh_node  = static_cast<uint32_t>(_staging_bvh_buffer.size());
         m->_bvh_node_count = static_cast<uint32_t>(_bvh_generator.nodes().size());
@@ -49,9 +52,6 @@ mesh* mesh_allocator::allocate_mesh(const gsl::span<const vertex3d>& vertices, c
         memcpy(_staging_bvh_buffer.data() + m->_base_bvh_node, _bvh_generator.nodes().data(),
                _bvh_generator.nodes().size() * sizeof(bvh<3>::node));
     }
-
-    _staging_vertex_buffer.resize(_staging_vertex_buffer.size() + vertices.size());
-    memcpy(_staging_vertex_buffer.data() + m->_base_vertex, vertices.data(), vertices.size() * sizeof(vertex3d));
 
     _index_buffer = std::make_unique<buffer<index32>>(*_device, _staging_index_buffer);
     if (_flags.has(mesh_allocator_flag::use_bvh)) _bvh_buffer = std::make_unique<buffer<bvh<3>::node>>(*_device, _staging_bvh_buffer);

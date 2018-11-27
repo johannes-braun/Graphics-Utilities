@@ -125,6 +125,7 @@ bool swapchain::recreate(std::optional<std::reference_wrapper<swapchain>> old)
     _swapchain.reset();
     _swapchain = std::move(newSwapchain);
 
+    _images.clear();
     for(auto const img : _device.getSwapchainImagesKHR(_swapchain.get()))
     {
         image pre_init;
