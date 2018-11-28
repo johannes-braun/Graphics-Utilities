@@ -22,6 +22,9 @@ namespace gfx
             bool button_down(button code) const override;
             void set_cursor_state(cursor_state state) override;
             cursor_state get_cursor_state() const noexcept override;
+            glm::vec2 cursor_position() const override;
+            glm::vec2 cursor_delta() const override;
+
         private:
             GLFWwindow* _parent;
             cursor_state _cursor_state;

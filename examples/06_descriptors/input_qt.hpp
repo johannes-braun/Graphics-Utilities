@@ -10,7 +10,6 @@ namespace gfx
 {
     inline namespace v1
     {
-        struct mouse_movement;
         class qt_input_system : public QObject, public input_system
         {
         public:
@@ -36,7 +35,7 @@ namespace gfx
             void add_mouse_button_callback(Qt::MouseButton btn, std::function<void(QMouseEvent* event)> callback);
             bool eventFilter(QObject* obj, QEvent* event) override;
 
-            std::unique_ptr< mouse_movement> _mm;
+            mouse_movement _mm;
             QTimer* _timer;
             cursor_state _last_cursor_state = cursor_state::free;
             std::atomic<cursor_state> _cursor_state = cursor_state::free;

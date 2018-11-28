@@ -23,6 +23,34 @@ enum class cursor_state
     captured
 };
 
+struct mouse_movement
+{
+    void notify_moved(glm::vec2 c)
+    {
+        if (_block_move.exchange(false))
+            return;
+        std::unique_lock l(_mtx);
+        moved += c;
+    }
+
+    void notify_not_moved()
+    {
+        _block_move = true;
+    }
+
+    void reset()
+    {
+        std::unique_lock l(_mtx);
+        moved = { 0, 0 };
+    }
+
+    glm::vec2 moved{ 0 };
+
+private:
+    std::mutex _mtx;
+    std::atomic_bool _block_move = false;
+};
+
 class input_system : public ecs::system
 {
 public:

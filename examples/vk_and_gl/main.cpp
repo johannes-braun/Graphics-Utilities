@@ -5,6 +5,7 @@
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
 #include <vulkan/vulkan.hpp>
+#include "../06_descriptors/input_glfw.hpp"
 
 int main()
 {
@@ -24,6 +25,9 @@ int main()
     gfx::ecs::system_list physics_list;
     gfx::ecs::system_list inputs_list;
 
+    gfx::glfw_input_system input_system(window);
+    inputs_list.add(input_system);
+
     using namespace std::chrono_literals;
     constexpr auto update_time_graphics = 8ms;
     constexpr auto update_time_physics  = 10ms;
@@ -32,7 +36,7 @@ int main()
     gfx::worker graphics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
         ecs.update(delta, graphics_list);
 
-        const auto[image, result] = surface_swapchain.next_image(acquire_semaphore);
+        //const auto[image, result] = surface_swapchain.next_image(acquire_semaphore);
                 
         return self.value_after(!glfwWindowShouldClose(window), update_time_graphics);
     });

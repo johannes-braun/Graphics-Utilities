@@ -65,10 +65,10 @@ int main(int argc, char** argv)
 
     using gfx::u32;
     QApplication app(argc, argv);
-    app.setStyle(QStyleFactory::create("fusion"));
+    QApplication::setStyle(QStyleFactory::create("fusion"));
     QFont defaultFont = QApplication::font();
     defaultFont.setPointSize(defaultFont.pointSize() + 2);
-    app.setFont(defaultFont);
+    QApplication::setFont(defaultFont);
     QPalette darkPalette;
     darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
     darkPalette.setColor(QPalette::WindowText, Qt::white);
@@ -895,7 +895,7 @@ int main(int argc, char** argv)
         return self.value_after(true, min_update_time_frame);
     });
 
-    app.exec();
+    QApplication::exec();
 }
 
 gfx::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)

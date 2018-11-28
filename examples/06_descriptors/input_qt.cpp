@@ -5,34 +5,6 @@
 namespace gfx {
 inline namespace v1 {
 
-struct mouse_movement
-{
-    void notify_moved(glm::vec2 c)
-    {
-        if (_block_move.exchange(false))
-            return;
-        std::unique_lock l(_mtx);
-        moved += c;
-    }
-
-    void notify_not_moved()
-    {
-        _block_move = true;
-    }
-
-    void reset()
-    {
-        std::unique_lock l(_mtx);
-        moved = { 0, 0 };
-    }
-
-    glm::vec2 moved{ 0 };
-
-private:
-    std::mutex _mtx;
-    std::atomic_bool _block_move;
-};
-
 qt_input_system::~qt_input_system()
 {
     _timer->stop();
@@ -44,18 +16,17 @@ qt_input_system::qt_input_system(QWidget* parent) : _parent(parent)
 {
     parent->installEventFilter(this);
     _timer = new QTimer;
-    _mm = std::make_unique<mouse_movement>();
-    QObject::connect(_timer, &QTimer::timeout, [&]
+    connect(_timer, &QTimer::timeout, [&]
     {
         if (_cursor_state == cursor_state::captured)
         {
             const auto center = _parent->mapToGlobal(QPoint{ _parent->width() / 2, _parent->height() / 2 });
             auto x = QCursor::pos() - center;
-            _mm->notify_moved({ x.x(), x.y() });
+            _mm.notify_moved({ x.x(), x.y() });
             QCursor::setPos(center);
         }
     });
-    _timer->start();
+    _timer->start(8);
 }
 
 bool qt_input_system::key_down(key code) const
@@ -73,8 +44,8 @@ bool qt_input_system::button_down(button code) const
 void qt_input_system::set_cursor_state(cursor_state state)
 {
     _cursor_state = state;
-    _mm->reset();
-    _mm->notify_not_moved();
+    _mm.reset();
+    _mm.notify_not_moved();
 }
 
 cursor_state qt_input_system::get_cursor_state() const noexcept
@@ -84,13 +55,13 @@ cursor_state qt_input_system::get_cursor_state() const noexcept
 
 glm::vec2 qt_input_system::cursor_delta() const
 {
-    return _mm->moved;
+    return _mm.moved;
 }
 
 void qt_input_system::post_update()
 {
     _moved = false;
-    _mm->reset();
+    _mm.reset();
     input_system::post_update();
 }
 

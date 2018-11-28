@@ -39,5 +39,17 @@ cursor_state glfw_input_system::get_cursor_state() const noexcept
 {
     return _cursor_state;
 }
+
+glm::vec2 glfw_input_system::cursor_position() const
+{
+    double x, y;
+    glfwGetCursorPos(_parent, &x, &y);
+    return { static_cast<float>(x), static_cast<float>(y) };
+}
+
+glm::vec2 glfw_input_system::cursor_delta() const
+{
+    return { 0, 0 };
+}
 }    // namespace v1
 }    // namespace gfx
