@@ -58,7 +58,7 @@ function(create_spirv target_name source_dir header_output namespace)
 	file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/spv.lock)
 	add_custom_command(
 		OUTPUT ${header_output} ${lock_file}
-		COMMAND ${CMAKE_COMMAND} -DGFX_IN=${header_output}.in -DGFX_OUT=${header_output} -DGLOBAL_SPV_INCLUDE_DIR=${GLOBAL_SPV_INCLUDE_DIR} -DGFX_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} -DGFX_PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR} -DGFX_SORUCE_DIR=${source_dir} -P ${CMAKE_MODULE_PATH}/spv/configure.cmake
+		COMMAND ${CMAKE_COMMAND} -DGLSLC_COMMAND=${GLSLC_COMMAND} -DGFX_IN=${header_output}.in -DGFX_OUT=${header_output} -DGLOBAL_SPV_INCLUDE_DIR=${GLOBAL_SPV_INCLUDE_DIR} -DGFX_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR} -DGFX_PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR} -DGFX_SORUCE_DIR=${source_dir} -P ${CMAKE_MODULE_PATH}/spv/configure.cmake
 		COMMENT "Compiling shaders..."
 		DEPENDS ${CURRENT_DEPENDENCIES}
 		VERBATIM

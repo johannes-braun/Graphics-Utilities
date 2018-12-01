@@ -5,7 +5,6 @@ file(GLOB_RECURSE gfx_current_tese ${GFX_SORUCE_DIR}/*.tese)
 file(GLOB_RECURSE gfx_current_tesc ${GFX_SORUCE_DIR}/*.tesc)
 file(GLOB_RECURSE gfx_current_comp ${GFX_SORUCE_DIR}/*.comp)
 
-set(GLSLC_COMMAND glslc)
 foreach(file ${gfx_current_frag} ${gfx_current_vert} ${gfx_current_geom} ${gfx_current_tese} ${gfx_current_tesc} ${gfx_current_comp})
 	file(RELATIVE_PATH full_relative_file ${GFX_PROJECT_SOURCE_DIR}/ ${file})
 	set(tmp_full_relative_file ${full_relative_file})

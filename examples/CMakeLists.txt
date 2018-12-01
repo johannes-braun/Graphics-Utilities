@@ -2,7 +2,7 @@
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_CURRENT_BINARY_DIR}>)
 
 # Find the QtWidgets library
-set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
+#set(CMAKE_PREFIX_PATH $ENV{QT5_ROOT})
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Concurrent REQUIRED)
 if(NOT Qt5Widgets_FOUND)
