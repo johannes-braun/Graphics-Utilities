@@ -111,24 +111,24 @@ int main(int argc, char** argv)
     render_surface->setFocusPolicy(Qt::FocusPolicy::ClickFocus);
 
     QVBoxLayout* right_panel_layout = new QVBoxLayout;
-    QWidget*     right_panel        = new QWidget;
+    QWidget*     right_panel = new QWidget;
     mainLayout->addWidget(right_panel);
     right_panel->setLayout(right_panel_layout);
 
-    QTabWidget*  tabWidget      = new QTabWidget;
-    QWidget*     general        = new QWidget;
+    QTabWidget*  tabWidget = new QTabWidget;
+    QWidget*     general = new QWidget;
     QVBoxLayout* general_layout = new QVBoxLayout;
     general->setLayout(general_layout);
-    QGroupBox*   gfx_info        = new QGroupBox("Graphics");
+    QGroupBox*   gfx_info = new QGroupBox("Graphics");
     QFormLayout* gfx_info_layout = new QFormLayout;
     gfx_info->setLayout(gfx_info_layout);
-    QGroupBox*   perf_info        = new QGroupBox("Performance");
+    QGroupBox*   perf_info = new QGroupBox("Performance");
     QFormLayout* perf_info_layout = new QFormLayout;
     perf_info->setLayout(perf_info_layout);
     general_layout->addWidget(gfx_info);
     general_layout->addWidget(perf_info);
 
-    QWidget*     visuals        = new QWidget;
+    QWidget*     visuals = new QWidget;
     QVBoxLayout* visuals_layout = new QVBoxLayout;
     visuals->setLayout(visuals_layout);
 
@@ -138,10 +138,10 @@ int main(int argc, char** argv)
     right_panel_layout->setContentsMargins(QMargins(0, 0, 0, 0));
     win.setStatusBar(new QStatusBar);
     mainLayout->addWidget(render_frame);
-    mainLayout->setSizes(QList<int>({250, 1280}));
+    mainLayout->setSizes(QList<int>({ 250, 1280 }));
     win.show();
 
-    gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), false, true);
+    gfx::instance              my_app("Application", gfx::version_t(1, 0, 0), true, true);
     gfx::surface               surf1(my_app, render_surface->winId());
     gfx::device                gpu(my_app, gfx::device_target::gpu, {1.f, 0.5f}, 1.f, surf1);
     gfx::swapchain             chain(gpu, surf1);

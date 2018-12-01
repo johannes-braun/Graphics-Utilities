@@ -12,7 +12,9 @@ function(create_spirv target_name source_dir header_output namespace)
 
 	set(namespace_output "#pragma once\n#include <array>\n#include <cinttypes>\n\nnamespace gfx { inline namespace v1 { namespace spirv {\n")
 	set(namespace_output "${namespace_output}    namespace ${namespace} {\n")
-	set(GLSLC_COMMAND glslc)
+
+	find_program(GLSLC_COMMAND glslc)
+	
 	foreach(file ${gfx_current_frag} ${gfx_current_vert} ${gfx_current_geom} ${gfx_current_tese} ${gfx_current_tesc} ${gfx_current_comp})
 		file(RELATIVE_PATH full_relative_file ${PROJECT_SOURCE_DIR}/ ${file})
 		file(RELATIVE_PATH relative_file ${source_dir}/ ${file})

@@ -37,7 +37,7 @@ int main()
         ecs.update(delta, graphics_list);
 
         //const auto[image, result] = surface_swapchain.next_image(acquire_semaphore);
-                
+                        
         return self.value_after(!glfwWindowShouldClose(window), update_time_graphics);
     });
 

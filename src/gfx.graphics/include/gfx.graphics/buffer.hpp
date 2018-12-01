@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.hpp"
-#include <vulkan/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include <unordered_set>
 #include "device.hpp"

@@ -3,12 +3,21 @@
 #include "extensions.hpp"
 #include <gfx.core/version.hpp>
 #include <vulkan/vulkan.hpp>
+#include <filesystem>
 
 namespace gfx {
 inline namespace v1 {
 class instance
 {
 public:
+    constexpr static std::string_view local_layer_path = "./";
+#if defined(VK_LAYER_PATH)
+    constexpr static std::string_view default_layer_path = VK_LAYER_PATH;
+#else
+    constexpr static std::string_view default_layer_path = local_layer_path;
+#endif
+    static void hint_layer_path(std::filesystem::path const& vk_layer_path = default_layer_path);
+
     explicit instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support,
                       vk::ArrayProxy<char const* const> additional_extensions = {});
     ~instance() = default;
