@@ -26,12 +26,10 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC _WIN32_WINNT=0x0501)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)
 
 # Link against dependencies
-find_package(glm REQUIRED)
-find_package(Eigen3 CONFIG REQUIRED)
-
-target_link_libraries(gfx.${gfx_current_module} PUBLIC glm)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC Eigen3::Eigen)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC microsoft::gsl)
+
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::glm)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::eigen3)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::gsl)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

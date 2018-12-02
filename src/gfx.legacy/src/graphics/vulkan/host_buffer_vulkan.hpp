@@ -1,7 +1,7 @@
 #pragma once
 
 #include <graphics/host_buffer.hpp>
-#include <vulkan/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
 namespace gfx {

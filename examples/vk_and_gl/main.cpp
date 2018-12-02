@@ -5,7 +5,7 @@
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
 #include <vulkan/vulkan.hpp>
-#include "../06_descriptors/input_glfw.hpp"
+//#include "../06_descriptors/input_glfw.hpp"
 
 int main()
 {
@@ -25,8 +25,8 @@ int main()
     gfx::ecs::system_list physics_list;
     gfx::ecs::system_list inputs_list;
 
-    gfx::glfw_input_system input_system(window);
-    inputs_list.add(input_system);
+    //gfx::glfw_input_system input_system(window);
+    //inputs_list.add(input_system);
 
     using namespace std::chrono_literals;
     constexpr auto update_time_graphics = 8ms;

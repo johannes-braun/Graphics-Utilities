@@ -2,7 +2,7 @@
 
 #include <graphics/device_image.hpp>
 #include "../general/handle.hpp"
-#include <vulkan/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
 namespace gfx {

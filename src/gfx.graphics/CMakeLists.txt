@@ -17,14 +17,17 @@ target_include_directories(gfx.${gfx_current_module} PRIVATE $<BUILD_INTERFACE:$
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/)
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<INSTALL_INTERFACE:include>)
 
-find_package(range-v3 REQUIRED)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.file)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.shaders)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::mygl)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::glsp)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC vulkan::vulkan)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC range-v3)
+
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::mygl)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::glsp)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_headers)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_loader)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_validation)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_mem_alloc)
+target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::range-v3)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

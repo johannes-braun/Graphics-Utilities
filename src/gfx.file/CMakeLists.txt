@@ -27,9 +27,8 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)
 configure_file(src/file_config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/src/file_config.hpp @ONLY)
 
 # Link against dependencies
-find_package(assimp REQUIRED)
-target_link_libraries(gfx.${gfx_current_module} PRIVATE ${ASSIMP_LIBRARIES})
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
+target_link_libraries(gfx.${gfx_current_module} PRIVATE gfx_ext::assimp)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

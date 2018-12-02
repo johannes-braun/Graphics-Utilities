@@ -2,7 +2,7 @@
 
 #include "../general/handle.hpp"
 #include "init_struct.hpp"
-#include <vulkan/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
 #include <context.hpp>

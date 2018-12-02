@@ -2,7 +2,7 @@
 #include "init_struct.hpp"
 #include <gfx.core/log.hpp>
 #define VMA_IMPLEMENTATION
-#include <vulkan/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include "result.hpp"
 
 PFN_vkCmdPushDescriptorSetKHR _vkCmdPushDescriptorSetKHR = nullptr;
