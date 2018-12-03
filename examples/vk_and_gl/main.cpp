@@ -13,56 +13,9 @@
 #include "buffer.hpp"
 #include "gfx.core/log.hpp"
 
-template<typename Ident>
-struct basic_handle
-{
-    using identifier_type = Ident;
-    using handle_type = std::underlying_type_t<identifier_type>;
-    using value_type = handle_type;
-
-    constexpr static basic_handle zero() noexcept;
-    constexpr static basic_handle from(handle_type h) noexcept;
-
-    /*
-        constexpr basic_handle() = default;
-        constexpr basic_handle(std::nullptr_t) noexcept : handle(zero) {}
-
-        template<typename X, typename = std::enable_if_t<std::is_convertible_v<X, handle_type>>>
-        constexpr basic_handle(X x) noexcept(noexcept(static_cast<handle_type>(std::declval<X>()))) : handle(static_cast<handle_type>(x)) {}
-    */
-
-    constexpr operator handle_type() const noexcept { return handle; }
-    constexpr operator bool() const noexcept { return handle != 0; }
-    constexpr bool operator ==(basic_handle other) const noexcept { return handle == other.handle; }
-    constexpr bool operator !=(basic_handle other) const noexcept { return handle != other.handle; }
-    constexpr bool operator ==(handle_type other) const noexcept { return handle == other; }
-    constexpr bool operator !=(handle_type other) const noexcept { return handle != other; }
-
-    handle_type handle;
-};
-
-template<typename Ident>
-constexpr basic_handle<Ident> basic_handle<Ident>::zero() noexcept
-{
-    return from(0);
-}
-
-template<typename Ident>
-constexpr basic_handle<Ident> basic_handle<Ident>::from(handle_type h) noexcept
-{
-    return basic_handle<Ident>{ static_cast<handle_type>(h) };
-}
-
-uint32_t mfun() { return 293u; }
-
-enum class _x : uint32_t {};
-using X = basic_handle<_x>;
-
 int main(int argc, char** argv)
 {
     glfwInit();
-
-    X _x = reinterpret_cast<X(*)()>(&mfun)();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* vulkan_window = glfwCreateWindow(640, 480, "Vulkan", nullptr, nullptr);
@@ -150,10 +103,10 @@ int main(int argc, char** argv)
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     GLFWwindow* opengl_window = glfwCreateWindow(640, 480, "OpenGL", nullptr, nullptr);
     glfwMakeContextCurrent(opengl_window);
-    mygl::load(reinterpret_cast<mygl::loader_function>(&glfwGetProcAddress));
+    mygl::dispatch gl(reinterpret_cast<mygl::loader_function>(&glfwGetProcAddress));
     glfwMakeContextCurrent(nullptr);
     std::atomic_bool init = false;
-
+        
     gfx::worker::duration opengl_combined_delta = 0s;
     int opengl_frames = 0;
     gfx::worker opengl_graphics_worker([&](gfx::worker& self, gfx::worker::duration delta)
@@ -165,17 +118,12 @@ int main(int argc, char** argv)
             gfx::ilog("OPENGL") << std::to_string(opengl_frames / opengl_combined_delta.count()) << "fps";
             opengl_frames = 0;
             opengl_combined_delta = 0s;
-
-            mygl::buffer buf;
-            glCreateBuffers(1, &buf);
-            mygl::shader shd = glCreateShader(GL_VERTEX_SHADER);
-            glDeleteBuffers(1, &buf);
         }
         ecs.update(delta, opengl_graphics_list);
         if(!init.exchange(true))
             glfwMakeContextCurrent(opengl_window);
         glm::vec4 clear_color(0.3f, 0.5f, 0.9f, 1.f);
-        glClearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
+        gl.clearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
         glfwSwapBuffers(opengl_window);
         return self.value_after(true, update_time_graphics);
     });

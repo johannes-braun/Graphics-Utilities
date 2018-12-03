@@ -1,7 +1,7 @@
 #pragma once
 /* This header contains all enum values wrapped inside a GLenum enum.
 */
-enum GLenum {
+enum gl_enum {
     GL_DEPTH_BUFFER_BIT = 0x00000100,
     GL_STENCIL_BUFFER_BIT = 0x00000400,
     GL_COLOR_BUFFER_BIT = 0x00004000,
@@ -1773,18 +1773,30 @@ enum GLenum {
     GL_DEVICE_NODE_MASK_EXT = 0x959A,
     GL_PROTECTED_MEMORY_OBJECT_EXT = 0x959B,
 };
-using GLbitfield = GLenum;
-constexpr GLenum operator|(const GLenum lhs, const GLenum rhs)
+using gl_bitfield = gl_enum;
+namespace { using glenum_type = gl_enum; }
+constexpr glenum_type operator|(const glenum_type lhs, const glenum_type rhs)
 {
-    return GLenum(unsigned(lhs) | unsigned(rhs));
+    return glenum_type(unsigned(lhs) | unsigned(rhs));
+}
+constexpr glenum_type operator&(const glenum_type lhs, const glenum_type rhs)
+{
+    return glenum_type(unsigned(lhs) & unsigned(rhs));
+}
+constexpr glenum_type operator^(const glenum_type lhs, const glenum_type rhs)
+{
+    return glenum_type(unsigned(lhs) ^ unsigned(rhs));
 }
 
-constexpr GLenum operator+(const GLenum lhs, const GLenum rhs)
+#if defined(MYGL_DEFINE_GLENUM_ARITHMETIC)
+constexpr glenum_type operator+(const glenum_type lhs, const glenum_type rhs)
 {
-    return GLenum(unsigned(lhs) + unsigned(rhs));
+    return glenum_type(unsigned(lhs) + unsigned(rhs));
 }
 
-constexpr GLenum operator-(const GLenum lhs, const GLenum rhs)
+constexpr glenum_type operator-(const glenum_type lhs, const glenum_type rhs)
 {
-    return GLenum(unsigned(lhs) - unsigned(rhs));
+    return glenum_type(unsigned(lhs) - unsigned(rhs));
 }
+#endif // MYGL_DEFINE_GLENUM_ARITHMETIC
+
