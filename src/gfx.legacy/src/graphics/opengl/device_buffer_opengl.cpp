@@ -13,7 +13,7 @@ device_buffer_implementation::device_buffer_implementation()
 
 device_buffer_implementation::~device_buffer_implementation()
 {
-    if (glIsBuffer(mygl::buffer::zero)) glDeleteBuffers(1, &_handle);
+    if (glIsBuffer(_handle)) glDeleteBuffers(1, &_handle);
 }
 
 void device_buffer_implementation::update_flags(const buffer_usage_flags usage)
@@ -44,7 +44,7 @@ void device_buffer_implementation::allocate(const size_type size)
         glGenBuffers(1, &_handle);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
         glBufferData(GL_SHADER_STORAGE_BUFFER, size, nullptr, GL_DYNAMIC_COPY);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mygl::buffer::zero);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mygl::buffer{ 0 });
     }
 }
 
@@ -77,8 +77,8 @@ void device_buffer_implementation::copy(const std::any& source, const std::any& 
         glBindBuffer(GL_COPY_READ_BUFFER, src_handle);
         glBindBuffer(GL_COPY_WRITE_BUFFER, dst_handle);
         glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, src_offset, dst_offset, size);
-        glBindBuffer(GL_COPY_READ_BUFFER, mygl::buffer::zero);
-        glBindBuffer(GL_COPY_WRITE_BUFFER, mygl::buffer::zero);
+        glBindBuffer(GL_COPY_READ_BUFFER, mygl::buffer{0});
+        glBindBuffer(GL_COPY_WRITE_BUFFER, mygl::buffer{ 0 });
     }
 	push_fence(f);
 	glFlush();
@@ -92,7 +92,7 @@ void device_buffer_implementation::update(difference_type offset, size_type size
     {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, _handle);
         glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, size, data);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mygl::buffer::zero);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, mygl::buffer{ 0 });
     }
 }
 }    // namespace opengl

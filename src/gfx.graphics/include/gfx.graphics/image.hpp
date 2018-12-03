@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vk_mem_alloc.h>
+#include "allocator.hpp"
 #include <vulkan/vulkan.hpp>
 
 namespace gfx {

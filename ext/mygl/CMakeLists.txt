@@ -1,4 +1,5 @@
 set(mygl_headers 
+    ${CMAKE_CURRENT_SOURCE_DIR}/mygl/KHR/khrplatform.h
     ${CMAKE_CURRENT_SOURCE_DIR}/mygl/mygl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mygl/mygl_enums.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mygl/mygl_extensions.hpp

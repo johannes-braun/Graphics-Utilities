@@ -320,7 +320,7 @@ auto make_shader(shader_type t, const shader& s, mygl::pipeline handle)
             glGetProgramInfoLog(temp.s, log_length, &log_length, log.data());
             glDeleteProgram(temp.s);
             elog("shader") << log;
-            return shader_module{mygl::shader_program::zero};
+            return shader_module{ mygl::shader_program()};
         }
 
         glUseProgramStages(handle, stage_bitfield(ty), temp.s);
@@ -346,12 +346,12 @@ auto make_shader(shader_type t, const shader& s, mygl::pipeline handle)
             glGetProgramInfoLog(prog.s, log_length, &log_length, log.data());
             glDeleteProgram(prog.s);
             elog("shader") << log;
-            return shader_module{mygl::shader_program::zero};
+            return shader_module{ mygl::shader_program() };
         }
         glUseProgramStages(handle, stage_bitfield(ty), prog.s);
         return prog;
     }
-    return shader_module{mygl::shader_program::zero};
+    return shader_module{ mygl::shader_program() };
 }
 
 bool validate(mygl::pipeline handle)
@@ -428,7 +428,7 @@ void graphics_pipeline_implementation::initialize(const pipe_state& state, const
 
     _shds.resize(shaders.size());
     for (int i = 0; i < _shds.size(); ++i)
-        if ((_shds[i] = make_shader(shaders[i]->stage(), *shaders[i], _pipeline)).s.get() == mygl::shader_program::zero)
+        if ((_shds[i] = make_shader(shaders[i]->stage(), *shaders[i], _pipeline)).s.get())
             elog << "A shader compilation failed.";
 
     validate(_pipeline);

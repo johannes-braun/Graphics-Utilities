@@ -22,7 +22,7 @@ public:
     std::any api_handle() override;
 
 private:
-    movable_handle<mygl::sampler> _handle        = mygl::sampler::zero;
+    movable_handle<mygl::sampler> _handle        = mygl::sampler{ 0 };
     filter                        _min_filter    = filter::nearest;
     filter                        _mipmap_filter = filter::nearest;
 };

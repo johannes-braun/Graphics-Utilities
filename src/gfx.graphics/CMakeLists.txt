@@ -16,6 +16,7 @@ target_compile_options(gfx.${gfx_current_module} PUBLIC ${compile_options})
 target_include_directories(gfx.${gfx_current_module} PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/gfx.${gfx_current_module}/)
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/)
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<INSTALL_INTERFACE:include>)
+target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN VC_EXTRALEAN)
 
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)

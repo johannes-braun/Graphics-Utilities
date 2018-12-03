@@ -3,6 +3,7 @@
 #include "gsl/span"
 #include "types.hpp"
 #include <chrono>
+#include <atomic>
 
 namespace gfx {
 inline namespace v1 {
@@ -41,9 +42,11 @@ public:
     [[nodiscard]] auto has_resized() const noexcept -> bool;
 
     [[maybe_unused]] auto recreate() -> bool;
-    [[nodiscard]] auto    next_image(opt_ref<semaphore const> sem = std::nullopt, opt_ref<fence const> fen = std::nullopt,
+    [[nodiscard]] auto    swap(opt_ref<semaphore const> sem = std::nullopt, opt_ref<fence const> fen = std::nullopt,
                                      std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max())
-        -> std::pair<u32, std::optional<acquire_error>>;
+        -> std::optional<acquire_error>;
+    [[nodiscard]] auto current_index() const noexcept ->uint32_t;
+    [[nodiscard]] auto current_image() const noexcept->gfx::image const&;
 
 private:
     [[maybe_unused]] auto     recreate(std::optional<std::reference_wrapper<swapchain>> old) -> bool;
@@ -63,6 +66,7 @@ private:
     vk::ColorSpaceKHR                                      _color_space  = {};
     vk::Format                                             _format       = {};
     vk::Extent2D                                           _extent       = {};
+    std::atomic_uint32_t                                   _current_image = 0;
 };
 }    // namespace v1
 }    // namespace gfx

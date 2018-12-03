@@ -320,11 +320,11 @@ template<typename T>
 buffer<T>::buffer(device& d,  mapped<T> const& source) : buffer(d)
 {
     commands transfer_cmd = d.allocate_transfer_command();
-    transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    allocate(source.size(), false, transfer_cmd.cmd());
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    allocate(source.size(), false, transfer_cmd.get_command_buffer());
     _size = source.size();
     transfer_cmd.copy(source, *this);
-    transfer_cmd.cmd().end();
+    transfer_cmd.get_command_buffer().end();
     d.transfer_queue().submit({transfer_cmd}, {}, {});
     d.transfer_queue().wait();
 }
@@ -332,9 +332,9 @@ buffer<T>::buffer(device& d,  mapped<T> const& source) : buffer(d)
 template<typename T>
 buffer<T>::buffer(device& d,  mapped<T> const& source, commands& transfer_cmd) : buffer(d)
 {
-    allocate(source.size(), false, transfer_cmd.cmd());
+    allocate(source.size(), false, transfer_cmd.get_command_buffer());
     _size = source.size();
-    transfer_cmd.cmd().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
+    transfer_cmd.get_command_buffer().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
 }
 
 template<typename T>
@@ -342,17 +342,17 @@ buffer<T>::buffer(device& d,  vk::ArrayProxy< T const> const& proxy) : buffer(d)
 {
     auto const bytes        = proxy.size() * sizeof(T);
     commands   transfer_cmd = d.allocate_transfer_command();
-    transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    allocate(proxy.size(), false, transfer_cmd.cmd());
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    allocate(proxy.size(), false, transfer_cmd.get_command_buffer());
     _size = proxy.size();
     mapped<T> stage(d);
-    if (bytes <= 65536) { transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(proxy)); }
+    if (bytes <= 65536) { transfer_cmd.get_command_buffer().updateBuffer(_buffer, 0, bytes, std::data(proxy)); }
     else
     {
         stage.insert(stage.end(), proxy.begin(), proxy.end());
         transfer_cmd.copy(stage, *this);
     }
-    transfer_cmd.cmd().end();
+    transfer_cmd.get_command_buffer().end();
     d.transfer_queue().submit({transfer_cmd}, {}, {});
     d.transfer_queue().wait();
 }
@@ -361,10 +361,10 @@ template<typename T>
 buffer<T>::buffer(device& d, vk::ArrayProxy< T const> const& proxy, commands& transfer_cmd) : buffer(d)
 {
      auto const bytes = proxy.size() * sizeof(T);
-    allocate(proxy.size(), false, transfer_cmd.cmd());
+    allocate(proxy.size(), false, transfer_cmd.get_command_buffer());
     _size = proxy.size();
     mapped<T> stage(d);
-    if (bytes <= 65536) { transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(proxy)); }
+    if (bytes <= 65536) { transfer_cmd.get_command_buffer().updateBuffer(_buffer, 0, bytes, std::data(proxy)); }
     else
     {
         stage.insert(stage.end(), proxy.begin(), proxy.end());
@@ -377,16 +377,16 @@ buffer<T>::buffer(device& d,  std::initializer_list<T> const& source) : buffer(d
 {
     auto const bytes        = std::size(source) * sizeof(T);
     commands   transfer_cmd = d.allocate_transfer_command();
-    transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    allocate(source.size(), false, transfer_cmd.cmd());
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    allocate(source.size(), false, transfer_cmd.get_command_buffer());
     _size = source.size();
-    if (bytes <= 65536) { transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(source)); }
+    if (bytes <= 65536) { transfer_cmd.get_command_buffer().updateBuffer(_buffer, 0, bytes, std::data(source)); }
     else
     {
         mapped<T> stage(d, source);
         transfer_cmd.copy(stage, *this);
     }
-    transfer_cmd.cmd().end();
+    transfer_cmd.get_command_buffer().end();
     d.transfer_queue().submit({transfer_cmd}, {}, {});
     d.transfer_queue().wait();
 }
@@ -395,9 +395,9 @@ template<typename T>
 buffer<T>::buffer(device& d,  std::initializer_list<T> const& source, commands& transfer_cmd) : buffer(d)
 {
     auto const bytes = std::size(source) * sizeof(T);
-    allocate(source.size(), false, transfer_cmd.cmd());
+    allocate(source.size(), false, transfer_cmd.get_command_buffer());
     _size = source.size();
-    if (bytes <= 65536) { transfer_cmd.cmd().updateBuffer(_buffer, 0, bytes, std::data(source)); }
+    if (bytes <= 65536) { transfer_cmd.get_command_buffer().updateBuffer(_buffer, 0, bytes, std::data(source)); }
     else
     {
         mapped<T> stage(d, source);
@@ -415,11 +415,11 @@ template<typename T>
 buffer<T>::buffer( buffer const& other) : buffer(*other._device)
 {
     commands transfer_cmd = _device->allocate_transfer_command();
-    transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    allocate(other.size(), false, transfer_cmd.cmd());
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    allocate(other.size(), false, transfer_cmd.get_command_buffer());
     _size = other.size();
     transfer_cmd.copy(other, *this);
-    transfer_cmd.cmd().end();
+    transfer_cmd.get_command_buffer().end();
     _device->transfer_queue().submit({transfer_cmd}, {}, {});
     _device->transfer_queue().wait();
 }
@@ -446,11 +446,11 @@ buffer<T>& buffer<T>::operator=( buffer const& other)
 {
     _device               = other._device;
     commands transfer_cmd = _device->allocate_transfer_command();
-    transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    allocate(other.size(), false, transfer_cmd.cmd());
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    allocate(other.size(), false, transfer_cmd.get_command_buffer());
     _size = other.size();
     transfer_cmd.copy(other, *this);
-    transfer_cmd.cmd().end();
+    transfer_cmd.get_command_buffer().end();
     _device->transfer_queue().submit({transfer_cmd}, {}, {});
     _device->transfer_queue().wait();
     return *this;
@@ -479,9 +479,9 @@ mapped<T> buffer<T>::download() const
 {
     mapped<T> result(*_device, _size);
     commands  transfer_cmd = _device->allocate_transfer_command();
-    transfer_cmd.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
     transfer_cmd.copy(*this, result);
-    transfer_cmd.cmd().end();
+    transfer_cmd.get_command_buffer().end();
     _device->transfer_queue().submit({transfer_cmd}, {}, {});
     _device->transfer_queue().wait();
     return result;

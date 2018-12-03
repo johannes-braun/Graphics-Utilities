@@ -1,7 +1,15 @@
 #pragma once
 
 #include <graphics/host_buffer.hpp>
+#if defined(NOMINMAX)
+#define GFX_REDEFINE_NOMINMAX
+#undef NOMINMAX
+#endif // NOMINMAX
 #include <vk_mem_alloc.h>
+#if defined(GFX_REDEFINE_NOMINMAX)
+#define NOMINMAX
+#undef GFX_REDEFINE_NOMINMAX
+#endif // GFX_REDEFINE_NOMINMAX
 #include <vulkan/vulkan.h>
 
 namespace gfx {

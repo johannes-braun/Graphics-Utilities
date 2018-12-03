@@ -23,7 +23,7 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC GLM_ENABLE_EXPERIMEN
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC GLM_FORCE_PURE)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC STBI_MSC_SECURE_CRT)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC _WIN32_WINNT=0x0501)
-target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)
+target_compile_definitions(gfx.${gfx_current_module} PUBLIC VC_EXTRALEAN WIN32_LEAN_AND_MEAN NOMINMAX)
 configure_file(src/graphics/shader_include.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/shader_include.hpp @ONLY)
 
 # Link against dependencies

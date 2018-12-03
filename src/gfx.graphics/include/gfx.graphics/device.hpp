@@ -6,8 +6,7 @@
 #include <gsl/span>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
-
-struct VmaAllocator_T;
+#include "allocator.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -31,7 +30,6 @@ class instance;
 class surface;
 class commands;
 class queue;
-using allocator = VmaAllocator_T*;
 class fence;
 
 class physical_device_handle
@@ -90,11 +88,6 @@ private:
     [[nodiscard]] static auto dedicated_families(gsl::span<vk::QueueFamilyProperties const> props) -> std::tuple<u32, u32, u32>;
     void initialize_preset(u32 graphics_queue_count, u32 compute_queue_count, vk::ArrayProxy<char const* const> additional_extensions);
 
-    struct vma_alloc_deleter
-    {
-        void operator()(allocator alloc) const noexcept;
-    };
-
     instance*                                          _instance;
     vk::PhysicalDevice                                 _gpu = nullptr;
     std::unordered_map<u32, vk::DeviceQueueCreateInfo> _queue_create_infos;
@@ -102,7 +95,7 @@ private:
     std::array<u32, 4>                                 _queue_families{};
     bool                                               _enable_present = false;
     vk::UniqueDevice                                   _device;
-    std::unique_ptr<VmaAllocator_T, vma_alloc_deleter> _allocator;
+    unique_allocator                                   _allocator;
     extension_dispatch                                 _dispatcher;
     std::array<std::vector<vk::Queue>, 4>              _queues;
     std::array<vk::UniqueCommandPool, 4>               _command_pools;

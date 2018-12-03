@@ -16,7 +16,7 @@ public:
     handle api_handle() override;
 
 private:
-    movable_handle<mygl::texture> _handle = mygl::texture::zero;
+    movable_handle<mygl::texture> _handle = mygl::texture{ 0 };
 };
 }    // namespace opengl
 }    // namespace v1

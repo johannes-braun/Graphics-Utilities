@@ -1,12 +1,12 @@
 #pragma once
 
-#include "types.hpp"
-#include "allocator.hpp"
-#include <vulkan/vulkan.hpp>
+#include <gfx.core/types.hpp>
+#include <gsl/gsl>
 #include <unordered_set>
-#include "device.hpp"
+#include <mygl/mygl.hpp>
 
 namespace gfx {
+namespace gl {
 inline namespace v1 {
 template<typename T>
 class mapped : public gsl::span<T>
@@ -24,13 +24,13 @@ public:
     using size_type              = index_type;
     using difference_type        = ptrdiff_t;
 
-    explicit mapped(device& d);
+    explicit mapped() = default;
 
     template<typename = std::enable_if_t<std::is_default_constructible_v<T>>>
-    explicit mapped(device& d, size_type size);
-    explicit mapped(device& d, size_type size, T&& value);
-    explicit mapped(device& d, std::initializer_list<T> ilist);
-    explicit mapped(device& d, gsl::span<T const> ilist);
+    explicit mapped(size_type size);
+    explicit mapped(size_type size, T&& value);
+    explicit mapped(std::initializer_list<T> ilist);
+    explicit mapped(gsl::span<T const> ilist);
 
     mapped(mapped const& other);
     mapped(mapped&& other) noexcept;
@@ -68,7 +68,7 @@ public:
     [[maybe_unused]] auto erase(const_iterator at) -> iterator;
     [[maybe_unused]] auto erase(const_iterator begin, const_iterator end) -> iterator;
 
-    [[nodiscard]] auto get_buffer() const -> vk::Buffer const&;
+    [[nodiscard]] auto get_buffer() const -> mygl::buffer const&;
 
 private:
     void allocate(size_type capacity, bool force = false);
@@ -76,11 +76,8 @@ private:
     void init_range(iterator begin, iterator end, T const& value);
     void reset_storage(value_type* storage, size_type size) noexcept;
 
-    std::vector<u32> _families;
-    vk::Buffer       _buffer     = nullptr;
-    VmaAllocation    _allocation = nullptr;
-    size_type        _capacity   = 0;
-    device*          _device     = nullptr;
+    mygl::buffer _buffer = mygl::buffer::zero;
+    size_type _capacity = 0;
 };
 
 template<typename T>
@@ -95,13 +92,10 @@ public:
     using size_type       = index_type;
     using difference_type = ptrdiff_t;
 
-    buffer(device& d);
-    buffer(device& d, mapped<T> const& source);
-    buffer(device& d, mapped<T> const& source, commands& transfer_cmd);
-    buffer(device& d, vk::ArrayProxy<T const> const& proxy);
-    buffer(device& d, vk::ArrayProxy<T const> const& proxy, commands& transfer_cmd);
-    buffer(device& d, std::initializer_list<T> const& source);
-    buffer(device& d, std::initializer_list<T> const& source, commands& transfer_cmd);
+    buffer() = default;
+    buffer(mapped<T> const& source);
+    buffer(vk::ArrayProxy<T const> const& proxy);
+    buffer(std::initializer_list<T> const& source);
 
     ~buffer();
 
@@ -113,17 +107,12 @@ public:
     [[nodiscard]] auto download() const -> mapped<T>;
     [[nodiscard]] auto size() const -> size_type;
     [[nodiscard]] auto capacity() const -> size_type;
-    [[nodiscard]] auto get_buffer() const -> vk::Buffer const&;
+    [[nodiscard]] auto get_buffer() const -> mygl::buffer const&;
 
 private:
-    void allocate(size_type capacity, bool force, vk::CommandBuffer copy_cmd);
-
-    std::vector<u32> _families;
-    vk::Buffer       _buffer     = nullptr;
-    VmaAllocation    _allocation = nullptr;
+    mygl::buffer _buffer = mygl::buffer::zero;
     size_type        _capacity   = 0;
     size_type        _size       = 0;
-    device*          _device     = nullptr;
 };
 
 template<typename Buf>
@@ -133,6 +122,7 @@ constexpr bool is_buffer_v<mapped<T>> = true;
 template<typename T>
 constexpr bool is_buffer_v<buffer<T>> = true;
 }    // namespace v1
+}    // namespace gl
 }    // namespace gfx
 
 #include "buffer.inl"

@@ -17,4 +17,3 @@ target_include_directories(gfx.${gfx_current_module} PRIVATE $<BUILD_INTERFACE:$
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/include/)
 target_include_directories(gfx.${gfx_current_module} PUBLIC $<INSTALL_INTERFACE:include>)
 target_compile_definitions(gfx.${gfx_current_module} PUBLIC _WIN32_WINNT=0x0501)
-target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX)

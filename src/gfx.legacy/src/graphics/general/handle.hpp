@@ -7,7 +7,7 @@ inline namespace v1 {
 template<typename T>
 struct movable_handle
 {
-    constexpr static T null_handle = T(0);
+    constexpr static T null_handle = T{ 0 };
 
 	movable_handle() noexcept : _hnd(null_handle) {}
 	movable_handle(T h) noexcept : _hnd(h) {}

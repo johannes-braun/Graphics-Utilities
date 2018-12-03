@@ -70,13 +70,24 @@ auto swapchain::extent() const noexcept -> vk::Extent2D
     return _extent;
 }
 
-std::pair<u32, std::optional<acquire_error>> swapchain::next_image(opt_ref<semaphore const> sem, opt_ref<fence const> fen,
+std::optional<acquire_error> swapchain::swap(opt_ref<semaphore const> sem, opt_ref<fence const> fen,
                                                                    std::chrono::nanoseconds timeout)
 {
     u32  img    = 0;
     auto result = _device.acquireNextImageKHR(_swapchain.get(), timeout.count(), sem ? sem->get().get_semaphore() : nullptr,
                                               fen ? fen->get().get_fence() : nullptr, &img);
-    return {img, result == vk::Result::eSuccess ? std::nullopt : std::optional<acquire_error>(acquire_error(u32(result)))};
+    _current_image = img;
+    return result == vk::Result::eSuccess ? std::nullopt : std::optional<acquire_error>(acquire_error(u32(result)));
+}
+
+auto swapchain::current_index() const noexcept -> uint32_t
+{
+    return _current_image.load();
+}
+
+auto swapchain::current_image() const noexcept -> gfx::image const&
+{
+    return _images[current_index()];
 }
 
 bool swapchain::has_resized() const noexcept

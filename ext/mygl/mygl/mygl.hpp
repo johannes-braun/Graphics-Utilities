@@ -1,4 +1,27 @@
 #pragma once
+/*
+ __  __  _  _  ___  __   
+(  \/  )( \/ )/ __)(  )  
+ )    (  \  /( (_-. )(__ 
+(_/\/\_) (__) \___/(____)
+
+MYGL - OpenGL Function Loader.
+-----------------------------------
+
+This is a header-only library. But for the sake of not cluttering your sources with my windows.h-like includes, 
+you need to include mygl exactly in one cpp file as follows:
+
+#define MYGL_IMPLEMENTATION
+#include <mygl.hpp>
+
+You can then run the loader after context-creation and after making a context current with the functions
+mygl::load();
+    - or -
+mygl::load(reinterpret_cast<mygl::loader_function>(myGetProcAddress));
+
+-----------------------------------
+*/
+
 #include "mygl_enums.hpp"
 #include "mygl_extensions.hpp"
 #include "mygl_functions.hpp"

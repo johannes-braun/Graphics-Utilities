@@ -3,8 +3,6 @@
 #endif
 
 #include "device.hpp"
-#define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
 #include "commands.hpp"
 #include "instance.hpp"
 #include "sync.hpp"
@@ -320,11 +318,6 @@ std::tuple<u32, u32, u32> device::dedicated_families(gsl::span< vk::QueueFamilyP
         }
     }
     return {graphics_family, compute_family, transfer_family};
-}
-
-void device::vma_alloc_deleter::operator()(allocator alloc) const noexcept
-{
-    vmaDestroyAllocator(alloc);
 }
 }    // namespace v1
 }    // namespace gfx

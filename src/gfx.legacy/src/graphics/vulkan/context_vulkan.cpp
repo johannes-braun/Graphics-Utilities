@@ -1,8 +1,16 @@
 #include "context_vulkan.hpp"
 #include "init_struct.hpp"
 #include <gfx.core/log.hpp>
+#if defined(NOMINMAX)
+#define GFX_REDEFINE_NOMINMAX
+#undef NOMINMAX
+#endif // NOMINMAX
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
+#if defined(GFX_REDEFINE_NOMINMAX)
+#define NOMINMAX
+#undef GFX_REDEFINE_NOMINMAX
+#endif // GFX_REDEFINE_NOMINMAX
 #include "result.hpp"
 
 PFN_vkCmdPushDescriptorSetKHR _vkCmdPushDescriptorSetKHR = nullptr;

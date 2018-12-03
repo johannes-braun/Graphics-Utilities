@@ -52,7 +52,7 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
             glGenTextures(1, &_handle);
             glBindTexture(_type, _handle);
             glTexStorage2D(_type, _levels, _internal_format, _extent.width, _extent.height);
-            glBindTexture(_type, mygl::texture::zero);
+            glBindTexture(_type, mygl::texture{ 0 });
         }
     }
     break;
@@ -77,7 +77,7 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
                                           true);
             else
                 glTexStorage3D(_type, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
-            glBindTexture(_type, mygl::texture::zero);
+            glBindTexture(_type, mygl::texture{ 0 });
         }
     }
     break;
@@ -93,7 +93,7 @@ void device_image_implementation::initialize(uint32_t layer_dimensions, format f
             glGenTextures(1, &_handle);
             glBindTexture(_type, _handle);
             glTexStorage3D(_type, _levels, _internal_format, _extent.width, _extent.height, _extent.depth);
-            glBindTexture(_type, mygl::texture::zero);
+            glBindTexture(_type, mygl::texture{ 0 });
         }
     }
     break;
@@ -112,7 +112,7 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
         {
             glBindTexture(_type, _handle);
             glTexSubImage3D(_type, level, 0, 0, 0, _extent.width, _extent.height, _extent.depth, _external_format, _external_type, nullptr);
-            glBindTexture(_type, mygl::texture::zero);
+            glBindTexture(_type, mygl::texture{ 0 });
         }
         break;
     case GL_TEXTURE_2D_ARRAY:
@@ -122,7 +122,7 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
         {
             glBindTexture(_type, _handle);
             glTexSubImage3D(_type, level, 0, 0, layer, _extent.width, _extent.height, 1, _external_format, _external_type, nullptr);
-            glBindTexture(_type, mygl::texture::zero);
+            glBindTexture(_type, mygl::texture{ 0 });
         }
         break;
     case GL_TEXTURE_1D_ARRAY:
@@ -132,11 +132,11 @@ void device_image_implementation::fill_from(const host_image& image, uint32_t le
         {
             glBindTexture(_type, _handle);
             glTexSubImage2D(_type, level, 0, layer, _extent.width, 1, _external_format, _external_type, nullptr);
-            glBindTexture(_type, mygl::texture::zero);
+            glBindTexture(_type, mygl::texture{ 0 });
         }
         break;
     }
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mygl::buffer::zero);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mygl::buffer{ 0 });
     glFinish();
 }
 
@@ -145,7 +145,7 @@ void device_image_implementation::fill_to(const host_image& image, uint32_t leve
     glBindBuffer(GL_PIXEL_PACK_BUFFER, handle_cast<mygl::buffer>(image.storage()));
     glGetTextureSubImage(_handle, level, 0, 0, 0, _extent.width, _extent.height, _extent.depth, _external_format, _external_type,
                          static_cast<int>(format_element_size(_format) * _extent.count()), nullptr);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, mygl::buffer::zero);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, mygl::buffer{ 0 });
     glFinish();
 }
 }    // namespace opengl

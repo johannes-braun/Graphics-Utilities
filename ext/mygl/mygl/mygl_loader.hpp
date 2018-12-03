@@ -4,7 +4,9 @@
 #include "mygl_functions.hpp"
 
 namespace mygl { 
-    void load(); 
+using loader_function = void*(*)(const char* name);
+void load();
+void load(loader_function fun);
 }
 
 #if defined(MYGL_IMPLEMENTATION)

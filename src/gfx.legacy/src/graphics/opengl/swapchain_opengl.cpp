@@ -30,9 +30,9 @@ void swapchain_implementation::present()
 		glViewportIndexedf(0, 0, 0, static_cast<float>(ext.width), static_cast<float>(ext.height));
 		glDepthRangeIndexed(0, 0.f, 1.f);
 		glScissorIndexed(0, 0, 0, ext.width, ext.height);
-        glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
+        glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer{ 0 });
         glDrawBuffer(GL_FRONT);
-        glBlitNamedFramebuffer(handle_cast<mygl::framebuffer>(_blit_helpers[_current_image]), mygl::framebuffer::zero, 0, 0, ext.width,
+        glBlitNamedFramebuffer(handle_cast<mygl::framebuffer>(_blit_helpers[_current_image]), mygl::framebuffer{ 0 }, 0, 0, ext.width,
                                ext.height, 0, 0, ext.width, ext.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glFlush();
         glfwSwapBuffers(_window);

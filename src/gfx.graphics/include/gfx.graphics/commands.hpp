@@ -14,7 +14,7 @@ public:
     commands(commands&&)                 = default;
     commands& operator=(commands&&) = default;
 
-    [[nodiscard]] auto cmd() const noexcept -> vk::CommandBuffer const&;
+    [[nodiscard]] auto get_command_buffer() const noexcept -> vk::CommandBuffer const&;
 
     template<template<typename> typename SBuf, template<typename> typename DBuf, typename T>
     void copy(SBuf<T> const& src, DBuf<T> const& dst, std::optional<u32> count = std::nullopt, std::optional<u32> src_offset = std::nullopt,

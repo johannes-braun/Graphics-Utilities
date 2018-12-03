@@ -250,7 +250,7 @@ int main(int argc, char** argv)
         results_view                             = gpu.get_device().createImageViewUnique(color_accum_view_create);
 
         gfx::commands switch_layout = gpu.allocate_transfer_command();
-        switch_layout.cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        switch_layout.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         {
             vk::ImageMemoryBarrier attachment_barrier;
             attachment_barrier.oldLayout                     = vk::ImageLayout::eUndefined;
@@ -271,12 +271,12 @@ int main(int argc, char** argv)
             randoms_barrier.image                            = randoms->get_image();
             vk::ImageMemoryBarrier results_barrier           = attachment_barrier;
             results_barrier.image                            = results->get_image();
-            switch_layout.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
+            switch_layout.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
                                                 vk::DependencyFlagBits::eByRegion, {}, {},
                                                 {attachment_barrier, attachment_barrier_bounce, positions_bounce_barrier,
                                                  directions_sample_barrier, randoms_barrier, results_barrier});
         }
-        switch_layout.cmd().end();
+        switch_layout.get_command_buffer().end();
         gpu.transfer_queue().submit({switch_layout}, {}, {});
         gpu.transfer_queue().wait();
     };
@@ -284,7 +284,7 @@ int main(int argc, char** argv)
     const auto save_image = [&] {
         gfx::mapped<glm::vec4> pixels(gpu, chain.extent().width * chain.extent().height);
         gfx::commands          switch_layout = gpu.allocate_transfer_command();
-        switch_layout.cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        switch_layout.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         {
             vk::ImageMemoryBarrier attachment_barrier;
             attachment_barrier.oldLayout           = vk::ImageLayout::eUndefined;
@@ -295,21 +295,21 @@ int main(int argc, char** argv)
             attachment_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             attachment_barrier.image               = results->get_image();
             attachment_barrier.subresourceRange    = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-            switch_layout.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
+            switch_layout.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
                                                 vk::DependencyFlagBits::eByRegion, {}, {}, attachment_barrier);
 
             const vk::BufferImageCopy region(0, 0, 0, vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1), {0, 0, 0},
                                              {chain.extent().width, chain.extent().height, 0});
-            switch_layout.cmd().copyImageToBuffer(results->get_image(), vk::ImageLayout::eTransferSrcOptimal, pixels.get_buffer(), region);
+            switch_layout.get_command_buffer().copyImageToBuffer(results->get_image(), vk::ImageLayout::eTransferSrcOptimal, pixels.get_buffer(), region);
 
             attachment_barrier.oldLayout     = vk::ImageLayout::eTransferSrcOptimal;
             attachment_barrier.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
             attachment_barrier.newLayout     = vk::ImageLayout::eGeneral;
             attachment_barrier.dstAccessMask = {};
-            switch_layout.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllCommands,
+            switch_layout.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eAllCommands,
                                                 vk::DependencyFlagBits::eByRegion, {}, {}, attachment_barrier);
         }
-        switch_layout.cmd().end();
+        switch_layout.get_command_buffer().end();
         gpu.transfer_queue().submit({switch_layout}, {}, {});
         gpu.transfer_queue().wait();
 
@@ -579,7 +579,7 @@ int main(int argc, char** argv)
                                       gsl::make_span(static_cast<uint8_t*>(bokeh_image.bytes()), bokeh_image.width * bokeh_image.height));
 
 
-    transfer_cie.cmd().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+    transfer_cie.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
     {
         vk::ImageMemoryBarrier cie_barrier;
         cie_barrier.oldLayout           = vk::ImageLayout::eUndefined;
@@ -590,21 +590,21 @@ int main(int argc, char** argv)
         cie_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         cie_barrier.image               = cie_spectrum.get_image();
         cie_barrier.subresourceRange    = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-        transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
+        transfer_cie.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
         cie_barrier.image = bokeh.get_image();
-        transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
+        transfer_cie.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
 
         vk::BufferImageCopy cie_copy;
         cie_copy.imageExtent      = cie_spectrum_create.extent;
         cie_copy.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
-        transfer_cie.cmd().copyBufferToImage(cie_values.get_buffer(), cie_spectrum.get_image(), vk::ImageLayout::eTransferDstOptimal,
+        transfer_cie.get_command_buffer().copyBufferToImage(cie_values.get_buffer(), cie_spectrum.get_image(), vk::ImageLayout::eTransferDstOptimal,
                                              cie_copy);
         vk::BufferImageCopy bokeh_copy;
         bokeh_copy.imageExtent      = bokeh_create.extent;
         bokeh_copy.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
-        transfer_cie.cmd().copyBufferToImage(bokeh_values.get_buffer(), bokeh.get_image(), vk::ImageLayout::eTransferDstOptimal,
+        transfer_cie.get_command_buffer().copyBufferToImage(bokeh_values.get_buffer(), bokeh.get_image(), vk::ImageLayout::eTransferDstOptimal,
                                              bokeh_copy);
 
         cie_barrier.oldLayout     = vk::ImageLayout::eTransferDstOptimal;
@@ -612,13 +612,13 @@ int main(int argc, char** argv)
         cie_barrier.newLayout     = vk::ImageLayout::eShaderReadOnlyOptimal;
         cie_barrier.dstAccessMask = {};
         cie_barrier.image         = cie_spectrum.get_image();
-        transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
+        transfer_cie.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
         cie_barrier.image = bokeh.get_image();
-        transfer_cie.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
+        transfer_cie.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
                                            vk::DependencyFlagBits::eByRegion, {}, {}, cie_barrier);
     }
-    transfer_cie.cmd().end();
+    transfer_cie.get_command_buffer().end();
     gpu.transfer_queue().submit({transfer_cie}, {}, {});
 
     vk::ImageViewCreateInfo cie_spectrum_view_create;
@@ -818,7 +818,7 @@ int main(int argc, char** argv)
             delta_accum = std::chrono::duration<double>::zero();
         }
 
-        const auto [img, acquire_error] = chain.next_image(acquire_image_signal);
+        const auto acquire_error = chain.swap(acquire_image_signal);
         if (acquire_error && (*acquire_error == gfx::acquire_error::out_of_date || *acquire_error == gfx::acquire_error::suboptimal))
         {
             if (!chain.recreate())
@@ -836,20 +836,22 @@ int main(int argc, char** argv)
                                                 &gfx::info_for(instances.get_instantiator().instances())}},
                                               {});
 
-        gpu.wait_for({cmd_fences[img]});
-        gpu.reset_fences({cmd_fences[img]});
-        gpu_cmd[img].cmd().reset({});
-        gpu_cmd[img].cmd().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+        const auto& cmd = gpu_cmd[chain.current_index()];
+
+        gpu.wait_for({cmd_fences[chain.current_index()]});
+        gpu.reset_fences({cmd_fences[chain.current_index()]});
+        cmd.get_command_buffer().reset({});
+        cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
         current_view_entity->get<gfx::projection_component>()->perspective().screen_width  = chain.extent().width;
         current_view_entity->get<gfx::projection_component>()->perspective().screen_height = chain.extent().height;
-        gpu_cmd[img].cmd().updateBuffer(camera_info_buffer.get_buffer(), 0ull,
+        cmd.get_command_buffer().updateBuffer(camera_info_buffer.get_buffer(), 0ull,
                                         vk::ArrayProxy<const gfx::camera_matrices>{*gfx::get_camera_info(*current_view_entity)});
 
         if (keys.key_down(gfx::key::kb_q) || last_transform != *current_view_entity->get<gfx::transform_component>())
         {
             last_transform = *current_view_entity->get<gfx::transform_component>();
-            gpu_cmd[img].cmd().clearColorImage(color_accum->get_image(), vk::ImageLayout::eGeneral,
+            cmd.get_command_buffer().clearColorImage(color_accum->get_image(), vk::ImageLayout::eGeneral,
                                                vk::ClearColorValue(std::array{0.f, 0.f, 0.f, 0.f}),
                                                vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
             current_globals.rendered_count = 0;
@@ -860,27 +862,27 @@ int main(int argc, char** argv)
         current_globals.viewport[1]   = chain.extent().height;
         current_globals.render_output = output_type(render_outputs->checkedId());
         current_globals.rendered_count++;
-        gpu_cmd[img].cmd().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &current_globals);
+        cmd.get_command_buffer().updateBuffer(globals_buffer.get_buffer(), 0ull, 1 * sizeof(globals), &current_globals);
 
         vk::ClearValue clear_values[] = {{vk::ClearColorValue{std::array{0.f, 1.f, 0.f, 1.f}}}};
-        gpu_cmd[img].cmd().beginRenderPass(
-            {pass.get(), fbos[img].get(), {{0, 0}, chain.extent()}, u32(std::size(clear_values)), std::data(clear_values)},
+        cmd.get_command_buffer().beginRenderPass(
+            {pass.get(), fbos[chain.current_index()].get(), {{0, 0}, chain.extent()}, u32(std::size(clear_values)), std::data(clear_values)},
             vk::SubpassContents::eInline);
 
-        gpu_cmd[img].cmd().setViewport(0, vk::Viewport(0.f, 0.f, chain.extent().width, chain.extent().height, 0.f, 1.f));
-        gpu_cmd[img].cmd().setScissor(0, vk::Rect2D({0, 0}, chain.extent()));
-        gpu_cmd[img].cmd().bindPipeline(vk::PipelineBindPoint::eGraphics, pipe.get());
+        cmd.get_command_buffer().setViewport(0, vk::Viewport(0.f, 0.f, chain.extent().width, chain.extent().height, 0.f, 1.f));
+        cmd.get_command_buffer().setScissor(0, vk::Rect2D({0, 0}, chain.extent()));
+        cmd.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, pipe.get());
 
-        gpu_cmd[img].cmd().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0,
+        cmd.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0,
                                               {mat_set.get(), mesh_set.get(), globals_set.get()}, nullptr);
-        gpu_cmd[img].cmd().draw(3, 1, 0, 0);
+        cmd.get_command_buffer().draw(3, 1, 0, 0);
 
-        gpu_cmd[img].cmd().endRenderPass();
-        gpu_cmd[img].cmd().end();
+        cmd.get_command_buffer().endRenderPass();
+        cmd.get_command_buffer().end();
 
-        gpu.graphics_queue().submit({gpu_cmd[img]}, {acquire_image_signal}, {render_finish_signal}, cmd_fences[img]);
+        gpu.graphics_queue().submit({cmd}, {acquire_image_signal}, {render_finish_signal}, cmd_fences[chain.current_index()]);
         gpu.graphics_queue().wait();
-        const auto present_error = gpu.present_queue().present({{img, chain}}, {render_finish_signal});
+        const auto present_error = gpu.present_queue().present({{chain.current_index(), chain}}, {render_finish_signal});
         if (present_error)
         {
             if (!chain.recreate())
@@ -949,7 +951,7 @@ gfx::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)
 
     gfx::commands copy = gpu.allocate_graphics_command();
 
-    copy.cmd().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    copy.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
     vk::ImageMemoryBarrier img_barrier;
     img_barrier.oldLayout        = vk::ImageLayout::eUndefined;
@@ -958,13 +960,13 @@ gfx::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)
     img_barrier.dstAccessMask    = vk::AccessFlagBits::eMemoryWrite;
     img_barrier.image            = cube.get_image();
     img_barrier.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 6);
-    copy.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
+    copy.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
                                vk::DependencyFlagBits::eByRegion, {}, {}, img_barrier);
 
     vk::BufferImageCopy buf_copy;
     buf_copy.imageExtent      = cube_create.extent;
     buf_copy.imageSubresource = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 6);
-    copy.cmd().copyBufferToImage(data.get_buffer(), cube.get_image(), vk::ImageLayout::eTransferDstOptimal, buf_copy);
+    copy.get_command_buffer().copyBufferToImage(data.get_buffer(), cube.get_image(), vk::ImageLayout::eTransferDstOptimal, buf_copy);
 
     // gen mipmaps.
     img_barrier.oldLayout        = vk::ImageLayout::eTransferDstOptimal;
@@ -972,10 +974,10 @@ gfx::image load_cubemap(gfx::device& gpu, const std::filesystem::path& root)
     img_barrier.newLayout        = vk::ImageLayout::eGeneral;
     img_barrier.dstAccessMask    = {};
     img_barrier.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 6);
-    copy.cmd().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,
+    copy.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,
                                vk::DependencyFlagBits::eByRegion, {}, {}, img_barrier);
 
-    copy.cmd().end();
+    copy.get_command_buffer().end();
     gpu.graphics_queue().submit({copy}, {}, {});
     gpu.graphics_queue().wait();
     return cube;

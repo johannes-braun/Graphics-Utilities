@@ -51,7 +51,7 @@ function(mark_as_executable exe_name)
 		target_link_libraries(${exe_name} PRIVATE comctl32)
 	endif()
     target_compile_options(${exe_name} PRIVATE ${compile_options})
-    set_target_properties(${exe_name} PROPERTIES LINK_FLAGS_RELEASE "-subsystem:windows -entry:mainCRTStartup")
+   # set_target_properties(${exe_name} PROPERTIES LINK_FLAGS_RELEASE "-subsystem:windows -entry:mainCRTStartup")
 
 endfunction()
 

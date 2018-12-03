@@ -5,55 +5,192 @@
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
 #include <vulkan/vulkan.hpp>
-//#include "../06_descriptors/input_glfw.hpp"
+#define MYGL_IMPLEMENTATION
+#include <mygl/mygl.hpp>
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
 
-int main()
+#include "buffer.hpp"
+#include "gfx.core/log.hpp"
+
+template<typename Ident>
+struct basic_handle
+{
+    using identifier_type = Ident;
+    using handle_type = std::underlying_type_t<identifier_type>;
+    using value_type = handle_type;
+
+    constexpr static basic_handle zero() noexcept;
+    constexpr static basic_handle from(handle_type h) noexcept;
+
+    /*
+        constexpr basic_handle() = default;
+        constexpr basic_handle(std::nullptr_t) noexcept : handle(zero) {}
+
+        template<typename X, typename = std::enable_if_t<std::is_convertible_v<X, handle_type>>>
+        constexpr basic_handle(X x) noexcept(noexcept(static_cast<handle_type>(std::declval<X>()))) : handle(static_cast<handle_type>(x)) {}
+    */
+
+    constexpr operator handle_type() const noexcept { return handle; }
+    constexpr operator bool() const noexcept { return handle != 0; }
+    constexpr bool operator ==(basic_handle other) const noexcept { return handle == other.handle; }
+    constexpr bool operator !=(basic_handle other) const noexcept { return handle != other.handle; }
+    constexpr bool operator ==(handle_type other) const noexcept { return handle == other; }
+    constexpr bool operator !=(handle_type other) const noexcept { return handle != other; }
+
+    handle_type handle;
+};
+
+template<typename Ident>
+constexpr basic_handle<Ident> basic_handle<Ident>::zero() noexcept
+{
+    return from(0);
+}
+
+template<typename Ident>
+constexpr basic_handle<Ident> basic_handle<Ident>::from(handle_type h) noexcept
+{
+    return basic_handle<Ident>{ static_cast<handle_type>(h) };
+}
+
+uint32_t mfun() { return 293u; }
+
+enum class _x : uint32_t {};
+using X = basic_handle<_x>;
+
+int main(int argc, char** argv)
 {
     glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "VK and GL", nullptr, nullptr);
 
+    X _x = reinterpret_cast<X(*)()>(&mfun)();
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* vulkan_window = glfwCreateWindow(640, 480, "Vulkan", nullptr, nullptr);
+    
     gfx::instance  vulkan("Vulkan", {1, 0, 0}, true, true);
-    gfx::surface   surface(vulkan, glfwGetWin32Window(window));
+    gfx::surface   surface(vulkan, glfwGetWin32Window(vulkan_window));
     gfx::device    gpu(vulkan, gfx::device_target::gpu, 1.f, {}, surface);
     gfx::swapchain surface_swapchain(gpu, surface);
-
     gfx::semaphore acquire_semaphore(gpu);
+    gfx::semaphore finish_semaphore(gpu);
+    std::vector<gfx::commands> commands = gpu.allocate_graphics_commands(surface_swapchain.count());
+    std::vector<gfx::fence>    command_fences;
+    for (size_t i = 0; i < surface_swapchain.count(); ++i)
+        command_fences.emplace_back(gpu, true);
 
     gfx::ecs::ecs         ecs;
-    gfx::ecs::system_list graphics_list;
+    gfx::ecs::system_list vulkan_graphics_list;
+    gfx::ecs::system_list opengl_graphics_list;
     gfx::ecs::system_list physics_list;
     gfx::ecs::system_list inputs_list;
 
-    //gfx::glfw_input_system input_system(window);
-    //inputs_list.add(input_system);
-
     using namespace std::chrono_literals;
-    constexpr auto update_time_graphics = 8ms;
+    constexpr auto update_time_graphics = 0ms;
     constexpr auto update_time_physics  = 10ms;
     constexpr auto update_time_inputs   = 8ms;
+    
+    gfx::worker::duration vulkan_combined_delta = 0s;
+    int vulkan_frames = 0;
+    gfx::worker vulkan_graphics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
+        vulkan_combined_delta += delta;
+        ++vulkan_frames;
+        if(vulkan_combined_delta > 1s)
+        {
+            gfx::ilog("VULKAN") << std::to_string(vulkan_frames / vulkan_combined_delta.count()) << "fps";
+            vulkan_frames = 0;
+            vulkan_combined_delta = 0s;
+        }
 
-    gfx::worker graphics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
-        ecs.update(delta, graphics_list);
+        ecs.update(delta, vulkan_graphics_list);
 
-        //const auto[image, result] = surface_swapchain.next_image(acquire_semaphore);
-                        
-        return self.value_after(!glfwWindowShouldClose(window), update_time_graphics);
+        if (surface_swapchain.swap(acquire_semaphore))
+        {
+            if (!surface_swapchain.recreate()) 
+                return false;
+            return true;
+        }
+
+        const auto& current = commands[surface_swapchain.current_index()];
+
+        gpu.wait_for({ command_fences[surface_swapchain.current_index()] });
+        gpu.reset_fences({ command_fences[surface_swapchain.current_index()] });
+
+        current.get_command_buffer().reset({});
+        current.get_command_buffer().begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+        vk::ImageMemoryBarrier make_presentable;
+        make_presentable.image         = surface_swapchain.current_image().get_image();
+        make_presentable.oldLayout     = vk::ImageLayout::eUndefined;
+        make_presentable.newLayout     = vk::ImageLayout::eTransferDstOptimal;
+        make_presentable.srcAccessMask = {};
+        make_presentable.dstAccessMask = vk::AccessFlagBits::eMemoryWrite;
+        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eTransfer,
+                                                     vk::DependencyFlagBits::eByRegion, {}, {}, make_presentable);
+        current.get_command_buffer().clearColorImage(surface_swapchain.current_image().get_image(), vk::ImageLayout::eTransferDstOptimal,
+                                                     vk::ClearColorValue(std::array{0.8f, 0.1f, 0.f, 1.f}),
+                                                     vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+        make_presentable.oldLayout     = vk::ImageLayout::eTransferDstOptimal;
+        make_presentable.newLayout     = vk::ImageLayout::ePresentSrcKHR;
+        make_presentable.srcAccessMask = vk::AccessFlagBits::eMemoryWrite;
+        make_presentable.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTopOfPipe,
+                                                     vk::DependencyFlagBits::eByRegion, {}, {}, make_presentable);
+        current.get_command_buffer().end();
+        gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore}, command_fences[surface_swapchain.current_index()]);
+
+        if (gpu.present_queue().present({{surface_swapchain.current_index(), surface_swapchain}}, {finish_semaphore}))
+        {
+            if (!surface_swapchain.recreate()) 
+                return false;
+            return true;
+        }
+
+        return self.value_after(true, update_time_graphics);
+    });
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+    GLFWwindow* opengl_window = glfwCreateWindow(640, 480, "OpenGL", nullptr, nullptr);
+    glfwMakeContextCurrent(opengl_window);
+    mygl::load(reinterpret_cast<mygl::loader_function>(&glfwGetProcAddress));
+    glfwMakeContextCurrent(nullptr);
+    std::atomic_bool init = false;
+
+    gfx::worker::duration opengl_combined_delta = 0s;
+    int opengl_frames = 0;
+    gfx::worker opengl_graphics_worker([&](gfx::worker& self, gfx::worker::duration delta)
+    {
+        opengl_combined_delta += delta;
+        ++opengl_frames;
+        if (opengl_combined_delta > 1s)
+        {
+            gfx::ilog("OPENGL") << std::to_string(opengl_frames / opengl_combined_delta.count()) << "fps";
+            opengl_frames = 0;
+            opengl_combined_delta = 0s;
+
+            mygl::buffer buf;
+            glCreateBuffers(1, &buf);
+            mygl::shader shd = glCreateShader(GL_VERTEX_SHADER);
+            glDeleteBuffers(1, &buf);
+        }
+        ecs.update(delta, opengl_graphics_list);
+        if(!init.exchange(true))
+            glfwMakeContextCurrent(opengl_window);
+        glm::vec4 clear_color(0.3f, 0.5f, 0.9f, 1.f);
+        glClearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
+        glfwSwapBuffers(opengl_window);
+        return self.value_after(true, update_time_graphics);
     });
 
     gfx::worker physics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
         ecs.update(delta, physics_list);
-
-        return self.value_after(!glfwWindowShouldClose(window), update_time_physics);
+        return self.value_after(true, update_time_physics);
     });
 
     gfx::worker input_worker([&](gfx::worker& self, gfx::worker::duration delta) {
         ecs.update(delta, inputs_list);
-
-        return self.value_after(!glfwWindowShouldClose(window), update_time_inputs);
+        return self.value_after(true, update_time_inputs);
     });
 
-    while (!glfwWindowShouldClose(window)) { glfwPollEvents(); }
-
-    glfwDestroyWindow(window);
+    while (!init);
+    while(!glfwWindowShouldClose(vulkan_window) && !glfwWindowShouldClose(opengl_window))
+        glfwPollEvents();
 }

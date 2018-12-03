@@ -10,7 +10,7 @@ void queue::submit(cref_array_view<commands> cmds, cref_array_view<semaphore> wa
                    opt_ref<fence const> f) const
 {
     std::vector<vk::CommandBuffer> submits(cmds.size());
-    for (size_t i = 0; i < submits.size(); ++i) submits[i] = cmds.data()[i].get().cmd();
+    for (size_t i = 0; i < submits.size(); ++i) submits[i] = cmds.data()[i].get().get_command_buffer();
     std::vector<vk::Semaphore> waits(wait_for.size());
     for (size_t i = 0; i < waits.size(); ++i) waits[i] = wait_for.data()[i].get().get_semaphore();
     std::vector<vk::Semaphore> sigs(signal.size());

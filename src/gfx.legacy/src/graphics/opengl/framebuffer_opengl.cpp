@@ -44,14 +44,14 @@ void framebuffer_implementation::detach(attachment att, u32 index)
     switch (att)
     {
     case attachment::color:
-        glNamedFramebufferTexture(_msaa_fbo, GL_COLOR_ATTACHMENT0 + GLenum(index), mygl::texture::zero, 0);
+        glNamedFramebufferTexture(_msaa_fbo, GL_COLOR_ATTACHMENT0 + GLenum(index), mygl::texture{ 0 }, 0);
         _enabled_drawbuffers[index].enable_color = false;
         break;
     case attachment::resolve:
-        glNamedFramebufferTexture(_resolve_fbo, GL_COLOR_ATTACHMENT0 + GLenum(index), mygl::texture::zero, 0);
+        glNamedFramebufferTexture(_resolve_fbo, GL_COLOR_ATTACHMENT0 + GLenum(index), mygl::texture{ 0 }, 0);
         _enabled_drawbuffers[index].enable_resolve = false;
         break;
-    case attachment::depth_stencil: glNamedFramebufferTexture(_msaa_fbo, GL_DEPTH_ATTACHMENT, mygl::texture::zero, 0); break;
+    case attachment::depth_stencil: glNamedFramebufferTexture(_msaa_fbo, GL_DEPTH_ATTACHMENT, mygl::texture{ 0 }, 0); break;
     }
 }
 
@@ -75,7 +75,7 @@ void framebuffer_implementation::begin()
 
 void framebuffer_implementation::end()
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
+    glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer{ 0 });
     _resolved = 0;
     for (auto i = 0u; i < _enabled_drawbuffers.size(); ++i) {
         const auto drawbuffer = GL_COLOR_ATTACHMENT0 + GLenum(i);

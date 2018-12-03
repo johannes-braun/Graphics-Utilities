@@ -27,7 +27,7 @@ void commands_implementation::execute(fence* f)
     }
     _curr_pipeline = nullptr;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero);
+    glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer{ 0 });
     push_fence(f);
     glFlush();
 }
@@ -134,7 +134,7 @@ void commands_implementation::draw_indirect(const handle& buffer, u32 count, u32
         _queue.emplace_back([ =, dm = current_draw_mode(), et = _element_type.load() ] {
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, h);
             glMultiDrawElementsIndirect(dm, et, reinterpret_cast<const void*>(u64(first) * stride), count, stride);
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer::zero);
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer{ 0 });
         });
     }
     else
@@ -142,7 +142,7 @@ void commands_implementation::draw_indirect(const handle& buffer, u32 count, u32
         _queue.emplace_back([ =, dm = current_draw_mode(), et = _element_type.load() ] {
             glBindBuffer(GL_DRAW_INDIRECT_BUFFER, h);
             glMultiDrawArraysIndirect(dm, reinterpret_cast<const void*>(u64(first) * stride), count, stride);
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer::zero);
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, mygl::buffer{ 0 });
         });
     }
 }
