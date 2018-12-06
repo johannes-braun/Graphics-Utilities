@@ -21,5 +21,9 @@ bool worker::value_after(bool value, duration iteration_time) const noexcept
     std::this_thread::sleep_for(iteration_time - (std::chrono::steady_clock::now() - _iteration_begin));
     return value;
 }
+
+const std::atomic_bool& worker::finished_execution() const noexcept {
+    return _finished_execution;
+}
 }    // namespace v1
 }    // namespace gfx

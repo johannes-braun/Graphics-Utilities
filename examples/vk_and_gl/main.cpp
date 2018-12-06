@@ -22,11 +22,6 @@ int main(int argc, char** argv)
     wait_for.emplace_back(run_vulkan(ecs_state));
     wait_for.emplace_back(run_opengl(ecs_state));
 
-    gfx::worker physics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
-        ecs_state.ecs.update(delta, ecs_state.physics_list);
-        return self.value_after(true, update_time_physics);
-    });
-
     gfx::worker input_worker([&](gfx::worker& self, gfx::worker::duration delta) {
         ecs_state.ecs.update(delta, ecs_state.inputs_list);
         return self.value_after(true, update_time_inputs);

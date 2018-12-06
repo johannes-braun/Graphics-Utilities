@@ -31,9 +31,13 @@ std::thread run_opengl(ecs_state_t& ecs_state)
 namespace impl::opengl {
 void run()
 {
-    glfwWindowHint(GLFW_SAMPLES, 8);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-    GLFWwindow* opengl_window = glfwCreateWindow(800, 800, "OpenGL", nullptr, nullptr);
+    GLFWwindow* opengl_window = [] {
+        std::unique_lock lock(_current_state->glfw_mutex);
+        glfwWindowHint(GLFW_SAMPLES, 8);
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        return glfwCreateWindow(800, 800, "OpenGL", nullptr, nullptr);
+    }();
+
     glfwMakeContextCurrent(opengl_window);
     mygl::load(reinterpret_cast<mygl::loader_function>(&glfwGetProcAddress));
     std::atomic_bool      init = false;
@@ -160,5 +164,9 @@ void run()
         while (gfx::worker::duration {glfwGetTime() - x} < update_time_inputs)
             ;
     }
+
+    opengl_graphics_worker.trigger_stop();
+    while (!opengl_graphics_worker.finished_execution())
+        ;
 }
 }    // namespace impl::opengl
