@@ -13,9 +13,8 @@ glm::mat4 projection::matrix() const noexcept
         const glm::mat4         neg_y_mat = transpose(glm::mat4(1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1));
 
         return (info.inverse_z ? inv_z_mat : glm::mat4(1.f)) * (info.negative_y ? neg_y_mat : glm::mat4(1.f)) *
-               glm::perspectiveFov(info.field_of_view,
-                                   float(std::max(info.screen_width, info.screen_height)),
-                                   float(std::min(info.screen_width, info.screen_height)),
+               glm::perspectiveFov(info.field_of_view, float(info.screen_width),
+                                   float(info.screen_height),
                                    info.clip_near,
                                    info.clip_far);
     }

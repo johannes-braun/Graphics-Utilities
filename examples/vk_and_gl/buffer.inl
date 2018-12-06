@@ -37,7 +37,7 @@ mapped<T>::mapped(mapped&& other) noexcept
     _capacity = other._capacity;
 
     other.reset_storage(nullptr, 0);
-    other._buffer   = mygl::buffer::zero;
+    other._buffer   = mygl::buffer::zero();
     other._capacity = 0;
 }
 template<typename T>
@@ -58,7 +58,7 @@ mapped<T>& mapped<T>::operator=(mapped<T>&& other) noexcept
     _capacity = other._capacity;
 
     other.reset_storage(nullptr, 0);
-    other._buffer   = mygl::buffer::zero;
+    other._buffer   = mygl::buffer::zero();
     other._capacity = 0;
     return *this;
 }
@@ -244,7 +244,7 @@ void mapped<T>::reset_storage(value_type* storage, size_type size) noexcept
 }
 template<typename T>
 template<typename>
-mapped<T>::mapped(size_type size) : mapped(d)
+mapped<T>::mapped(size_type size) : mapped()
 {
     resize(size);
 }
@@ -282,7 +282,7 @@ template<typename T>
 buffer<T>::buffer(mapped<T> const& source)
 {
     glCreateBuffers(1, &_buffer);
-    glBufferStorage(_buffer, source.size() * sizeof(T), source.data(), GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(_buffer, source.size() * sizeof(T), source.data(), GL_DYNAMIC_STORAGE_BIT);
     _size = source.size();
     _capacity = source.size();
 }
@@ -328,7 +328,7 @@ buffer<T>::buffer(buffer&& other) noexcept
     _capacity   = other._capacity;
     _size       = other._size;
 
-    other._buffer = mygl::buffer::zero;
+    other._buffer     = mygl::buffer::zero();
     other._capacity   = 0;
     other._size       = 0;
 }
@@ -354,7 +354,7 @@ buffer<T>& buffer<T>::operator=(buffer&& other) noexcept
     _capacity   = other._capacity;
     _size       = other._size;
 
-    other._buffer     = mygl::buffer::zero;
+    other._buffer     = mygl::buffer::zero();
     other._capacity   = 0;
     other._size       = 0;
     return *this;

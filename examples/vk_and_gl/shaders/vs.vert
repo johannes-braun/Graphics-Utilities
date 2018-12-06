@@ -11,7 +11,10 @@ layout(set = 0, binding = 0) uniform Camera
 	vec3 position;
 } camera;
 
+layout(location = 0) out vec3 out_normal;
+
 void main()
 {
+	out_normal = normal;
 	gl_Position = camera.proj * camera.view * vec4(position, 1);
 }

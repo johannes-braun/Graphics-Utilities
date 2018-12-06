@@ -5,6 +5,7 @@
 #include "gfx.ecs.defaults2/basic.hpp"
 #include "input.hpp"
 #include <optional>
+#include <gfx.core/log.hpp>
 
 namespace gfx {
 inline namespace v1 {

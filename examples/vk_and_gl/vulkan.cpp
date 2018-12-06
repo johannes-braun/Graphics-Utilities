@@ -14,6 +14,7 @@
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
 #include <vulkan/vulkan.hpp>
+#include <input_glfw.hpp>
 
 namespace impl::vulkan {
 ecs_state_t* _current_state;
@@ -93,9 +94,16 @@ void run()
     gfx::instance_system<mesh_info> instances(gpu, {});
     graphics_list.add(instances);
 
+    gfx::glfw_input_system input(vulkan_window);
+    gfx::user_camera_system cam_system(input);
+    gfx::ecs::system_list   inputs_list;
+    inputs_list.add(input);
+    inputs_list.add(cam_system);
+
     gfx::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae").mesh);
 
-    auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component{{0, 0, -4}}, gfx::projection_component{});
+    auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component {{0, 0, 4}}, gfx::projection_component {},
+                                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
     gfx::worker::duration vulkan_combined_delta = 0s;
     int                   vulkan_frames         = 0;
@@ -126,6 +134,10 @@ void run()
         current.get_command_buffer().reset({});
         current.get_command_buffer().begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
+        user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
+        user_entity->get<gfx::projection_component>()->perspective().inverse_z    = false;
+        user_entity->get<gfx::projection_component>()->perspective().screen_width  = surface_swapchain.extent().width;
+        user_entity->get<gfx::projection_component>()->perspective().screen_height = surface_swapchain.extent().height;
         const gfx::camera_matrices cam = *gfx::get_camera_info(*user_entity);
         current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
 
@@ -163,7 +175,16 @@ void run()
         return self.value_after(true, update_time_graphics);
     });
 
-    while (!glfwWindowShouldClose(vulkan_window)) glfwPollEvents();
+    auto x = glfwGetTime();
+    while (!glfwWindowShouldClose(vulkan_window))
+    {
+        auto delta = gfx::worker::duration {glfwGetTime() - x};
+        x          = glfwGetTime();
+        _current_state->ecs.update(delta, inputs_list);
+        glfwPollEvents();
+        while (gfx::worker::duration {glfwGetTime() - x} < update_time_inputs)
+            ;
+    }
     cam_buffer_layout.reset();
 }
 
@@ -265,8 +286,9 @@ vk::UniquePipeline create_pipeline(gfx::device& gpu, vk::PipelineLayout layout)
     info.pColorBlendState = &blend;
 
     vk::PipelineDepthStencilStateCreateInfo depth;
-    depth.depthTestEnable   = false;
+    depth.depthTestEnable   = true;
     depth.depthCompareOp    = vk::CompareOp::eLessOrEqual;
+    depth.depthWriteEnable  = true;
     info.pDepthStencilState = &depth;
 
     vk::DynamicState                   dynamic_states[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};

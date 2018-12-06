@@ -4,6 +4,7 @@
 #include <gsl/gsl>
 #include <unordered_set>
 #include <mygl/mygl.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace gfx {
 namespace gl {
@@ -76,7 +77,7 @@ private:
     void init_range(iterator begin, iterator end, T const& value);
     void reset_storage(value_type* storage, size_type size) noexcept;
 
-    mygl::buffer _buffer = mygl::buffer::zero;
+    mygl::buffer _buffer = mygl::buffer::zero();
     size_type _capacity = 0;
 };
 
@@ -110,7 +111,7 @@ public:
     [[nodiscard]] auto get_buffer() const -> mygl::buffer const&;
 
 private:
-    mygl::buffer _buffer = mygl::buffer::zero;
+    mygl::buffer _buffer = mygl::buffer::zero();
     size_type        _capacity   = 0;
     size_type        _size       = 0;
 };
