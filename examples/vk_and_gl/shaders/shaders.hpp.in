@@ -3,5 +3,7 @@
 #include <cinttypes>
 
 namespace gfx { inline namespace v1 { namespace spirv {
-    namespace spectral {
+    namespace vkgl {
+    namespace shaders { constexpr uint32_t fs_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_VK_AND_GL_SHADERS_FS_FRAG@; }
+    namespace shaders { constexpr uint32_t vs_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_VK_AND_GL_SHADERS_VS_VERT@; }
 }}}}

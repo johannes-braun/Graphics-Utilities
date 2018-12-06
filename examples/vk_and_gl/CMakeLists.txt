@@ -2,7 +2,7 @@ set(current_executable vk_and_gl)
 mark_as_executable(${current_executable})
 
 include(${CMAKE_MODULE_PATH}/spv/compile_spv.cmake)
-create_spirv(${current_executable}.shaders ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shaders.hpp spectral)
+create_spirv(${current_executable}.shaders ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shaders.hpp vkgl)
 
 target_link_libraries(${current_executable} PRIVATE ${current_executable}.shaders)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
