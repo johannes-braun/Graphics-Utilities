@@ -93,7 +93,7 @@ void instance::initialize(std::string_view app_name, version_t app_version, bool
 
          using sev = vk::DebugUtilsMessageSeverityFlagBitsEXT;
          const vk::DebugUtilsMessengerCreateInfoEXT debug_messenger_info(
-            {}, sev::eError | sev::eWarning | sev::eInfo, vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral,
+            {}, sev::eError | sev::eWarning | sev::eInfo, vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
             [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) -> VkBool32 {
                 switch (sev(messageSeverity))

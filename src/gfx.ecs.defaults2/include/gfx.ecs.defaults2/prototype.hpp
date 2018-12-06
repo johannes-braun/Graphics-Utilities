@@ -44,7 +44,7 @@ struct mesh
     template<typename Ii>
     friend class prototype_instantiator;
 
-private:
+//private:
     u32      _index_count    = 0;
     u32      _vertex_count   = 0;
     u32      _bvh_node_count = 0;
