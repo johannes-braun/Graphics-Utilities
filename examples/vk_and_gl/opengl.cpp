@@ -128,7 +128,7 @@ void run()
         glfwGetFramebufferSize(opengl_window, &width, &height);
 
         user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
-        user_entity->get<gfx::projection_component>()->perspective().inverse_z     = true;
+        user_entity->get<gfx::projection_component>()->perspective().inverse_z     = false;
         user_entity->get<gfx::projection_component>()->perspective().screen_width  = width;
         user_entity->get<gfx::projection_component>()->perspective().screen_height = height;
         const gfx::camera_matrices cam                                             = *gfx::get_camera_info(*user_entity);
@@ -138,6 +138,7 @@ void run()
 
         glViewportIndexedf(0, 0, 0, width, height);
         glDepthFunc(GL_GEQUAL);
+        glDepthRangef(1.f, 0.f);
         glScissorIndexed(0, 0, 0, width, height);
         glEnable(GL_DEPTH_TEST);
 
