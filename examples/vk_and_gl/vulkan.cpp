@@ -200,6 +200,8 @@ void run()
     vulkan_graphics_worker.trigger_stop();
     while (!vulkan_graphics_worker.finished_execution())
         ;
+
+    gpu.get_device().waitIdle();
     vulkan_state.reset();
 }
 
