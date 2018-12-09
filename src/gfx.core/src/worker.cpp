@@ -4,22 +4,14 @@ namespace gfx {
 inline namespace v1 {
 worker::~worker()
 {
-    _stopped = true;
-    _worker_thread.join();
+    stop_and_wait();
 }
 
-const std::atomic_bool& worker::has_stopped() const noexcept
+void worker::stop_and_wait()
 {
-    return _stopped;
-}
-void worker::trigger_stop() noexcept
-{
-    _stopped = true;
-}
-bool worker::value_after(bool value, duration iteration_time) const noexcept
-{
-    std::this_thread::sleep_for(iteration_time - (std::chrono::steady_clock::now() - _iteration_begin));
-    return value;
+    trigger_stop();
+    if (_worker_thread.joinable())
+        _worker_thread.join();
 }
 
 const std::atomic_bool& worker::finished_execution() const noexcept {

@@ -115,9 +115,9 @@ void run()
     auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component {{0, 0, 4}}, gfx::projection_component {},
                                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
-    gfx::worker::duration vulkan_combined_delta = 0s;
+    gfx::timed_while::duration vulkan_combined_delta = 0s;
     int                   vulkan_frames         = 0;
-    gfx::worker           vulkan_graphics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
+    gfx::worker           vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         vulkan_combined_delta += delta;
         ++vulkan_frames;
         if (vulkan_combined_delta > 1s)
@@ -185,21 +185,14 @@ void run()
 
         return self.value_after(true, update_time_graphics);
     });
-
-    auto x = glfwGetTime();
-    while (!glfwWindowShouldClose(vulkan_window))
-    {
-        auto delta = gfx::worker::duration {glfwGetTime() - x};
-        x          = glfwGetTime();
+    
+    gfx::timed_while::run([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         _current_state->ecs.update(delta, inputs_list);
         glfwPollEvents();
-        while (gfx::worker::duration {glfwGetTime() - x} < update_time_inputs)
-            ;
-    }
+        return self.value_after(!glfwWindowShouldClose(vulkan_window), update_time_inputs);
+    });
 
-    vulkan_graphics_worker.trigger_stop();
-    while (!vulkan_graphics_worker.finished_execution())
-        ;
+    vulkan_graphics_worker.stop_and_wait();
 
     gpu.get_device().waitIdle();
     vulkan_state.reset();

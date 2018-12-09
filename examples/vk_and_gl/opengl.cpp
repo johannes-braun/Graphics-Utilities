@@ -107,9 +107,9 @@ void run()
     glClearDepthf(0.f);
     glfwMakeContextCurrent(nullptr);
     glfwSwapInterval(0);
-    gfx::worker::duration opengl_combined_delta = 0s;
+    gfx::timed_while::duration opengl_combined_delta = 0s;
     int                   opengl_frames         = 0;
-    gfx::worker           opengl_graphics_worker([&](gfx::worker& self, gfx::worker::duration delta) {
+    gfx::worker                opengl_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         opengl_combined_delta += delta;
         ++opengl_frames;
         if (opengl_combined_delta > 1s)
@@ -155,19 +155,12 @@ void run()
         return self.value_after(true, update_time_graphics);
     });
 
-    auto x = glfwGetTime();
-    while (!glfwWindowShouldClose(opengl_window))
-    {
-        auto delta = gfx::worker::duration {glfwGetTime() - x};
-        x          = glfwGetTime();
+    gfx::timed_while::run([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         _current_state->ecs.update(delta, inputs_list);
         glfwPollEvents();
-        while (gfx::worker::duration {glfwGetTime() - x} < update_time_inputs)
-            ;
-    }
+        return self.value_after(!glfwWindowShouldClose(opengl_window), update_time_inputs);
+    });
 
-    opengl_graphics_worker.trigger_stop();
-    while (!opengl_graphics_worker.finished_execution())
-        ;
+    opengl_graphics_worker.stop_and_wait();
 }
 }    // namespace impl::opengl
