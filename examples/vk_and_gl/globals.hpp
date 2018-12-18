@@ -13,6 +13,6 @@ struct ecs_state_t
     std::mutex glfw_mutex;
 };
 
-constexpr auto update_time_graphics = 8ms;
+constexpr auto update_time_graphics = 0ms;
 constexpr auto update_time_physics  = 8ms;
 constexpr auto update_time_inputs   = 8ms;

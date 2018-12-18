@@ -13,8 +13,11 @@
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
+#include <glm/ext.hpp>
 #include <input_glfw.hpp>
 #include <vulkan/vulkan.hpp>
+
+#include "shaders/def.hpp"
 
 namespace impl::vulkan {
 ecs_state_t* _current_state;
@@ -48,12 +51,15 @@ struct vulkan_state_t
     std::vector<vk::UniqueImageView>   msaa_att_views;
     std::vector<vk::UniqueImageView>   depth_att_views;
     vk::UniqueDescriptorSetLayout      cam_buffer_layout;
+    vk::UniqueDescriptorSetLayout      model_info_layout;
 };
 
 std::unique_ptr<vulkan_state_t> vulkan_state;
 
 struct mesh_info
-{};
+{
+    glm::u8vec4 color{255, 50, 0, 255};
+};
 
 void                     create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain);
 vk::UniquePipelineLayout create_pipeline_layout(gfx::device& gpu);
@@ -81,12 +87,27 @@ void run()
 
     vulkan_state = std::make_unique<vulkan_state_t>();
 
-    vk::DescriptorPoolSize               sizes[1] {vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1)};
-    const vk::DescriptorPoolCreateInfo   pool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 2, gfx::u32(std::size(sizes)),
+    vk::DescriptorPoolSize               sizes[2]{vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
+                                    vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 8)};
+    const vk::DescriptorPoolCreateInfo   pool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 3, gfx::u32(std::size(sizes)),
                                                  sizes);
     vk::UniqueDescriptorPool             descriptor_pool = gpu.get_device().createDescriptorPoolUnique(pool_info);
     const vk::DescriptorSetLayoutBinding cam_buf_binding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics);
     vulkan_state->cam_buffer_layout = gpu.get_device().createDescriptorSetLayoutUnique({{}, 1, &cam_buf_binding});
+
+    std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings{
+        {0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
+        {def::buffer_binding_vertex, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
+        {def::buffer_binding_element, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics}};
+    if (DEF_use_rt_shadows)
+        model_info_bindings.emplace_back(def::buffer_binding_bvh, vk::DescriptorType::eStorageBuffer, 1,
+                                         vk::ShaderStageFlagBits::eAllGraphics);
+    vulkan_state->model_info_layout = gpu.get_device().createDescriptorSetLayoutUnique(
+        {{}, std::uint32_t(std::size(model_info_bindings)), std::data(model_info_bindings)});
+
+    vk::DescriptorSetLayout              set_layouts[] = {vulkan_state->model_info_layout.get(), vulkan_state->model_info_layout.get()};
+    std::vector<vk::UniqueDescriptorSet> model_info_sets =
+        gpu.get_device().allocateDescriptorSetsUnique(vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 2, set_layouts));
 
     create_renderpass(gpu, surface_swapchain);
     create_framebuffer(gpu, surface_swapchain);
@@ -96,12 +117,12 @@ void run()
     vk::UniqueDescriptorSet cam_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);
 
-    gfx::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices {}});
+    gfx::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices{}});
     const vk::DescriptorBufferInfo    cam_buf(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
     const vk::WriteDescriptorSet      cam_buf_write(cam_buffer_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
     gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
 
-    gfx::instance_system<mesh_info> instances(gpu, {});
+    gfx::instance_system<mesh_info> instances(gpu, DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
     graphics_list.add(instances);
 
     gfx::glfw_input_system  input(vulkan_window);
@@ -110,14 +131,33 @@ void run()
     inputs_list.add(input);
     inputs_list.add(cam_system);
 
-    gfx::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae").mesh);
+    gfx::unique_prototype floor = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("models/floor.dae").mesh);
+    gfx::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("models/bunny.obj").mesh);
+    gfx::unique_prototype dragon =
+        instances.get_instantiator().allocate_prototype_unique("Dragon", gfx::scene_file("models/dragon.obj").mesh);
 
-    auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component {{0, 0, 4}}, gfx::projection_component {},
-                                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
+    auto bunny_entity_0 = _current_state->ecs.create_entity_unique(
+        gfx::instance_component<mesh_info>(dragon.get(), {glm::u8vec4(130, 150, 12, 255)}), gfx::transform_component({0, 0, 0}, {3, 3, 3}));
+    auto bunny_entity_1 = _current_state->ecs.create_entity_unique(
+        gfx::instance_component<mesh_info>(dragon.get(), {glm::u8vec4(124, 88, 132, 255)}), gfx::transform_component({0, 0, 2}, {3, 3, 3}));
+    auto bunny_entity_2 = _current_state->ecs.create_entity_unique(
+        gfx::instance_component<mesh_info>(dragon.get(), {glm::u8vec4(24, 53, 222, 255)}), gfx::transform_component({2, 0, 2}, {3, 3, 3}));
+    auto bunny_entity_3 = _current_state->ecs.create_entity_unique(
+        gfx::instance_component<mesh_info>(bunny.get(), {glm::u8vec4(12, 221, 61, 255)}), gfx::transform_component({2, 0, 0}, {1, 1, 1}));
+    auto floor_entity_3 = _current_state->ecs.create_entity_unique(
+        gfx::instance_component<mesh_info>(floor.get(), {glm::u8vec4(12, 221, 61, 255)}),
+        gfx::transform_component({0, -1, 0}, {4, 4, 1}, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))));
+
+    auto user_entity =
+        _current_state->ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
+                                                 gfx::grabbed_cursor_component{}, gfx::camera_controls{});
+
+    vk::Buffer curr_buffers[2]{nullptr, nullptr};
+    size_t     curr_buffer_sizes[2]{0, 0};
 
     gfx::timed_while::duration vulkan_combined_delta = 0s;
-    int                   vulkan_frames         = 0;
-    gfx::worker           vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+    int                        vulkan_frames         = 0;
+    gfx::worker                vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         vulkan_combined_delta += delta;
         ++vulkan_frames;
         if (vulkan_combined_delta > 1s)
@@ -126,6 +166,9 @@ void run()
             vulkan_frames         = 0;
             vulkan_combined_delta = 0s;
         }
+
+        bunny_entity_2->get<gfx::transform_component>()->rotation =
+            glm::angleAxis(float(glfwGetTime() * 1.f), glm::normalize(glm::vec3(2, 1, 6)));
 
         _current_state->ecs.update(delta, graphics_list);
 
@@ -136,13 +179,62 @@ void run()
             return true;
         }
 
-        const auto& current = commands[surface_swapchain.current_index()];
+        auto& current = commands[surface_swapchain.current_index()];
 
         gpu.wait_for({command_fences[surface_swapchain.current_index()]});
         gpu.reset_fences({command_fences[surface_swapchain.current_index()]});
 
         current.get_command_buffer().reset({});
-        current.get_command_buffer().begin(vk::CommandBufferBeginInfo {vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+        current.get_command_buffer().begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+
+        instances.get_instantiator().swap_buffers(current);
+
+        if (curr_buffers[instances.get_instantiator().instance_buffer_index()]
+                != instances.get_instantiator().instances_buffer().get_buffer()
+            || curr_buffer_sizes[instances.get_instantiator().instance_buffer_index()]
+                   != instances.get_instantiator().instances_buffer().size())
+        {
+            curr_buffers[instances.get_instantiator().instance_buffer_index()] =
+                instances.get_instantiator().instances_buffer().get_buffer();
+            curr_buffer_sizes[instances.get_instantiator().instance_buffer_index()] =
+                instances.get_instantiator().instances_buffer().size();
+
+            {
+                vk::DescriptorBufferInfo info;
+                info.buffer = curr_buffers[instances.get_instantiator().instance_buffer_index()];
+                info.offset = 0;
+                info.range =
+                    instances.get_instantiator().instances_buffer().size() * sizeof(gfx::prototype_instantiator<mesh_info>::basic_instance);
+                const vk::WriteDescriptorSet updater(model_info_sets[instances.get_instantiator().instance_buffer_index()].get(), 0, 0, 1,
+                                                     vk::DescriptorType::eStorageBuffer, nullptr, &info);
+                gpu.get_device().updateDescriptorSets(updater, nullptr);
+            }
+            {
+                vk::DescriptorBufferInfo info;
+                info.offset = 0;
+                vk::WriteDescriptorSet updater(model_info_sets[instances.get_instantiator().instance_buffer_index()].get(),
+                                               def::buffer_binding_vertex, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
+
+                updater.dstBinding = def::buffer_binding_vertex;
+                info.buffer        = instances.get_mesh_allocator().vertex_buffer().get_buffer();
+                info.range         = instances.get_mesh_allocator().vertex_buffer().size() * sizeof(gfx::vertex3d);
+                gpu.get_device().updateDescriptorSets(updater, nullptr);
+
+                updater.dstBinding = def::buffer_binding_element;
+                info.buffer        = instances.get_mesh_allocator().index_buffer().get_buffer();
+                info.range         = instances.get_mesh_allocator().index_buffer().size() * sizeof(gfx::index32);
+                gpu.get_device().updateDescriptorSets(updater, nullptr);
+
+                if (DEF_use_rt_shadows)
+                {
+                    updater.dstBinding = def::buffer_binding_bvh;
+                    info.buffer        = instances.get_mesh_allocator().bvh_buffer().get_buffer();
+                    info.range         = instances.get_mesh_allocator().bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
+                    gpu.get_device().updateDescriptorSets(updater, nullptr);
+                }
+            }
+        }
+
 
         user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
         user_entity->get<gfx::projection_component>()->perspective().inverse_z     = false;
@@ -151,8 +243,8 @@ void run()
         const gfx::camera_matrices cam                                             = *gfx::get_camera_info(*user_entity);
         current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
 
-        const vk::ClearValue clear_values[3] {
-            {}, {vk::ClearColorValue(std::array<float, 4> {1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
+        const vk::ClearValue clear_values[3]{
+            {}, {vk::ClearColorValue(std::array<float, 4>{1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
         current.get_command_buffer().beginRenderPass(
             vk::RenderPassBeginInfo(vulkan_state->render_pass.get(), vulkan_state->framebuffers[surface_swapchain.current_index()].get(),
                                     vk::Rect2D({0, 0}, surface_swapchain.extent()), gfx::u32(std::size(clear_values)),
@@ -164,13 +256,16 @@ void run()
         current.get_command_buffer().setScissor(0, scissor);
 
         current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.get());
-        current.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0, cam_buffer_set.get(),
-                                                        {});
+        current.get_command_buffer().bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0,
+            {cam_buffer_set.get(), model_info_sets[instances.get_instantiator().instance_buffer_index()].get()}, {});
         current.get_command_buffer().bindVertexBuffers(0, instances.get_mesh_allocator().vertex_buffer().get_buffer(), {0ull});
         current.get_command_buffer().bindIndexBuffer(instances.get_mesh_allocator().index_buffer().get_buffer(), 0ull,
                                                      vk::IndexType::eUint32);
-        current.get_command_buffer().drawIndexed(bunny->meshes[0]->base->_index_count, 1, bunny->meshes[0]->base->_base_index,
-                                                 bunny->meshes[0]->base->_base_vertex, 0);
+
+        current.get_command_buffer().drawIndexedIndirect(instances.get_instantiator().instances_buffer().get_buffer(), 0,
+                                                         instances.get_instantiator().instances_buffer().size(),
+                                                         sizeof(gfx::prototype_instantiator<mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
         current.get_command_buffer().end();
@@ -185,7 +280,7 @@ void run()
 
         return self.value_after(true, update_time_graphics);
     });
-    
+
     gfx::timed_while::run([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         _current_state->ecs.update(delta, inputs_list);
         glfwPollEvents();
@@ -215,7 +310,7 @@ void create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain)
     attachments[att_id::msaa].initialLayout  = vk::ImageLayout::eUndefined;
     attachments[att_id::msaa].finalLayout    = vk::ImageLayout::eColorAttachmentOptimal;
     attachments[att_id::msaa].format         = swapchain.format();
-    attachments[att_id::msaa].samples        = vk::SampleCountFlagBits::e8;
+    attachments[att_id::msaa].samples        = vk::SampleCountFlagBits::e4;
     attachments[att_id::msaa].loadOp         = vk::AttachmentLoadOp::eClear;
     attachments[att_id::msaa].storeOp        = vk::AttachmentStoreOp::eStore;
     attachments[att_id::msaa].stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
@@ -224,7 +319,7 @@ void create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain)
     attachments[att_id::depth].initialLayout  = vk::ImageLayout::eUndefined;
     attachments[att_id::depth].finalLayout    = vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimal;
     attachments[att_id::depth].format         = vk::Format::eD32Sfloat;
-    attachments[att_id::depth].samples        = vk::SampleCountFlagBits::e8;
+    attachments[att_id::depth].samples        = vk::SampleCountFlagBits::e4;
     attachments[att_id::depth].loadOp         = vk::AttachmentLoadOp::eClear;
     attachments[att_id::depth].storeOp        = vk::AttachmentStoreOp::eStore;
     attachments[att_id::depth].stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
@@ -238,7 +333,7 @@ void create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain)
     dependency.dstSubpass      = 0;
     dependency.srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
     dependency.dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dependency.srcAccessMask   = vk::AccessFlagBits {};
+    dependency.srcAccessMask   = vk::AccessFlagBits{};
     dependency.dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
     dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
@@ -264,9 +359,11 @@ void create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain)
 
 vk::UniquePipelineLayout create_pipeline_layout(gfx::device& gpu)
 {
+    vk::DescriptorSetLayout set_layouts[]{vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
+
     vk::PipelineLayoutCreateInfo info;
-    info.pSetLayouts    = &vulkan_state->cam_buffer_layout.get();
-    info.setLayoutCount = 1;
+    info.pSetLayouts    = set_layouts;
+    info.setLayoutCount = std::uint32_t(std::size(set_layouts));
     return gpu.get_device().createPipelineLayoutUnique(info);
 }
 
@@ -301,7 +398,7 @@ vk::UniquePipeline create_pipeline(gfx::device& gpu, vk::PipelineLayout layout)
     depth.depthWriteEnable  = true;
     info.pDepthStencilState = &depth;
 
-    vk::DynamicState                   dynamic_states[] {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::DynamicState                   dynamic_states[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamic;
     dynamic.dynamicStateCount = gfx::u32(std::size(dynamic_states));
     dynamic.pDynamicStates    = dynamic_states;
@@ -312,7 +409,7 @@ vk::UniquePipeline create_pipeline(gfx::device& gpu, vk::PipelineLayout layout)
     info.pInputAssemblyState = &assembly;
 
     vk::PipelineMultisampleStateCreateInfo msaa;
-    msaa.rasterizationSamples = vk::SampleCountFlagBits::e8;
+    msaa.rasterizationSamples = vk::SampleCountFlagBits::e4;
     info.pMultisampleState    = &msaa;
 
     vk::PipelineRasterizationStateCreateInfo raster;
@@ -358,7 +455,7 @@ void create_framebuffer(gfx::device& gpu, gfx::swapchain& swapchain)
         depth_info.imageType             = vk::ImageType::e2D;
         depth_info.initialLayout         = vk::ImageLayout::eUndefined;
         depth_info.mipLevels             = 1;
-        depth_info.samples               = vk::SampleCountFlagBits::e8;
+        depth_info.samples               = vk::SampleCountFlagBits::e4;
         depth_info.sharingMode           = vk::SharingMode::eExclusive;
         depth_info.tiling                = vk::ImageTiling::eOptimal;
         depth_info.usage                 = vk::ImageUsageFlagBits::eDepthStencilAttachment;
@@ -372,7 +469,7 @@ void create_framebuffer(gfx::device& gpu, gfx::swapchain& swapchain)
         msaa_info.imageType             = vk::ImageType::e2D;
         msaa_info.initialLayout         = vk::ImageLayout::eUndefined;
         msaa_info.mipLevels             = 1;
-        msaa_info.samples               = vk::SampleCountFlagBits::e8;
+        msaa_info.samples               = vk::SampleCountFlagBits::e4;
         msaa_info.sharingMode           = vk::SharingMode::eExclusive;
         msaa_info.tiling                = vk::ImageTiling::eOptimal;
         msaa_info.usage                 = vk::ImageUsageFlagBits::eColorAttachment;

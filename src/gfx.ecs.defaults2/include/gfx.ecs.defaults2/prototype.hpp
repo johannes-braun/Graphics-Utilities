@@ -44,7 +44,7 @@ struct mesh
     template<typename Ii>
     friend class prototype_instantiator;
 
-//private:
+    // private:
     u32      _index_count    = 0;
     u32      _vertex_count   = 0;
     u32      _bvh_node_count = 0;
@@ -113,6 +113,27 @@ enum class prototype_handle : u64
 {
 };
 
+template<typename T, typename = void>
+struct resize_multiple_of_16
+{
+    using value_type                = T;
+    static constexpr auto type_size = sizeof(T);
+
+    value_type value;
+
+private:
+    std::byte _p[(16 - (type_size % 16))]{};
+};
+
+template<typename T>
+struct resize_multiple_of_16<T, std::enable_if_t<sizeof(T) % 16 == 0>>
+{
+    using value_type                = T;
+    static constexpr auto type_size = sizeof(T);
+
+    value_type value;
+};
+
 template<typename InstanceInfo>
 class prototype_instantiator
 {
@@ -130,7 +151,7 @@ public:
         u32                vertex_count   = 0;
         u32                bvh_node_count = 0;
         glm::mat4          transform{};
-        instance_info_type info;
+        resize_multiple_of_16<instance_info_type> info;
     };
 
     prototype_instantiator(mesh_allocator& alloc);
@@ -152,13 +173,25 @@ public:
     void             dequeue(prototype_handle handle);
 
     void                          clear();
-    const mapped<basic_instance>& instances() const noexcept;
+    const mapped<basic_instance>& instances_mapped() const noexcept;
+    const buffer<basic_instance>& instances_buffer() const noexcept;
+    size_t                        instance_buffer_index() const noexcept { return _current_instance_index; }
+
+    void swap_buffers(commands& cmd)
+    {
+        _instance_descriptions_dst[_current_instance_index].update(_instance_descriptions_src[_current_instance_index], cmd);
+        _current_instance_index = (_current_instance_index + 1) % instance_swap_buffer_count;
+    }
 
 private:
     mesh_allocator*                                                 _alloc;
     std::unordered_map<std::string, std::unique_ptr<prototype>>     _prototypes;
     std::unordered_map<prototype_handle, std::pair<size_t, size_t>> _enqueued_ranges;
-    mapped<basic_instance>                                          _instance_descriptions;
+
+    constexpr static size_t instance_swap_buffer_count = 2;
+    size_t                  _current_instance_index    = 0;
+    mapped<basic_instance>  _instance_descriptions_src[instance_swap_buffer_count];
+    buffer<basic_instance>  _instance_descriptions_dst[instance_swap_buffer_count];
 };
 
 template<typename Info>

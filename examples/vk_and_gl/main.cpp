@@ -50,9 +50,6 @@ std::thread run_opengl(ecs_state_t& ecs_state);
 int main(int argc, char** argv)
 {
     glfwInit();
-  /*  my_app runner11;
-    my_app runner22;*/
-
     ecs_state_t ecs_state;
 
     std::vector<std::thread> wait_for;

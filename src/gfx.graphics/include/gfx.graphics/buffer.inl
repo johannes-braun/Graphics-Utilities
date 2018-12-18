@@ -321,7 +321,7 @@ buffer<T>::buffer(device& d,  mapped<T> const& source) : buffer(d)
 {
     commands transfer_cmd = d.allocate_transfer_command();
     transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-    allocate(source.size(), false, transfer_cmd.get_command_buffer());
+    allocate(source.capacity(), false, transfer_cmd.get_command_buffer());
     _size = source.size();
     transfer_cmd.copy(source, *this);
     transfer_cmd.get_command_buffer().end();
@@ -332,7 +332,7 @@ buffer<T>::buffer(device& d,  mapped<T> const& source) : buffer(d)
 template<typename T>
 buffer<T>::buffer(device& d,  mapped<T> const& source, commands& transfer_cmd) : buffer(d)
 {
-    allocate(source.size(), false, transfer_cmd.get_command_buffer());
+    allocate(source.capacity(), false, transfer_cmd.get_command_buffer());
     _size = source.size();
     transfer_cmd.get_command_buffer().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size));
 }
@@ -503,6 +503,24 @@ template<typename T>
 const vk::Buffer& buffer<T>::get_buffer() const
 {
     return _buffer;
+}
+
+template<typename T>
+void buffer<T>::update(mapped<T> const& source) {
+    commands transfer_cmd = _device->allocate_transfer_command();
+    transfer_cmd.get_command_buffer().begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+    update(source, transfer_cmd);
+    transfer_cmd.get_command_buffer().end();
+    _device->transfer_queue().submit({transfer_cmd}, {}, {});
+    _device->transfer_queue().wait();
+}
+
+template<typename T>
+void buffer<T>::update(mapped<T> const& source, commands& transfer_cmd) {
+    
+    allocate(source.capacity(), false, transfer_cmd.get_command_buffer());
+    _size = source.size();
+    transfer_cmd.get_command_buffer().copyBuffer(source.get_buffer(), _buffer, vk::BufferCopy(0, 0, _size * sizeof(T)));
 }
 
 template<typename T>

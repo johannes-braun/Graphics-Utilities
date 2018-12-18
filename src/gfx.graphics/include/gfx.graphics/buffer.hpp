@@ -115,6 +115,9 @@ public:
     [[nodiscard]] auto capacity() const -> size_type;
     [[nodiscard]] auto get_buffer() const -> vk::Buffer const&;
 
+    void update(mapped<T> const& source);
+    void update(mapped<T> const& source, commands& transfer_cmd);
+
 private:
     void allocate(size_type capacity, bool force, vk::CommandBuffer copy_cmd);
 

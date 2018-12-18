@@ -65,9 +65,11 @@ void run()
     inputs_list.add(input);
     inputs_list.add(cam_system);
 
-    gfx::gl::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("bunny.dae").mesh);
+    gfx::scene_file model("models/dragon.obj");
+    model.mesh.collapse();
+    gfx::gl::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", model.mesh);
 
-    auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component {{0, 0, 4}}, gfx::projection_component {},
+    auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component {glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
     glEnable(GL_MULTISAMPLE);
