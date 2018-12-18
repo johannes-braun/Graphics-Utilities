@@ -371,8 +371,8 @@ vk::UniquePipeline create_pipeline(gfx::device& gpu, vk::PipelineLayout layout)
 {
     vk::GraphicsPipelineCreateInfo info;
 
-    gfx::shader                       vertex_shader(gpu, gfx::spirv::vkgl::shaders::vs_vert);
-    gfx::shader                       fragment_shader(gpu, gfx::spirv::vkgl::shaders::fs_frag);
+    gfx::shader                       vertex_shader(gpu, gfx::spirv::vkgl::shaders::vk_vs_vert);
+    gfx::shader                       fragment_shader(gpu, gfx::spirv::vkgl::shaders::vk_fs_frag);
     vk::PipelineShaderStageCreateInfo stages[2];
     stages[0]       = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertex_shader.get_module(), "main");
     stages[1]       = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragment_shader.get_module(), "main");

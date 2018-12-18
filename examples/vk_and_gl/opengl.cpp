@@ -76,13 +76,13 @@ void run()
     glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
 
     mygl::shader vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderBinary(1, &vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::vs_vert),
-                   gfx::u32(std::size(gfx::spirv::vkgl::shaders::vs_vert) * sizeof(uint32_t)));
+    glShaderBinary(1, &vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::gl_vs_vert),
+                   gfx::u32(std::size(gfx::spirv::vkgl::shaders::gl_vs_vert) * sizeof(uint32_t)));
     glSpecializeShader(vertex_shader, "main", 0, nullptr, nullptr);
 
     mygl::shader fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderBinary(1, &fragment_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::fs_frag),
-                   gfx::u32(std::size(gfx::spirv::vkgl::shaders::fs_frag) * sizeof(uint32_t)));
+    glShaderBinary(1, &fragment_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::gl_fs_frag),
+                   gfx::u32(std::size(gfx::spirv::vkgl::shaders::gl_fs_frag) * sizeof(uint32_t)));
     glSpecializeShader(fragment_shader, "main", 0, nullptr, nullptr);
 
     mygl::shader_program program = glCreateProgram();
