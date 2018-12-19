@@ -5,7 +5,9 @@ namespace gl {
 inline namespace v1 {
 template<typename InstanceInfo>
 prototype_instantiator<InstanceInfo>::prototype_instantiator(mesh_allocator& alloc)
-      : _alloc(&alloc), _instance_descriptions(1)
+      : _alloc(&alloc)
+      , _instance_descriptions_src{mapped<basic_instance>{1}, mapped<basic_instance>{1}}
+      , _instance_descriptions_dst{buffer<basic_instance>{}, buffer<basic_instance>{}}
 {}
 
 template<typename InstanceInfo>
@@ -76,12 +78,12 @@ prototype_handle prototype_instantiator<InstanceInfo>::enqueue(prototype* p, con
 {
     static u64 current_handle = 0;
     const auto next           = prototype_handle(current_handle++);
-    std::pair  range(_instance_descriptions.size(), 0ull);
+    std::pair  range(_instance_descriptions_src[_current_instance_index].size(), 0ull);
     int        i = 0;
     for (const auto& m : p->meshes)
     {
         if (!m) break;
-        basic_instance& new_instance = _instance_descriptions.emplace_back();
+        basic_instance& new_instance = _instance_descriptions_src[_current_instance_index].emplace_back();
         new_instance.base_index      = m->base->_base_index;
         new_instance.index_count     = m->base->_index_count;
         new_instance.base_instance   = 0;
@@ -91,7 +93,7 @@ prototype_handle prototype_instantiator<InstanceInfo>::enqueue(prototype* p, con
         new_instance.base_bvh_node   = m->base->_base_bvh_node;
         new_instance.bvh_node_count  = m->base->_bvh_node_count;
         new_instance.transform       = t * m->relative_transform;
-        new_instance.info            = properties[i];
+        new_instance.info.value      = properties[i];
         ++i;
     }
     range.second = range.first + i;
@@ -104,7 +106,9 @@ void prototype_instantiator<InstanceInfo>::dequeue(prototype_handle handle)
 {
     if (const auto it = _enqueued_ranges.find(handle); it != _enqueued_ranges.end())
     {
-        _instance_descriptions.erase(_instance_descriptions.begin() + it->second.first, _instance_descriptions.begin() + it->second.second);
+        _instance_descriptions_src[_current_instance_index].erase(_instance_descriptions_src[_current_instance_index].begin()
+                                                                      + it->second.first,
+            _instance_descriptions_src[_current_instance_index].begin() + it->second.second);
         const auto range = it->second;
         const auto diff  = range.second - range.first;
         for (auto& el : _enqueued_ranges)
@@ -120,15 +124,21 @@ template<typename InstanceInfo>
 void prototype_instantiator<InstanceInfo>::clear()
 {
     _enqueued_ranges.clear();
-    _instance_descriptions.clear();
-    _instance_descriptions.emplace_back();
+    _instance_descriptions_src[_current_instance_index].clear();
+    _instance_descriptions_src[_current_instance_index].emplace_back();
 }
 
 template<typename InstanceInfo>
-const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& prototype_instantiator<InstanceInfo>::instances() const
+const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& prototype_instantiator<InstanceInfo>::instances_mapped() const
     noexcept
 {
-    return _instance_descriptions;
+    return _instance_descriptions_src[_current_instance_index];
+}
+template<typename InstanceInfo>
+const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& prototype_instantiator<InstanceInfo>::instances_buffer() const
+    noexcept
+{
+    return _instance_descriptions_dst[(_current_instance_index + instance_swap_buffer_count - 1) % instance_swap_buffer_count];
 }
 
 template<typename Info>

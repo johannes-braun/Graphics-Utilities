@@ -16,27 +16,15 @@
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 #include "shaders/shaders.hpp"
+#include "shaders/def.hpp"
+#include "opengl.hpp"
 
-namespace impl::opengl {
-ecs_state_t* _current_state;
-void         run();
-struct mesh_info
-{};
-}    // namespace impl::opengl
-std::thread run_opengl(ecs_state_t& ecs_state)
+void opengl_app::on_run()
 {
-    impl::opengl::_current_state = &ecs_state;
-    return std::thread([] { impl::opengl::run(); });
-}
-namespace impl::opengl {
-void run()
-{
-    GLFWwindow* opengl_window = [] {
-        std::unique_lock lock(_current_state->glfw_mutex);
-        glfwWindowHint(GLFW_SAMPLES, 8);
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        return glfwCreateWindow(800, 800, "OpenGL", nullptr, nullptr);
-    }();
+    gfx::ecs::ecs ecs;
+    glfwWindowHint(GLFW_SAMPLES, 8);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+    GLFWwindow* opengl_window = glfwCreateWindow(800, 800, "OpenGL", nullptr, nullptr);
 
     glfwMakeContextCurrent(opengl_window);
     mygl::load(reinterpret_cast<mygl::loader_function>(&glfwGetProcAddress));
@@ -56,7 +44,7 @@ void run()
         },
         nullptr);
 
-    gfx::gl::instance_system<mesh_info> instances({});
+    gfx::gl::instance_system<def::mesh_info> instances(DEF_use_rt_shadows ? gfx::gl::mesh_allocator_flag::use_bvh : gfx::gl::mesh_allocator_flag{});
     graphics_list.add(instances);
 
     gfx::glfw_input_system  input(opengl_window);
@@ -64,12 +52,30 @@ void run()
     gfx::ecs::system_list   inputs_list;
     inputs_list.add(input);
     inputs_list.add(cam_system);
+    
+    gfx::gl::unique_prototype floor = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("models/floor.dae").mesh);
+    gfx::gl::unique_prototype dragon =
+        instances.get_instantiator().allocate_prototype_unique("Dragon", gfx::scene_file("models/dragon.obj").mesh);
+    gfx::gl::unique_prototype bunny =
+        instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("models/bunny.obj").mesh);
 
-    gfx::scene_file model("models/dragon.obj");
-    model.mesh.collapse();
-    gfx::gl::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", model.mesh);
+    auto bunny_entity_0 =
+        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(130, 150, 12, 255)}),
+                                                   gfx::transform_component({0, 0, 0}, {3, 3, 3}));
+    auto bunny_entity_1 =
+        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(124, 88, 132, 255)}),
+                                                   gfx::transform_component({0, 0, 2}, {3, 3, 3}));
+    auto bunny_entity_2 =
+        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(24, 53, 222, 255)}),
+                                                   gfx::transform_component({2, 0, 2}, {3, 3, 3}));
+    auto bunny_entity_3 =
+        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(bunny.get(), {glm::u8vec4(12, 221, 61, 255)}),
+                                                   gfx::transform_component({2, 0, 0}, {1, 1, 1}));
+    auto floor_entity_3 =
+        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(floor.get(), {glm::u8vec4(12, 221, 61, 255)}),
+                                 gfx::transform_component({0, -1, 0}, {4, 4, 1}, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))));
 
-    auto user_entity = _current_state->ecs.create_entity_shared(gfx::transform_component {glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
     glEnable(GL_MULTISAMPLE);
@@ -89,6 +95,27 @@ void run()
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
     glLinkProgram(program);
+
+    
+    int isLinked = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
+    if (isLinked == GL_FALSE)
+    {
+        int maxLength = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        std::vector<char> infoLog(maxLength);
+        glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
+
+        // The program is useless now. So delete it.
+        glDeleteProgram(program);
+
+        std::cerr << infoLog.data();
+        // Provide the infolog in whatever manner you deem best.
+        // Exit with failure.
+        return;
+    }
 
     mygl::vertex_array vao;
     glCreateVertexArrays(1, &vao);
@@ -120,8 +147,14 @@ void run()
             opengl_frames         = 0;
             opengl_combined_delta = 0s;
         }
-        _current_state->ecs.update(delta, graphics_list);
         if (!init.exchange(true)) glfwMakeContextCurrent(opengl_window);
+
+        bunny_entity_3->get<gfx::transform_component>()->rotation =
+            glm::angleAxis(float(glfwGetTime() * 1.f), glm::normalize(glm::vec3(2, 1, 6)));
+
+        ecs.update(delta, graphics_list);
+        instances.get_instantiator().swap_buffers();
+
         glm::vec4 clear_color(0.3f, 0.5f, 0.9f, 1.f);
         glClearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
         glClearNamedFramebufferfi(mygl::framebuffer::zero(), GL_DEPTH_STENCIL, 0, 0.f, 0);
@@ -149,20 +182,30 @@ void run()
         glBindVertexBuffer(0, instances.get_mesh_allocator().vertex_buffer().get_buffer(), 0, sizeof(gfx::vertex3d));
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, instances.get_mesh_allocator().index_buffer().get_buffer());
 
-        void* indices = reinterpret_cast<void*>(uint64_t(bunny->meshes[0]->base->_base_index) * sizeof(uint64_t));
-        glDrawElementsInstancedBaseVertexBaseInstance(GL_TRIANGLES, bunny->meshes[0]->base->_index_count, GL_UNSIGNED_INT, indices, 1,
-                                                      bunny->meshes[0]->base->_base_vertex, 0);
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, instances.get_instantiator().instances_buffer().get_buffer(), 0,
+                          instances.get_instantiator().instances_buffer().size()
+                              * sizeof(gfx::gl::prototype_instantiator<def::mesh_info>::basic_instance));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_vertex, instances.get_mesh_allocator().vertex_buffer().get_buffer(), 0,
+                          instances.get_mesh_allocator().vertex_buffer().size() * sizeof(gfx::vertex3d));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_element, instances.get_mesh_allocator().index_buffer().get_buffer(), 0,
+                          instances.get_mesh_allocator().index_buffer().size() * sizeof(gfx::index32));
+        if constexpr(DEF_use_rt_shadows)
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_bvh, instances.get_mesh_allocator().bvh_buffer().get_buffer(), 0,
+                              instances.get_mesh_allocator().bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
+
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, instances.get_instantiator().instances_buffer().get_buffer());
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, instances.get_instantiator().instances_buffer().size(),
+                                    sizeof(gfx::gl::prototype_instantiator<def::mesh_info>::basic_instance));
 
         glfwSwapBuffers(opengl_window);
         return self.value_after(true, update_time_graphics);
     });
 
     gfx::timed_while::run([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
-        _current_state->ecs.update(delta, inputs_list);
+        ecs.update(delta, inputs_list);
         glfwPollEvents();
         return self.value_after(!glfwWindowShouldClose(opengl_window), update_time_inputs);
     });
 
     opengl_graphics_worker.stop_and_wait();
 }
-}    // namespace impl::opengl

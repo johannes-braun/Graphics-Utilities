@@ -200,7 +200,7 @@ struct scene_file : file
 
     mesh3d                              mesh;
     std::vector<material>               materials;
-    std::unordered_map<submesh3d*, u32> mesh_material_indices;
+    std::unordered_map<u32, u32> mesh_material_indices;
 
     scene_file(const files::path& path);
 };

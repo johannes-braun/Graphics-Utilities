@@ -110,7 +110,6 @@ void main()
 			if(!trace.hits)
 			{
 				color += get_color(models[draw_index]) * unpack_rgba8(light.color) * light.intensity * cosTheta * attenuation;
-		 
 				const vec3 half_vector = normalize(normalize(to_light) - normalize(position - camera.position));
 				const float cosThetaBlinn = max(dot(half_vector, normalize(normal)), 0);
 				color += light.intensity * pow(cosThetaBlinn, 70) * attenuation * cosTheta;

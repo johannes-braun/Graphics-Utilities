@@ -97,7 +97,7 @@ scene_file::scene_file(const files::path& path) : file(path)
 		geo.index_count = static_cast<u32>(current_mesh.indices.size());
 		geo.vertex_count = static_cast<u32>(current_mesh.vertices.size());
 		mesh += current_mesh;
-        mesh_material_indices[&mesh.geometries.back()] = ai_mesh->mMaterialIndex;
+        mesh_material_indices[u32(mesh.geometries.size()-1)] = ai_mesh->mMaterialIndex;
     }
 
     handle_node(*this, scene->mRootNode, scene, glm::mat4(1.f));

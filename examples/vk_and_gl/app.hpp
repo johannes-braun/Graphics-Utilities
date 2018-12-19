@@ -13,7 +13,14 @@ struct basic_app
     basic_app(basic_app&& other)      = delete;
     basic_app& operator=(const basic_app& other) = delete;
     basic_app& operator=(basic_app&& other) = delete;
-    ~basic_app() { wait_until_closed(); }
+    virtual ~basic_app() { wait_until_closed(); }
+
+    void run()
+    { 
+        add_thread(-1, [this] { on_run(); });
+    }
+
+    virtual void on_run() = 0;
 
     template<typename Self, typename = std::enable_if_t<std::is_convertible_v<Self*, basic_app*>>>
     void add_thread(int id, void (Self::*fun)())

@@ -110,6 +110,8 @@ public:
     [[nodiscard]] auto capacity() const -> size_type;
     [[nodiscard]] auto get_buffer() const -> mygl::buffer const&;
 
+    void update(mapped<T> const& source);
+
 private:
     mygl::buffer _buffer = mygl::buffer::zero();
     size_type        _capacity   = 0;

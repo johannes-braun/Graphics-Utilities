@@ -1,6 +1,8 @@
+#define GLFW_EXPOSE_NATIVE_WIN32
+
 #include <GLFW/glfw3.h>
 #include <thread>
-#define GLFW_EXPOSE_NATIVE_WIN32
+#include "vulkan.hpp"
 #include "camera.hpp"
 #include "gfx.core/log.hpp"
 #include "gfx.ecs.defaults2/prototype.hpp"
@@ -8,6 +10,7 @@
 #include "gfx.math/geometry.hpp"
 #include "globals.hpp"
 #include "input.hpp"
+#include "shaders/def.hpp"
 #include "shaders/shaders.hpp"
 #include <GLFW/glfw3native.h>
 #include <gfx.core/worker.hpp>
@@ -17,17 +20,6 @@
 #include <input_glfw.hpp>
 #include <vulkan/vulkan.hpp>
 
-#include "shaders/def.hpp"
-
-namespace impl::vulkan {
-ecs_state_t* _current_state;
-void         run();
-}    // namespace impl::vulkan
-std::thread run_vulkan(ecs_state_t& ecs_state)
-{
-    impl::vulkan::_current_state = &ecs_state;
-    return std::thread([] { impl::vulkan::run(); });
-}
 namespace impl::vulkan {
 
 struct att_id
@@ -56,23 +48,20 @@ struct vulkan_state_t
 
 std::unique_ptr<vulkan_state_t> vulkan_state;
 
-struct mesh_info
-{
-    glm::u8vec4 color{255, 50, 0, 255};
-};
-
 void                     create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain);
 vk::UniquePipelineLayout create_pipeline_layout(gfx::device& gpu);
 vk::UniquePipeline       create_pipeline(gfx::device& gpu, vk::PipelineLayout layout);
 void                     create_framebuffer(gfx::device& gpu, gfx::swapchain& swapchain);
+}
 
-void run()
+void vulkan_app::on_run()
 {
-    GLFWwindow* vulkan_window = [] {
-        std::unique_lock lock(_current_state->glfw_mutex);
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        return glfwCreateWindow(800, 800, "Vulkan", nullptr, nullptr);
-    }();
+    using namespace impl::vulkan;
+
+    gfx::ecs::ecs ecs;
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* vulkan_window = glfwCreateWindow(800, 800, "Vulkan", nullptr, nullptr);
 
     gfx::instance              vulkan("Vulkan", {1, 0, 0}, true, true);
     gfx::surface               surface(vulkan, glfwGetWin32Window(vulkan_window));
@@ -122,7 +111,8 @@ void run()
     const vk::WriteDescriptorSet      cam_buf_write(cam_buffer_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
     gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
 
-    gfx::instance_system<mesh_info> instances(gpu, DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
+    gfx::instance_system<def::mesh_info> instances(gpu,
+                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
     graphics_list.add(instances);
 
     gfx::glfw_input_system  input(vulkan_window);
@@ -132,25 +122,27 @@ void run()
     inputs_list.add(cam_system);
 
     gfx::unique_prototype floor = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("models/floor.dae").mesh);
-    gfx::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("models/bunny.obj").mesh);
+    gfx::unique_prototype flo2r = instances.get_instantiator().allocate_prototype_unique("Ihav", gfx::scene_file("models/floor.dae").mesh);
+    /* gfx::unique_prototype bunny = instances.get_instantiator().allocate_prototype_unique("Bunny",
+     gfx::scene_file("models/bunny.obj").mesh);
     gfx::unique_prototype dragon =
-        instances.get_instantiator().allocate_prototype_unique("Dragon", gfx::scene_file("models/dragon.obj").mesh);
+        instances.get_instantiator().allocate_prototype_unique("Dragon", gfx::scene_file("models/dragon.obj").mesh);*/
 
-    auto bunny_entity_0 = _current_state->ecs.create_entity_unique(
-        gfx::instance_component<mesh_info>(dragon.get(), {glm::u8vec4(130, 150, 12, 255)}), gfx::transform_component({0, 0, 0}, {3, 3, 3}));
-    auto bunny_entity_1 = _current_state->ecs.create_entity_unique(
-        gfx::instance_component<mesh_info>(dragon.get(), {glm::u8vec4(124, 88, 132, 255)}), gfx::transform_component({0, 0, 2}, {3, 3, 3}));
-    auto bunny_entity_2 = _current_state->ecs.create_entity_unique(
-        gfx::instance_component<mesh_info>(dragon.get(), {glm::u8vec4(24, 53, 222, 255)}), gfx::transform_component({2, 0, 2}, {3, 3, 3}));
-    auto bunny_entity_3 = _current_state->ecs.create_entity_unique(
-        gfx::instance_component<mesh_info>(bunny.get(), {glm::u8vec4(12, 221, 61, 255)}), gfx::transform_component({2, 0, 0}, {1, 1, 1}));
-    auto floor_entity_3 = _current_state->ecs.create_entity_unique(
-        gfx::instance_component<mesh_info>(floor.get(), {glm::u8vec4(12, 221, 61, 255)}),
-        gfx::transform_component({0, -1, 0}, {4, 4, 1}, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))));
+    auto floor_entity_3 =
+        ecs.create_entity_unique(gfx::instance_component<def::mesh_info>(floor.get(), {glm::u8vec4(12, 221, 61, 255)}),
+                                 gfx::transform_component({0, -1, 0}, {4, 4, 1}, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))));
+   /* auto bunny_entity_0 = ecs.create_entity_unique(gfx::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(130, 150, 12, 255)}),
+                                                   gfx::transform_component({0, 0, 0}, {3, 3, 3}));*/
+    /*auto bunny_entity_1 = ecs.create_entity_unique(gfx::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(124, 88, 132,
+    255)}),
+                                                   gfx::transform_component({0, 0, 2}, {3, 3, 3}));
+    auto bunny_entity_2 = ecs.create_entity_unique(gfx::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(24, 53, 222, 255)}),
+                                                   gfx::transform_component({2, 0, 2}, {3, 3, 3}));
+    auto bunny_entity_3 = ecs.create_entity_unique(gfx::instance_component<def::mesh_info>(bunny.get(), {glm::u8vec4(12, 221, 61, 255)}),
+                                                   gfx::transform_component({2, 0, 0}, {1, 1, 1}));*/
 
-    auto user_entity =
-        _current_state->ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
-                                                 gfx::grabbed_cursor_component{}, gfx::camera_controls{});
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
+                                                gfx::grabbed_cursor_component{}, gfx::camera_controls{});
 
     vk::Buffer curr_buffers[2]{nullptr, nullptr};
     size_t     curr_buffer_sizes[2]{0, 0};
@@ -167,10 +159,10 @@ void run()
             vulkan_combined_delta = 0s;
         }
 
-        bunny_entity_2->get<gfx::transform_component>()->rotation =
-            glm::angleAxis(float(glfwGetTime() * 1.f), glm::normalize(glm::vec3(2, 1, 6)));
+       /* bunny_entity_3->get<gfx::transform_component>()->rotation =
+            glm::angleAxis(float(glfwGetTime() * 1.f), glm::normalize(glm::vec3(2, 1, 6)));*/
 
-        _current_state->ecs.update(delta, graphics_list);
+        ecs.update(delta, graphics_list);
 
         if (surface_swapchain.swap(acquire_semaphore))
         {
@@ -203,8 +195,8 @@ void run()
                 vk::DescriptorBufferInfo info;
                 info.buffer = curr_buffers[instances.get_instantiator().instance_buffer_index()];
                 info.offset = 0;
-                info.range =
-                    instances.get_instantiator().instances_buffer().size() * sizeof(gfx::prototype_instantiator<mesh_info>::basic_instance);
+                info.range  = instances.get_instantiator().instances_buffer().size()
+                             * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
                 const vk::WriteDescriptorSet updater(model_info_sets[instances.get_instantiator().instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
@@ -215,6 +207,8 @@ void run()
                 vk::WriteDescriptorSet updater(model_info_sets[instances.get_instantiator().instance_buffer_index()].get(),
                                                def::buffer_binding_vertex, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
 
+                if constexpr (DEF_use_rt_shadows)
+                {
                 updater.dstBinding = def::buffer_binding_vertex;
                 info.buffer        = instances.get_mesh_allocator().vertex_buffer().get_buffer();
                 info.range         = instances.get_mesh_allocator().vertex_buffer().size() * sizeof(gfx::vertex3d);
@@ -225,8 +219,6 @@ void run()
                 info.range         = instances.get_mesh_allocator().index_buffer().size() * sizeof(gfx::index32);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
 
-                if (DEF_use_rt_shadows)
-                {
                     updater.dstBinding = def::buffer_binding_bvh;
                     info.buffer        = instances.get_mesh_allocator().bvh_buffer().get_buffer();
                     info.range         = instances.get_mesh_allocator().bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
@@ -263,9 +255,11 @@ void run()
         current.get_command_buffer().bindIndexBuffer(instances.get_mesh_allocator().index_buffer().get_buffer(), 0ull,
                                                      vk::IndexType::eUint32);
 
+        //current.get_command_buffer().drawIndexed(6, 1, 0, 0, 0);
+
         current.get_command_buffer().drawIndexedIndirect(instances.get_instantiator().instances_buffer().get_buffer(), 0,
-                                                         instances.get_instantiator().instances_buffer().size(),
-                                                         sizeof(gfx::prototype_instantiator<mesh_info>::basic_instance));
+                                                            instances.get_instantiator().instances_buffer().size(),
+                                                         sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
         current.get_command_buffer().end();
@@ -282,7 +276,7 @@ void run()
     });
 
     gfx::timed_while::run([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
-        _current_state->ecs.update(delta, inputs_list);
+        ecs.update(delta, inputs_list);
         glfwPollEvents();
         return self.value_after(!glfwWindowShouldClose(vulkan_window), update_time_inputs);
     });
@@ -293,6 +287,8 @@ void run()
     vulkan_state.reset();
 }
 
+namespace impl::vulkan
+{
 void create_renderpass(gfx::device& gpu, gfx::swapchain& swapchain)
 {
     vk::RenderPassCreateInfo info;

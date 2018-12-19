@@ -1,9 +1,5 @@
 //? #version 460 core
-
-struct mesh_info
-{
-	uint color;
-};
+#include "def.hpp"
 
 struct basic_instance 
 {

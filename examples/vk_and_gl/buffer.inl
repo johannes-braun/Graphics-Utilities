@@ -212,14 +212,19 @@ void mapped<T>::allocate(size_type capacity, bool force)
 {
     if (force || _capacity < capacity)
     {
+        auto         r = glGetError();
         mygl::buffer new_buffer;
         glCreateBuffers(1, &new_buffer);
+
+        r = glGetError();
+
         _capacity = capacity;
 
         glNamedBufferStorage(new_buffer, sizeof(value_type) * capacity, nullptr,
                              GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_CLIENT_STORAGE_BIT
                                  | GL_DYNAMIC_STORAGE_BIT);
-        value_type* new_storage = static_cast<value_type*>(glMapNamedBuffer(new_buffer, GL_READ_WRITE));
+        value_type* new_storage = static_cast<value_type*>(glMapNamedBufferRange(new_buffer, 0, sizeof(value_type) * _capacity,
+                                                      GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
         std::move(this->begin(), this->end(), new_storage);
         reset_storage(new_storage, this->size());
 
@@ -252,7 +257,9 @@ template<typename T>
 template<typename... Args>
 T& mapped<T>::emplace_back(Args&&... args)
 {
-    while (this->size() + 1 > _capacity) allocate(std::max(2 * _capacity, 1ll));
+    size_type new_cap = _capacity;
+    while (this->size() + 1 > new_cap) new_cap *= 2;
+    allocate(std::max(new_cap, 1ll));
     reset_storage(this->data(), this->size() + 1);
     return *new (&*std::prev(this->end())) value_type(std::forward<Args&&>(args)...);
 }
@@ -283,7 +290,7 @@ buffer<T>::buffer(mapped<T> const& source)
 {
     glCreateBuffers(1, &_buffer);
     glNamedBufferStorage(_buffer, source.size() * sizeof(T), source.data(), GL_DYNAMIC_STORAGE_BIT);
-    _size = source.size();
+    _size     = source.size();
     _capacity = source.size();
 }
 
@@ -292,7 +299,7 @@ buffer<T>::buffer(vk::ArrayProxy<T const> const& proxy)
 {
     glCreateBuffers(1, &_buffer);
     glNamedBufferStorage(_buffer, proxy.size() * sizeof(T), proxy.data(), GL_DYNAMIC_STORAGE_BIT);
-    _size = proxy.size();
+    _size     = proxy.size();
     _capacity = proxy.size();
 }
 
@@ -301,7 +308,7 @@ buffer<T>::buffer(std::initializer_list<T> const& source)
 {
     glCreateBuffers(1, &_buffer);
     glNamedBufferStorage(_buffer, std::size(source) * sizeof(T), std::data(source), GL_DYNAMIC_STORAGE_BIT);
-    _size = std::size(source);
+    _size     = std::size(source);
     _capacity = std::size(source);
 }
 
@@ -317,32 +324,31 @@ buffer<T>::buffer(buffer const& other)
     glCreateBuffers(1, &_buffer);
     glNamedBufferStorage(_buffer, other.size() * sizeof(T), nullptr, GL_DYNAMIC_STORAGE_BIT);
     glCopyNamedBufferSubData(other._buffer, _buffer, 0, 0, other.size() * sizeof(T));
-    _size = other.size();
+    _size     = other.size();
     _capacity = other.size();
 }
 
 template<typename T>
 buffer<T>::buffer(buffer&& other) noexcept
 {
-    _buffer     = std::move(other._buffer);
-    _capacity   = other._capacity;
-    _size       = other._size;
+    _buffer   = std::move(other._buffer);
+    _capacity = other._capacity;
+    _size     = other._size;
 
-    other._buffer     = mygl::buffer::zero();
-    other._capacity   = 0;
-    other._size       = 0;
+    other._buffer   = mygl::buffer::zero();
+    other._capacity = 0;
+    other._size     = 0;
 }
 
 template<typename T>
 buffer<T>& buffer<T>::operator=(buffer const& other)
 {
-    if (glIsBuffer(_buffer))
-        glDeleteBuffers(1, &_buffer);
+    if (glIsBuffer(_buffer)) glDeleteBuffers(1, &_buffer);
 
     glCreateBuffers(1, &_buffer);
     glNamedBufferStorage(_buffer, other.size() * sizeof(T), nullptr, GL_DYNAMIC_STORAGE_BIT);
     glCopyNamedBufferSubData(other._buffer, _buffer, 0, 0, other.size() * sizeof(T));
-    _size = other.size();
+    _size     = other.size();
     _capacity = other.size();
     return *this;
 }
@@ -350,13 +356,13 @@ buffer<T>& buffer<T>::operator=(buffer const& other)
 template<typename T>
 buffer<T>& buffer<T>::operator=(buffer&& other) noexcept
 {
-    _buffer     = std::move(other._buffer);
-    _capacity   = other._capacity;
-    _size       = other._size;
+    _buffer   = std::move(other._buffer);
+    _capacity = other._capacity;
+    _size     = other._size;
 
-    other._buffer     = mygl::buffer::zero();
-    other._capacity   = 0;
-    other._size       = 0;
+    other._buffer   = mygl::buffer::zero();
+    other._capacity = 0;
+    other._size     = 0;
     return *this;
 }
 
@@ -384,6 +390,22 @@ template<typename T>
 const mygl::buffer& buffer<T>::get_buffer() const
 {
     return _buffer;
+}
+
+template<typename T>
+void buffer<T>::update(mapped<T> const& source)
+{
+    if (source.size() < capacity() || !glIsBuffer(_buffer))
+    {
+        if (glIsBuffer(_buffer)) glDeleteBuffers(1, &_buffer);
+
+        glCreateBuffers(1, &_buffer);
+        glNamedBufferStorage(_buffer, source.capacity() * sizeof(T), nullptr, GL_DYNAMIC_STORAGE_BIT);
+        _capacity = source.capacity();
+    }
+
+    glCopyNamedBufferSubData(source.get_buffer(), _buffer, 0, 0, source.size() * sizeof(T));
+    _size = source.size();
 }
 }    // namespace v1
 }    // namespace gl

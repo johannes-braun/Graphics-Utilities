@@ -14,7 +14,7 @@ mesh_allocator::mesh_allocator(device& device, mesh_allocator_flags flags)
 mesh* mesh_allocator::allocate_mesh(const mesh3d& mesh, const submesh3d& submesh)
 {
     const gsl::span<const vertex3d> vertices(mesh.vertices.data() + submesh.base_vertex, submesh.vertex_count);
-    const gsl::span<const index32> indices(mesh.indices.data() + submesh.base_index, submesh.index_count);
+    const gsl::span<const index32>  indices(mesh.indices.data() + submesh.base_index, submesh.index_count);
     return allocate_mesh(vertices, indices);
 }
 
@@ -53,9 +53,23 @@ mesh* mesh_allocator::allocate_mesh(const gsl::span<const vertex3d>& vertices, c
                _bvh_generator.nodes().size() * sizeof(bvh<3>::node));
     }
 
-    _index_buffer = std::make_unique<buffer<index32>>(*_device, _staging_index_buffer);
-    if (_flags.has(mesh_allocator_flag::use_bvh)) _bvh_buffer = std::make_unique<buffer<bvh<3>::node>>(*_device, _staging_bvh_buffer);
-    _vertex_buffer = std::make_unique<buffer<vertex3d>>(*_device, _staging_vertex_buffer);
+    if (!_index_buffer)
+        _index_buffer = std::make_unique<buffer<index32>>(*_device, _staging_index_buffer);
+    else
+        _index_buffer->update(_staging_index_buffer);
+    
+    if (_flags.has(mesh_allocator_flag::use_bvh))
+    {
+        if (!_bvh_buffer)
+            _bvh_buffer = std::make_unique<buffer<bvh<3>::node>>(*_device, _staging_bvh_buffer);
+        else
+            _bvh_buffer->update(_staging_bvh_buffer);
+    }
+
+    if (!_vertex_buffer)
+        _vertex_buffer = std::make_unique<buffer<vertex3d>>(*_device, _staging_vertex_buffer);
+    else
+        _vertex_buffer->update(_staging_vertex_buffer);
 
     return m;
 }
@@ -102,7 +116,7 @@ void mesh_allocator::free_mesh(const mesh* m)
 }
 
 unique_mesh mesh_allocator::allocate_mesh_unique(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
-    std::optional<bounds3f> bounds)
+                                                 std::optional<bounds3f> bounds)
 {
     return unique_mesh(allocate_mesh(vertices, indices, bounds), [this](mesh* m) { free_mesh(m); });
 }
@@ -118,7 +132,7 @@ shared_mesh mesh_allocator::allocate_mesh_shared(const mesh3d& mesh, const subme
 }
 
 shared_mesh mesh_allocator::allocate_mesh_shared(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
-    std::optional<bounds3f> bounds)
+                                                 std::optional<bounds3f> bounds)
 {
     return shared_mesh(allocate_mesh(vertices, indices, bounds), [this](mesh* m) { free_mesh(m); });
 }

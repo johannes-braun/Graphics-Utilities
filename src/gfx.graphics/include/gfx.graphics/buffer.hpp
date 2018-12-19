@@ -119,7 +119,7 @@ public:
     void update(mapped<T> const& source, commands& transfer_cmd);
 
 private:
-    void allocate(size_type capacity, bool force, vk::CommandBuffer copy_cmd);
+    void allocate(size_type capacity, bool force);
 
     std::vector<u32> _families;
     vk::Buffer       _buffer     = nullptr;
