@@ -202,6 +202,6 @@ struct scene_file : file
     std::vector<material>               materials;
     std::unordered_map<u32, u32> mesh_material_indices;
 
-    scene_file(const files::path& path);
+    scene_file(const files::path& path, float scale = 1.f);
 };
 }    // namespace gfx

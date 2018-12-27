@@ -3,3 +3,4 @@ install
 .vs
 .vsbuild
 bin
+res

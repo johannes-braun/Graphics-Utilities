@@ -27,11 +27,13 @@ layout(std430, layout_buffer_binding_models) restrict readonly buffer Models
 layout(location = 0) out vec3 out_normal;
 layout(location = 1) flat out int draw_index;
 layout(location = 2) out vec3 out_position;
+layout(location = 3) out vec2 out_uv;
 
 void main()
 {
 	draw_index = gl_DrawID;
 	out_normal = vec3(inverse(transpose(models[gl_DrawID].transform)) * vec4(normal, 0)); 
 	out_position = vec3(models[gl_DrawID].transform * vec4(position, 1));
+	out_uv = uv;
 	gl_Position = camera.proj * camera.view * vec4(out_position, 1);
 }

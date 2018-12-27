@@ -5,9 +5,14 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "camera.hpp"
 #include "gfx.core/log.hpp"
+#include "gfx.ecs.defaults2/movement.hpp"
 #include "globals.hpp"
 #include "input_glfw.hpp"
+#include "opengl.hpp"
 #include "prototype.hpp"
+#include "scene.hpp"
+#include "shaders/def.hpp"
+#include "shaders/shaders.hpp"
 #include <GLFW/glfw3native.h>
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs/ecs.hpp>
@@ -15,9 +20,7 @@
 #include <gfx.graphics/graphics.hpp>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
-#include "shaders/shaders.hpp"
-#include "shaders/def.hpp"
-#include "opengl.hpp"
+#include <random>
 
 void opengl_app::on_run()
 {
@@ -44,59 +47,108 @@ void opengl_app::on_run()
         },
         nullptr);
 
-    gfx::gl::instance_system<def::mesh_info> instances(DEF_use_rt_shadows ? gfx::gl::mesh_allocator_flag::use_bvh : gfx::gl::mesh_allocator_flag{});
+    gfx::gl::instance_system<def::mesh_info> instances(DEF_use_rt_shadows ? gfx::gl::mesh_allocator_flag::use_bvh
+                                                                          : gfx::gl::mesh_allocator_flag {});
     graphics_list.add(instances);
+
+    gfx::movement_system movement;
+    graphics_list.add(movement);
 
     gfx::glfw_input_system  input(opengl_window);
     gfx::user_camera_system cam_system(input);
     gfx::ecs::system_list   inputs_list;
     inputs_list.add(input);
     inputs_list.add(cam_system);
-    
-    gfx::gl::unique_prototype floor = instances.get_instantiator().allocate_prototype_unique("Floor", gfx::scene_file("models/floor.dae").mesh);
-    gfx::gl::unique_prototype dragon =
-        instances.get_instantiator().allocate_prototype_unique("Dragon", gfx::scene_file("models/dragon.obj").mesh);
-    gfx::gl::unique_prototype bunny =
-        instances.get_instantiator().allocate_prototype_unique("Bunny", gfx::scene_file("models/bunny.obj").mesh);
 
-    auto bunny_entity_0 =
-        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(130, 150, 12, 255)}),
-                                                   gfx::transform_component({0, 0, 0}, {3, 3, 3}));
-    auto bunny_entity_1 =
-        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(124, 88, 132, 255)}),
-                                                   gfx::transform_component({0, 0, 2}, {3, 3, 3}));
-    auto bunny_entity_2 =
-        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(dragon.get(), {glm::u8vec4(24, 53, 222, 255)}),
-                                                   gfx::transform_component({2, 0, 2}, {3, 3, 3}));
-    auto bunny_entity_3 =
-        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(bunny.get(), {glm::u8vec4(12, 221, 61, 255)}),
-                                                   gfx::transform_component({2, 0, 0}, {1, 1, 1}));
-    auto floor_entity_3 =
-        ecs.create_entity_unique(gfx::gl::instance_component<def::mesh_info>(floor.get(), {glm::u8vec4(12, 221, 61, 255)}),
-                                 gfx::transform_component({0, -1, 0}, {4, 4, 1}, glm::angleAxis(glm::radians(-90.f), glm::vec3(1, 0, 0))));
+    const auto& scene = scene::current_scene();
 
-    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
-                                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
+    std::vector<gfx::ecs::unique_entity>   mesh_entities;
+    std::vector<gfx::gl::unique_prototype> prototypes;
+    // std::vector<gfx::gl::unique_mesh>      meshes;
+
+    std::vector<def::mesh_info> mesh_infos;
+    std::vector<mygl::texture>  textures;
+    std::vector<mygl::sampler>  samplers;
+
+    mygl::sampler sampler;
+    glCreateSamplers(1, &sampler);
+    glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glSamplerParameterf(sampler, GL_TEXTURE_MAX_ANISOTROPY, 16.f);
+
+    for (size_t i = 0; i < scene.materials.size(); ++i)
+    {
+        def::mesh_info& info = mesh_infos.emplace_back();
+        info.diffuse.color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
+
+        info.diffuse.texture_id = -1;
+        if (scene.materials[i].texture_diffuse.bytes())
+        {
+            info.diffuse.texture_id = textures.size();
+
+            const auto& t = scene.materials[i].texture_diffuse;
+            glCreateTextures(GL_TEXTURE_2D, 1, &textures.emplace_back());
+            glTextureStorage2D(textures.back(), std::int32_t(1 + floor(log2(std::max(t.width, t.height)))), GL_RGBA8, t.width, t.height);
+            glTextureSubImage2D(textures.back(), 0, 0, 0, t.width, t.height, GL_RGBA, GL_UNSIGNED_BYTE, t.bytes());
+            glGenerateTextureMipmap(textures.back());
+        }
+        if (scene.materials[i].texture_bump.bytes())
+        {
+            info.bump_map_texture_id = textures.size();
+
+            const auto& t = scene.materials[i].texture_bump;
+            glCreateTextures(GL_TEXTURE_2D, 1, &textures.emplace_back());
+            const int swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_RED};
+            glTextureParameteriv(textures.back(), GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+            glTextureStorage2D(textures.back(), std::int32_t(1 + floor(log2(std::max(t.width, t.height)))), GL_R8, t.width, t.height);
+            glTextureSubImage2D(textures.back(), 0, 0, 0, t.width, t.height, GL_RED, GL_UNSIGNED_BYTE, t.bytes());
+            glGenerateTextureMipmap(textures.back());
+        }
+    }
+    samplers.resize(textures.size());
+    std::fill(samplers.begin(), samplers.end(), sampler);
+
+    std::mt19937                          gen;
+    std::uniform_real_distribution<float> dist;
+    for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
+    {
+        gfx::gl::mesh*             mesh = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
+        gfx::gl::unique_prototype& proto =
+            prototypes.emplace_back(instances.get_instantiator().allocate_prototype_unique("sponza_" + std::to_string(i), {&mesh, 1}));
+
+        gfx::gl::instance_component<def::mesh_info> instance_component(proto.get(), mesh_infos[scene.mesh_material_indices.at(i)]);
+        gfx::transform_component                    transform_component = scene.mesh.geometries[i].transformation.matrix();
+        mesh_entities.emplace_back(ecs.create_entity_unique(instance_component, transform_component));
+    }
+
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
+                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
     glEnable(GL_MULTISAMPLE);
     glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
 
+    std::array spec_constant_ids {def::constant_id_texture_count};
+    std::array spec_constant_values {std::uint32_t(textures.size())};
+
     mygl::shader vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderBinary(1, &vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::gl_vs_vert),
                    gfx::u32(std::size(gfx::spirv::vkgl::shaders::gl_vs_vert) * sizeof(uint32_t)));
-    glSpecializeShader(vertex_shader, "main", 0, nullptr, nullptr);
+    glSpecializeShader(vertex_shader, "main", std::uint32_t(spec_constant_ids.size()), spec_constant_ids.data(),
+                       spec_constant_values.data());
 
     mygl::shader fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderBinary(1, &fragment_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::gl_fs_frag),
                    gfx::u32(std::size(gfx::spirv::vkgl::shaders::gl_fs_frag) * sizeof(uint32_t)));
-    glSpecializeShader(fragment_shader, "main", 0, nullptr, nullptr);
+    glSpecializeShader(fragment_shader, "main", std::uint32_t(spec_constant_ids.size()), spec_constant_ids.data(),
+                       spec_constant_values.data());
 
     mygl::shader_program program = glCreateProgram();
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
     glLinkProgram(program);
 
-    
+    for (int i = 0; i < textures.size(); ++i) glProgramUniform1i(program, glGetProgramResourceLocation(program, GL_UNIFORM, ("all_textures[" + std::to_string(i) + "]").c_str()), i);
+
     int isLinked = 0;
     glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
     if (isLinked == GL_FALSE)
@@ -137,7 +189,7 @@ void opengl_app::on_run()
     glfwMakeContextCurrent(nullptr);
     glfwSwapInterval(0);
     gfx::timed_while::duration opengl_combined_delta = 0s;
-    int                   opengl_frames         = 0;
+    int                        opengl_frames         = 0;
     gfx::worker                opengl_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         opengl_combined_delta += delta;
         ++opengl_frames;
@@ -148,9 +200,6 @@ void opengl_app::on_run()
             opengl_combined_delta = 0s;
         }
         if (!init.exchange(true)) glfwMakeContextCurrent(opengl_window);
-
-        bunny_entity_3->get<gfx::transform_component>()->rotation =
-            glm::angleAxis(float(glfwGetTime() * 1.f), glm::normalize(glm::vec3(2, 1, 6)));
 
         ecs.update(delta, graphics_list);
         instances.get_instantiator().swap_buffers();
@@ -177,6 +226,10 @@ void opengl_app::on_run()
         glScissorIndexed(0, 0, 0, width, height);
         glEnable(GL_DEPTH_TEST);
 
+        // bind all textures
+        glBindTextures(def::texture_binding_all, std::int32_t(textures.size()), textures.data());
+        glBindSamplers(def::texture_binding_all, std::int32_t(samplers.size()), samplers.data());
+
         glBindBufferRange(GL_UNIFORM_BUFFER, 0, camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
         glBindVertexArray(vao);
         glBindVertexBuffer(0, instances.get_mesh_allocator().vertex_buffer().get_buffer(), 0, sizeof(gfx::vertex3d));
@@ -185,13 +238,13 @@ void opengl_app::on_run()
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, instances.get_instantiator().instances_buffer().get_buffer(), 0,
                           instances.get_instantiator().instances_buffer().size()
                               * sizeof(gfx::gl::prototype_instantiator<def::mesh_info>::basic_instance));
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_vertex, instances.get_mesh_allocator().vertex_buffer().get_buffer(), 0,
-                          instances.get_mesh_allocator().vertex_buffer().size() * sizeof(gfx::vertex3d));
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_element, instances.get_mesh_allocator().index_buffer().get_buffer(), 0,
-                          instances.get_mesh_allocator().index_buffer().size() * sizeof(gfx::index32));
-        if constexpr(DEF_use_rt_shadows)
-            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_bvh, instances.get_mesh_allocator().bvh_buffer().get_buffer(), 0,
-                              instances.get_mesh_allocator().bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_vertex, instances.get_mesh_allocator().vertex_buffer().get_buffer(),
+                          0, instances.get_mesh_allocator().vertex_buffer().size() * sizeof(gfx::vertex3d));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_element, instances.get_mesh_allocator().index_buffer().get_buffer(),
+                          0, instances.get_mesh_allocator().index_buffer().size() * sizeof(gfx::index32));
+        if constexpr (DEF_use_rt_shadows)
+            glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_bvh, instances.get_mesh_allocator().bvh_buffer().get_buffer(),
+                              0, instances.get_mesh_allocator().bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
 
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, instances.get_instantiator().instances_buffer().get_buffer());
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, instances.get_instantiator().instances_buffer().size(),

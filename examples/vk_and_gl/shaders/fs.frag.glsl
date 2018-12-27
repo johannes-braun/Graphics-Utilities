@@ -2,6 +2,7 @@
 //? #include "instance.glsl"
 //? #include "geometry.glsl"
 //? #include "def.hpp"
+#include "frag.base.glsl"
 
 #ifndef LAYOUTS_DEFINED
 #define layout_buffer_binding_models set = 1, binding = 0
@@ -40,6 +41,7 @@ layout(std430, layout_buffer_binding_bvh) restrict readonly buffer ModelBVH
 layout(location = 0) in vec3 normal;
 layout(location = 1) flat in int draw_index;
 layout(location = 2) in vec3 position; 
+layout(location = 3) in vec2 uv;
 
 const uint bvh_node_type_inner = 0;
 const uint bvh_node_type_leaf  = 1;
@@ -75,6 +77,36 @@ struct light_t
 	vec3 position;
 };
 
+vec2 deep_parallax( 
+    int displacement_texture_id, 
+    const in vec3 view_tangent_space,
+    const in vec2 base_uv,
+    int min_layers, 
+    int max_layers, 
+    float depth_scale)
+{
+    float num_layers = mix(float(max_layers), float(min_layers), abs(dot(vec3(0, 0, 1), view_tangent_space)));
+    float layer_depth = 1.0 / num_layers; 
+    float current_layer_depth = 0.0; 
+    vec2 P = view_tangent_space.xy * depth_scale; 
+    vec2 delta = P / num_layers; 
+    vec2 ofs = base_uv;  
+
+    float depth = texture(all_textures[displacement_texture_id], remap_uv(ofs)).r;
+    float current_depth = 0.0;
+    int i = 0;
+    while(current_depth < depth && i++ < max_layers) {
+        ofs -= delta;
+        depth = texture(all_textures[displacement_texture_id], remap_uv(ofs)).r;
+        current_depth += layer_depth;
+    }
+    vec2 prev_ofs = ofs + delta;
+    float after_depth  = depth - current_depth;
+    float before_depth = texture(all_textures[displacement_texture_id], remap_uv(prev_ofs)).r - current_depth + layer_depth;
+    float weight = after_depth / (after_depth - before_depth);
+    return mix(ofs,prev_ofs,weight); 
+}
+
 void main()
 {
 	light_t lights[2];
@@ -89,6 +121,19 @@ void main()
 	// ------------------------------------------------
 
 	color = vec4(0);
+	const vec3 v = normalize(camera.position - position);
+
+	const float depth = -0.014f;
+
+	const vec2 new_uv = remap_uv(deep_parallax( 
+		models[draw_index].info.bump_map_texture_id,
+		inverse(cotangentFrame(normalize(normal), position, uv)) * -v,
+		uv,
+		2, 
+		16, 
+		-depth));
+
+	const vec3 real_normal = normalize(from_bump(position, normalize(normal), new_uv, normalize(position - camera.position), models[draw_index].info.bump_map_texture_id, depth));
 
 	// Diffuse Lighting (Lambert)
 	for(int id = 0; id < lights.length(); ++id)
@@ -97,7 +142,7 @@ void main()
 		const vec3 to_light = light.position - position;
 		const float distance_to_light_2 = dot(to_light, to_light);
 		const vec3 norm_to_light = normalize(to_light);
-		float cosTheta = max(dot(normalize(normal), norm_to_light), 0);
+		float cosTheta = max(dot(real_normal, norm_to_light), 0);
 		const float attenuation = 1/distance_to_light_2;
 		if(cosTheta > 0)
 		{
@@ -109,10 +154,38 @@ void main()
 
 			if(!trace.hits)
 			{
-				color += get_color(models[draw_index]) * unpack_rgba8(light.color) * light.intensity * cosTheta * attenuation;
-				const vec3 half_vector = normalize(normalize(to_light) - normalize(position - camera.position));
-				const float cosThetaBlinn = max(dot(half_vector, normalize(normal)), 0);
-				color += light.intensity * pow(cosThetaBlinn, 70) * attenuation * cosTheta;
+				const float roughness = 0.4f;
+				const vec3 diffuse = sample_color(models[draw_index].info.diffuse, new_uv).rgb;
+
+				const float alpha = max(roughness * roughness, 1e-3f);
+				const float alpha2 = alpha * alpha;
+
+				const vec3 n =  real_normal;
+				const vec3 m = normalize(normalize(to_light) + v);
+				const vec3 l = normalize(to_light);
+				const float ndotm = max(dot(n, m), 0);
+				const float ndotm2 = ndotm*ndotm;
+				const float vdotm = max(dot(v, m), 0);
+				const float vdotn = max(dot(v, n), 0);
+				const float ldotn = max(dot(l, n), 0);
+				
+				const float pi = 3.14159265359f;
+				const float inner_denom = ndotm2 * (alpha2 - 1) + 1;
+				const float dggx = alpha2 / (pi * inner_denom * inner_denom);
+
+				float f0 = (1-1.56f) / (1+1.56f);
+				f0 *= f0;
+				const float fschlick = f0 + (1-f0) * pow(1-vdotm, 5.f);
+
+				const float gggxv = vdotn + sqrt( (vdotn - vdotn * alpha2) * vdotn + alpha2 );
+				const float gggxl = ldotn + sqrt( (ldotn - ldotn * alpha2) * ldotn + alpha2 );
+				const float gggx4aso = 1 / max(gggxv * gggxl, 0.0001f);
+
+				const float brdf = dggx * fschlick * gggx4aso;
+
+				color += light.intensity * brdf * attenuation;
+
+				color += sample_color(models[draw_index].info.diffuse, uv) * unpack_rgba8(light.color) * light.intensity * cosTheta * attenuation;
 			}
 		}
 	}

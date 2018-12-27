@@ -19,7 +19,7 @@ void handle_node(scene_file& file, aiNode* node, const aiScene* scene, const glm
     { handle_node(file, node->mChildren[i], scene, node_trafo); } 
 }
 
-scene_file::scene_file(const files::path& path) : file(path)
+scene_file:: scene_file(const files::path& path, float scale) : file(path)
 {
     if (!exists(file::path))
     {
@@ -31,8 +31,8 @@ scene_file::scene_file(const files::path& path) : file(path)
     auto n = std::chrono::steady_clock::now();
     file_mapping mapping(*this, file_access::r, size());
     file_mapping_view mapping_view(mapping, 0, size());
-    const aiScene*   scene = importer.ReadFileFromMemory(
-        mapping_view.data(), size(), aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality
+    const aiScene*   scene = importer.ReadFile(
+        file::path.string().c_str(), aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality
                                  | aiProcess_LimitBoneWeights | aiProcess_RemoveRedundantMaterials | aiProcess_Triangulate
                                  | aiProcess_GenUVCoords | aiProcess_SortByPType | aiProcess_FindDegenerates | aiProcess_FindInvalidData);
     ilog << (std::chrono::steady_clock::now() - n).count();
@@ -53,20 +53,20 @@ scene_file::scene_file(const files::path& path) : file(path)
         ai_material->Get(AI_MATKEY_COLOR_SPECULAR, reinterpret_cast<aiColor4D&>(current_material.color_specular));
         ai_material->Get(AI_MATKEY_COLOR_TRANSPARENT, reinterpret_cast<aiColor4D&>(current_material.color_transparent));
 
-        const auto load_if = [&](auto& into, auto... matkey) {
+        const auto load_if = [&](auto& into, auto components, auto... matkey) {
             aiString p;
             ai_material->Get(matkey..., p);
             std::filesystem::path texpath = file::path.parent_path() / p.C_Str();
             if (p.length != 0 && !std::filesystem::is_directory(texpath) && std::filesystem::exists(texpath))
             {
                 ilog << "Loading texture from " << texpath;
-                into = image_file(texpath, bits::b8, 4);
+                into = image_file(texpath, bits::b8, components);
             }
         };
 
 
-        load_if(current_material.texture_diffuse, AI_MATKEY_TEXTURE_DIFFUSE(0));
-        load_if(current_material.texture_bump, AI_MATKEY_TEXTURE_HEIGHT(0));
+        load_if(current_material.texture_diffuse, 4, AI_MATKEY_TEXTURE_DIFFUSE(0));
+        load_if(current_material.texture_bump, 1, AI_MATKEY_TEXTURE_HEIGHT(0));
     }
     const auto to_vec3 = [](const aiVector3D& vec) { return glm::vec3(vec.x, vec.y, vec.z); };
     for (int m = 0; m < static_cast<int>(scene->mNumMeshes); ++m)
@@ -88,7 +88,7 @@ scene_file::scene_file(const files::path& path) : file(path)
         for (auto i = 0; i < static_cast<int>(ai_mesh->mNumVertices); ++i)
         {
             current_mesh.vertices[i] =
-                vertex3d(to_vec3(ai_mesh->mVertices[i]),
+                vertex3d(to_vec3(ai_mesh->mVertices[i]) * scale,
                               ai_mesh->HasTextureCoords(0) ? glm::vec2(to_vec3(ai_mesh->mTextureCoords[0][i])) : glm::vec2(0),
                               to_vec3(ai_mesh->mNormals[i]));
         }

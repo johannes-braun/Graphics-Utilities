@@ -395,7 +395,7 @@ const mygl::buffer& buffer<T>::get_buffer() const
 template<typename T>
 void buffer<T>::update(mapped<T> const& source)
 {
-    if (source.size() < capacity() || !glIsBuffer(_buffer))
+    if (source.size() > capacity() || !glIsBuffer(_buffer))
     {
         if (glIsBuffer(_buffer)) glDeleteBuffers(1, &_buffer);
 

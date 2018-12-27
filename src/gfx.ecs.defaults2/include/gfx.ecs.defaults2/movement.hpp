@@ -7,12 +7,18 @@ namespace gfx {
 inline namespace v1 {
 struct movement_component : gfx::ecs::component<movement_component>
 {
-    glm::vec3 impulse{0, 0, 0};
-    glm::vec3 force{0, 0, 0};
-    glm::vec3 rotation_impulse{0, 0, 0};
-    glm::vec3 torque{0, 0, 0};
-    glm::vec3 torque_acceleration{0, 0, 0};
-    float     gravity = 0.f;
+    float mass = 10.f;
+
+    float     movement_drag = 1;
+    glm::vec3 impulse {0, 0, 0};
+    glm::vec3 force {0, 0, 0};
+
+    float     rotation_drag = 1;
+    glm::vec3 rotation_impulse {0, 0, 0};
+    glm::vec3 torque {0, 0, 0};
+    glm::vec3 torque_acceleration {0, 0, 0};
+
+    float gravity = 0.f;
 };
 
 class movement_system : public gfx::ecs::system
