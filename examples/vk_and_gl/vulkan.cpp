@@ -5,6 +5,7 @@
 #include "gfx.core/log.hpp"
 #include "gfx.ecs.defaults2/movement.hpp"
 #include "gfx.ecs.defaults2/prototype.hpp"
+#include "gfx.ecs.defaults2/prototype_proxies.hpp"
 #include "gfx.file/file.hpp"
 #include "gfx.math/geometry.hpp"
 #include "globals.hpp"
@@ -111,15 +112,13 @@ void vulkan_app::on_run()
     create_renderpass(gpu, surface_swapchain);
     create_framebuffer(gpu, surface_swapchain);
 
-    gfx::instance_system<def::mesh_info> instances(gpu,
-                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
+    gfx::impl::vk_proxy<def::mesh_info> vulkan_proxy(gpu);
+    gfx::instance_system<def::mesh_info> instances(vulkan_proxy, DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
     graphics_list.add(instances);
 
     const auto& scene = scene::current_scene();
 
     std::vector<gfx::ecs::unique_entity> mesh_entities;
-    std::vector<gfx::unique_prototype>   prototypes;
-    // std::vector<gfx::gl::unique_mesh>      meshes;
     std::vector<def::mesh_info> mesh_infos;
 
     std::vector<gfx::image>          textures;
@@ -260,12 +259,11 @@ void vulkan_app::on_run()
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
     for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
-    {
-        gfx::mesh*             mesh = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
-        gfx::unique_prototype& proto =
-            prototypes.emplace_back(instances.get_instantiator().allocate_prototype_unique("sponza_" + std::to_string(i), {&mesh, 1}));
+    { 
+        gfx::shared_mesh      mesh = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
+        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype("sponza_" + std::to_string(i), {&mesh, 1});
 
-        gfx::instance_component<def::mesh_info> instance_component(proto.get(), mesh_infos[scene.mesh_material_indices.at(i)]);
+        gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
         gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
         mesh_entities.emplace_back(ecs.create_entity_unique(instance_component, transform_component));
     }
@@ -305,50 +303,46 @@ void vulkan_app::on_run()
         current.get_command_buffer().reset({});
         current.get_command_buffer().begin(vk::CommandBufferBeginInfo {vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
-        instances.get_instantiator().swap_buffers(current);
+        vulkan_proxy.swap(current);
 
-        if (curr_buffers[instances.get_instantiator().instance_buffer_index()]
-                != instances.get_instantiator().instances_buffer().get_buffer()
-            || curr_buffer_sizes[instances.get_instantiator().instance_buffer_index()]
-                   != instances.get_instantiator().instances_buffer().size())
+        if (curr_buffers[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_buffer().get_buffer()
+            || curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_buffer().size())
         {
-            curr_buffers[instances.get_instantiator().instance_buffer_index()] =
-                instances.get_instantiator().instances_buffer().get_buffer();
-            curr_buffer_sizes[instances.get_instantiator().instance_buffer_index()] =
-                instances.get_instantiator().instances_buffer().size();
+            curr_buffers[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_buffer().get_buffer();
+            curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_buffer().size();
 
             {
                 vk::DescriptorBufferInfo info;
-                info.buffer = curr_buffers[instances.get_instantiator().instance_buffer_index()];
+                info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
                 info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                info.range  = instances.get_instantiator().instances_buffer().size()
+                info.range  = vulkan_proxy.instances_buffer().size()
                              * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                const vk::WriteDescriptorSet updater(model_info_sets[instances.get_instantiator().instance_buffer_index()].get(), 0, 0, 1,
+                const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
             }
             {
                 vk::DescriptorBufferInfo info;
                 info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                vk::WriteDescriptorSet updater(model_info_sets[instances.get_instantiator().instance_buffer_index()].get(),
+                vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(),
                                                def::buffer_binding_vertex, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 info.offset = 0;
 
                 if constexpr (DEF_use_rt_shadows)
                 {
                     updater.dstBinding = def::buffer_binding_vertex;
-                    info.buffer        = instances.get_mesh_allocator().vertex_buffer().get_buffer();
-                    info.range         = instances.get_mesh_allocator().vertex_buffer().size() * sizeof(gfx::vertex3d);
+                    info.buffer        = vulkan_proxy.vertex_buffer().get_buffer();
+                    info.range         = vulkan_proxy.vertex_buffer().size() * sizeof(gfx::vertex3d);
                     gpu.get_device().updateDescriptorSets(updater, nullptr);
 
                     updater.dstBinding = def::buffer_binding_element;
-                    info.buffer        = instances.get_mesh_allocator().index_buffer().get_buffer();
-                    info.range         = instances.get_mesh_allocator().index_buffer().size() * sizeof(gfx::index32);
+                    info.buffer        = vulkan_proxy.index_buffer().get_buffer();
+                    info.range         = vulkan_proxy.index_buffer().size() * sizeof(gfx::index32);
                     gpu.get_device().updateDescriptorSets(updater, nullptr);
 
                     updater.dstBinding = def::buffer_binding_bvh;
-                    info.buffer        = instances.get_mesh_allocator().bvh_buffer().get_buffer();
-                    info.range         = instances.get_mesh_allocator().bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
+                    info.buffer        = vulkan_proxy.bvh_buffer().get_buffer();
+                    info.range         = vulkan_proxy.bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
                     gpu.get_device().updateDescriptorSets(updater, nullptr);
                 }
             }
@@ -377,15 +371,15 @@ void vulkan_app::on_run()
         current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.get());
         current.get_command_buffer().bindDescriptorSets(
             vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0,
-            {cam_buffer_set.get(), model_info_sets[instances.get_instantiator().instance_buffer_index()].get(), all_textures_set.get()},
+            {cam_buffer_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get(), all_textures_set.get()},
             {});
-        current.get_command_buffer().bindVertexBuffers(0, instances.get_mesh_allocator().vertex_buffer().get_buffer(), {0ull});
-        current.get_command_buffer().bindIndexBuffer(instances.get_mesh_allocator().index_buffer().get_buffer(), 0ull,
+        current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
+        current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull,
                                                      vk::IndexType::eUint32);
 
-        current.get_command_buffer().drawIndexedIndirect(instances.get_instantiator().instances_buffer().get_buffer(),
+        current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_buffer().get_buffer(),
                                                          sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance),
-                                                         std::max(instances.get_instantiator().instances_buffer().size(), 1ll) - 1,
+            std::max(vulkan_proxy.instances_buffer().size(), 1ll) - 1,
                                                          sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
@@ -502,7 +496,7 @@ vk::UniquePipeline create_pipeline(gfx::device& gpu, vk::PipelineLayout layout)
     shader_constants.texture_count = vulkan_state->texture_count;
 
     vk::SpecializationMapEntry spec_entries[1];
-    spec_entries[0] = {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
+    spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
                        sizeof(shader_constants.texture_count)};
 
     vk::SpecializationInfo specialization;

@@ -3,88 +3,88 @@
 namespace gfx {
 inline namespace v1 {
 template<typename InstanceInfo>
-prototype_instantiator<InstanceInfo>::prototype_instantiator(mesh_allocator& alloc)
-      : _alloc(&alloc)
-      , _instance_descriptions_src{mapped<basic_instance>{*alloc._device, 1}, mapped<basic_instance>{*alloc._device, 1}}
-      , _instance_descriptions_dst{buffer<basic_instance>{*alloc._device}, buffer<basic_instance>{*alloc._device}}
+prototype_instantiator<InstanceInfo>::prototype_instantiator(mesh_allocator& alloc, proxy* p) : _proxy(p), _alloc(&alloc)
 {}
 
 template<typename InstanceInfo>
-prototype* prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, std::initializer_list<mesh*> meshes)
+shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_impl(std::string name, std::initializer_list<shared_mesh> meshes)
 {
-    return allocate_prototype(std::move(name), gsl::make_span(std::data(meshes), std::size(meshes)));
+    return allocate_prototype_impl(std::move(name), gsl::make_span(std::data(meshes), std::size(meshes)));
 }
 
 template<typename InstanceInfo>
-prototype* prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, const gsl::span<mesh* const>& meshes)
+shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_impl(std::string name, const gsl::span<shared_mesh const>& meshes)
 {
-    auto& proto = *_prototypes.emplace(name, std::make_unique<prototype>()).first->second;
-    int   i     = 0;
-    for (mesh* const m : meshes) proto.meshes[i++] = {m, transform{}};
-    proto.name = std::move(name);
-    return &proto;
+    shared_prototype proto(new prototype, [this](prototype* proto) { free_prototype_impl(proto); });
+    _prototypes.emplace(name, proto).first->second;
+    int i = 0;
+    for (shared_mesh const& m : meshes) proto->meshes[i++] = {m, transform {}};
+    proto->name = std::move(name);
+    return proto;
 }
 
 template<typename InstanceInfo>
-void prototype_instantiator<InstanceInfo>::free_prototype(const prototype* proto)
+shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_impl(std::string name, const mesh3d& m)
+{
+    shared_prototype proto(new prototype, [this](prototype* proto) { free_prototype_impl(proto); });
+    _prototypes.emplace(name, std::make_unique<prototype>()).first->second;
+    for (int i = 0; i < std::min(prototype::max_submeshes, m.geometries.size()); ++i)
+    { proto->meshes[i] = {_alloc->allocate_mesh_impl(m, m.geometries[i]), m.geometries[i].transformation}; }
+    proto->name = std::move(name);
+    return proto;
+}
+
+template<typename InstanceInfo>
+void prototype_instantiator<InstanceInfo>::free_prototype_impl(const prototype* proto)
 {
     assert(proto);
     _prototypes.erase(proto->name);
 }
 
 template<typename InstanceInfo>
-prototype* prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, const mesh3d& m)
+shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, const mesh3d& m)
 {
-    auto& proto = *_prototypes.emplace(name, std::make_unique<prototype>()).first->second;
-    for (int i = 0; i < std::min(prototype::max_submeshes, m.geometries.size()); ++i)
-    {
-        proto.meshes[i] = {_alloc->allocate_mesh(m, m.geometries[i]), m.geometries[i].transformation};
-    }
-    proto.name = std::move(name);
-    return &proto;
+    return allocate_prototype_impl(name, m);
 }
 
 template<typename InstanceInfo>
-unique_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_unique(std::string name, const mesh3d& m)
+shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype(std::string name, const gsl::span<shared_mesh const>& meshes)
 {
-    return unique_prototype(allocate_prototype(name, m), [this](prototype* proto) { free_prototype(proto); });
+    return allocate_prototype_impl(name, meshes);
 }
 
 template<typename InstanceInfo>
-unique_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_unique(std::string name, const gsl::span<mesh*>& meshes)
+shared_prototype prototype_instantiator<InstanceInfo>::prototype_by_name(const std::string& name)
 {
-    return unique_prototype(allocate_prototype(name, meshes), [this](prototype* proto) { free_prototype(proto); });
+    return _prototypes.at(name).lock();
 }
 
 template<typename InstanceInfo>
-shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_shared(std::string name, const mesh3d& m)
+prototype_handle prototype_instantiator<InstanceInfo>::enqueue(const shared_prototype& p, const transform& t,
+                                                               gsl::span<instance_info_type> properties)
 {
-    return shared_prototype(allocate_prototype(name, m), [this](prototype* proto) { free_prototype(proto); });
+    return enqueue(*p, t, std::forward<decltype(properties)>(properties));
 }
 
 template<typename InstanceInfo>
-shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_shared(std::string name, const gsl::span<mesh*>& meshes)
-{
-    return shared_prototype(allocate_prototype(name, meshes), [this](prototype* proto) { free_prototype(proto); });
-}
-
-template<typename InstanceInfo>
-prototype* prototype_instantiator<InstanceInfo>::prototype_by_name(const std::string& name)
-{
-    return &*_prototypes.at(name);
-}
-
-template<typename InstanceInfo>
-prototype_handle prototype_instantiator<InstanceInfo>::enqueue(prototype* p, const transform& t, gsl::span<instance_info_type> properties)
+prototype_handle prototype_instantiator<InstanceInfo>::enqueue(const prototype& p, const transform& t,
+                                                               gsl::span<instance_info_type> properties)
 {
     static u64 current_handle = 0;
     const auto next           = prototype_handle(current_handle++);
-    std::pair  range(_instance_descriptions_src[_current_instance_index].size(), 0ull);
-    int        i = 0;
-    for (const auto& m : p->meshes)
+    int        count = 0;
+    for (const auto& m : p.meshes)
     {
         if (!m) break;
-        basic_instance& new_instance = _instance_descriptions_src[_current_instance_index].emplace_back();
+        ++count;
+    }
+    auto [range, objects] = _proxy->allocate_range(count);
+
+    int current = 0;
+    for (const auto& m : p.meshes)
+    {
+        if (!m) break;
+        basic_instance& new_instance = objects[current];
         new_instance.base_index      = m->base->_base_index;
         new_instance.index_count     = m->base->_index_count;
         new_instance.base_instance   = 0;
@@ -94,10 +94,9 @@ prototype_handle prototype_instantiator<InstanceInfo>::enqueue(prototype* p, con
         new_instance.base_bvh_node   = m->base->_base_bvh_node;
         new_instance.bvh_node_count  = m->base->_bvh_node_count;
         new_instance.transform       = t * m->relative_transform;
-        new_instance.info.value      = properties[i];
-        ++i;
+        new_instance.info.value      = properties[current];
+        ++current;
     }
-    range.second = range.first + i;
     _enqueued_ranges.emplace(next, range);
     return next;
 }
@@ -107,9 +106,7 @@ void prototype_instantiator<InstanceInfo>::dequeue(prototype_handle handle)
 {
     if (const auto it = _enqueued_ranges.find(handle); it != _enqueued_ranges.end())
     {
-        _instance_descriptions_src[_current_instance_index].erase(_instance_descriptions_src[_current_instance_index].begin()
-                                                                      + it->second.first,
-            _instance_descriptions_src[_current_instance_index].begin() + it->second.second);
+        _proxy->free_range(it->second);
         const auto range = it->second;
         const auto diff  = range.second - range.first;
         for (auto& el : _enqueued_ranges)
@@ -125,25 +122,12 @@ template<typename InstanceInfo>
 void prototype_instantiator<InstanceInfo>::clear()
 {
     _enqueued_ranges.clear();
-    _instance_descriptions_src[_current_instance_index].clear();
-    _instance_descriptions_src[_current_instance_index].emplace_back();
-}
-
-template<typename InstanceInfo>
-const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& prototype_instantiator<InstanceInfo>::instances_mapped() const
-    noexcept
-{
-    return _instance_descriptions_src[_current_instance_index];
-}
-template<typename InstanceInfo>
-const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& prototype_instantiator<InstanceInfo>::instances_buffer() const
-    noexcept
-{
-    return _instance_descriptions_dst[(_current_instance_index + instance_swap_buffer_count - 1)%instance_swap_buffer_count];
+    _proxy->clear();
 }
 
 template<typename Info>
-instance_system<Info>::instance_system(device& device, mesh_allocator_flags flags) : _alloc(device, flags), _instantiator(_alloc)
+instance_system<Info>::instance_system(combined_proxy_view<Info> p, mesh_allocator_flags flags)
+      : _alloc(p.mesh_proxy, flags), _instantiator(_alloc, p.proto_proxy)
 {
     add_component_type<instance_type>();
     add_component_type<transform_component>();
@@ -171,7 +155,6 @@ void instance_system<Info>::update(duration_type delta, ecs::component_base** co
 }
 
 
-
 template<typename Info>
 const prototype_instantiator<Info>& instance_system<Info>::get_instantiator() const noexcept
 {
@@ -188,7 +171,7 @@ template<typename Info>
 prototype_instantiator<Info>& instance_system<Info>::get_instantiator() noexcept
 {
     return _instantiator;
-}
+} 
 
 template<typename Info>
 mesh_allocator& instance_system<Info>::get_mesh_allocator() noexcept

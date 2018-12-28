@@ -5,9 +5,6 @@ namespace gl {
 inline namespace v1 {
 mesh_allocator::mesh_allocator(mesh_allocator_flags flags)
       :  _flags(flags)
-      , _staging_vertex_buffer()
-      , _staging_index_buffer()
-      , _staging_bvh_buffer()
       , _bvh_generator(shape::triangle)
 {}
 
@@ -17,7 +14,7 @@ mesh* mesh_allocator::allocate_mesh(const mesh3d& mesh, const submesh3d& submesh
     const gsl::span<const index32>  indices(mesh.indices.data() + submesh.base_index, submesh.index_count);
     return allocate_mesh(vertices, indices);
 }
-
+ 
 mesh* mesh_allocator::allocate_mesh(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
                                     std::optional<bounds3f> bounds)
 {

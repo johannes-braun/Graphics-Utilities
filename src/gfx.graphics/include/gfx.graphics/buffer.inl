@@ -145,10 +145,10 @@ typename mapped<T>::iterator mapped<T>::erase(const_iterator at)
 template<typename T>
 typename mapped<T>::iterator mapped<T>::erase(const_iterator begin, const_iterator end)
 {
-    auto const start_offset = std::distance<const_iterator>(this->begin(), begin);
-    auto const delta        = std::distance(begin, end);
-    auto       dbegin       = this->begin() + std::distance(this->begin(), begin);
-    auto       dend         = this->begin() + std::distance(this->begin(), end);
+    auto const start_offset = std::distance<const_iterator>(this->cbegin(), begin);
+    auto const delta        = std::distance<const_iterator>(begin, end);
+    auto       dbegin       = this->begin() + std::distance<const_iterator>(this->cbegin(), begin);
+    auto       dend         = this->begin() + std::distance<const_iterator>(this->cbegin(), end);
     auto       result_it    = this->begin() + start_offset;
     if constexpr (!std::is_trivially_destructible_v<T>) std::destroy(dbegin, dend);
     std::move(result_it + delta, this->end(), result_it);
