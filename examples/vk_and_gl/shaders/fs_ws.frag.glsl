@@ -9,6 +9,8 @@
 #define layout_buffer_binding_vertex set = 1, binding = buffer_binding_vertex
 #define layout_buffer_binding_element set = 1, binding = buffer_binding_element
 #define layout_buffer_binding_bvh set = 1, binding = buffer_binding_bvh
+#define layout_shadow_map_binding set = 1, binding = shadow_map_binding
+#define layout_shadow_cam_binding set = 1, binding = shadow_cam_binding
 #endif
 
 layout(set = 0, binding = 0) uniform Camera
@@ -19,6 +21,12 @@ layout(set = 0, binding = 0) uniform Camera
 layout(std430, layout_buffer_binding_models) restrict readonly buffer Models
 {
 	basic_instance models[];
+};
+
+layout(layout_shadow_map_binding) uniform sampler2DShadow shadow_map;
+layout(layout_shadow_cam_binding) restrict readonly buffer ShadowMapCameras
+{
+	camera_t light_cameras[];
 };
 
 #if DEF_use_rt_shadows
@@ -105,17 +113,50 @@ vec2 deep_parallax(
     return mix(ofs,prev_ofs,weight); 
 }
 
+const int smoothing_size = 5;
+vec3 get_pos(mat4 mat, vec3 pos)
+{
+    vec4 map_pos = mat * vec4(pos, 1);
+    map_pos /= map_pos.w; 
+    map_pos.xy = 0.5f * map_pos.xy + 0.5f;
+    return map_pos.xyz;
+}
+
+vec3 shadow(in camera_t cam, vec3 pos){
+	ivec2 ts = textureSize(shadow_map, 0);
+    vec2 tex_size = ts.xy;
+	
+	const mat4 mat = cam.proj * cam.view;
+    vec3 map_pos = get_pos(mat, pos);
+
+    float shadow = 0.f;
+    vec2 inv_size = 1/max(tex_size, vec2(1, 1));
+
+    for(int i=0; i<smoothing_size*smoothing_size; ++i)
+    {
+        const int x = (i % smoothing_size - (smoothing_size >> 1)-1);
+        const int y = (i / smoothing_size - (smoothing_size >> 1)-1);
+        const vec2 offset = vec2(x, y) * inv_size;
+
+        const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
+        const float depth = 1-texture(shadow_map, vec3(remap_uv(uv), map_pos.z + 0.0001)).r;
+
+        shadow += depth;
+    }
+    return vec3(1)*shadow / (smoothing_size*smoothing_size);
+}
+
 void main()
 {
 	light_t lights[2];
 
 	lights[0].color = 0xcceeffff;
-	lights[0].intensity = 50.f;
+	lights[0].intensity = 20.f;
 	lights[0].position = vec3(5, 5, 5);
 
 	lights[1].color = 0xffeeccff;
-	lights[1].intensity = 50.f;
-	lights[1].position = vec3(-3, 4, -6);
+	lights[1].intensity = 20.f;
+	lights[1].position = vec3(-3, 5.5, -6);
 	// ------------------------------------------------
 
 	color = vec4(0);
@@ -132,7 +173,7 @@ void main()
 		-depth));
 
 	const vec3 real_normal = normalize(from_bump(position, normalize(normal), new_uv, normalize(position - camera.position), models[draw_index].info.bump_map_texture_id, depth));
-
+	
 	// Diffuse Lighting (Lambert)
 	for(int id = 0; id < lights.length(); ++id)
 	{
@@ -182,11 +223,16 @@ void main()
 				const float brdf = dggx * fschlick * gggx4aso;
 
 				color += light.intensity * brdf * attenuation;
-
 				color += sample_color(models[draw_index].info.diffuse, uv) * unpack_rgba8(light.color) * light.intensity * cosTheta * attenuation;
 			}
 		}
 	}
+	const float shadowed = shadow(light_cameras[0], position).r;
+	const vec4 light_pos = inverse(light_cameras[0].view) * vec4(0, 0, 0, 1);
+	const vec3 light_pos3 = light_pos.xyz / light_pos.w;
+	const vec3 to_sun = normalize(light_pos3 - position);
+	const float cosThetaLight = dot(to_sun, real_normal);
+	color += shadowed * sample_color(models[draw_index].info.diffuse, uv) * 1.1f * cosThetaLight;
 }
 
 

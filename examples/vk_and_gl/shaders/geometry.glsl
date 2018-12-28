@@ -19,3 +19,11 @@ struct vertex_t
 	vec2 uv;
 	uint metadata_uv;
 };
+
+struct camera_t
+{
+	mat4 view;
+	mat4 proj;
+	vec3 position;
+	int _p;
+};

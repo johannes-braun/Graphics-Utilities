@@ -1,13 +1,17 @@
 #pragma once
 
-#include "buffer.hpp"
-#include "commands.hpp"
-#include "device.hpp"
-#include "extensions.hpp"
-#include "image.hpp"
-#include "instance.hpp"
-#include "queue.hpp"
-#include "shader.hpp"
-#include "surface.hpp"
-#include "swapchain.hpp"
-#include "sync.hpp"
+// Vulkan
+#include "vulkan/buffer.hpp"
+#include "vulkan/commands.hpp"
+#include "vulkan/device.hpp"
+#include "vulkan/extensions.hpp"
+#include "vulkan/image.hpp"
+#include "vulkan/instance.hpp"
+#include "vulkan/queue.hpp"
+#include "vulkan/shader.hpp"
+#include "vulkan/surface.hpp"
+#include "vulkan/swapchain.hpp"
+#include "vulkan/sync.hpp"
+
+// OpenGL
+#include "opengl/buffer.hpp"

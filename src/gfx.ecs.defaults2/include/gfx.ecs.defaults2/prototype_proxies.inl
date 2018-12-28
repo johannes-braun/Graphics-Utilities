@@ -2,16 +2,16 @@
 
 namespace gfx {
 inline namespace v1 {
-namespace impl {
+namespace vulkan {
 template<typename InstanceInfo>
-vk_proxy<InstanceInfo>::vk_proxy(device& gpu)
-      : vk_mesh_proxy(gpu)
+instance_proxy<InstanceInfo>::instance_proxy(device& gpu)
+      : mesh_proxy(gpu)
       , _instance_descriptions_src {mapped<basic_instance> {gpu, 1}, mapped<basic_instance> {gpu, 1}}
       , _instance_descriptions_dst {buffer<basic_instance> {gpu}, buffer<basic_instance> {gpu}}
 {}
 
 template<typename InstanceInfo>
-void vk_proxy<InstanceInfo>::free_range(const typename vk_proxy<InstanceInfo>::range_type& range)
+void instance_proxy<InstanceInfo>::free_range(const typename instance_proxy<InstanceInfo>::range_type& range)
 {
     const auto beg_it = std::next(_instance_descriptions_src[_current_instance_index].begin(), range.first);
     const auto end_it = std::next(_instance_descriptions_src[_current_instance_index].begin(), range.second);
@@ -19,7 +19,7 @@ void vk_proxy<InstanceInfo>::free_range(const typename vk_proxy<InstanceInfo>::r
 }
 
 template<typename InstanceInfo>
-auto vk_proxy<InstanceInfo>::allocate_range(size_t count) -> std::pair<range_type, gsl::span<basic_instance>>
+auto instance_proxy<InstanceInfo>::allocate_range(size_t count) -> std::pair<range_type, gsl::span<basic_instance>>
 {
     const auto s = _instance_descriptions_src[_current_instance_index].size();
     range_type r(s, s + count);
@@ -29,35 +29,94 @@ auto vk_proxy<InstanceInfo>::allocate_range(size_t count) -> std::pair<range_typ
 }
 
 template<typename InstanceInfo>
-void vk_proxy<InstanceInfo>::clear()
+void instance_proxy<InstanceInfo>::clear()
 {
     _instance_descriptions_src[_current_instance_index].clear();
     _instance_descriptions_src[_current_instance_index].emplace_back();
 }
 
 template<typename InstanceInfo>
-void vk_proxy<InstanceInfo>::swap(commands& cmd)
+void instance_proxy<InstanceInfo>::swap(commands& cmd)
 {
     _instance_descriptions_dst[_current_instance_index].update(_instance_descriptions_src[_current_instance_index], cmd);
     _current_instance_index = (_current_instance_index + 1) % instance_swap_buffer_count;
 }
 
 template<typename InstanceInfo>
-const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& vk_proxy<InstanceInfo>::instances_mapped() const noexcept
+const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_mapped() const noexcept
 {
     return _instance_descriptions_src[_current_instance_index];
 }
 template<typename InstanceInfo>
-const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& vk_proxy<InstanceInfo>::instances_buffer() const noexcept
+const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_buffer() const noexcept
 {
     return _instance_descriptions_dst[(_current_instance_index + instance_swap_buffer_count - 1) % instance_swap_buffer_count];
 }
 
 template<typename InstanceInfo>
-size_t vk_proxy<InstanceInfo>::instance_buffer_index() const noexcept
+size_t instance_proxy<InstanceInfo>::instance_buffer_index() const noexcept
 {
     return _current_instance_index;
 }
 }    // namespace impl
+
+    
+namespace opengl {
+template<typename InstanceInfo>
+instance_proxy<InstanceInfo>::instance_proxy()
+      : mesh_proxy()
+      , _instance_descriptions_src {mapped<basic_instance> {1}, mapped<basic_instance> {1}}
+      , _instance_descriptions_dst {buffer<basic_instance> {}, buffer<basic_instance> {}}
+{}
+
+template<typename InstanceInfo>
+void instance_proxy<InstanceInfo>::free_range(const typename instance_proxy<InstanceInfo>::range_type& range)
+{
+    const auto beg_it = std::next(_instance_descriptions_src[_current_instance_index].begin(), range.first);
+    const auto end_it = std::next(_instance_descriptions_src[_current_instance_index].begin(), range.second);
+    _instance_descriptions_src[_current_instance_index].erase(beg_it, end_it);
+}
+
+template<typename InstanceInfo>
+auto instance_proxy<InstanceInfo>::allocate_range(size_t count) -> std::pair<range_type, gsl::span<basic_instance>>
+{
+    const auto s = _instance_descriptions_src[_current_instance_index].size();
+    range_type r(s, s + count);
+    _instance_descriptions_src[_current_instance_index].resize(s + count);
+    gsl::span<basic_instance> span(_instance_descriptions_src[_current_instance_index].data() + s, count);
+    return std::make_pair(r, span);
+}
+
+template<typename InstanceInfo>
+void instance_proxy<InstanceInfo>::clear()
+{
+    _instance_descriptions_src[_current_instance_index].clear();
+    _instance_descriptions_src[_current_instance_index].emplace_back();
+}
+
+template<typename InstanceInfo>
+void instance_proxy<InstanceInfo>::swap()
+{
+    _instance_descriptions_dst[_current_instance_index].update(_instance_descriptions_src[_current_instance_index]);
+    _current_instance_index = (_current_instance_index + 1) % instance_swap_buffer_count;
+}
+
+template<typename InstanceInfo>
+const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_mapped() const noexcept
+{
+    return _instance_descriptions_src[_current_instance_index];
+}
+template<typename InstanceInfo>
+const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_buffer() const noexcept
+{
+    return _instance_descriptions_dst[(_current_instance_index + instance_swap_buffer_count - 1) % instance_swap_buffer_count];
+}
+
+template<typename InstanceInfo>
+size_t instance_proxy<InstanceInfo>::instance_buffer_index() const noexcept
+{
+    return _current_instance_index;
+}
+}    // namespace vulkan
 }    // namespace v1
 }    // namespace gfx

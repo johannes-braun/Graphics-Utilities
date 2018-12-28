@@ -51,6 +51,9 @@ CONSTEXPR uint texture_binding_all = 0;
 
 CONSTEXPR uint constant_id_texture_count = 0;
 
+CONSTEXPR uint shadow_map_binding = 100;
+CONSTEXPR uint shadow_cam_binding = 4;
+
 #ifndef __cplusplus
 // specialization constants
 layout(constant_id = constant_id_texture_count) const uint MAX_TEXTURE_COUNT = 164;
