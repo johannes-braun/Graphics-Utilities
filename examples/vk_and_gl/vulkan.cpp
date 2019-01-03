@@ -52,14 +52,22 @@ struct vulkan_state_t
     std::uint32_t                 texture_count;
     vk::UniqueSampler             default_texture_sampler;
     vk::UniqueDescriptorSetLayout all_textures_layout;
+
+    vk::UniqueRenderPass          shadow_render_pass;
+    vk::UniqueSampler             shadow_sampler;
+    vk::UniqueDescriptorSetLayout shadow_set_layout;
 };
 
 std::unique_ptr<vulkan_state_t> vulkan_state;
 
+void                     create_shadow_renderpass(gfx::vulkan::device& gpu);
 void                     create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain);
 vk::UniquePipelineLayout create_pipeline_layout(gfx::vulkan::device& gpu);
 vk::UniquePipeline       create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout);
-void                     create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain);
+vk::UniquePipelineLayout create_shadow_pipeline_layout(gfx::vulkan::device& gpu);
+vk::UniquePipeline       create_shadow_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout);
+
+void create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain);
 void generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t layers, std::uint32_t levels, vk::Extent3D extent,
                       const gfx::vulkan::mapped<std::byte>& data);
 }    // namespace impl::vulkan
@@ -74,7 +82,7 @@ void vulkan_app::on_run()
     GLFWwindow* vulkan_window = glfwCreateWindow(800, 800, "Vulkan", nullptr, nullptr);
 
     gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, true, true);
-    gfx::vulkan::surface       surface(vulkan, glfwGetWin32Window(vulkan_window));
+    gfx::vulkan::surface               surface(vulkan, glfwGetWin32Window(vulkan_window));
     gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {}, surface);
     gfx::vulkan::swapchain             surface_swapchain(gpu, surface);
     gfx::vulkan::semaphore             acquire_semaphore(gpu);
@@ -95,6 +103,82 @@ void vulkan_app::on_run()
     const vk::DescriptorSetLayoutBinding cam_buf_binding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics);
     vulkan_state->cam_buffer_layout = gpu.get_device().createDescriptorSetLayoutUnique({{}, 1, &cam_buf_binding});
 
+    {
+        vk::SamplerCreateInfo sci;
+        sci.addressModeU             = vk::SamplerAddressMode::eRepeat;
+        sci.addressModeV             = vk::SamplerAddressMode::eRepeat;
+        sci.addressModeW             = vk::SamplerAddressMode::eRepeat;
+        sci.anisotropyEnable         = true;
+        sci.magFilter                = vk::Filter::eLinear;
+        sci.minFilter                = vk::Filter::eLinear;
+        sci.maxAnisotropy            = 16.f;
+        sci.maxLod                   = 1000.f;
+        sci.minLod                   = -1000.f;
+        sci.mipmapMode               = vk::SamplerMipmapMode::eNearest;
+        sci.compareEnable            = true;
+        sci.compareOp                = vk::CompareOp::eGreater;
+        vulkan_state->shadow_sampler = gpu.get_device().createSamplerUnique(sci);
+    }
+    std::vector<vk::Sampler> shadow_samplers(1, vulkan_state->shadow_sampler.get());
+
+    vk::DescriptorSetLayoutBinding shadow_set_bindings[2];
+    shadow_set_bindings[0]          = vk::DescriptorSetLayoutBinding {def::shadow_map_binding, vk::DescriptorType::eCombinedImageSampler, 1,
+                                                             vk::ShaderStageFlagBits::eAllGraphics, std::data(shadow_samplers)};
+    shadow_set_bindings[1]          = vk::DescriptorSetLayoutBinding {def::shadow_cam_binding, vk::DescriptorType::eStorageBuffer, 1,
+                                                             vk::ShaderStageFlagBits::eAllGraphics};
+    vulkan_state->shadow_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(
+        {{}, static_cast<std::uint32_t>(std::size(shadow_set_bindings)), std::data(shadow_set_bindings)});
+
+
+    vk::ImageCreateInfo smap_create_info;
+    smap_create_info.arrayLayers   = 1;
+    smap_create_info.extent        = vk::Extent3D(1024, 1024, 1);
+    smap_create_info.format        = vk::Format::eD32SfloatS8Uint;
+    smap_create_info.imageType     = vk::ImageType::e2D;
+    smap_create_info.initialLayout = vk::ImageLayout::eUndefined;
+    smap_create_info.mipLevels     = 1;
+    smap_create_info.sharingMode   = vk::SharingMode::eExclusive;
+    smap_create_info.usage         = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    smap_create_info.tiling        = vk::ImageTiling::eOptimal;
+    gfx::vulkan::image shadow_map(gpu, smap_create_info);
+
+    vk::ImageViewCreateInfo smap_ivi;
+    smap_ivi.format                     = smap_create_info.format;
+    smap_ivi.image                      = shadow_map.get_image();
+    smap_ivi.viewType                   = vk::ImageViewType::e2D;
+    smap_ivi.subresourceRange           = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, smap_create_info.arrayLayers);
+    vk::UniqueImageView shadow_map_view = gpu.get_device().createImageViewUnique(smap_ivi);
+
+    create_shadow_renderpass(gpu);
+
+    vk::FramebufferCreateInfo smap_fb_info({}, vulkan_state->shadow_render_pass.get(), 1, &shadow_map_view.get(), 1024, 1024, 1);
+    vk::UniqueFramebuffer     shadow_map_fb = gpu.get_device().createFramebufferUnique(smap_fb_info);
+    gfx::vulkan::fence        shadow_map_fence(gpu, true);
+
+    const auto                                pos  = glm::vec3(3, 22, 3);
+    const auto                                dir  = normalize(glm::vec3(0) - pos);
+    const auto                                quat = glm::quatLookAt(dir, glm::vec3(0, 1, 0));
+    gfx::transform_component                  light_transform(pos, {1, 1, 1}, quat);
+    gfx::projection_component                 light_projection(glm::radians(60.f), 1, 1, 0.1f, 100.f);
+    gfx::ecs::shared_entity                   light_entity = ecs.create_entity_shared(light_transform, light_projection);
+    gfx::vulkan::buffer<gfx::camera_matrices> light_camera_buffer(gpu, {*gfx::get_camera_info(*light_entity)});
+
+    vk::UniqueDescriptorSet shadow_map_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
+        vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->shadow_set_layout.get()))[0]);
+
+    {
+        vk::DescriptorImageInfo shadow_map_info(nullptr, shadow_map_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+        vk::WriteDescriptorSet  shadow_map_write(shadow_map_set.get(), def::shadow_map_binding, 0, 1,
+                                                vk::DescriptorType::eCombinedImageSampler, &shadow_map_info);
+        gpu.get_device().updateDescriptorSets(shadow_map_write, nullptr);
+
+        vk::DescriptorBufferInfo shadow_cam_info(light_camera_buffer.get_buffer(), 0,
+                                                 light_camera_buffer.size() * sizeof(gfx::camera_matrices));
+        vk::WriteDescriptorSet   shadow_cam_write(shadow_map_set.get(), def::shadow_cam_binding, 0, 1, vk::DescriptorType::eStorageBuffer,
+                                                nullptr, &shadow_cam_info);
+        gpu.get_device().updateDescriptorSets(shadow_cam_write, nullptr);
+    }
+
     std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings {
         {0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
         {def::buffer_binding_vertex, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
@@ -113,13 +197,14 @@ void vulkan_app::on_run()
     create_framebuffer(gpu, surface_swapchain);
 
     gfx::vulkan::instance_proxy<def::mesh_info> vulkan_proxy(gpu);
-    gfx::instance_system<def::mesh_info> instances(vulkan_proxy, DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
+    gfx::instance_system<def::mesh_info>        instances(vulkan_proxy,
+                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
     graphics_list.add(instances);
 
     const auto& scene = scene::current_scene();
 
     std::vector<gfx::ecs::unique_entity> mesh_entities;
-    std::vector<def::mesh_info> mesh_infos;
+    std::vector<def::mesh_info>          mesh_infos;
 
     std::vector<gfx::vulkan::image>  textures;
     std::vector<vk::UniqueImageView> texture_views;
@@ -127,11 +212,11 @@ void vulkan_app::on_run()
     for (size_t i = 0; i < scene.materials.size(); ++i)
     {
         def::mesh_info& info = mesh_infos.emplace_back();
-        info.diffuse.color      = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
+        info.diffuse.color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
         if (scene.materials[i].texture_diffuse.bytes())
         {
             info.diffuse.texture_id = textures.size();
-            const auto& t   = scene.materials[i].texture_diffuse;
+            const auto& t           = scene.materials[i].texture_diffuse;
 
             vk::ImageCreateInfo create_info;
             create_info.arrayLayers   = 1;
@@ -162,7 +247,7 @@ void vulkan_app::on_run()
         if (scene.materials[i].texture_bump.bytes())
         {
             info.bump_map_texture_id = textures.size();
-            const auto& t        = scene.materials[i].texture_bump;
+            const auto& t            = scene.materials[i].texture_bump;
 
             vk::ImageCreateInfo create_info;
             create_info.arrayLayers   = 1;
@@ -197,18 +282,20 @@ void vulkan_app::on_run()
     }
     vulkan_state->texture_count = textures.size();
 
-    vk::SamplerCreateInfo sci;
-    sci.addressModeU                      = vk::SamplerAddressMode::eRepeat;
-    sci.addressModeV                      = vk::SamplerAddressMode::eRepeat;
-    sci.addressModeW                      = vk::SamplerAddressMode::eRepeat;
-    sci.anisotropyEnable                  = true;
-    sci.magFilter                         = vk::Filter::eLinear;
-    sci.minFilter                         = vk::Filter::eLinear;
-    sci.maxAnisotropy                     = 16.f;
-    sci.maxLod                            = 1000.f;
-    sci.minLod                            = -1000.f;
-    sci.mipmapMode                        = vk::SamplerMipmapMode::eLinear;
-    vulkan_state->default_texture_sampler = gpu.get_device().createSamplerUnique(sci);
+    {
+        vk::SamplerCreateInfo sci;
+        sci.addressModeU                      = vk::SamplerAddressMode::eRepeat;
+        sci.addressModeV                      = vk::SamplerAddressMode::eRepeat;
+        sci.addressModeW                      = vk::SamplerAddressMode::eRepeat;
+        sci.anisotropyEnable                  = true;
+        sci.magFilter                         = vk::Filter::eLinear;
+        sci.minFilter                         = vk::Filter::eLinear;
+        sci.maxAnisotropy                     = 16.f;
+        sci.maxLod                            = 1000.f;
+        sci.minLod                            = -1000.f;
+        sci.mipmapMode                        = vk::SamplerMipmapMode::eLinear;
+        vulkan_state->default_texture_sampler = gpu.get_device().createSamplerUnique(sci);
+    }
 
     std::vector<vk::Sampler> immutable_samplers(textures.size());
     std::fill(immutable_samplers.begin(), immutable_samplers.end(), vulkan_state->default_texture_sampler.get());
@@ -238,15 +325,21 @@ void vulkan_app::on_run()
         gpu.get_device().updateDescriptorSets(atw, nullptr);
     }
 
-    vk::UniquePipelineLayout pipeline_layout = create_pipeline_layout(gpu);
-    vk::UniquePipeline       pipeline        = create_pipeline(gpu, pipeline_layout.get());
+    vk::UniquePipelineLayout pipeline_layout        = create_pipeline_layout(gpu);
+    vk::UniquePipeline       pipeline               = create_pipeline(gpu, pipeline_layout.get());
+    vk::UniquePipelineLayout shadow_pipeline_layout = create_shadow_pipeline_layout(gpu);
+    vk::UniquePipeline       shadow_pipeline        = create_shadow_pipeline(gpu, pipeline_layout.get());
+
+
+    {}
+
 
     vk::UniqueDescriptorSet cam_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);
 
     gfx::vulkan::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices {}});
-    const vk::DescriptorBufferInfo    cam_buf(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
-    const vk::WriteDescriptorSet      cam_buf_write(cam_buffer_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
+    const vk::DescriptorBufferInfo            cam_buf(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
+    const vk::WriteDescriptorSet cam_buf_write(cam_buffer_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
     gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
 
 
@@ -261,8 +354,8 @@ void vulkan_app::on_run()
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
     for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
-    { 
-        gfx::shared_mesh      mesh = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
+    {
+        gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
         gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype("sponza_" + std::to_string(i), {&mesh, 1});
 
         gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
@@ -310,15 +403,14 @@ void vulkan_app::on_run()
         if (curr_buffers[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_buffer().get_buffer()
             || curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_buffer().size())
         {
-            curr_buffers[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_buffer().get_buffer();
+            curr_buffers[vulkan_proxy.instance_buffer_index()]      = vulkan_proxy.instances_buffer().get_buffer();
             curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_buffer().size();
 
             {
                 vk::DescriptorBufferInfo info;
                 info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
                 info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                info.range  = vulkan_proxy.instances_buffer().size()
-                             * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                info.range = vulkan_proxy.instances_buffer().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
                 const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
@@ -326,8 +418,8 @@ void vulkan_app::on_run()
             {
                 vk::DescriptorBufferInfo info;
                 info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(),
-                                               def::buffer_binding_vertex, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
+                vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), def::buffer_binding_vertex, 0,
+                                               1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 info.offset = 0;
 
                 if constexpr (DEF_use_rt_shadows)
@@ -371,20 +463,47 @@ void vulkan_app::on_run()
         current.get_command_buffer().setScissor(0, scissor);
 
         current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.get());
-        current.get_command_buffer().bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0,
-            {cam_buffer_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get(), all_textures_set.get()},
-            {});
+        current.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0,
+                                                        {cam_buffer_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get(),
+                                                         all_textures_set.get(), shadow_map_set.get()},
+                                                        {});
         current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
-        current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull,
-                                                     vk::IndexType::eUint32);
+        current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
 
-        current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_buffer().get_buffer(),
-                                                         sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance),
-            std::max(vulkan_proxy.instances_buffer().size(), 1ll) - 1,
-                                                         sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+        current.get_command_buffer().drawIndexedIndirect(
+            vulkan_proxy.instances_buffer().get_buffer(), sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance),
+            std::max(vulkan_proxy.instances_buffer().size(), 1ll) - 1, sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
+
+
+        {
+            const vk::ClearValue clear_values[1] {{vk::ClearDepthStencilValue(1.f, 0)}};
+            current.get_command_buffer().beginRenderPass(
+                vk::RenderPassBeginInfo(vulkan_state->shadow_render_pass.get(), shadow_map_fb.get(), vk::Rect2D({0, 0}, {1024, 1024}),
+                                        gfx::u32(std::size(clear_values)), std::data(clear_values)),
+                vk::SubpassContents::eInline);
+            const vk::Viewport viewport(0, 0, 1024, 1024, 0.f, 1.f);
+            const vk::Rect2D   scissor({0, 0}, surface_swapchain.extent());
+            current.get_command_buffer().setViewport(0, viewport);
+            current.get_command_buffer().setScissor(0, scissor);
+
+            current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
+            current.get_command_buffer().bindDescriptorSets(
+                vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
+                {cam_buffer_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
+            current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
+            current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
+
+            current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_buffer().get_buffer(),
+                                                             sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance),
+                                                             std::max(vulkan_proxy.instances_buffer().size(), 1ll) - 1,
+                                                             sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+
+            current.get_command_buffer().endRenderPass();
+        }
+
+
         current.get_command_buffer().end();
         gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore}, command_fences[surface_swapchain.current_index()]);
 
@@ -474,11 +593,51 @@ void create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapcha
 
     vulkan_state->render_pass = gpu.get_device().createRenderPassUnique(info);
 }
+void create_shadow_renderpass(gfx::vulkan::device& gpu)
+{
+    vk::RenderPassCreateInfo info;
+
+    vk::AttachmentDescription attachments[1];
+    attachments[0].initialLayout  = vk::ImageLayout::eUndefined;
+    attachments[0].finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;
+    attachments[0].samples        = vk::SampleCountFlagBits::e1;
+    attachments[0].loadOp         = vk::AttachmentLoadOp::eClear;
+    attachments[0].storeOp        = vk::AttachmentStoreOp::eStore;
+    attachments[0].stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
+    attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+    info.attachmentCount = gfx::u32(std::size(attachments));
+    info.pAttachments    = attachments;
+
+    vk::SubpassDependency dependency;
+    dependency.srcSubpass      = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass      = 0;
+    dependency.srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
+    dependency.dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dependency.srcAccessMask   = vk::AccessFlagBits {};
+    dependency.dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+    info.dependencyCount = 1;
+    info.pDependencies   = &dependency;
+
+    vk::AttachmentReference depth_attachment(0, vk::ImageLayout::eColorAttachmentOptimal);
+
+    vk::SubpassDescription subpass;
+    subpass.colorAttachmentCount    = 0;
+    subpass.pDepthStencilAttachment = &depth_attachment;
+    subpass.pipelineBindPoint       = vk::PipelineBindPoint::eGraphics;
+
+    info.subpassCount = 1;
+    info.pSubpasses   = &subpass;
+
+    vulkan_state->shadow_render_pass = gpu.get_device().createRenderPassUnique(info);
+}
 
 vk::UniquePipelineLayout create_pipeline_layout(gfx::vulkan::device& gpu)
 {
     vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get(),
-                                           vulkan_state->all_textures_layout.get()};
+                                           vulkan_state->all_textures_layout.get(), vulkan_state->shadow_set_layout.get()};
 
     vk::PipelineLayoutCreateInfo info;
     info.pSetLayouts    = set_layouts;
@@ -499,7 +658,7 @@ vk::UniquePipeline create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout 
 
     vk::SpecializationMapEntry spec_entries[1];
     spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
-                       sizeof(shader_constants.texture_count)};
+                                                  sizeof(shader_constants.texture_count)};
 
     vk::SpecializationInfo specialization;
     specialization.mapEntryCount = std::uint32_t(std::size(spec_entries));
@@ -758,5 +917,101 @@ void generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t l
     gpu.graphics_queue().submit({cmd}, {}, {}, fence);
     gpu.wait_for({fence});
 }
+
+vk::UniquePipelineLayout create_shadow_pipeline_layout(gfx::vulkan::device& gpu)
+{
+    vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
+
+    vk::PipelineLayoutCreateInfo info;
+    info.pSetLayouts    = set_layouts;
+    info.setLayoutCount = std::uint32_t(std::size(set_layouts));
+    return gpu.get_device().createPipelineLayoutUnique(info);
+}
+
+vk::UniquePipeline create_shadow_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout)
+{
+    vk::GraphicsPipelineCreateInfo info;
+
+    struct
+    {
+        std::uint32_t texture_count;
+    } shader_constants;
+
+    shader_constants.texture_count = vulkan_state->texture_count;
+
+    vk::SpecializationMapEntry spec_entries[1];
+    spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
+                                                  sizeof(shader_constants.texture_count)};
+
+    vk::SpecializationInfo specialization;
+    specialization.mapEntryCount = std::uint32_t(std::size(spec_entries));
+    specialization.pMapEntries   = spec_entries;
+    specialization.dataSize      = sizeof(shader_constants);
+    specialization.pData         = &shader_constants;
+
+    gfx::vulkan::shader               vertex_shader(gpu, gfx::spirv::vkgl::shaders::vk_vs_shadow_vert);
+    vk::PipelineShaderStageCreateInfo stages[1];
+    stages[0] =
+        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertex_shader.get_module(), "main", &specialization);
+    info.stageCount = gfx::u32(std::size(stages));
+    info.pStages    = stages;
+
+    info.renderPass = vulkan_state->render_pass.get();
+    info.subpass    = 0;
+
+    vk::PipelineColorBlendStateCreateInfo blend;
+    blend.logicOpEnable   = false;
+    blend.attachmentCount = 0;
+    info.pColorBlendState = &blend;
+
+    vk::PipelineDepthStencilStateCreateInfo depth;
+    depth.depthTestEnable   = true;
+    depth.depthCompareOp    = vk::CompareOp::eLessOrEqual;
+    depth.depthWriteEnable  = true;
+    info.pDepthStencilState = &depth;
+
+    vk::DynamicState                   dynamic_states[] {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::PipelineDynamicStateCreateInfo dynamic;
+    dynamic.dynamicStateCount = gfx::u32(std::size(dynamic_states));
+    dynamic.pDynamicStates    = dynamic_states;
+    info.pDynamicState        = &dynamic;
+
+    vk::PipelineInputAssemblyStateCreateInfo assembly;
+    assembly.topology        = vk::PrimitiveTopology::eTriangleList;
+    info.pInputAssemblyState = &assembly;
+
+    vk::PipelineMultisampleStateCreateInfo msaa;
+    msaa.rasterizationSamples = vk::SampleCountFlagBits::e1;
+    info.pMultisampleState    = &msaa;
+
+    vk::PipelineRasterizationStateCreateInfo raster;
+    raster.cullMode          = vk::CullModeFlagBits::eBack;
+    raster.polygonMode       = vk::PolygonMode::eFill;
+    raster.lineWidth         = 1.f;
+    info.pRasterizationState = &raster;
+
+    vk::VertexInputAttributeDescription attrs[3];
+    attrs[0] = vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(gfx::vertex3d, position));
+    attrs[1] = vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(gfx::vertex3d, normal));
+    attrs[2] = vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(gfx::vertex3d, uv));
+    vk::VertexInputBindingDescription bindings[1];
+    bindings[0] = vk::VertexInputBindingDescription(0, sizeof(gfx::vertex3d), vk::VertexInputRate::eVertex);
+    vk::PipelineVertexInputStateCreateInfo vertex;
+    vertex.vertexAttributeDescriptionCount = gfx::u32(std::size(attrs));
+    vertex.vertexBindingDescriptionCount   = gfx::u32(std::size(bindings));
+    vertex.pVertexAttributeDescriptions    = attrs;
+    vertex.pVertexBindingDescriptions      = bindings;
+    info.pVertexInputState                 = &vertex;
+
+    vk::PipelineViewportStateCreateInfo vport;
+    vport.scissorCount  = 1;
+    vport.viewportCount = 1;
+    info.pViewportState = &vport;
+
+    info.layout = layout;
+
+    return gpu.get_device().createGraphicsPipelineUnique(nullptr, info);
+}
+
 
 }    // namespace impl::vulkan

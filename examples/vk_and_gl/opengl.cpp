@@ -174,6 +174,13 @@ void opengl_app::on_run()
                            i);
 
 
+
+
+
+
+
+
+
     mygl::shader shadow_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderBinary(1, &shadow_vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(gfx::spirv::vkgl::shaders::gl_vs_shadow_vert),
                    gfx::u32(std::size(gfx::spirv::vkgl::shaders::gl_vs_shadow_vert) * sizeof(uint32_t)));
@@ -211,6 +218,16 @@ void opengl_app::on_run()
     gfx::projection_component                 light_projection(glm::radians(60.f), 1, 1, 0.1f, 100.f);
     gfx::ecs::shared_entity                   light_entity = ecs.create_entity_shared(light_transform, light_projection);
     gfx::opengl::buffer<gfx::camera_matrices> light_camera_buffer({*gfx::get_camera_info(*light_entity)});
+
+
+
+
+
+
+
+
+
+
 
 
     mygl::vertex_array vao;
