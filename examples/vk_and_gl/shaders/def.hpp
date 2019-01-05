@@ -42,6 +42,7 @@ using uint = std::uint32_t;
 #endif
 
 #define DEF_use_rt_shadows 0
+#define DEF_use_alpha_discard 0
 
 CONSTEXPR uint buffer_binding_vertex  = 1;
 CONSTEXPR uint buffer_binding_element = 2;
@@ -76,7 +77,6 @@ struct sampled_color_t
 struct mesh_info
 {
     sampled_color_t diffuse;
-
     int bump_map_texture_id INIT_AS_1(-1);
 };
 

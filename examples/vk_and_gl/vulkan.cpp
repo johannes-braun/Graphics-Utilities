@@ -81,7 +81,7 @@ void vulkan_app::on_run()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* vulkan_window = glfwCreateWindow(800, 800, "Vulkan", nullptr, nullptr);
 
-    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, true, true);
+    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, false, true);
     gfx::vulkan::surface               surface(vulkan, glfwGetWin32Window(vulkan_window));
     gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {}, surface);
     gfx::vulkan::swapchain             surface_swapchain(gpu, surface);
@@ -133,7 +133,7 @@ void vulkan_app::on_run()
     vk::ImageCreateInfo smap_create_info;
     smap_create_info.arrayLayers   = 1;
     smap_create_info.extent        = vk::Extent3D(1024, 1024, 1);
-    smap_create_info.format        = vk::Format::eD32SfloatS8Uint;
+    smap_create_info.format        = vk::Format::eD32Sfloat;
     smap_create_info.imageType     = vk::ImageType::e2D;
     smap_create_info.initialLayout = vk::ImageLayout::eUndefined;
     smap_create_info.mipLevels     = 1;
@@ -146,7 +146,8 @@ void vulkan_app::on_run()
     smap_ivi.format                     = smap_create_info.format;
     smap_ivi.image                      = shadow_map.get_image();
     smap_ivi.viewType                   = vk::ImageViewType::e2D;
-    smap_ivi.subresourceRange           = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, smap_create_info.arrayLayers);
+    smap_ivi.subresourceRange =
+        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, smap_create_info.arrayLayers);
     vk::UniqueImageView shadow_map_view = gpu.get_device().createImageViewUnique(smap_ivi);
 
     create_shadow_renderpass(gpu);
@@ -159,15 +160,17 @@ void vulkan_app::on_run()
     const auto                                dir  = normalize(glm::vec3(0) - pos);
     const auto                                quat = glm::quatLookAt(dir, glm::vec3(0, 1, 0));
     gfx::transform_component                  light_transform(pos, {1, 1, 1}, quat);
-    gfx::projection_component                 light_projection(glm::radians(60.f), 1, 1, 0.1f, 100.f);
+    gfx::projection_component                 light_projection(glm::radians(60.f), 1, 1, 0.1f, 100.f, true, false);
     gfx::ecs::shared_entity                   light_entity = ecs.create_entity_shared(light_transform, light_projection);
     gfx::vulkan::buffer<gfx::camera_matrices> light_camera_buffer(gpu, {*gfx::get_camera_info(*light_entity)});
 
     vk::UniqueDescriptorSet shadow_map_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->shadow_set_layout.get()))[0]);
+    vk::UniqueDescriptorSet shadow_cam_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
+        vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);
 
     {
-        vk::DescriptorImageInfo shadow_map_info(nullptr, shadow_map_view.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+        vk::DescriptorImageInfo shadow_map_info(nullptr, shadow_map_view.get(), vk::ImageLayout::eDepthStencilReadOnlyOptimal);
         vk::WriteDescriptorSet  shadow_map_write(shadow_map_set.get(), def::shadow_map_binding, 0, 1,
                                                 vk::DescriptorType::eCombinedImageSampler, &shadow_map_info);
         gpu.get_device().updateDescriptorSets(shadow_map_write, nullptr);
@@ -177,6 +180,10 @@ void vulkan_app::on_run()
         vk::WriteDescriptorSet   shadow_cam_write(shadow_map_set.get(), def::shadow_cam_binding, 0, 1, vk::DescriptorType::eStorageBuffer,
                                                 nullptr, &shadow_cam_info);
         gpu.get_device().updateDescriptorSets(shadow_cam_write, nullptr);
+        
+         const vk::DescriptorBufferInfo cam_buf(light_camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
+        const vk::WriteDescriptorSet   cam_buf_write(shadow_cam_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
+        gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
     }
 
     std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings {
@@ -365,6 +372,7 @@ void vulkan_app::on_run()
 
     auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
+    scene::interop.user_entity_vulkan = *user_entity.get();
 
     vk::Buffer curr_buffers[2] {nullptr, nullptr};
     size_t     curr_buffer_sizes[2] {0, 0};
@@ -442,7 +450,8 @@ void vulkan_app::on_run()
             }
         }
 
-
+        if (input.button_down(gfx::button::middle)) scene::interop.match_cameras(scene::interop_mgr_t::match::vulkan_sided);
+        
         user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
         user_entity->get<gfx::projection_component>()->perspective().inverse_z     = false;
         user_entity->get<gfx::projection_component>()->perspective().screen_width  = surface_swapchain.extent().width;
@@ -484,14 +493,14 @@ void vulkan_app::on_run()
                                         gfx::u32(std::size(clear_values)), std::data(clear_values)),
                 vk::SubpassContents::eInline);
             const vk::Viewport viewport(0, 0, 1024, 1024, 0.f, 1.f);
-            const vk::Rect2D   scissor({0, 0}, surface_swapchain.extent());
+            const vk::Rect2D   scissor({0, 0}, {1024, 1024});
             current.get_command_buffer().setViewport(0, viewport);
             current.get_command_buffer().setScissor(0, scissor);
 
             current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
             current.get_command_buffer().bindDescriptorSets(
                 vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
-                {cam_buffer_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
+                {shadow_cam_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
             current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
             current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
 
@@ -599,29 +608,39 @@ void create_shadow_renderpass(gfx::vulkan::device& gpu)
 
     vk::AttachmentDescription attachments[1];
     attachments[0].initialLayout  = vk::ImageLayout::eUndefined;
-    attachments[0].finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;
+    attachments[0].finalLayout    = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     attachments[0].samples        = vk::SampleCountFlagBits::e1;
     attachments[0].loadOp         = vk::AttachmentLoadOp::eClear;
     attachments[0].storeOp        = vk::AttachmentStoreOp::eStore;
     attachments[0].stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
     attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[0].format         = vk::Format::eD32Sfloat;
 
     info.attachmentCount = gfx::u32(std::size(attachments));
     info.pAttachments    = attachments;
 
-    vk::SubpassDependency dependency;
-    dependency.srcSubpass      = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass      = 0;
-    dependency.srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
-    dependency.dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dependency.srcAccessMask   = vk::AccessFlagBits {};
-    dependency.dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-    dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
+    std::array<vk::SubpassDependency, 2> dependencies;
 
-    info.dependencyCount = 1;
-    info.pDependencies   = &dependency;
+    dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass      = 0;
+    dependencies[0].srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
+    dependencies[0].dstStageMask    = vk::PipelineStageFlagBits::eLateFragmentTests;
+    dependencies[0].srcAccessMask   = {};
+    dependencies[0].dstAccessMask   = vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead;
+    dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
-    vk::AttachmentReference depth_attachment(0, vk::ImageLayout::eColorAttachmentOptimal);
+    dependencies[1].srcSubpass      = 0;
+    dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask    = vk::PipelineStageFlagBits::eLateFragmentTests;
+    dependencies[1].dstStageMask    = vk::PipelineStageFlagBits::eFragmentShader;
+    dependencies[1].srcAccessMask   = vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead;
+    dependencies[1].dstAccessMask   = vk::AccessFlagBits::eShaderRead;
+    dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+    info.dependencyCount = static_cast<std::uint32_t>(std::size(dependencies));
+    info.pDependencies   = std::data(dependencies);
+
+    vk::AttachmentReference depth_attachment(0, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     vk::SubpassDescription subpass;
     subpass.colorAttachmentCount    = 0;
@@ -956,7 +975,7 @@ vk::UniquePipeline create_shadow_pipeline(gfx::vulkan::device& gpu, vk::Pipeline
     info.stageCount = gfx::u32(std::size(stages));
     info.pStages    = stages;
 
-    info.renderPass = vulkan_state->render_pass.get();
+    info.renderPass = vulkan_state->shadow_render_pass.get();
     info.subpass    = 0;
 
     vk::PipelineColorBlendStateCreateInfo blend;

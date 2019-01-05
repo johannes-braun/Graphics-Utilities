@@ -113,7 +113,7 @@ vec2 deep_parallax(
     return mix(ofs,prev_ofs,weight); 
 }
 
-const int smoothing_size = 5;
+const int smoothing_size = 3;
 vec3 get_pos(mat4 mat, vec3 pos)
 {
     vec4 map_pos = mat * vec4(pos, 1);
@@ -139,9 +139,13 @@ vec3 shadow(in camera_t cam, vec3 pos){
         const vec2 offset = vec2(x, y) * inv_size;
 
         const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
-        const float depth = 1-texture(shadow_map, vec3(remap_uv(uv), map_pos.z + 0.0001)).r;
-
-        shadow += depth;
+		
+		#ifdef USE_VULKAN
+		const float depth = 1-texture(shadow_map, vec3((uv), map_pos.z - 0.0001)).r;
+		#else
+		const float depth = 1-texture(shadow_map, vec3(remap_uv(uv), map_pos.z + 0.0001)).r;
+		#endif
+		shadow += depth;
     }
     return vec3(1)*shadow / (smoothing_size*smoothing_size);
 }
@@ -151,11 +155,11 @@ void main()
 	light_t lights[2];
 
 	lights[0].color = 0xcceeffff;
-	lights[0].intensity = 20.f;
+	lights[0].intensity = 10.f;
 	lights[0].position = vec3(5, 5, 5);
 
 	lights[1].color = 0xffeeccff;
-	lights[1].intensity = 20.f;
+	lights[1].intensity = 10.f;
 	lights[1].position = vec3(-3, 5.5, -6);
 	// ------------------------------------------------
 
@@ -170,7 +174,12 @@ void main()
 		uv,
 		2, 
 		16, 
-		-depth));
+	#ifdef USE_VULKAN
+		depth
+	#else
+		-depth
+	#endif
+		));
 
 	const vec3 real_normal = normalize(from_bump(position, normalize(normal), new_uv, normalize(position - camera.position), models[draw_index].info.bump_map_texture_id, depth));
 	
@@ -223,7 +232,15 @@ void main()
 				const float brdf = dggx * fschlick * gggx4aso;
 
 				color += light.intensity * brdf * attenuation;
-				color += sample_color(models[draw_index].info.diffuse, uv) * unpack_rgba8(light.color) * light.intensity * cosTheta * attenuation;
+
+				const vec4 rgbadiff = sample_color(models[draw_index].info.diffuse, uv);
+				
+				#if DEF_use_alpha_discard
+				if(rgbadiff.a < 0.5f)
+					discard;
+				#endif
+
+				color += rgbadiff * unpack_rgba8(light.color) * light.intensity * cosTheta * attenuation;
 			}
 		}
 	}
@@ -232,7 +249,7 @@ void main()
 	const vec3 light_pos3 = light_pos.xyz / light_pos.w;
 	const vec3 to_sun = normalize(light_pos3 - position);
 	const float cosThetaLight = dot(to_sun, real_normal);
-	color += shadowed * sample_color(models[draw_index].info.diffuse, uv) * 1.1f * cosThetaLight;
+	color += shadowed * sample_color(models[draw_index].info.diffuse, uv) * 1.0f * cosThetaLight;
 }
 
 
