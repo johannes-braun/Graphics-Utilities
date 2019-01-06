@@ -4,15 +4,15 @@ namespace gfx {
 inline namespace v1 {
 mesh_allocator::mesh_allocator(proxy* p, mesh_allocator_flags flags) : _proxy(p), _flags(flags), _bvh_generator(shape::triangle) {}
 
-shared_mesh mesh_allocator::allocate_mesh_impl(const mesh3d& mesh, const submesh3d& submesh)
+shared_mesh mesh_allocator::allocate_mesh_impl(const mesh3d& mesh, const submesh3d& submesh, bool manual_commit)
 {
     const gsl::span<const vertex3d> vertices(mesh.vertices.data() + submesh.base_vertex, submesh.vertex_count);
     const gsl::span<const index32>  indices(mesh.indices.data() + submesh.base_index, submesh.index_count);
-    return allocate_mesh_impl(vertices, indices);
+    return allocate_mesh_impl(vertices, indices, std::nullopt, manual_commit);
 }
 
 shared_mesh mesh_allocator::allocate_mesh_impl(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
-                                               std::optional<bounds3f> bounds)
+                                               std::optional<bounds3f> bounds, bool manual_commit)
 {
     shared_mesh m(new mesh, [this](mesh* m) { free_mesh_impl(m); });
     _meshes.emplace_back(m);
@@ -32,7 +32,7 @@ shared_mesh mesh_allocator::allocate_mesh_impl(const gsl::span<const vertex3d>& 
         for (auto& v : vertices) m->_bounds.enclose(v.position);
     }
 
-    _proxy->resize_stages(vertices.size(), indices.size(),0);
+    _proxy->resize_stages(vertices.size(), indices.size(), 0);
     auto [vertex_buffer, index_buffer, bvh_buffer] = _proxy->data();
 
     memcpy(vertex_buffer.data() + m->_base_vertex, vertices.data(), vertices.size() * sizeof(vertex3d));
@@ -48,11 +48,11 @@ shared_mesh mesh_allocator::allocate_mesh_impl(const gsl::span<const vertex3d>& 
 
         _proxy->resize_stages(0, 0, _bvh_generator.nodes().size());
         auto [_1, _2, bvh_buffer] = _proxy->data();
-        memcpy(bvh_buffer.data() + m->_base_bvh_node, _bvh_generator.nodes().data(),
-               _bvh_generator.nodes().size() * sizeof(bvh<3>::node));
+        memcpy(bvh_buffer.data() + m->_base_bvh_node, _bvh_generator.nodes().data(), _bvh_generator.nodes().size() * sizeof(bvh<3>::node));
     }
 
-    _proxy->update_buffers(true, true, _flags.has(mesh_allocator_flag::use_bvh));
+    if (!manual_commit)
+        _proxy->update_buffers(true, true, _flags.has(mesh_allocator_flag::use_bvh));
     return m;
 }
 
@@ -98,15 +98,21 @@ void mesh_allocator::free_mesh_impl(const mesh* m)
     }
 }
 
-shared_mesh mesh_allocator::allocate_mesh(const mesh3d& mesh, const submesh3d& submesh)
+shared_mesh mesh_allocator::allocate_mesh(const mesh3d& mesh, const submesh3d& submesh, bool manual_commit)
 {
-    return allocate_mesh_impl(mesh, submesh);
+    return allocate_mesh_impl(mesh, submesh, manual_commit);
+}
+
+void mesh_allocator::reserve_for(size_t vertices, size_t indices) const
+{
+    const size_t delta_bvh = _flags.has(mesh_allocator_flag::use_bvh) ? 2 * (indices / 3) : 0;
+    _proxy->reserve_stages(vertices, indices, delta_bvh);
 }
 
 shared_mesh mesh_allocator::allocate_mesh(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
-                                          std::optional<bounds3f> bounds)
+                                          std::optional<bounds3f> bounds, bool manual_commit)
 {
-    return allocate_mesh_impl(vertices, indices, bounds);
+    return allocate_mesh_impl(vertices, indices, bounds, manual_commit);
 }
 
 }    // namespace v1

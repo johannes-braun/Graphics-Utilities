@@ -50,7 +50,7 @@ void opengl_app::on_run()
     gfx::ecs::ecs ecs;
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, false);
     GLFWwindow* opengl_window = glfwCreateWindow(800, 800, "OpenGL", nullptr, nullptr);
 
     glfwMakeContextCurrent(opengl_window);

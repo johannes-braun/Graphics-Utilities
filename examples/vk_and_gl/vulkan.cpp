@@ -31,7 +31,7 @@ void vulkan_app::on_run()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* vulkan_window = glfwCreateWindow(800, 800, "Vulkan", nullptr, nullptr);
 
-    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, true, true);
+    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, false, true);
     gfx::vulkan::surface               surface(vulkan, glfwGetWin32Window(vulkan_window));
     gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {}, surface);
     gfx::vulkan::swapchain             surface_swapchain(gpu, surface);
@@ -287,10 +287,6 @@ void vulkan_app::on_run()
     vk::UniquePipeline       pipeline               = create_pipeline(gpu, pipeline_layout.get());
     vk::UniquePipelineLayout shadow_pipeline_layout = create_shadow_pipeline_layout(gpu);
     vk::UniquePipeline       shadow_pipeline        = create_shadow_pipeline(gpu, pipeline_layout.get());
-
-
-    {}
-
 
     vk::UniqueDescriptorSet cam_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);

@@ -54,6 +54,20 @@ const buffer<bvh<3>::node>& mesh_proxy::bvh_buffer() const noexcept
 }    // namespace vulkan
 
 
+void vulkan::mesh_proxy::reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh)
+{
+    if (delta_vertices > 0) _staging_vertex_buffer.reserve(_staging_vertex_buffer.size() + delta_vertices);
+    if (delta_indices > 0) _staging_index_buffer.reserve(_staging_index_buffer.size() + delta_indices);
+    if (delta_bvh > 0) _staging_bvh_buffer.reserve(_staging_bvh_buffer.size() + delta_bvh);
+}
+
+void opengl::mesh_proxy::reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh)
+{
+    if (delta_vertices > 0) _staging_vertex_buffer.reserve(_staging_vertex_buffer.size() + delta_vertices);
+    if (delta_indices > 0) _staging_index_buffer.reserve(_staging_index_buffer.size() + delta_indices);
+    if (delta_bvh > 0) _staging_bvh_buffer.reserve(_staging_bvh_buffer.size() + delta_bvh);
+}
+
 namespace opengl {
 mesh_proxy::mesh_proxy()
       : _staging_vertex_buffer(), _staging_index_buffer(), _staging_bvh_buffer(), _vertex_buffer(), _index_buffer(), _bvh_buffer()

@@ -22,6 +22,7 @@ public:
     const buffer<index32>&      index_buffer() const noexcept;
     const buffer<bvh<3>::node>& bvh_buffer() const noexcept;
 
+    void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
 private:
     device* _device;
 
@@ -72,6 +73,7 @@ public:
     const buffer<index32>&      index_buffer() const noexcept;
     const buffer<bvh<3>::node>& bvh_buffer() const noexcept;
 
+    void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
 private:
     mapped<vertex3d>     _staging_vertex_buffer;
     mapped<index32>      _staging_index_buffer;

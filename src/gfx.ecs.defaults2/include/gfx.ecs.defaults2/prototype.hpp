@@ -78,19 +78,24 @@ public:
         virtual ~proxy()                                                                                           = default;
         virtual std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<bvh<3>::node>> data() const noexcept = 0;
         virtual void resize_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh)         = 0;
+        virtual void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh)        = 0;
         virtual void update_buffers(bool vertices, bool indices, bool bvh)                                         = 0;
     };
 
     mesh_allocator(proxy* p, mesh_allocator_flags flags = {});
 
     shared_mesh allocate_mesh(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
-                              std::optional<bounds3f> bounds = std::nullopt);
-    shared_mesh allocate_mesh(const mesh3d& mesh, const submesh3d& submesh);
+                              std::optional<bounds3f> bounds = std::nullopt, bool manual_commit = false);
+    shared_mesh allocate_mesh(const mesh3d& mesh, const submesh3d& submesh, bool manual_commit = false);
+
+    void commit() const { _proxy->update_buffers(true, true, _flags.has(mesh_allocator_flag::use_bvh)); }
+
+    void reserve_for(size_t vertices, size_t indices) const;
 
 protected:
     shared_mesh allocate_mesh_impl(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,
-                                   std::optional<bounds3f> bounds = std::nullopt);
-    shared_mesh allocate_mesh_impl(const mesh3d& mesh, const submesh3d& submesh);
+                                   std::optional<bounds3f> bounds = std::nullopt, bool manual_commit = false);
+    shared_mesh allocate_mesh_impl(const mesh3d& mesh, const submesh3d& submesh, bool manual_commit = false);
     void        free_mesh_impl(const mesh* m);
 
 private:
@@ -166,7 +171,7 @@ public:
     void             dequeue(prototype_handle handle);
     void             clear();
 
-    proxy*                                          get_proxy() const noexcept { return _proxy; }
+    proxy*                                                 get_proxy() const noexcept { return _proxy; }
     const std::unordered_map<std::string, weak_prototype>& prototypes() const noexcept { return _prototypes; }
 
 protected:

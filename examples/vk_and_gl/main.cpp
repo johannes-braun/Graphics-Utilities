@@ -70,7 +70,7 @@ public:
 
         QTimer* accum = new QTimer(this);
         connect(accum, &QTimer::timeout, [this] { _accum_frametimes.push_back(_app->current_frametime()); });
-        accum->start(3);
+        accum->start(1);
 
         below_graph_layout->addWidget(new QWidget(this), 1);
     }
@@ -158,8 +158,14 @@ private:
         connect(_general_tab.select_app_combo, QOverload<int>::of(&QComboBox::activated),
                 [this](int index) { _general_tab.run_props.current_selection = index; });
 
+        _general_tab.run_load_progress = new QProgressBar(_general_tab.central);
+        _general_tab.run_load_progress->setRange(0, 1000);
+        _general_tab.run_load_progress->setValue(0);
+        _general_tab.run_load_progress->setVisible(false);
         _general_tab.run_app = new QPushButton("+ Run", _general_tab.central);
-        connect(_general_tab.run_app, &QPushButton::clicked, [this] {
+
+        QTimer* progress_updater = new QTimer(this);
+        connect(_general_tab.run_app, &QPushButton::clicked, [this, progress_updater] {
             switch (_general_tab.run_props.current_selection)
             {
             case 0:
@@ -202,8 +208,24 @@ private:
             // set current scene
             const float                 scale      = static_cast<float>(_general_tab.scene_scale->value());
             const std::filesystem::path scene_path = _general_tab.scene_select->text().toStdString();
-            scene::scene_manager.load(scene_path, scale);
+            scene::scene_manager.load(scene_path, scale, true, [this](float p) -> bool {
+                gfx::ilog << "Progress: " << p;
+                _general_tab.current_load_progress = 1000 * p;
+                return true;
+            });
             _running_apps.back().first->run();
+            progress_updater->start(100);
+            _general_tab.run_load_progress->setVisible(true);
+            _general_tab.run_app->setVisible(false);
+        });
+        connect(progress_updater, &QTimer::timeout, [this, progress_updater] {
+            _general_tab.run_load_progress->setValue(_general_tab.current_load_progress);
+            if (_general_tab.current_load_progress == 1000)
+            {
+                progress_updater->stop();
+                _general_tab.run_load_progress->setVisible(false);
+                _general_tab.run_app->setVisible(true);
+            }
         });
 
         _general_tab.run_group = new QGroupBox("Run App", _general_tab.central);
@@ -243,6 +265,7 @@ private:
         _general_tab.run_settings_layout->addRow("Scene File", scene_select_line);
         _general_tab.run_settings_layout->addRow("Scene Scale", _general_tab.scene_scale);
         _general_tab.run_group_layout->addWidget(_general_tab.run_app);
+        _general_tab.run_group_layout->addWidget(_general_tab.run_load_progress);
 
 
         // Check for finished apps every 500ms
@@ -272,6 +295,8 @@ private:
         QLineEdit*      scene_select;
         QDoubleSpinBox* scene_scale;
         QPushButton*    run_app;
+        QProgressBar*   run_load_progress;
+        std::atomic_int current_load_progress = 0;
 
         struct
         {
