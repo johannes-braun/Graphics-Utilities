@@ -83,7 +83,7 @@ vec4 unpack_rgba8(uint c)
 
 vec4 sample_color(u8vec4 color, const int texture_id, vec2 uv)
 {
-    if (texture_id >= 0) { return texture(all_textures[texture_id], remap_uv(uv)); }
+    if (texture_id >= 0) { return texture(all_textures[texture_id], (uv)); }
     return unpack_rgba8(color);
 };
 

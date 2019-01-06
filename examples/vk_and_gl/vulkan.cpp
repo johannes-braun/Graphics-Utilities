@@ -158,53 +158,15 @@ void vulkan_app::on_run()
     graphics_list.add(instances);
     user_data = &instances;
 
-    const auto& scene = scene::current_scene();
-
-    std::vector<gfx::ecs::unique_entity> mesh_entities;
-    std::vector<def::mesh_info>          mesh_infos;
-
     std::vector<gfx::vulkan::image>  textures;
     std::vector<vk::UniqueImageView> texture_views;
-    for (size_t i = 0; i < scene.materials.size(); ++i)
-    {
-        def::mesh_info& info = mesh_infos.emplace_back();
-        info.diffuse_color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
-        if (scene.materials[i].texture_diffuse.bytes())
+    const auto                       make_texture_id = [&](const gfx::image_file& t) {
+        assert(t.channels == 1 || t.channels == 4);
+        const int id = textures.size();
+        switch (t.channels)
         {
-            info.diffuse_texture_id = textures.size();
-            const auto& t           = scene.materials[i].texture_diffuse;
-
-            vk::ImageCreateInfo create_info;
-            create_info.arrayLayers   = 1;
-            create_info.extent        = vk::Extent3D(t.width, t.height, 1);
-            create_info.format        = vk::Format::eR8G8B8A8Unorm;
-            create_info.imageType     = vk::ImageType::e2D;
-            create_info.initialLayout = vk::ImageLayout::eUndefined;
-            create_info.mipLevels     = std::uint32_t(1 + floor(log2(std::max(t.width, t.height))));
-            create_info.sharingMode   = vk::SharingMode::eExclusive;
-            create_info.usage =
-                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-            create_info.tiling = vk::ImageTiling::eOptimal;
-
-            textures.emplace_back(gpu, create_info);
-
-            gfx::vulkan::mapped<std::byte> data(gpu,
-                                                gsl::span<std::byte>(static_cast<std::byte*>(t.bytes()), t.width * t.height * t.channels));
-            generate_mipmaps(gpu, textures.back().get_image(), create_info.arrayLayers, create_info.mipLevels, create_info.extent, data);
-
-            vk::ImageViewCreateInfo ivi;
-            ivi.format   = create_info.format;
-            ivi.image    = textures.back().get_image();
-            ivi.viewType = vk::ImageViewType::e2D;
-            ivi.subresourceRange =
-                vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, create_info.mipLevels, 0, create_info.arrayLayers);
-            texture_views.emplace_back(gpu.get_device().createImageViewUnique(ivi));
-        }
-        if (scene.materials[i].texture_bump.bytes())
+        case 1:
         {
-            info.bump_map_texture_id = textures.size();
-            const auto& t            = scene.materials[i].texture_bump;
-
             vk::ImageCreateInfo create_info;
             create_info.arrayLayers   = 1;
             create_info.extent        = vk::Extent3D(t.width, t.height, 1);
@@ -235,33 +197,47 @@ void vulkan_app::on_run()
             ivi.components.a = vk::ComponentSwizzle::eR;
             texture_views.emplace_back(gpu.get_device().createImageViewUnique(ivi));
         }
-    }
+        break;
+        case 4:
+        {
+            vk::ImageCreateInfo create_info;
+            create_info.arrayLayers   = 1;
+            create_info.extent        = vk::Extent3D(t.width, t.height, 1);
+            create_info.format        = vk::Format::eR8G8B8A8Unorm;
+            create_info.imageType     = vk::ImageType::e2D;
+            create_info.initialLayout = vk::ImageLayout::eUndefined;
+            create_info.mipLevels     = std::uint32_t(1 + floor(log2(std::max(t.width, t.height))));
+            create_info.sharingMode   = vk::SharingMode::eExclusive;
+            create_info.usage =
+                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+            create_info.tiling = vk::ImageTiling::eOptimal;
+
+            textures.emplace_back(gpu, create_info);
+
+            gfx::vulkan::mapped<std::byte> data(gpu,
+                                                gsl::span<std::byte>(static_cast<std::byte*>(t.bytes()), t.width * t.height * t.channels));
+            generate_mipmaps(gpu, textures.back().get_image(), create_info.arrayLayers, create_info.mipLevels, create_info.extent, data);
+
+            vk::ImageViewCreateInfo ivi;
+            ivi.format   = create_info.format;
+            ivi.image    = textures.back().get_image();
+            ivi.viewType = vk::ImageViewType::e2D;
+            ivi.subresourceRange =
+                vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, create_info.mipLevels, 0, create_info.arrayLayers);
+            texture_views.emplace_back(gpu.get_device().createImageViewUnique(ivi));
+        }
+        break;
+        default: return -1;
+        }
+        return id;
+    };
+
+    std::vector<gfx::ecs::shared_entity> mesh_entities =
+        scene::scene_manager_t::get_mesh_entities(ecs, instances, scene::current_scene(), make_texture_id);
 
     // add placeholder texture
     const gfx::image_file placeholder("placeholder.png", gfx::bits::b8, 4);
-    vk::ImageCreateInfo create_info;
-    create_info.arrayLayers   = 1;
-    create_info.extent        = vk::Extent3D(placeholder.width, placeholder.height, 1);
-    create_info.format        = vk::Format::eR8G8B8A8Unorm;
-    create_info.imageType     = vk::ImageType::e2D;
-    create_info.initialLayout = vk::ImageLayout::eUndefined;
-    create_info.mipLevels     = std::uint32_t(1 + floor(log2(std::max(placeholder.width, placeholder.height))));
-    create_info.sharingMode   = vk::SharingMode::eExclusive;
-    create_info.usage  = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-    create_info.tiling = vk::ImageTiling::eOptimal;
-
-    textures.emplace_back(gpu, create_info);
-
-    gfx::vulkan::mapped<std::byte> data(gpu, gsl::span<std::byte>(static_cast<std::byte*>(placeholder.bytes()),
-                                                                  placeholder.width * placeholder.height * placeholder.channels));
-    generate_mipmaps(gpu, textures.back().get_image(), create_info.arrayLayers, create_info.mipLevels, create_info.extent, data);
-
-    vk::ImageViewCreateInfo ivi;
-    ivi.format           = create_info.format;
-    ivi.image            = textures.back().get_image();
-    ivi.viewType         = vk::ImageViewType::e2D;
-    ivi.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, create_info.mipLevels, 0, create_info.arrayLayers);
-    texture_views.emplace_back(gpu.get_device().createImageViewUnique(ivi));
+    make_texture_id(placeholder);
     vulkan_state->texture_count = textures.size();
 
     {
@@ -333,17 +309,6 @@ void vulkan_app::on_run()
     gfx::ecs::system_list   inputs_list;
     inputs_list.add(input);
     inputs_list.add(cam_system);
-    std::mt19937                          gen;
-    std::uniform_real_distribution<float> dist;
-    for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
-    {
-        gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
-        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype(scene.mesh_names[i], {&mesh, 1});
-
-        gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
-        gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
-        mesh_entities.emplace_back(ecs.create_entity_unique(instance_component, transform_component));
-    }
 
     auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
@@ -392,7 +357,7 @@ void vulkan_app::on_run()
                 vk::DescriptorBufferInfo info;
                 info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
                 info.offset = 0;
-                info.range  = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                info.range = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
                 const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
@@ -450,8 +415,7 @@ void vulkan_app::on_run()
             current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
             current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
 
-            current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(),
-                                                             0,
+            current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
                                                              std::max(vulkan_proxy.instances_mapped().size(), 1ll),
                                                              sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
@@ -479,7 +443,8 @@ void vulkan_app::on_run()
         current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
 
         current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
-            std::max(vulkan_proxy.instances_mapped().size(), 1ll), sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+                                                         std::max(vulkan_proxy.instances_mapped().size(), 1ll),
+                                                         sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
 

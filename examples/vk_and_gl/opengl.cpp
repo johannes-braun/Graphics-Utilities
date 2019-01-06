@@ -86,13 +86,8 @@ void opengl_app::on_run()
     inputs_list.add(input);
     inputs_list.add(cam_system);
 
-    const auto& scene = scene::current_scene();
-
-    std::vector<gfx::ecs::unique_entity> mesh_entities;
-
-    std::vector<def::mesh_info> mesh_infos;
-    std::vector<mygl::texture>  textures;
-    std::vector<mygl::sampler>  samplers;
+    std::vector<mygl::texture> textures;
+    std::vector<mygl::sampler> samplers;
 
     mygl::sampler sampler;
     glCreateSamplers(1, &sampler);
@@ -100,27 +95,13 @@ void opengl_app::on_run()
     glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glSamplerParameterf(sampler, GL_TEXTURE_MAX_ANISOTROPY, 16.f);
 
-    for (size_t i = 0; i < scene.materials.size(); ++i)
-    {
-        def::mesh_info& info = mesh_infos.emplace_back();
-        info.diffuse_color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
-
-        info.diffuse_texture_id = -1;
-        if (scene.materials[i].texture_diffuse.bytes())
+    const auto make_texture_id = [&](const gfx::image_file& t) {
+        assert(t.channels == 1 || t.channels == 4);
+        const int id = textures.size();
+        switch (t.channels)
         {
-            info.diffuse_texture_id = textures.size();
-
-            const auto& t = scene.materials[i].texture_diffuse;
-            glCreateTextures(GL_TEXTURE_2D, 1, &textures.emplace_back());
-            glTextureStorage2D(textures.back(), std::int32_t(1 + floor(log2(std::max(t.width, t.height)))), GL_RGBA8, t.width, t.height);
-            glTextureSubImage2D(textures.back(), 0, 0, 0, t.width, t.height, GL_RGBA, GL_UNSIGNED_BYTE, t.bytes());
-            glGenerateTextureMipmap(textures.back());
-        }
-        if (scene.materials[i].texture_bump.bytes())
+        case 1:
         {
-            info.bump_map_texture_id = textures.size();
-
-            const auto& t = scene.materials[i].texture_bump;
             glCreateTextures(GL_TEXTURE_2D, 1, &textures.emplace_back());
             const int swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_RED};
             glTextureParameteriv(textures.back(), GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
@@ -128,22 +109,25 @@ void opengl_app::on_run()
             glTextureSubImage2D(textures.back(), 0, 0, 0, t.width, t.height, GL_RED, GL_UNSIGNED_BYTE, t.bytes());
             glGenerateTextureMipmap(textures.back());
         }
-    }
+        break;
+        case 4:
+        {
+            glCreateTextures(GL_TEXTURE_2D, 1, &textures.emplace_back());
+            glTextureStorage2D(textures.back(), std::int32_t(1 + floor(log2(std::max(t.width, t.height)))), GL_RGBA8, t.width, t.height);
+            glTextureSubImage2D(textures.back(), 0, 0, 0, t.width, t.height, GL_RGBA, GL_UNSIGNED_BYTE, t.bytes());
+            glGenerateTextureMipmap(textures.back());
+        }
+        break;
+        default: return -1;
+        }
+        return id;
+    };
+
+    std::vector<gfx::ecs::shared_entity> mesh_entities =
+        scene::scene_manager_t::get_mesh_entities(ecs, instances, scene::current_scene(), make_texture_id);
+
     samplers.resize(textures.size());
     std::fill(samplers.begin(), samplers.end(), sampler);
-
-    std::mt19937                          gen;
-    std::uniform_real_distribution<float> dist;
-    for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
-    {
-        gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
-        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype(scene.mesh_names[i], {&mesh, 1});
-
-        gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
-        gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
-        mesh_entities.emplace_back(ecs.create_entity_unique(instance_component, transform_component));
-    }
-
     auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 

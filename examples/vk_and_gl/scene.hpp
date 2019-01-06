@@ -2,6 +2,9 @@
 
 #include "camera.hpp"
 #include "gfx.file/file.hpp"
+#include "shaders/def.hpp"
+#include <gfx.ecs.defaults2/prototype.hpp>
+#include <random>
 
 namespace scene {
 
@@ -26,11 +29,40 @@ struct scene_manager_t
         return *_current_scene.load();
     }
 
+    static std::vector<gfx::ecs::shared_entity> get_mesh_entities(gfx::ecs::ecs&                             ecs,
+                                                           gfx::instance_system<def::mesh_info>& instances, const gfx::scene_file& scene,
+                                                           std::function<int(const gfx::image_file& t)> make_texture_id)
+    {
+        std::vector<gfx::ecs::shared_entity> mesh_entities;
+        std::vector<def::mesh_info> mesh_infos;
+        for (size_t i = 0; i < scene.materials.size(); ++i)
+        {
+            def::mesh_info& info = mesh_infos.emplace_back();
+            info.diffuse_color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
+
+            info.diffuse_texture_id = -1;
+            if (scene.materials[i].texture_diffuse.bytes())
+            { info.diffuse_texture_id = make_texture_id(scene.materials[i].texture_diffuse); }
+            if (scene.materials[i].texture_bump.bytes()) { info.bump_map_texture_id = make_texture_id(scene.materials[i].texture_bump); }
+        }
+
+        for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
+        {
+            gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
+            gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype(scene.mesh_names[i], {&mesh, 1});
+
+            gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
+            gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
+            mesh_entities.emplace_back(ecs.create_entity_shared(instance_component, transform_component));
+        }
+        return mesh_entities;
+    }
+
     std::atomic<const gfx::scene_file*>         _current_scene = nullptr;
     std::mutex                                  _scene_mutex;
     std::unordered_map<size_t, gfx::scene_file> _loaded_scenes;
 };
-    
+
 inline scene_manager_t scene_manager;
 
 inline const gfx::scene_file& current_scene()
