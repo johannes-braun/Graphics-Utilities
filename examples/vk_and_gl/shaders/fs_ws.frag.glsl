@@ -172,8 +172,8 @@ void main()
 		models[draw_index].info.bump_map_texture_id,
 		inverse(cotangentFrame(normalize(normal), position, uv)) * -v,
 		uv,
-		2, 
-		16, 
+		1, 
+		6, 
 	#ifdef USE_VULKAN
 		depth
 	#else
@@ -194,11 +194,12 @@ void main()
 		const float attenuation = 1/distance_to_light_2;
 		if(cosTheta > 0)
 		{
-			bvh_state_set_mode(bvh_mode_any);
 			bvh_result trace;
+			#if DEF_use_rt_shadows
+			bvh_state_set_mode(bvh_mode_any);
 			trace.hits = false;
-			if(bool(DEF_use_rt_shadows))
-				trace = bvh_hit_instanced(position + 1e-3*norm_to_light, norm_to_light, sqrt(distance_to_light_2));
+			trace = bvh_hit_instanced(position + 1e-3*norm_to_light, norm_to_light, sqrt(distance_to_light_2));
+			#endif
 
 			if(!trace.hits)
 			{
@@ -243,11 +244,11 @@ void main()
 			}
 		}
 	}
-	const float shadowed = shadow(light_cameras[0], position).r;
 	const vec4 light_pos = inverse(light_cameras[0].view) * vec4(0, 0, 0, 1);
 	const vec3 light_pos3 = light_pos.xyz / light_pos.w;
 	const vec3 to_sun = normalize(light_pos3 - position);
 	const float cosThetaLight = dot(to_sun, real_normal);
+	const float shadowed = cosThetaLight>0 ? shadow(light_cameras[0], position).r : 0.f;
 	color += shadowed * diffuse * 1.0f * cosThetaLight;
 }
 

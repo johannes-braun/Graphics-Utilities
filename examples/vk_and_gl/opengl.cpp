@@ -248,7 +248,7 @@ void opengl_app::on_run()
 
         glm::vec4 clear_color(0.3f, 0.5f, 0.9f, 1.f);
         glClearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
-        glClearNamedFramebufferfi(mygl::framebuffer::zero(), GL_DEPTH_STENCIL, 0, 0.f, 0);
+        glClearNamedFramebufferfi(mygl::framebuffer::zero(), GL_DEPTH_STENCIL, 0, 1.f, 0);
 
         int width, height;
         glfwGetFramebufferSize(opengl_window, &width, &height);
@@ -263,10 +263,12 @@ void opengl_app::on_run()
         glUseProgram(program);
 
         glViewportIndexedf(0, 0, 0, width, height);
-        glDepthFunc(GL_GEQUAL);
-        glDepthRangef(1.f, 0.f);
+        glDepthFunc(GL_LEQUAL);
+        glDepthRangef(0.f, 1.f);
         glScissorIndexed(0, 0, 0, width, height);
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT); // What the actual f*?
 
         // bind all textures
         glBindTextures(def::texture_binding_all, std::int32_t(textures.size()), textures.data());
@@ -297,6 +299,7 @@ void opengl_app::on_run()
                                     sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer);
+        glDepthFunc(GL_GEQUAL);
         glDepthRangef(0.f, 1.f);
         glClearNamedFramebufferfi(shadow_map_framebuffer, GL_DEPTH_STENCIL, 0, 0.f, 0);
         glViewportIndexedf(0, 0, 0, 1024, 1024);
