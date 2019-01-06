@@ -7,7 +7,6 @@ template<typename InstanceInfo>
 instance_proxy<InstanceInfo>::instance_proxy(device& gpu)
       : mesh_proxy(gpu)
       , _instance_descriptions_src {mapped<basic_instance> {gpu, 1}, mapped<basic_instance> {gpu, 1}}
-      , _instance_descriptions_dst {buffer<basic_instance> {gpu}, buffer<basic_instance> {gpu}}
 {}
 
 template<typename InstanceInfo>
@@ -38,7 +37,6 @@ void instance_proxy<InstanceInfo>::clear()
 template<typename InstanceInfo>
 void instance_proxy<InstanceInfo>::swap(commands& cmd)
 {
-    _instance_descriptions_dst[_current_instance_index].update(_instance_descriptions_src[_current_instance_index], cmd);
     _current_instance_index = (_current_instance_index + 1) % instance_swap_buffer_count;
 }
 
@@ -46,11 +44,6 @@ template<typename InstanceInfo>
 const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_mapped() const noexcept
 {
     return _instance_descriptions_src[_current_instance_index];
-}
-template<typename InstanceInfo>
-const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_buffer() const noexcept
-{
-    return _instance_descriptions_dst[(_current_instance_index + instance_swap_buffer_count - 1) % instance_swap_buffer_count];
 }
 
 template<typename InstanceInfo>
@@ -66,7 +59,6 @@ template<typename InstanceInfo>
 instance_proxy<InstanceInfo>::instance_proxy()
       : mesh_proxy()
       , _instance_descriptions_src {mapped<basic_instance> {1}, mapped<basic_instance> {1}}
-      , _instance_descriptions_dst {buffer<basic_instance> {}, buffer<basic_instance> {}}
 {}
 
 template<typename InstanceInfo>
@@ -97,7 +89,6 @@ void instance_proxy<InstanceInfo>::clear()
 template<typename InstanceInfo>
 void instance_proxy<InstanceInfo>::swap()
 {
-    _instance_descriptions_dst[_current_instance_index].update(_instance_descriptions_src[_current_instance_index]);
     _current_instance_index = (_current_instance_index + 1) % instance_swap_buffer_count;
 }
 
@@ -106,12 +97,6 @@ const mapped<typename prototype_instantiator<InstanceInfo>::basic_instance>& ins
 {
     return _instance_descriptions_src[_current_instance_index];
 }
-template<typename InstanceInfo>
-const buffer<typename prototype_instantiator<InstanceInfo>::basic_instance>& instance_proxy<InstanceInfo>::instances_buffer() const noexcept
-{
-    return _instance_descriptions_dst[(_current_instance_index + instance_swap_buffer_count - 1) % instance_swap_buffer_count];
-}
-
 template<typename InstanceInfo>
 size_t instance_proxy<InstanceInfo>::instance_buffer_index() const noexcept
 {

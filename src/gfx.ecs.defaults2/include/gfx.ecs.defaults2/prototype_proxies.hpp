@@ -49,13 +49,11 @@ public:
 
     void                          swap(commands& cmd);
     const mapped<basic_instance>& instances_mapped() const noexcept;
-    const buffer<basic_instance>& instances_buffer() const noexcept;
     size_t                        instance_buffer_index() const noexcept;
 
 private:
     size_t                 _current_instance_index = 0;
     mapped<basic_instance> _instance_descriptions_src[instance_swap_buffer_count];
-    buffer<basic_instance> _instance_descriptions_dst[instance_swap_buffer_count];
 };
 }    // namespace impl
 
@@ -99,13 +97,11 @@ public:
 
     void                          swap();
     const mapped<basic_instance>& instances_mapped() const noexcept;
-    const buffer<basic_instance>& instances_buffer() const noexcept;
     size_t                        instance_buffer_index() const noexcept;
 
 private:
     size_t                 _current_instance_index = 0;
     mapped<basic_instance> _instance_descriptions_src[instance_swap_buffer_count];
-    buffer<basic_instance> _instance_descriptions_dst[instance_swap_buffer_count];
 };
 }    // namespace vulkan
 }    // namespace v1

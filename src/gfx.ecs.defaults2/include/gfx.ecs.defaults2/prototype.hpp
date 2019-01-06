@@ -166,7 +166,8 @@ public:
     void             dequeue(prototype_handle handle);
     void             clear();
 
-    proxy* get_proxy() const noexcept { return _proxy; }
+    proxy*                                          get_proxy() const noexcept { return _proxy; }
+    const std::unordered_map<std::string, weak_prototype>& prototypes() const noexcept { return _prototypes; }
 
 protected:
     shared_prototype allocate_prototype_impl(std::string name, std::initializer_list<shared_mesh> meshes);

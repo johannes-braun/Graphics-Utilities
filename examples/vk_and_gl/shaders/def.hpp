@@ -68,15 +68,10 @@ vec2 remap_uv(const in vec2 uv)
 }
 #endif
 
-struct sampled_color_t
-{
-    u8vec4 color INIT_AS_4(255, 50, 0, 255);
-    int texture_id INIT_AS_1(-1);
-};
-
 struct mesh_info
 {
-    sampled_color_t diffuse;
+    u8vec4 diffuse_color INIT_AS_4(255, 50, 0, 255);
+    int diffuse_texture_id INIT_AS_1(-1);
     int bump_map_texture_id INIT_AS_1(-1);
 };
 
@@ -86,10 +81,10 @@ vec4 unpack_rgba8(uint c)
     return vec4(((c >> 24) & 0xff) / 255.f, ((c >> 16) & 0xff) / 255.f, ((c >> 8) & 0xff) / 255.f, ((c >> 0) & 0xff) / 255.f);
 }
 
-vec4 sample_color(const in sampled_color_t c, vec2 uv)
+vec4 sample_color(u8vec4 color, const int texture_id, vec2 uv)
 {
-    if (c.texture_id >= 0) { return texture(all_textures[c.texture_id], remap_uv(uv)); }
-    return unpack_rgba8(c.color);
+    if (texture_id >= 0) { return texture(all_textures[texture_id], remap_uv(uv)); }
+    return unpack_rgba8(color);
 };
 
 // defined in "frag.base.glsl"

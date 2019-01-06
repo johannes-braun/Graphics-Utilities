@@ -50,6 +50,7 @@ void opengl_app::on_run()
     gfx::ecs::ecs ecs;
     glfwWindowHint(GLFW_SAMPLES, 8);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
     GLFWwindow* opengl_window = glfwCreateWindow(800, 800, "OpenGL", nullptr, nullptr);
 
     glfwMakeContextCurrent(opengl_window);
@@ -74,6 +75,7 @@ void opengl_app::on_run()
     gfx::instance_system<def::mesh_info>        instances(opengl_proxy,
                                                    DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
     graphics_list.add(instances);
+    user_data = &instances;
 
     gfx::movement_system movement;
     graphics_list.add(movement);
@@ -101,12 +103,12 @@ void opengl_app::on_run()
     for (size_t i = 0; i < scene.materials.size(); ++i)
     {
         def::mesh_info& info = mesh_infos.emplace_back();
-        info.diffuse.color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
+        info.diffuse_color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
 
-        info.diffuse.texture_id = -1;
+        info.diffuse_texture_id = -1;
         if (scene.materials[i].texture_diffuse.bytes())
         {
-            info.diffuse.texture_id = textures.size();
+            info.diffuse_texture_id = textures.size();
 
             const auto& t = scene.materials[i].texture_diffuse;
             glCreateTextures(GL_TEXTURE_2D, 1, &textures.emplace_back());
@@ -135,7 +137,7 @@ void opengl_app::on_run()
     for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
     {
         gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
-        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype("sponza_" + std::to_string(i), {&mesh, 1});
+        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype(scene.mesh_names[i], {&mesh, 1});
 
         gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
         gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
@@ -170,15 +172,10 @@ void opengl_app::on_run()
     check_linkage(program);
 
     for (int i = 0; i < textures.size(); ++i)
-        glProgramUniform1i(program, glGetProgramResourceLocation(program, GL_UNIFORM, ("all_textures[" + std::to_string(i) + "]").c_str()),
-                           i);
-
-
-
-
-
-
-
+    {
+        auto loc = glGetProgramResourceLocation(program, GL_UNIFORM, ("all_textures[" + std::to_string(i) + "]").c_str());
+        glProgramUniform1i(program, loc, i);
+    }
 
 
     mygl::shader shadow_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -206,28 +203,18 @@ void opengl_app::on_run()
     glSamplerParameteri(shadow_sampler, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glSamplerParameteri(shadow_sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glSamplerParameteri(shadow_sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    
+
     mygl::framebuffer shadow_map_framebuffer;
     glCreateFramebuffers(1, &shadow_map_framebuffer);
     glNamedFramebufferTexture(shadow_map_framebuffer, GL_DEPTH_STENCIL_ATTACHMENT, shadow_map, 0);
 
-    const auto pos  = glm::vec3(3, 22, 3);
-    const auto dir  = normalize(glm::vec3(0) - pos);
+    const auto                                pos  = glm::vec3(3, 22, 3);
+    const auto                                dir  = normalize(glm::vec3(0) - pos);
     const auto                                quat = glm::quatLookAt(dir, glm::vec3(0, 1, 0));
     gfx::transform_component                  light_transform(pos, {1, 1, 1}, quat);
     gfx::projection_component                 light_projection(glm::radians(60.f), 1, 1, 0.1f, 100.f);
     gfx::ecs::shared_entity                   light_entity = ecs.create_entity_shared(light_transform, light_projection);
     gfx::opengl::buffer<gfx::camera_matrices> light_camera_buffer({*gfx::get_camera_info(*light_entity)});
-
-
-
-
-
-
-
-
-
-
 
 
     mygl::vertex_array vao;
@@ -246,6 +233,10 @@ void opengl_app::on_run()
 
     gfx::opengl::buffer<gfx::camera_matrices> camera_buffer({gfx::camera_matrices {}});
 
+    constexpr int max_frames = 2;
+    mygl::sync    fences[max_frames] {};
+    int           current_frame = 0;
+
     glClearDepthf(0.f);
     glfwMakeContextCurrent(nullptr);
     glfwSwapInterval(0);
@@ -263,8 +254,13 @@ void opengl_app::on_run()
         }
         if (!init.exchange(true)) glfwMakeContextCurrent(opengl_window);
 
+        if (glIsSync(fences[current_frame]))
+        {
+            glClientWaitSync(fences[current_frame], GL_SYNC_FLUSH_COMMANDS_BIT, std::numeric_limits<std::uint64_t>::max());
+            glDeleteSync(fences[current_frame]);
+        }
+
         ecs.update(delta, graphics_list);
-        opengl_proxy.swap();
 
         glm::vec4 clear_color(0.3f, 0.5f, 0.9f, 1.f);
         glClearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
@@ -302,8 +298,8 @@ void opengl_app::on_run()
         glBindVertexBuffer(0, opengl_proxy.vertex_buffer().get_buffer(), 0, sizeof(gfx::vertex3d));
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_proxy.index_buffer().get_buffer());
 
-        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, opengl_proxy.instances_buffer().get_buffer(), 0,
-                          opengl_proxy.instances_buffer().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, opengl_proxy.instances_mapped().get_buffer(), 0,
+                          opengl_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_vertex, opengl_proxy.vertex_buffer().get_buffer(), 0,
                           opengl_proxy.vertex_buffer().size() * sizeof(gfx::vertex3d));
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_element, opengl_proxy.index_buffer().get_buffer(), 0,
@@ -312,8 +308,8 @@ void opengl_app::on_run()
             glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_bvh, opengl_proxy.bvh_buffer().get_buffer(), 0,
                               opengl_proxy.bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
 
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, opengl_proxy.instances_buffer().get_buffer());
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, opengl_proxy.instances_buffer().size(),
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, opengl_proxy.instances_mapped().get_buffer());
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, opengl_proxy.instances_mapped().size(),
                                     sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer);
@@ -323,10 +319,13 @@ void opengl_app::on_run()
         glScissorIndexed(0, 0, 0, 1024, 1024);
         glUseProgram(shadow_program);
         glBindBufferRange(GL_UNIFORM_BUFFER, 0, light_camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
-        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, opengl_proxy.instances_buffer().size(),
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, opengl_proxy.instances_mapped().size(),
                                     sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
         glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero());
 
+        fences[current_frame] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, {});
+        current_frame         = (current_frame + 1) % max_frames;
+        opengl_proxy.swap();
         glfwSwapBuffers(opengl_window);
         return self.value_after(true, update_time_graphics);
     });

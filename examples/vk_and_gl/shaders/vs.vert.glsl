@@ -30,8 +30,8 @@ layout(location = 3) out vec2 out_uv;
 void main()
 {
 	draw_index = gl_DrawID;
-	out_normal = vec3(inverse(transpose(models[gl_DrawID].transform)) * vec4(normal, 0)); 
-	out_position = vec3(models[gl_DrawID].transform * vec4(position, 1));
+	out_normal = vec3(inverse(transpose(models[draw_index].transform)) * vec4(normal, 0)); 
+	out_position = vec3(models[draw_index].transform * vec4(position, 1));
 	out_uv = uv;
 	gl_Position = camera.proj * camera.view * vec4(out_position, 1);
 }

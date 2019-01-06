@@ -2,6 +2,12 @@
 #include "opengl.hpp"
 #include "vulkan.hpp"
 #include <GLFW/glfw3.h>
+
+#include <filesystem>
+
+#include <gfx.ecs.defaults2/prototype.hpp>
+#include <shaders/def.hpp>
+
 #include <QtCharts/QtCharts>
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
@@ -45,31 +51,34 @@ public:
 
         auto below_graph = new QWidget(w);
         gl->addWidget(below_graph, 0, Qt::AlignTop);
+        gl->addWidget(new QWidget(this), 1);
         QHBoxLayout* below_graph_layout = new QHBoxLayout(below_graph);
         auto         info_group         = new QGroupBox("Info", below_graph);
         auto         info_content       = new QVBoxLayout(info_group);
         below_graph_layout->addWidget(info_group, 0, Qt::AlignTop);
 
-        QWidget* info_form = new QWidget(info_group);
+        QWidget* info_form        = new QWidget(info_group);
         auto     info_form_layout = new QFormLayout(info_form);
 
         info_form_layout->addRow("Current Frame Time", _framerate_label = new QLabel(info_form));
         info_content->addWidget(info_form);
         info_content->addWidget(save_btn);
 
-            QTimer* t = new QTimer(this);
+        QTimer* t = new QTimer(this);
         connect(t, &QTimer::timeout, this, &app_tab::update_chart);
-        t->start(100);
+        t->start(30);
 
         QTimer* accum = new QTimer(this);
         connect(accum, &QTimer::timeout, [this] { _accum_frametimes.push_back(_app->current_frametime()); });
-        accum->start(10);
+        accum->start(3);
+
+        below_graph_layout->addWidget(new QWidget(this), 1);
     }
 
     void update_chart()
     {
-        _frametime_min += 0.1;
-        _frametime_max += 0.1;
+        _frametime_min += 0.03;
+        _frametime_max += 0.03;
 
         if (_frame_times->count() + 1 > max_samples) _frame_times->remove(0);
         const auto acc = std::accumulate(_accum_frametimes.begin(), _accum_frametimes.end(), std::chrono::nanoseconds(0));
@@ -84,12 +93,12 @@ public:
     }
 
 private:
-    constexpr static auto                 max_samples = 200;
+    constexpr static auto                 max_samples = 600;
     gfx::basic_app*                       _app;
     QLineSeries*                          _frame_times;
     QChartView*                           _frametime_chart_view;
     QLabel*                               _framerate_label;
-    double                                _frametime_min = -max_samples * 0.1;
+    double                                _frametime_min = -max_samples * 0.03;
     double                                _frametime_max = 0;
     std::vector<std::chrono::nanoseconds> _accum_frametimes;
 };

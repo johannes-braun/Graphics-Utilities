@@ -54,6 +54,8 @@ struct basic_app
     std::chrono::nanoseconds current_frametime() const noexcept { return std::chrono::nanoseconds(_frame_nanoseconds); }
     void update_frametime(std::chrono::nanoseconds nanos) { _frame_nanoseconds = nanos.count(); }
 
+    void* user_data = nullptr;
+
 private:
     std::atomic_bool                     _should_close    = false;
     std::atomic_int                      _running_threads = 0;

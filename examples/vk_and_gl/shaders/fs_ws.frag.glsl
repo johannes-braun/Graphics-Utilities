@@ -183,7 +183,7 @@ void main()
 
 	const vec3 real_normal = normalize(from_bump(position, normalize(normal), new_uv, normalize(position - camera.position), models[draw_index].info.bump_map_texture_id, depth));
 	
-	// Diffuse Lighting (Lambert)
+	const vec4 diffuse = sample_color(models[draw_index].info.diffuse_color, models[draw_index].info.diffuse_texture_id, new_uv);
 	for(int id = 0; id < lights.length(); ++id)
 	{
 		light_t light = lights[id];
@@ -203,7 +203,6 @@ void main()
 			if(!trace.hits)
 			{
 				const float roughness = 0.4f;
-				const vec3 diffuse = sample_color(models[draw_index].info.diffuse, new_uv).rgb;
 
 				const float alpha = max(roughness * roughness, 1e-3f);
 				const float alpha2 = alpha * alpha;
@@ -233,7 +232,7 @@ void main()
 
 				color += light.intensity * brdf * attenuation;
 
-				const vec4 rgbadiff = sample_color(models[draw_index].info.diffuse, uv);
+				const vec4 rgbadiff = diffuse;
 				
 				#if DEF_use_alpha_discard
 				if(rgbadiff.a < 0.5f)
@@ -249,7 +248,7 @@ void main()
 	const vec3 light_pos3 = light_pos.xyz / light_pos.w;
 	const vec3 to_sun = normalize(light_pos3 - position);
 	const float cosThetaLight = dot(to_sun, real_normal);
-	color += shadowed * sample_color(models[draw_index].info.diffuse, uv) * 1.0f * cosThetaLight;
+	color += shadowed * diffuse * 1.0f * cosThetaLight;
 }
 
 

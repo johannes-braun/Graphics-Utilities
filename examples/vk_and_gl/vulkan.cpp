@@ -31,7 +31,7 @@ void vulkan_app::on_run()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* vulkan_window = glfwCreateWindow(800, 800, "Vulkan", nullptr, nullptr);
 
-    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, false, true);
+    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, true, true);
     gfx::vulkan::surface               surface(vulkan, glfwGetWin32Window(vulkan_window));
     gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {}, surface);
     gfx::vulkan::swapchain             surface_swapchain(gpu, surface);
@@ -156,6 +156,7 @@ void vulkan_app::on_run()
     gfx::instance_system<def::mesh_info>        instances(vulkan_proxy,
                                                    DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
     graphics_list.add(instances);
+    user_data = &instances;
 
     const auto& scene = scene::current_scene();
 
@@ -167,10 +168,10 @@ void vulkan_app::on_run()
     for (size_t i = 0; i < scene.materials.size(); ++i)
     {
         def::mesh_info& info = mesh_infos.emplace_back();
-        info.diffuse.color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
+        info.diffuse_color   = 255 * clamp(scene.materials[i].color_diffuse, 0.f, 1.f);
         if (scene.materials[i].texture_diffuse.bytes())
         {
-            info.diffuse.texture_id = textures.size();
+            info.diffuse_texture_id = textures.size();
             const auto& t           = scene.materials[i].texture_diffuse;
 
             vk::ImageCreateInfo create_info;
@@ -337,7 +338,7 @@ void vulkan_app::on_run()
     for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)
     {
         gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i]);
-        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype("sponza_" + std::to_string(i), {&mesh, 1});
+        gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype(scene.mesh_names[i], {&mesh, 1});
 
         gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
         gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
@@ -363,7 +364,6 @@ void vulkan_app::on_run()
             vulkan_combined_delta = 0s;
         }
 
-        ecs.update(delta, graphics_list);
 
         if (surface_swapchain.swap(acquire_semaphore))
         {
@@ -376,23 +376,23 @@ void vulkan_app::on_run()
 
         gpu.wait_for({command_fences[surface_swapchain.current_index()]});
         gpu.reset_fences({command_fences[surface_swapchain.current_index()]});
-
         current.get_command_buffer().reset({});
+        ecs.update(delta, graphics_list);
+
         current.get_command_buffer().begin(vk::CommandBufferBeginInfo {vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
-        vulkan_proxy.swap(current);
 
-        if (curr_buffers[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_buffer().get_buffer()
-            || curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_buffer().size())
+        if (curr_buffers[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_mapped().get_buffer()
+            || curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_mapped().size())
         {
-            curr_buffers[vulkan_proxy.instance_buffer_index()]      = vulkan_proxy.instances_buffer().get_buffer();
-            curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_buffer().size();
+            curr_buffers[vulkan_proxy.instance_buffer_index()]      = vulkan_proxy.instances_mapped().get_buffer();
+            curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_mapped().size();
 
             {
                 vk::DescriptorBufferInfo info;
                 info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
-                info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                info.range = vulkan_proxy.instances_buffer().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                info.offset = 0;
+                info.range  = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
                 const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
@@ -431,6 +431,33 @@ void vulkan_app::on_run()
         const gfx::camera_matrices cam                                             = *gfx::get_camera_info(*user_entity);
         current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
 
+
+        {
+            const vk::ClearValue clear_values[1] {{vk::ClearDepthStencilValue(1.f, 0)}};
+            current.get_command_buffer().beginRenderPass(
+                vk::RenderPassBeginInfo(vulkan_state->shadow_render_pass.get(), shadow_map_fb.get(), vk::Rect2D({0, 0}, {1024, 1024}),
+                                        gfx::u32(std::size(clear_values)), std::data(clear_values)),
+                vk::SubpassContents::eInline);
+            const vk::Viewport viewport(0, 0, 1024, 1024, 0.f, 1.f);
+            const vk::Rect2D   scissor({0, 0}, {1024, 1024});
+            current.get_command_buffer().setViewport(0, viewport);
+            current.get_command_buffer().setScissor(0, scissor);
+
+            current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
+            current.get_command_buffer().bindDescriptorSets(
+                vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
+                {shadow_cam_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
+            current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
+            current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
+
+            current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(),
+                                                             0,
+                                                             std::max(vulkan_proxy.instances_mapped().size(), 1ll),
+                                                             sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+
+            current.get_command_buffer().endRenderPass();
+        }
+
         const vk::ClearValue clear_values[3] {
             {}, {vk::ClearColorValue(std::array<float, 4> {1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
         current.get_command_buffer().beginRenderPass(
@@ -451,39 +478,12 @@ void vulkan_app::on_run()
         current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
         current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
 
-        current.get_command_buffer().drawIndexedIndirect(
-            vulkan_proxy.instances_buffer().get_buffer(), sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance),
-            std::max(vulkan_proxy.instances_buffer().size(), 1ll) - 1, sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+        current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
+            std::max(vulkan_proxy.instances_mapped().size(), 1ll), sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
 
-
-        {
-            const vk::ClearValue clear_values[1] {{vk::ClearDepthStencilValue(1.f, 0)}};
-            current.get_command_buffer().beginRenderPass(
-                vk::RenderPassBeginInfo(vulkan_state->shadow_render_pass.get(), shadow_map_fb.get(), vk::Rect2D({0, 0}, {1024, 1024}),
-                                        gfx::u32(std::size(clear_values)), std::data(clear_values)),
-                vk::SubpassContents::eInline);
-            const vk::Viewport viewport(0, 0, 1024, 1024, 0.f, 1.f);
-            const vk::Rect2D   scissor({0, 0}, {1024, 1024});
-            current.get_command_buffer().setViewport(0, viewport);
-            current.get_command_buffer().setScissor(0, scissor);
-
-            current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
-            current.get_command_buffer().bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
-                {shadow_cam_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
-            current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
-            current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
-
-            current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_buffer().get_buffer(),
-                                                             sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance),
-                                                             std::max(vulkan_proxy.instances_buffer().size(), 1ll) - 1,
-                                                             sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
-
-            current.get_command_buffer().endRenderPass();
-        }
-
+        vulkan_proxy.swap(current);
 
         current.get_command_buffer().end();
         gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore}, command_fences[surface_swapchain.current_index()]);
