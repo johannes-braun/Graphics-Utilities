@@ -64,7 +64,7 @@ public:
 
     void update(duration_type delta, ecs::component_base** components) const override
     {
-        projection_component&         cam  = components[0]->as<projection_component>();
+        projection_component&     cam  = components[0]->as<projection_component>();
         transform_component&      trn  = components[1]->as<transform_component>();
         camera_controls&          ctrl = components[2]->as<camera_controls>();
         grabbed_cursor_component& gcc  = components[3]->as<grabbed_cursor_component>();

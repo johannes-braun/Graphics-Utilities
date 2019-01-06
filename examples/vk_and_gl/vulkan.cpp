@@ -24,58 +24,8 @@
 #include <thread>
 #include <vulkan/vulkan.hpp>
 
-namespace impl::vulkan {
-
-struct att_id
-{
-    enum
-    {
-        color,
-        msaa,
-        depth,
-        _count
-    };
-};
-
-struct vulkan_state_t
-{
-    vk::UniqueRenderPass               render_pass;
-    std::vector<vk::UniqueFramebuffer> framebuffers;
-    std::vector<gfx::vulkan::image>    msaa_attachments;
-    std::vector<gfx::vulkan::image>    depth_attachments;
-    std::vector<vk::UniqueImageView>   color_att_views;
-    std::vector<vk::UniqueImageView>   msaa_att_views;
-    std::vector<vk::UniqueImageView>   depth_att_views;
-    vk::UniqueDescriptorSetLayout      cam_buffer_layout;
-    vk::UniqueDescriptorSetLayout      model_info_layout;
-
-    std::uint32_t                 texture_count;
-    vk::UniqueSampler             default_texture_sampler;
-    vk::UniqueDescriptorSetLayout all_textures_layout;
-
-    vk::UniqueRenderPass          shadow_render_pass;
-    vk::UniqueSampler             shadow_sampler;
-    vk::UniqueDescriptorSetLayout shadow_set_layout;
-};
-
-std::unique_ptr<vulkan_state_t> vulkan_state;
-
-void                     create_shadow_renderpass(gfx::vulkan::device& gpu);
-void                     create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain);
-vk::UniquePipelineLayout create_pipeline_layout(gfx::vulkan::device& gpu);
-vk::UniquePipeline       create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout);
-vk::UniquePipelineLayout create_shadow_pipeline_layout(gfx::vulkan::device& gpu);
-vk::UniquePipeline       create_shadow_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout);
-
-void create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain);
-void generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t layers, std::uint32_t levels, vk::Extent3D extent,
-                      const gfx::vulkan::mapped<std::byte>& data);
-}    // namespace impl::vulkan
-
 void vulkan_app::on_run()
 {
-    using namespace impl::vulkan;
-
     gfx::ecs::ecs ecs;
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -146,8 +96,7 @@ void vulkan_app::on_run()
     smap_ivi.format                     = smap_create_info.format;
     smap_ivi.image                      = shadow_map.get_image();
     smap_ivi.viewType                   = vk::ImageViewType::e2D;
-    smap_ivi.subresourceRange =
-        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, smap_create_info.arrayLayers);
+    smap_ivi.subresourceRange           = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, smap_create_info.arrayLayers);
     vk::UniqueImageView shadow_map_view = gpu.get_device().createImageViewUnique(smap_ivi);
 
     create_shadow_renderpass(gpu);
@@ -180,8 +129,8 @@ void vulkan_app::on_run()
         vk::WriteDescriptorSet   shadow_cam_write(shadow_map_set.get(), def::shadow_cam_binding, 0, 1, vk::DescriptorType::eStorageBuffer,
                                                 nullptr, &shadow_cam_info);
         gpu.get_device().updateDescriptorSets(shadow_cam_write, nullptr);
-        
-         const vk::DescriptorBufferInfo cam_buf(light_camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
+
+        const vk::DescriptorBufferInfo cam_buf(light_camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
         const vk::WriteDescriptorSet   cam_buf_write(shadow_cam_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
         gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
     }
@@ -215,7 +164,6 @@ void vulkan_app::on_run()
 
     std::vector<gfx::vulkan::image>  textures;
     std::vector<vk::UniqueImageView> texture_views;
-
     for (size_t i = 0; i < scene.materials.size(); ++i)
     {
         def::mesh_info& info = mesh_infos.emplace_back();
@@ -287,6 +235,32 @@ void vulkan_app::on_run()
             texture_views.emplace_back(gpu.get_device().createImageViewUnique(ivi));
         }
     }
+
+    // add placeholder texture
+    const gfx::image_file placeholder("placeholder.png", gfx::bits::b8, 4);
+    vk::ImageCreateInfo create_info;
+    create_info.arrayLayers   = 1;
+    create_info.extent        = vk::Extent3D(placeholder.width, placeholder.height, 1);
+    create_info.format        = vk::Format::eR8G8B8A8Unorm;
+    create_info.imageType     = vk::ImageType::e2D;
+    create_info.initialLayout = vk::ImageLayout::eUndefined;
+    create_info.mipLevels     = std::uint32_t(1 + floor(log2(std::max(placeholder.width, placeholder.height))));
+    create_info.sharingMode   = vk::SharingMode::eExclusive;
+    create_info.usage  = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+    create_info.tiling = vk::ImageTiling::eOptimal;
+
+    textures.emplace_back(gpu, create_info);
+
+    gfx::vulkan::mapped<std::byte> data(gpu, gsl::span<std::byte>(static_cast<std::byte*>(placeholder.bytes()),
+                                                                  placeholder.width * placeholder.height * placeholder.channels));
+    generate_mipmaps(gpu, textures.back().get_image(), create_info.arrayLayers, create_info.mipLevels, create_info.extent, data);
+
+    vk::ImageViewCreateInfo ivi;
+    ivi.format           = create_info.format;
+    ivi.image            = textures.back().get_image();
+    ivi.viewType         = vk::ImageViewType::e2D;
+    ivi.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, create_info.mipLevels, 0, create_info.arrayLayers);
+    texture_views.emplace_back(gpu.get_device().createImageViewUnique(ivi));
     vulkan_state->texture_count = textures.size();
 
     {
@@ -329,7 +303,7 @@ void vulkan_app::on_run()
         atw.dstBinding      = 0;
         atw.dstSet          = all_textures_set.get();
         atw.pImageInfo      = img_infos.data();
-        gpu.get_device().updateDescriptorSets(atw, nullptr);
+        if (!img_infos.empty()) gpu.get_device().updateDescriptorSets(atw, nullptr);
     }
 
     vk::UniquePipelineLayout pipeline_layout        = create_pipeline_layout(gpu);
@@ -372,7 +346,6 @@ void vulkan_app::on_run()
 
     auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
-    scene::interop.user_entity_vulkan = *user_entity.get();
 
     vk::Buffer curr_buffers[2] {nullptr, nullptr};
     size_t     curr_buffer_sizes[2] {0, 0};
@@ -380,6 +353,7 @@ void vulkan_app::on_run()
     gfx::timed_while::duration vulkan_combined_delta = 0s;
     int                        vulkan_frames         = 0;
     gfx::worker                vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+        update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
         vulkan_combined_delta += delta;
         ++vulkan_frames;
         if (vulkan_combined_delta > 1s)
@@ -450,8 +424,6 @@ void vulkan_app::on_run()
             }
         }
 
-        if (input.button_down(gfx::button::middle)) scene::interop.match_cameras(scene::interop_mgr_t::match::vulkan_sided);
-        
         user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
         user_entity->get<gfx::projection_component>()->perspective().inverse_z     = false;
         user_entity->get<gfx::projection_component>()->perspective().screen_width  = surface_swapchain.extent().width;
@@ -538,8 +510,7 @@ void vulkan_app::on_run()
     vulkan_state.reset();
 }
 
-namespace impl::vulkan {
-void create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain)
+void vulkan_app::create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain)
 {
     vk::RenderPassCreateInfo info;
 
@@ -602,7 +573,7 @@ void create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapcha
 
     vulkan_state->render_pass = gpu.get_device().createRenderPassUnique(info);
 }
-void create_shadow_renderpass(gfx::vulkan::device& gpu)
+void vulkan_app::create_shadow_renderpass(gfx::vulkan::device& gpu)
 {
     vk::RenderPassCreateInfo info;
 
@@ -653,7 +624,7 @@ void create_shadow_renderpass(gfx::vulkan::device& gpu)
     vulkan_state->shadow_render_pass = gpu.get_device().createRenderPassUnique(info);
 }
 
-vk::UniquePipelineLayout create_pipeline_layout(gfx::vulkan::device& gpu)
+vk::UniquePipelineLayout vulkan_app::create_pipeline_layout(gfx::vulkan::device& gpu)
 {
     vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get(),
                                            vulkan_state->all_textures_layout.get(), vulkan_state->shadow_set_layout.get()};
@@ -664,7 +635,7 @@ vk::UniquePipelineLayout create_pipeline_layout(gfx::vulkan::device& gpu)
     return gpu.get_device().createPipelineLayoutUnique(info);
 }
 
-vk::UniquePipeline create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout)
+vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout)
 {
     vk::GraphicsPipelineCreateInfo info;
 
@@ -757,7 +728,7 @@ vk::UniquePipeline create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout 
     return gpu.get_device().createGraphicsPipelineUnique(nullptr, info);
 }
 
-void create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain)
+void vulkan_app::create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain)
 {
     gpu.get_device().waitIdle();
     if (vulkan_state->framebuffers.empty())
@@ -827,8 +798,8 @@ void create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapch
     }
 }
 
-void generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t layers, std::uint32_t levels, vk::Extent3D extent,
-                      const gfx::vulkan::mapped<std::byte>& data)
+void vulkan_app::generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t layers, std::uint32_t levels,
+                                  vk::Extent3D extent, const gfx::vulkan::mapped<std::byte>& data)
 {
     gfx::vulkan::commands cmd = gpu.allocate_graphics_command();
     gfx::vulkan::fence    fence(gpu);
@@ -937,7 +908,7 @@ void generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t l
     gpu.wait_for({fence});
 }
 
-vk::UniquePipelineLayout create_shadow_pipeline_layout(gfx::vulkan::device& gpu)
+vk::UniquePipelineLayout vulkan_app::create_shadow_pipeline_layout(gfx::vulkan::device& gpu)
 {
     vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
 
@@ -947,7 +918,7 @@ vk::UniquePipelineLayout create_shadow_pipeline_layout(gfx::vulkan::device& gpu)
     return gpu.get_device().createPipelineLayoutUnique(info);
 }
 
-vk::UniquePipeline create_shadow_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout)
+vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout)
 {
     vk::GraphicsPipelineCreateInfo info;
 
@@ -1031,6 +1002,3 @@ vk::UniquePipeline create_shadow_pipeline(gfx::vulkan::device& gpu, vk::Pipeline
 
     return gpu.get_device().createGraphicsPipelineUnique(nullptr, info);
 }
-
-
-}    // namespace impl::vulkan

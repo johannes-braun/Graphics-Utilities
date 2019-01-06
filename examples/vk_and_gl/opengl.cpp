@@ -144,7 +144,6 @@ void opengl_app::on_run()
 
     auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
                                                 gfx::grabbed_cursor_component {}, gfx::camera_controls {});
-    scene::interop.user_entity_opengl = *user_entity.get();
 
     glEnable(GL_MULTISAMPLE);
     glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
@@ -253,6 +252,7 @@ void opengl_app::on_run()
     gfx::timed_while::duration opengl_combined_delta = 0s;
     int                        opengl_frames         = 0;
     gfx::worker                opengl_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+        update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
         opengl_combined_delta += delta;
         ++opengl_frames;
         if (opengl_combined_delta > 1s)

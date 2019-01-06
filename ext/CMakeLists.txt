@@ -28,6 +28,7 @@ find_package(Qt5Core QUIET)						# Defines:	Qt5::Core
 find_package(Qt5Widgets QUIET)					# Defines:	Qt5::Widgets
 find_package(Qt5Gui QUIET)						# Defines:	Qt5::Gui
 find_package(Qt5Concurrent QUIET)				# Defines:	Qt5::Concurrent
+find_package(Qt5Charts QUIET)				# Defines:	Qt5::Concurrent
 find_package(glsp QUIET)						# Defines:	jbraun::glsp
 find_package(assimp QUIET)
 add_subdirectory(mygl)							# Defines:	jbraun::mygl
@@ -45,6 +46,7 @@ make_global(Qt5::Core					qt5_core)
 make_global(Qt5::Widgets				qt5_widgets)
 make_global(Qt5::Gui					qt5_gui)
 make_global(Qt5::Concurrent				qt5_concurrent)
+make_global(Qt5::Charts					qt5_charts)
 make_global(jbraun::glsp				glsp)
 make_global(jbraun::mygl				mygl)
 

@@ -88,7 +88,7 @@ scene_file:: scene_file(const files::path& path, float scale) : file(path)
         for (auto i = 0; i < static_cast<int>(ai_mesh->mNumVertices); ++i)
         {
             current_mesh.vertices[i] =
-                vertex3d(to_vec3(ai_mesh->mVertices[i]) * scale,
+                vertex3d(to_vec3(ai_mesh->mVertices[i]),
                               ai_mesh->HasTextureCoords(0) ? glm::vec2(to_vec3(ai_mesh->mTextureCoords[0][i])) : glm::vec2(0),
                               to_vec3(ai_mesh->mNormals[i]));
         }
@@ -100,6 +100,6 @@ scene_file:: scene_file(const files::path& path, float scale) : file(path)
         mesh_material_indices[u32(mesh.geometries.size()-1)] = ai_mesh->mMaterialIndex;
     }
 
-    handle_node(*this, scene->mRootNode, scene, glm::mat4(1.f));
+    handle_node(*this, scene->mRootNode, scene, glm::scale(glm::vec3(scale)));
 }
 }    // namespace gfx
