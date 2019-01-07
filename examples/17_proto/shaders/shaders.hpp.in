@@ -1,20 +1,28 @@
 #pragma once
 #include <array>
 #include <cinttypes>
+#include <vector>
 
 namespace gfx { inline namespace v1 { namespace spirv {
+
+#if defined(_MSC_VER)
+#define dynamic_export extern "C" __declspec(dllexport)
+#elif defined(__GNUC__)
+#define dynamic_export extern "C" __attribute__((visibility("default")))
+#endif
+
     namespace proto {
-    namespace shaders { constexpr uint32_t mesh_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_FRAG@; }
-    namespace shaders { constexpr uint32_t mesh_shadow_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_SHADOW_FRAG@; }
-    namespace shaders { constexpr uint32_t shadow_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SHADOW_FRAG@; }
-    namespace shaders { constexpr uint32_t skybox_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SKYBOX_FRAG@; }
-    namespace shaders { constexpr uint32_t terrain_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_FRAG@; }
-    namespace shaders { constexpr uint32_t terrain_shadow_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_SHADOW_FRAG@; }
-    namespace shaders { constexpr uint32_t mesh_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_VERT@; }
-    namespace shaders { constexpr uint32_t mesh_shadow_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_SHADOW_VERT@; }
-    namespace shaders { constexpr uint32_t shadow_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SHADOW_VERT@; }
-    namespace shaders { constexpr uint32_t skybox_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SKYBOX_VERT@; }
-    namespace shaders { constexpr uint32_t terrain_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_VERT@; }
-    namespace shaders { constexpr uint32_t terrain_shadow_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_SHADOW_VERT@; }
-    namespace shaders { constexpr uint32_t cull_comp[] = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_CULL_COMP@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_mesh_frag = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_mesh_shadow_frag = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_SHADOW_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_shadow_frag = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SHADOW_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_skybox_frag = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SKYBOX_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_terrain_frag = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_terrain_shadow_frag = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_SHADOW_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_mesh_vert = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_mesh_shadow_vert = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_MESH_SHADOW_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_shadow_vert = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SHADOW_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_skybox_vert = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_SKYBOX_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_terrain_vert = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_terrain_shadow_vert = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_TERRAIN_SHADOW_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_cull_comp = @GFX_SHADER_SOURCE_EXAMPLES_17_PROTO_SHADERS_CULL_COMP@; }
 }}}}

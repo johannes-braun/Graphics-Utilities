@@ -21,21 +21,32 @@ public:
     {
         setMinimumWidth(500);
         setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
-        _frame_times  = new QLineSeries(this);
+        _frame_times = new QLineSeries(this);
+        _frame_times->setName("Frame Time");
         QChart* chart = new QChart();
-        chart->legend()->hide();
+        QValueAxis* axisX = new QValueAxis();
+        axisX->setTitleText("Elapsed Time (s)");
+        chart->addAxis(axisX, Qt::AlignBottom);
+        QValueAxis* axisY = new QValueAxis();
+        axisY->setTitleText("FT (ms)");
+        chart->addAxis(axisY, Qt::AlignLeft);
+
+        constexpr const char* series_names[]{"Frame Begin", "Shadow Map", "Render"};
+
+        for (int i = 1; i < std::size(_stamp_times); ++i) {
+            _stamp_times[i] = new QLineSeries(this);
+            _stamp_times[i]->setName(series_names[i]);
+            chart->addSeries(_stamp_times[i]);
+            _stamp_times[i]->attachAxis(axisX);
+            _stamp_times[i]->attachAxis(axisY);
+            }
+
         chart->addSeries(_frame_times);
         chart->setTitle("Frame Times");
         _frametime_chart_view = new QChartView(chart);
         _frametime_chart_view->setRenderHint(QPainter::Antialiasing);
-        _frametime_chart_view->setFixedHeight(250);
-        QValueAxis* axisX = new QValueAxis();
-        axisX->setTitleText("Elapsed Time (s)");
-        chart->addAxis(axisX, Qt::AlignBottom);
+        _frametime_chart_view->setFixedHeight(450);
         _frame_times->attachAxis(axisX);
-        QValueAxis* axisY = new QValueAxis();
-        axisY->setTitleText("FT (ms)");
-        chart->addAxis(axisY, Qt::AlignLeft);
         _frame_times->attachAxis(axisY);
 
         auto w = new QWidget(this);
@@ -61,46 +72,76 @@ public:
         auto     info_form_layout = new QFormLayout(info_form);
 
         info_form_layout->addRow("Current Frame Time", _framerate_label = new QLabel(info_form));
+
+        for (int i = 1; i < std::size(_stamp_times); ++i)
+        { info_form_layout->addRow(series_names[i], _timestamp_labels[i - 1] = new QLabel(info_form));
+        }
+
         info_content->addWidget(info_form);
         info_content->addWidget(save_btn);
 
         QTimer* t = new QTimer(this);
         connect(t, &QTimer::timeout, this, &app_tab::update_chart);
-        t->start(30);
+        t->start(time_step);
 
         QTimer* accum = new QTimer(this);
-        connect(accum, &QTimer::timeout, [this] { _accum_frametimes.push_back(_app->current_frametime()); });
-        accum->start(1);
+        connect(accum, &QTimer::timeout, [this] {
+            _accum_frametimes.push_back(_app->current_frametime());
+            std::shared_lock lock(_app->stamp_time_mutex());
+            for (int i = 1; i < std::size(_accum_stamptimes); ++i) 
+            { 
+                _accum_stamptimes[i].emplace_back(std::chrono::nanoseconds(_app->stamp_times().at(i) - _app->stamp_times().at(0)));
+            }
+        });
+        accum->start(25);
 
         below_graph_layout->addWidget(new QWidget(this), 1);
     }
 
     void update_chart()
     {
-        _frametime_min += 0.03;
-        _frametime_max += 0.03;
+        _frametime_min += (time_step / 1000.0);
+        _frametime_max += (time_step / 1000.0);
 
-        if (_frame_times->count() + 1 > max_samples) _frame_times->remove(0);
+        if (_frame_times->count() + 1 > max_samples){
+            _frame_times->remove(0);
+            for (int i =1; i < std::size(_stamp_times); ++i) {
+                _stamp_times[i]->remove(0);
+            }
+        }
         const auto acc = std::accumulate(_accum_frametimes.begin(), _accum_frametimes.end(), std::chrono::nanoseconds(0));
         auto       ft  = acc.count() / (1'000'000.0 * _accum_frametimes.size());
         *_frame_times << QPointF(_frametime_max, ft);
+
+        for (int i = 1; i < std::size(_stamp_times); ++i)
+        {
+            const auto acc = std::accumulate(_accum_stamptimes[i].begin(), _accum_stamptimes[i].end(), std::chrono::nanoseconds(0));
+            auto       ft  = acc.count() / (1'000'000.0 * _accum_stamptimes[i].size());
+            *_stamp_times[i] << QPointF(_frametime_max, ft);
+            _accum_stamptimes[i].clear();
+            _timestamp_labels[i-1]->setText(QString::fromStdString(std::to_string(ft) + "ms"));
+        }
         _frametime_chart_view->repaint();
         _framerate_label->setText(QString::fromStdString(std::to_string(ft) + "ms"));
 
         _frametime_chart_view->chart()->axisX()->setRange(_frametime_min, _frametime_max);
-        _frametime_chart_view->chart()->axisY()->setRange(0, 30);
+        _frametime_chart_view->chart()->axisY()->setRange(0, 16);
         _accum_frametimes.clear();
     }
 
 private:
-    constexpr static auto                 max_samples = 600;
+    constexpr static auto                 max_samples = 100;
+    constexpr static auto                 time_step = 100.0;
     gfx::basic_app*                       _app;
     QLineSeries*                          _frame_times;
+    QLineSeries*                          _stamp_times[gfx::basic_app::_stamp_id_count];
     QChartView*                           _frametime_chart_view;
     QLabel*                               _framerate_label;
-    double                                _frametime_min = -max_samples * 0.03;
+    QLabel*                               _timestamp_labels[gfx::basic_app::_stamp_id_count-1];
+    double                                _frametime_min = -max_samples * (time_step / 1000.0);
     double                                _frametime_max = 0;
     std::vector<std::chrono::nanoseconds> _accum_frametimes;
+    std::vector<std::chrono::nanoseconds> _accum_stamptimes[gfx::basic_app::_stamp_id_count];
 };
 
 class control_window : public QMainWindow

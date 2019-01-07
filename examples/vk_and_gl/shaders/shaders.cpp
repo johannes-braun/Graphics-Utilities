@@ -1,10 +1,18 @@
 #pragma once
 #include <array>
 #include <cinttypes>
+#include <vector>
 
 namespace gfx { inline namespace v1 { namespace spirv {
+
+#if defined(_MSC_VER)
+#define dynamic_export extern "C" __declspec(dllexport)
+#elif defined(__GNUC__)
+#define dynamic_export extern "C" __attribute__((visibility("default")))
+#endif
+
     namespace vkgl {
-    namespace shaders { constexpr uint32_t gl_fs_frag[] = {0x07230203,0x00010000,0x000d0007,0x00000366,
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_gl_fs_frag = {0x07230203,0x00010000,0x000d0007,0x00000366,
 0x00000000,0x00020011,0x00000001,0x00020011,
 0x00000032,0x0006000b,0x00000001,0x4c534c47,
 0x6474732e,0x3035342e,0x00000000,0x0003000e,
@@ -1386,7 +1394,7 @@ namespace gfx { inline namespace v1 { namespace spirv {
 0x0000020e,0x0000020b,0x0000020d,0x000200fe,
 0x0000020e,0x00010038}
 ; }
-    namespace shaders { constexpr uint32_t vk_fs_frag[] = {0x07230203,0x00010000,0x000d0007,0x00000361,
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_vk_fs_frag = {0x07230203,0x00010000,0x000d0007,0x00000361,
 0x00000000,0x00020011,0x00000001,0x00020011,
 0x00000032,0x0006000b,0x00000001,0x4c534c47,
 0x6474732e,0x3035342e,0x00000000,0x0003000e,
@@ -2762,7 +2770,7 @@ namespace gfx { inline namespace v1 { namespace spirv {
 0x00000207,0x00000209,0x000200fe,0x0000020a,
 0x00010038}
 ; }
-    namespace shaders { constexpr uint32_t gl_vs_vert[] = {0x07230203,0x00010000,0x000d0007,0x00000066,
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_gl_vs_vert = {0x07230203,0x00010000,0x000d0007,0x00000066,
 0x00000000,0x00020011,0x00000001,0x00020011,
 0x0000114b,0x0009000a,0x5f565053,0x5f52484b,
 0x64616873,0x645f7265,0x5f776172,0x61726170,
@@ -3012,7 +3020,7 @@ namespace gfx { inline namespace v1 { namespace spirv {
 0x0000005a,0x00000048,0x00000019,0x0003003e,
 0x0000005a,0x00000058,0x000100fd,0x00010038}
 ; }
-    namespace shaders { constexpr uint32_t gl_vs_shadow_vert[] = {0x07230203,0x00010000,0x000d0007,0x0000004e,
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_gl_vs_shadow_vert = {0x07230203,0x00010000,0x000d0007,0x0000004e,
 0x00000000,0x00020011,0x00000001,0x00020011,
 0x0000114b,0x0009000a,0x5f565053,0x5f52484b,
 0x64616873,0x645f7265,0x5f776172,0x61726170,
@@ -3216,7 +3224,7 @@ namespace gfx { inline namespace v1 { namespace spirv {
 0x0000003e,0x0000002d,0x00000014,0x0003003e,
 0x0000003e,0x0000003c,0x000100fd,0x00010038}
 ; }
-    namespace shaders { constexpr uint32_t vk_vs_vert[] = {0x07230203,0x00010000,0x000d0007,0x00000066,
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_vk_vs_vert = {0x07230203,0x00010000,0x000d0007,0x00000066,
 0x00000000,0x00020011,0x00000001,0x00020011,
 0x0000114b,0x0009000a,0x5f565053,0x5f52484b,
 0x64616873,0x645f7265,0x5f776172,0x61726170,
@@ -3466,7 +3474,7 @@ namespace gfx { inline namespace v1 { namespace spirv {
 0x0000005a,0x00000048,0x00000019,0x0003003e,
 0x0000005a,0x00000058,0x000100fd,0x00010038}
 ; }
-    namespace shaders { constexpr uint32_t vk_vs_shadow_vert[] = {0x07230203,0x00010000,0x000d0007,0x0000004e,
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_vk_vs_shadow_vert = {0x07230203,0x00010000,0x000d0007,0x0000004e,
 0x00000000,0x00020011,0x00000001,0x00020011,
 0x0000114b,0x0009000a,0x5f565053,0x5f52484b,
 0x64616873,0x645f7265,0x5f776172,0x61726170,

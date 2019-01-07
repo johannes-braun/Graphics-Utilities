@@ -11,7 +11,10 @@ namespace scene {
 
 struct scene_manager_t
 {
-    ~scene_manager_t() { _loader_thread.join(); }
+    ~scene_manager_t()
+    {
+        if (_loader_thread.joinable()) _loader_thread.join();
+    }
 
     void load(const std::filesystem::path& path, float scale, bool make_current = true, const std::function<bool(float)>& on_progress = {})
     {
@@ -26,7 +29,7 @@ struct scene_manager_t
         }
         _cancel_load = false;
 
-        _loader_thread = std::thread {[=] {
+        _loader_thread = std::thread{[=] {
             const size_t     hash = std::hash<std::string>()(path.string()) ^ std::hash<float>()(scale);
             std::unique_lock lock(_scene_mutex);
 
@@ -59,9 +62,8 @@ struct scene_manager_t
 
             info.diffuse_texture_id = -1;
             if (scene.materials[i].texture_diffuse.bytes())
-            { info.diffuse_texture_id = make_texture_id(scene.materials[i].texture_diffuse); }
-            if (scene.materials[i].texture_bump.bytes()) { info.bump_map_texture_id = make_texture_id(scene.materials[i].texture_bump); }
-        }
+            { info.diffuse_texture_id = make_texture_id(scene.materials[i].texture_diffuse); } if (scene.materials[i].texture_bump.bytes())
+            { info.bump_map_texture_id = make_texture_id(scene.materials[i].texture_bump); } }
 
         instances.get_mesh_allocator().reserve_for(scene.mesh.vertices.size(), scene.mesh.indices.size());
         for (size_t i = 0; i < scene.mesh.geometries.size(); ++i)

@@ -1,13 +1,21 @@
 #pragma once
 #include <array>
 #include <cinttypes>
+#include <vector>
 
 namespace gfx { inline namespace v1 { namespace spirv {
+
+#if defined(_MSC_VER)
+#define dynamic_export extern "C" __declspec(dllexport)
+#elif defined(__GNUC__)
+#define dynamic_export extern "C" __attribute__((visibility("default")))
+#endif
+
     namespace meshing {
-    namespace shaders { constexpr uint32_t mesh_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_MESH_FRAG@; }
-    namespace shaders { constexpr uint32_t outline_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_OUTLINE_FRAG@; }
-    namespace shaders { constexpr uint32_t points_frag[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_POINTS_FRAG@; }
-    namespace shaders { constexpr uint32_t mesh_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_MESH_VERT@; }
-    namespace shaders { constexpr uint32_t outline_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_OUTLINE_VERT@; }
-    namespace shaders { constexpr uint32_t points_vert[] = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_POINTS_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_mesh_frag = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_MESH_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_outline_frag = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_OUTLINE_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_points_frag = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_POINTS_FRAG@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_mesh_vert = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_MESH_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_outline_vert = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_OUTLINE_VERT@; }
+    namespace shaders { dynamic_export std::vector<uint32_t> shaders_points_vert = @GFX_SHADER_SOURCE_EXAMPLES_07_MESHING_SHADERS_POINTS_VERT@; }
 }}}}

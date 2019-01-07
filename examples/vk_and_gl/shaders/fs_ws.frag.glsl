@@ -182,8 +182,9 @@ void main()
 		));
 
 	const vec3 real_normal = normalize(from_bump(position, normalize(normal), new_uv, normalize(position - camera.position), models[draw_index].info.bump_map_texture_id, depth));
-	
+
 	const vec4 diffuse = sample_color(models[draw_index].info.diffuse_color, models[draw_index].info.diffuse_texture_id, new_uv);
+
 	for(int id = 0; id < lights.length(); ++id)
 	{
 		light_t light = lights[id];

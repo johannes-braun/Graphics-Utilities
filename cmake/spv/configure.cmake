@@ -21,5 +21,6 @@ foreach(file ${gfx_current_frag} ${gfx_current_vert} ${gfx_current_geom} ${gfx_c
 endforeach()
 
 file(WRITE ${GFX_BINARY_DIR}/spv.lock "locked!")
+message(${GFX_IN} -> ${GFX_OUT})
 configure_file(${GFX_IN} ${GFX_OUT} @ONLY)
 message(${GFX_OUT})

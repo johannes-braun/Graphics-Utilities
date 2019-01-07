@@ -4,5 +4,6 @@
 class opengl_app : public gfx::basic_app
 {
 public:
-    void on_run() override;
+    void  on_run() override;
+    void* shader_lib = nullptr;
 };

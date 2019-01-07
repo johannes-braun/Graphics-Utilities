@@ -3,12 +3,21 @@
 #include <functional>
 #include <gfx.ecs/ecs.hpp>
 #include <thread>
+#include <shared_mutex>
 
 namespace gfx {
 inline namespace v1 {
 struct basic_app
 {
-    basic_app()                       = default;
+    enum stamp_id
+    {
+        stamp_id_begin = 0,
+        stamp_id_shadowmap,
+        stamp_id_render,
+        _stamp_id_count
+    };
+
+    basic_app() : _stamp_times(_stamp_id_count) {}
     basic_app(const basic_app& other) = delete;
     basic_app(basic_app&& other)      = delete;
     basic_app& operator=(const basic_app& other) = delete;
@@ -54,7 +63,14 @@ struct basic_app
     std::chrono::nanoseconds current_frametime() const noexcept { return std::chrono::nanoseconds(_frame_nanoseconds); }
     void update_frametime(std::chrono::nanoseconds nanos) { _frame_nanoseconds = nanos.count(); }
 
+    const std::vector<std::uint64_t>& stamp_times() const noexcept { return _stamp_times; }
+    std::shared_mutex&                stamp_time_mutex() { return _stamp_time_mutex; }
+
     void* user_data = nullptr;
+
+protected:
+    std::shared_mutex                 _stamp_time_mutex;
+    std::vector<std::uint64_t> _stamp_times;
 
 private:
     std::atomic_bool                     _should_close    = false;
