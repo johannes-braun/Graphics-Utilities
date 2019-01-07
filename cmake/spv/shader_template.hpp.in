@@ -1,0 +1,17 @@
+#pragma once
+// Template header containing a single shader
+
+#include <vector>
+
+#if defined(_MSC_VER)
+#define IMPL_dynamic_export extern "C" __declspec(dllexport)
+#elif defined(__GNUC__)
+#define IMPL_dynamic_export extern "C" __attribute__((visibility("default")))
+#else
+#define IMPL_dynamic_export
+#endif
+
+// shader symbol
+IMPL_dynamic_export inline std::vector<std::uint32_t> @SPVGEN_SHADER_NAME@ @SPVGEN_GENERATED_SPV@;
+
+#undef IMPL_dynamic_export

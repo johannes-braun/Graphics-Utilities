@@ -1,16 +1,14 @@
 set(current_executable vk_and_gl)
 mark_as_executable(${current_executable})
 
-include(${CMAKE_MODULE_PATH}/spv/compile_spv.cmake)
-create_spirv(${current_executable}.shaders ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shaders.cpp vkgl)
-
-add_library(${current_executable}-shaders SHARED ${CMAKE_CURRENT_SOURCE_DIR}/shaders/shaders.cpp)
-target_link_libraries(${current_executable}-shaders PRIVATE ${current_executable}.shaders)
-set_target_properties(${current_executable}-shaders PROPERTIES 
+include(spv/spv_to_dll)
+file(GLOB_RECURSE SPVGEN_FILES shaders/*.vert shaders/*.frag shaders/*.tese shaders/*.tesc shaders/*.geom shaders/*.comp)
+add_shader(${current_executable}.shaders ${SPVGEN_FILES})
+set_target_properties(${current_executable}.shaders PROPERTIES 
 	RUNTIME_OUTPUT_NAME shaders
 	RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:${current_executable}>)
 
-#target_link_libraries(${current_executable} PRIVATE ${current_executable}.shaders)
+target_link_libraries(${current_executable} PRIVATE ${current_executable}.shaders)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.math)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs)

@@ -10,3 +10,5 @@ add_subdirectory(14_cubemapper)
 add_subdirectory(17_proto)
 add_subdirectory(vk_and_gl)
 add_subdirectory(libs)
+
+add_subdirectory(shader_test)

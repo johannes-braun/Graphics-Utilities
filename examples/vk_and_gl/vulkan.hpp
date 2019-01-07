@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.hpp>
 #include <gfx.graphics/vulkan/image.hpp>
 #include <gfx.graphics/vulkan/buffer.hpp>
+#include <gfx.graphics/shader_import/dynamic_lib.hpp>
 
 struct vulkan_state_t
 {
@@ -53,5 +54,6 @@ private:
     void generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std::uint32_t layers, std::uint32_t levels, vk::Extent3D extent,
                           const gfx::vulkan::mapped<std::byte>& data);
     std::unique_ptr<vulkan_state_t> vulkan_state;
-    void*                           shader_lib = nullptr;
+    
+    gfx::dynamic_library_t shaders_lib;
 };
