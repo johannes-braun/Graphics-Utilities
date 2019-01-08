@@ -85,7 +85,7 @@ vec4 unpack_rgba8(uint c)
     return vec4(((c >> 24) & 0xff) / 255.f, ((c >> 16) & 0xff) / 255.f, ((c >> 8) & 0xff) / 255.f, ((c >> 0) & 0xff) / 255.f);
 }
 
-vec4 sample_color(u8vec4 color, volatile int texture_id, vec2 uv)
+vec4 sample_color(u8vec4 color, volatile const restrict int texture_id, vec2 uv)
 {
     if (texture_id >= 0) { return texture(all_textures[texture_id], (uv)); }
     return unpack_rgba8(color);

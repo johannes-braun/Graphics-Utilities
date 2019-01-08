@@ -5,6 +5,7 @@
 class opengl_app : public gfx::basic_app
 {
 public:
+    opengl_app() : gfx::basic_app("OpenGL App") {}
     void on_run() override;
 
 private:

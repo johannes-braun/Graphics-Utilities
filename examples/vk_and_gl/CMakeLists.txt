@@ -7,7 +7,7 @@ add_shader(${current_executable}.shaders_vk vulkan
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/vk_fs.frag
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/vk_vs_shadow.vert)
 	
-add_shader(${current_executable}.shaders_gl vulkan
+add_shader(${current_executable}.shaders_gl opengl
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_vs.vert
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_fs.frag
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_vs_shadow.vert)

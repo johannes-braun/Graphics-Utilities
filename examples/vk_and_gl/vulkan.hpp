@@ -29,6 +29,8 @@ struct vulkan_state_t
 class vulkan_app : public gfx::basic_app
 {
 public:
+    vulkan_app() : gfx::basic_app("Vulkan App") {}
+
     void on_run() override;
 
 private:

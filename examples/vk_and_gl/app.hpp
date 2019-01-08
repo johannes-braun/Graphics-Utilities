@@ -20,10 +20,10 @@ struct basic_app
         _stamp_id_count
     };
 
-    basic_app() : _stamp_times(_stamp_id_count)
+    basic_app(const std::string& title) : _stamp_times(_stamp_id_count)
     {
-        panel.setBaseSize({800, 800});
-        panel.setWindowTitle("Vulkan");
+        panel.resize(1280, 720);
+        panel.setWindowTitle(QString::fromStdString(title));
         panel.show();
 
         _input = std::make_unique<gfx::qt_input_system>(&panel);

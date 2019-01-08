@@ -21,7 +21,7 @@ if(WIN32)
     set(GFX_APP_RESOURCES ${GFX_APP_RESOURCE_PATH}/app.rc)
 endif()
 
-function(copy_dll target lib)
+function(copy_dll target lib) 
 	add_custom_command(
 		TARGET ${target}
 		POST_BUILD

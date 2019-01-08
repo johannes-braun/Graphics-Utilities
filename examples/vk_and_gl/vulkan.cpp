@@ -1,5 +1,3 @@
-#define GLFW_EXPOSE_NATIVE_WIN32
-
 #include "vulkan.hpp"
 #include "camera.hpp"
 #include "gfx.core/log.hpp"
@@ -12,13 +10,10 @@
 #include "input.hpp"
 #include "scene.hpp"
 #include "shaders/def.hpp"
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
 #include <glm/ext.hpp>
-#include <input_glfw.hpp>
 #include <random>
 #include <thread>
 #include <vulkan/vulkan.hpp>

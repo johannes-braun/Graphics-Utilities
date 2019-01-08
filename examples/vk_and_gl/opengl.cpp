@@ -1,21 +1,13 @@
 #define MYGL_IMPLEMENTATION
-#define QT_NO_OPENGL
-#define GLFW_EXPOSE_NATIVE_WIN32
 
-#include <GLFW/glfw3.h>
-#include <mygl/mygl.hpp>
-#include <thread>
-#include "camera.hpp"
-#include "gfx.core/log.hpp"
-#include "gfx.ecs.defaults2/movement.hpp"
-#include "globals.hpp"
-#include "input_glfw.hpp"
 #include "opengl.hpp"
-//#include "prototype.hpp"
+#include "camera.hpp"
+#include "globals.hpp"
 #include "scene.hpp"
 #include "shaders/def.hpp"
-#include <GLFW/glfw3native.h>
+#include <gfx.core/log.hpp>
 #include <gfx.core/worker.hpp>
+#include <gfx.ecs.defaults2/movement.hpp>
 #include <gfx.ecs.defaults2/prototype_proxies.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.file/file.hpp>
@@ -23,6 +15,7 @@
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 #include <random>
+#include <thread>
 
 struct state_t
 {
@@ -57,15 +50,9 @@ void opengl_app::on_run()
     state            = &s;
     const auto getst = [&]() -> state_t& { return *static_cast<state_t*>(state); };
 
-    gfx::ecs::ecs ecs;
-    gfx::opengl::context context(panel.winId(),
-                                 {{gfx::opengl::GL_CONTEXT_MAJOR_VERSION_ARB, 4},
-                                  {gfx::opengl::GL_CONTEXT_MINOR_VERSION_ARB, 6},
-                                  {gfx::opengl::GL_CONTEXT_PROFILE_MASK_ARB, gfx::opengl::GL_CONTEXT_CORE_PROFILE_BIT_ARB},
-                                  {gfx::opengl::GL_CONTEXT_FLAGS_ARB, gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB}});
-    context.set_pixel_format({{gfx::opengl::GL_SAMPLES_ARB, 4}});
-    context.make_current();
-    mygl::load();
+    gfx::ecs::ecs        ecs;
+    gfx::opengl::context context(panel.winId(), {{gfx::opengl::GL_CONTEXT_FLAGS_ARB, gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB}},
+                                 {{gfx::opengl::GL_SAMPLE_BUFFERS_ARB, true}, {gfx::opengl::GL_SAMPLES_ARB, 8}});
 
     std::atomic_bool      init = false;
     gfx::ecs::system_list graphics_list;
@@ -75,9 +62,7 @@ void opengl_app::on_run()
            const void* userParam) {
             switch (severity)
             {
-            case GL_DEBUG_SEVERITY_HIGH:
-                std::cout << message;
-                break;
+            case GL_DEBUG_SEVERITY_HIGH: std::cout << message; break;
             case GL_DEBUG_SEVERITY_MEDIUM: gfx::wlog << message; break;
             case GL_DEBUG_SEVERITY_LOW: gfx::ilog << message; break;
             case GL_DEBUG_SEVERITY_NOTIFICATION: gfx::dlog << message; break;
@@ -87,7 +72,7 @@ void opengl_app::on_run()
 
     gfx::opengl::instance_proxy<def::mesh_info> opengl_proxy;
     gfx::instance_system<def::mesh_info>        instances(opengl_proxy,
-                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
+                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
     graphics_list.add(instances);
     user_data = &instances;
 
@@ -141,8 +126,8 @@ void opengl_app::on_run()
 
     samplers.resize(textures.size());
     std::fill(samplers.begin(), samplers.end(), sampler);
-    auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
-                                                gfx::grabbed_cursor_component{}, gfx::camera_controls{});
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
+                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
     glEnable(GL_MULTISAMPLE);
     glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
@@ -151,10 +136,10 @@ void opengl_app::on_run()
     create_program();
 
     shaders_lib.load("shaders_gl");
-    const auto* const   vs_shadow_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs_shadow.vert");
-    std::array          spec_constant_ids{def::constant_id_texture_count};
-    std::array          spec_constant_values{std::uint32_t(textures.size())};
-    mygl::shader shadow_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    const auto* const vs_shadow_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs_shadow.vert");
+    std::array        spec_constant_ids {def::constant_id_texture_count};
+    std::array        spec_constant_values {std::uint32_t(textures.size())};
+    mygl::shader      shadow_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderBinary(1, &shadow_vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(*vs_shadow_shader),
                    gfx::u32(std::size(*vs_shadow_shader) * sizeof(uint32_t)));
     shaders_lib.unload();
@@ -208,10 +193,10 @@ void opengl_app::on_run()
     glVertexArrayAttribBinding(vao, 1, 0);
     glVertexArrayAttribBinding(vao, 2, 0);
 
-    gfx::opengl::buffer<gfx::camera_matrices> camera_buffer({gfx::camera_matrices{}});
+    gfx::opengl::buffer<gfx::camera_matrices> camera_buffer({gfx::camera_matrices {}});
 
     constexpr int max_frames = 2;
-    mygl::sync    fences[max_frames]{};
+    mygl::sync    fences[max_frames] {};
     int           current_frame = 0;
 
     struct query_handler
@@ -269,7 +254,7 @@ void opengl_app::on_run()
 
     glClearDepthf(0.f);
     context.set_swap_interval(0);
-    context.clear_current();
+    gfx::opengl::context::clear_current();
     gfx::worker opengl_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
         if (!init.exchange(true)) context.make_current();
@@ -376,18 +361,17 @@ void opengl_app::on_run()
     QTimer* fixed_updater;
     run_in_gui([&] {
         fixed_updater = new QTimer(&panel);
-        QObject::connect(fixed_updater, &QTimer::timeout, [&] {
-            if (!opengl_graphics_worker.has_stopped()) ecs.update(update_time_inputs, inputs_list);
-        });
+        QObject::connect(fixed_updater, &QTimer::timeout, [&] { ecs.update(update_time_inputs, inputs_list); });
         fixed_updater->start(update_time_inputs.count());
     });
 
     gfx::timed_while::run(
         [&](gfx::timed_while& self, gfx::timed_while::duration delta) { return self.value_after(panel.isVisible(), update_time_inputs); });
 
-    run_in_gui([&] { fixed_updater->stop(); });
+    // run_in_gui([&] { fixed_updater->stop(); });
 
     opengl_graphics_worker.stop_and_wait();
+    fixed_updater->stop();
 }
 
 void opengl_app::create_program()
@@ -395,20 +379,20 @@ void opengl_app::create_program()
     const auto getst = [&]() -> state_t& { return *static_cast<state_t*>(state); };
     if (glIsProgram(getst().program)) { glDeleteProgram(getst().program); }
 
-    std::array spec_constant_ids{def::constant_id_texture_count};
-    std::array spec_constant_values{std::uint32_t(texture_count)};
+    std::array spec_constant_ids {def::constant_id_texture_count};
+    std::array spec_constant_values {std::uint32_t(texture_count)};
 
     shaders_lib.load("shaders_gl");
     auto vs_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs.vert");
     auto fs_shader = gfx::import_shader(shaders_lib, "shaders/gl_fs.frag");
-    
+
     mygl::shader vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderBinary(1, &vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(*vs_shader),
                    gfx::u32(std::size(*vs_shader) * sizeof(uint32_t)));
     glSpecializeShader(vertex_shader, "main", std::uint32_t(spec_constant_ids.size()), spec_constant_ids.data(),
                        spec_constant_values.data());
 
-    mygl::shader fragment_shader = glCreateShader(GL_VERTEX_SHADER);
+    mygl::shader fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderBinary(1, &fragment_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(*fs_shader),
                    gfx::u32(std::size(*fs_shader) * sizeof(uint32_t)));
     glSpecializeShader(fragment_shader, "main", std::uint32_t(spec_constant_ids.size()), spec_constant_ids.data(),
