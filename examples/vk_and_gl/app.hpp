@@ -1,9 +1,12 @@
 #pragma once
+#include <QTimer>
+#include <QWidget>
 #include <atomic>
 #include <functional>
 #include <gfx.ecs/ecs.hpp>
-#include <thread>
 #include <shared_mutex>
+#include <thread>
+#include "input_qt.hpp"
 
 namespace gfx {
 inline namespace v1 {
@@ -17,7 +20,22 @@ struct basic_app
         _stamp_id_count
     };
 
-    basic_app() : _stamp_times(_stamp_id_count) {}
+    basic_app() : _stamp_times(_stamp_id_count)
+    {
+        panel.setBaseSize({800, 800});
+        panel.setWindowTitle("Vulkan");
+        panel.show();
+
+        _input = std::make_unique<gfx::qt_input_system>(&panel);
+
+        QTimer* t = new QTimer(&panel);
+        QObject::connect(t, &QTimer::timeout, [=] {
+            std::unique_lock l(_gui_mtx);
+            for (auto& fun : _run_in_gui) fun();
+            _run_in_gui.clear();
+        });
+        t->start(8);
+    }
     basic_app(const basic_app& other) = delete;
     basic_app(basic_app&& other)      = delete;
     basic_app& operator=(const basic_app& other) = delete;
@@ -36,7 +54,7 @@ struct basic_app
     {
         if (auto it = _threads.find(id); it != _threads.end()) it->second.join();
         ++_running_threads;
-        _threads[id] = std::thread {[this, fun] {
+        _threads[id] = std::thread{[this, fun] {
             (static_cast<Self*>(this)->*fun)();
             --_running_threads;
         }};
@@ -46,7 +64,7 @@ struct basic_app
     {
         if (auto it = _threads.find(id); it != _threads.end()) it->second.join();
         ++_running_threads;
-        _threads[id] = std::thread {[this, fun] {
+        _threads[id] = std::thread{[this, fun] {
             fun();
             --_running_threads;
         }};
@@ -61,7 +79,7 @@ struct basic_app
     bool finished() const noexcept { return _running_threads.load() <= 0; }
 
     std::chrono::nanoseconds current_frametime() const noexcept { return std::chrono::nanoseconds(_frame_nanoseconds); }
-    void update_frametime(std::chrono::nanoseconds nanos) { _frame_nanoseconds = nanos.count(); }
+    void                     update_frametime(std::chrono::nanoseconds nanos) { _frame_nanoseconds = nanos.count(); }
 
     const std::vector<std::uint64_t>& stamp_times() const noexcept { return _stamp_times; }
     std::shared_mutex&                stamp_time_mutex() { return _stamp_time_mutex; }
@@ -69,10 +87,21 @@ struct basic_app
     void* user_data = nullptr;
 
 protected:
-    std::shared_mutex                 _stamp_time_mutex;
+    std::shared_mutex          _stamp_time_mutex;
     std::vector<std::uint64_t> _stamp_times;
+    QWidget                              panel;
+    std::unique_ptr<gfx::qt_input_system> _input;
+
+    void run_in_gui(std::function<void()> fun)
+    {
+        std::unique_lock l(_gui_mtx);
+        _run_in_gui.emplace_back(std::move(fun));
+    }
 
 private:
+    std::mutex                         _gui_mtx;
+    std::vector<std::function<void()>> _run_in_gui;
+
     std::atomic_bool                     _should_close    = false;
     std::atomic_int                      _running_threads = 0;
     std::unordered_map<int, std::thread> _threads;

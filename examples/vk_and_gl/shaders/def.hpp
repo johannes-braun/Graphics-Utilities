@@ -52,12 +52,16 @@ CONSTEXPR uint texture_binding_all = 0;
 
 CONSTEXPR uint constant_id_texture_count = 0;
 
-CONSTEXPR uint shadow_map_binding = 100;
+CONSTEXPR uint shadow_map_binding = 60;
 CONSTEXPR uint shadow_cam_binding = 4;
 
 #ifndef __cplusplus
+
 // specialization constants
-layout(constant_id = constant_id_texture_count) const uint MAX_TEXTURE_COUNT = 164;
+#ifdef GL_SPIRV
+layout(constant_id = 0)
+#endif
+const uint MAX_TEXTURE_COUNT = 1;
 
 layout(layout_texture_binding_all) uniform sampler2D all_textures[MAX_TEXTURE_COUNT];
 

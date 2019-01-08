@@ -44,7 +44,7 @@ private:
     };
 
     void                     create_shadow_renderpass(gfx::vulkan::device& gpu);
-    void                     create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain);
+    void                     create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapchain& swapchain) const;
     vk::UniquePipelineLayout create_pipeline_layout(gfx::vulkan::device& gpu);
     vk::UniquePipeline       create_pipeline(gfx::vulkan::device& gpu, vk::PipelineLayout layout);
     vk::UniquePipelineLayout create_shadow_pipeline_layout(gfx::vulkan::device& gpu);

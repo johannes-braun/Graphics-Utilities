@@ -6,6 +6,7 @@
 
 #include "vulkan/instance.hpp"
 #include "vulkan/surface.hpp"
+#include "native_handle.hpp"
 
 namespace gfx {
 inline namespace v1 {

@@ -5,18 +5,8 @@
 
 namespace gfx {
 inline namespace v1 {
+class native_handle;
 namespace vulkan {
-class native_handle
-{
-public:
-    template<typename T, typename = std::enable_if_t<(sizeof(T) <= sizeof(void*))>>
-    native_handle(T hnd) : _hnd(reinterpret_cast<void*>(hnd))
-    {}
-
-private:
-    void* _hnd;
-};
-
 class instance;
 class surface
 {

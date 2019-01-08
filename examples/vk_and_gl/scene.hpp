@@ -44,8 +44,8 @@ struct scene_manager_t
 
     const gfx::scene_file& current() const
     {
-        assert(_current_scene.load());
         std::shared_lock lock(_scene_mutex);
+        assert(_current_scene.load());
         return *_current_scene.load();
     }
 
