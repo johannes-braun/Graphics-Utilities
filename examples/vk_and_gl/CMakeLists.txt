@@ -37,3 +37,5 @@ target_link_libraries(${current_executable} PRIVATE gfx_ext::glfw)
 target_link_libraries(${current_executable} PRIVATE gfx_ext::mygl)
 
 target_compile_definitions(${current_executable} PRIVATE QT_NO_OPENGL)
+find_package(OpenMP REQUIRED)
+target_link_libraries(${current_executable} PRIVATE OpenMP::OpenMP_CXX)

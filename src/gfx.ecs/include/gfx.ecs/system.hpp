@@ -57,6 +57,9 @@ public:
     const system_base& at(uint32_t index) const;
     size_t             size() const noexcept;
 
+    auto begin() { return _systems.begin(); }
+    auto end() { return _systems.end(); }
+
 private:
     std::vector<std::reference_wrapper<system_base>> _systems;
 };
