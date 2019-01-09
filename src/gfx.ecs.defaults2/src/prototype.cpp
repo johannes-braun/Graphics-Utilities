@@ -8,7 +8,7 @@ shared_mesh mesh_allocator::allocate_mesh_impl(const mesh3d& mesh, const submesh
 {
     const gsl::span<const vertex3d> vertices(mesh.vertices.data() + submesh.base_vertex, submesh.vertex_count);
     const gsl::span<const index32>  indices(mesh.indices.data() + submesh.base_index, submesh.index_count);
-    return allocate_mesh_impl(vertices, indices, std::nullopt, manual_commit);
+    return allocate_mesh_impl(vertices, indices, submesh.bounds, manual_commit);
 }
 
 shared_mesh mesh_allocator::allocate_mesh_impl(const gsl::span<const vertex3d>& vertices, const gsl::span<const index32>& indices,

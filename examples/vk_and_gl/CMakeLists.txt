@@ -20,7 +20,6 @@ set_target_properties(${current_executable}.shaders_gl PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:${current_executable}>)
 
 add_dependencies(${current_executable} ${current_executable}.shaders_vk ${current_executable}.shaders_gl)
-
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.math)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs)

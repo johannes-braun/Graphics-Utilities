@@ -132,6 +132,10 @@ vec3 shadow(in camera_t cam, vec3 pos){
     float shadow = 0.f;
     vec2 inv_size = 1/max(tex_size, vec2(1, 1));
 
+	const vec2 tmpuv = map_pos.xy;
+	if(tmpuv.x < 0 || tmpuv.x > 1 || tmpuv.y < 0 || tmpuv.y > 1)
+		return vec3(1);
+
     for(int i=0; i<smoothing_size*smoothing_size; ++i)
     {
         const int x = (i % smoothing_size - (smoothing_size >> 1)-1);

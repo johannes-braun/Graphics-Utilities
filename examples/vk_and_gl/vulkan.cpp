@@ -21,6 +21,87 @@
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
 
+
+class bouncy_system : public gfx::ecs::system
+{
+    mutable std::mt19937                  gen;
+    std::uniform_real_distribution<float> dist{-1, 1};
+
+    bool               _explode      = false;
+    bool               _explode_lock = false;
+    gfx::input_system* _inp;
+
+public:
+    bouncy_system(gfx::input_system& i) : _inp(&i)
+    {
+        add_component_type<gfx::movement_component>();
+        add_component_type<gfx::transform_component>();
+        add_component_type<gfx::instance_component<def::mesh_info>>();
+    }
+
+    void pre_update() override
+    {
+        if (_inp->key_down(gfx::key::kb_z))
+        {
+            if (!_explode_lock)
+            {
+                _explode      = true;
+                _explode_lock = true;
+            }
+        }
+        else
+        {
+            _explode_lock = false;
+        }
+    }
+
+    void update(duration_type delta, gfx::ecs::component_base** components) const override
+    {
+        auto& mc = components[0]->as<gfx::movement_component>();
+        auto& tc = components[1]->as<gfx::transform_component>();
+        auto& ic = components[2]->as<gfx::instance_component<def::mesh_info>>();
+
+        const auto min = glm::vec3(tc.matrix() * glm::vec4(ic.handle->meshes[0].value().base->_bounds.min, 1));
+
+        if (mc.gravity != 0 && min.y < 0.f)
+        {
+            tc.position.y -= min.y;
+            mc.impulse.y = -mc.impulse.y;
+        }
+
+        if (mc.gravity != 0 && min.x < -50.f)
+        {
+            tc.position.x += -50.f - min.x;
+            mc.impulse.x = -mc.impulse.x;
+        }
+        else if (mc.gravity != 0 && min.x > 50.f)
+        {
+            tc.position.x += 50.f - min.x;
+            mc.impulse.x = -mc.impulse.x;
+        }
+        if (mc.gravity != 0 && min.z < -50.f)
+        {
+            tc.position.z += -50.f - min.z;
+            mc.impulse.z = -mc.impulse.z;
+        }
+        else if (mc.gravity != 0 && min.z > 50.f)
+        {
+            tc.position.z += 50.f - min.z;
+            mc.impulse.z = -mc.impulse.z;
+        }
+
+        if (_explode)
+        {
+            mc.impulse = {dist(gen) * 200, dist(gen) * 200 + 100, dist(gen) * 200};
+            mc.gravity = 9.81f;
+        }
+    }
+
+    void post_update() override { _explode = false; }
+
+private:
+};
+
 void vulkan_app::on_run()
 {
     gfx::ecs::ecs ecs;
@@ -34,6 +115,12 @@ void vulkan_app::on_run()
     std::vector<gfx::vulkan::fence>    command_fences;
     for (size_t i = 0; i < surface_swapchain.count(); ++i) command_fences.emplace_back(gpu, true);
     gfx::ecs::system_list graphics_list;
+
+    gfx::ecs::system_list physics_list;
+    gfx::movement_system  movements;
+    bouncy_system         bounce(*_input);
+    physics_list.add(movements);
+    physics_list.add(bounce);
 
     vulkan_state = std::make_unique<vulkan_state_t>();
 
@@ -227,6 +314,14 @@ void vulkan_app::on_run()
 
     std::vector<gfx::ecs::shared_entity> mesh_entities =
         scene::scene_manager_t::get_mesh_entities(ecs, instances, scene::current_scene(), make_texture_id);
+
+    for (auto& entity : mesh_entities)
+    {
+        gfx::movement_component mc;
+        mc.movement_drag = 0;
+        mc.rotation_drag = 0;
+        entity->add(mc);
+    }
 
     // add placeholder texture
     const gfx::image_file placeholder("placeholder.png", gfx::bits::b8, 4);
@@ -476,6 +571,11 @@ void vulkan_app::on_run()
         return self.value_after(true, update_time_graphics);
     });
 
+    gfx::worker physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+        ecs.update(delta, physics_list);
+        return self.value_after(true, update_time_physics);
+    });
+
     QTimer* fixed_updater;
     run_in_gui([&] {
         fixed_updater = new QTimer(&panel);
@@ -496,6 +596,7 @@ void vulkan_app::on_run()
     });
 
     vulkan_graphics_worker.stop_and_wait();
+    physics_worker.stop_and_wait();
 
     gpu.get_device().waitIdle();
     vulkan_state.reset();

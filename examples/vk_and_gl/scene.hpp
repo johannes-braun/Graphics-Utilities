@@ -86,11 +86,15 @@ struct scene_manager_t
     std::thread                                 _loader_thread;
 };
 
-inline scene_manager_t scene_manager;
+inline scene_manager_t& scene_manager()
+{
+    static scene_manager_t _mgr;
+    return _mgr;
+}
 
 inline const gfx::scene_file& current_scene()
 {
-    return scene_manager.current();
+    return scene_manager().current();
 }
 
 inline struct interop_mgr_t

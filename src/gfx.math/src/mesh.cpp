@@ -17,21 +17,23 @@ mesh3d mesh3d::extract(submesh3d sm) const
 void mesh3d::collapse()
 {
 #pragma omp parallel for schedule(static)
-    for (int vtx = 0; vtx < static_cast<int>(geometries[0].vertex_count); ++vtx) {
-        vertices[vtx] = geometries[0].transformation * vertices[vtx];
-    }
-
-    for (int i = 1; i < static_cast<int>(geometries.size()); ++i) {
+    for (int vtx = 0; vtx < static_cast<int>(geometries[0].vertex_count); ++vtx)
+    { vertices[vtx] = geometries[0].transformation * vertices[vtx]; } for (int i = 1; i < static_cast<int>(geometries.size()); ++i)
+    {
         auto& s = geometries[i];
 
 #pragma omp parallel for schedule(static)
-        for (int idx = s.base_index; idx < static_cast<int>(s.base_index + s.index_count); ++idx) {
+        for (int idx = s.base_index; idx < static_cast<int>(s.base_index + s.index_count); ++idx)
+        {
             indices[idx] += geometries[0].vertex_count;
-        }
+        } 
+
 #pragma omp parallel for schedule(static)
-        for (int vtx = s.base_vertex; vtx < static_cast<int>(s.base_vertex + s.vertex_count); ++vtx) {
+        for (int vtx = s.base_vertex; vtx < static_cast<int>(s.base_vertex + s.vertex_count); ++vtx)
+        {
             vertices[vtx] = s.transformation * vertices[vtx];
-        }
+        } 
+        
         geometries[0].vertex_count += s.vertex_count;
         geometries[0].index_count += s.index_count;
     }
@@ -39,22 +41,29 @@ void mesh3d::collapse()
     geometries.resize(1);
 }
 
-bounds3f mesh3d::compute_bounds() const
+bounds3f mesh3d::compute_bounds()
 {
-	struct reduction
-	{
-		bounds3f operator()(const bounds3f& b, const vertex3d& x) const { return b + x.position; }
-		bounds3f operator()(const vertex3d& x, const bounds3f& b) const { return b + x.position; }
-		bounds3f operator()(const vertex3d& b, const vertex3d& x) const
-		{
-			bounds3f bounds;
-			bounds += b.position;
-			return bounds + x.position;
-		}
-		bounds3f operator()(const bounds3f& b, const bounds3f& x) const { return b + x; }
-	};
+    struct reduction
+    {
+        bounds3f operator()(const bounds3f& b, const vertex3d& x) const { return b + x.position; }
+        bounds3f operator()(const vertex3d& x, const bounds3f& b) const { return b + x.position; }
+        bounds3f operator()(const vertex3d& b, const vertex3d& x) const
+        {
+            bounds3f bounds;
+            bounds += b.position;
+            return bounds + x.position;
+        }
+        bounds3f operator()(const bounds3f& b, const bounds3f& x) const { return b + x; }
+    };
 
-	return std::reduce(std::execution::par_unseq, vertices.begin(), vertices.end(), bounds3f{}, reduction());
+    bounds3f full_bounds;
+    for (auto& mesh : geometries)
+    {
+        mesh.bounds = std::reduce(std::execution::par_unseq, vertices.begin() + mesh.base_vertex, vertices.begin() + mesh.vertex_count,
+                                  bounds3f{}, reduction());
+        full_bounds.enclose(mesh.bounds.value());
+    }
+    return full_bounds;
 }
 
 mesh3d mesh3d::operator+(const mesh3d& other) const
@@ -75,7 +84,8 @@ mesh3d mesh3d::operator+(const mesh3d& other) const
 #pragma omp parallel for schedule(static)
     for (int i = 0; i < static_cast<int>(geometries.size()); ++i) m.geometries[i] = geometries[i];
 #pragma omp parallel for schedule(static)
-    for (int i = 0; i < static_cast<int>(other.geometries.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(other.geometries.size()); ++i)
+    {
         auto& g = m.geometries[i + geometries.size()];
         g       = other.geometries[i];
         g.base_index += static_cast<u32>(indices.size());
@@ -98,7 +108,8 @@ mesh3d& mesh3d::operator+=(const mesh3d& other)
 #pragma omp parallel for schedule(static)
     for (int i = 0; i < static_cast<int>(other.vertices.size()); ++i) vertices[i + vs] = other.vertices[i];
 #pragma omp parallel for schedule(static)
-    for (int i = 0; i < static_cast<int>(other.geometries.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(other.geometries.size()); ++i)
+    {
         auto& g = geometries[i + gs];
         g       = other.geometries[i];
         g.base_index += static_cast<u32>(is);

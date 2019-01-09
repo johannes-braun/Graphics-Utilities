@@ -221,10 +221,9 @@ void mapped<T>::allocate(size_type capacity, bool force)
         _capacity = capacity;
 
         glNamedBufferStorage(new_buffer, sizeof(value_type) * capacity, nullptr,
-                             GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_CLIENT_STORAGE_BIT
-                                 | GL_DYNAMIC_STORAGE_BIT);
+                             GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
         value_type* new_storage = static_cast<value_type*>(glMapNamedBufferRange(new_buffer, 0, sizeof(value_type) * _capacity,
-                                                      GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+                                                       GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
         std::move(this->begin(), this->end(), new_storage);
         reset_storage(new_storage, this->size());
 

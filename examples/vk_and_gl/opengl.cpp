@@ -44,6 +44,86 @@ void check_linkage(mygl::shader_program program)
     }
 }
 
+class bouncy_system : public gfx::ecs::system
+{
+    mutable std::mt19937                  gen;
+    std::uniform_real_distribution<float> dist{-1, 1};
+
+    bool               _explode      = false;
+    bool               _explode_lock = false;
+    gfx::input_system* _inp;
+
+public:
+    bouncy_system(gfx::input_system& i) : _inp(&i)
+    {
+        add_component_type<gfx::movement_component>();
+        add_component_type<gfx::transform_component>();
+        add_component_type<gfx::instance_component<def::mesh_info>>();
+    }
+
+    void pre_update() override
+    {
+        if (_inp->key_down(gfx::key::kb_z))
+        {
+            if (!_explode_lock)
+            {
+                _explode      = true;
+                _explode_lock = true;
+            }
+        }
+        else
+        {
+            _explode_lock = false;
+        }
+    }
+
+    void update(duration_type delta, gfx::ecs::component_base** components) const override
+    {
+        auto& mc = components[0]->as<gfx::movement_component>();
+        auto& tc = components[1]->as<gfx::transform_component>();
+        auto& ic = components[2]->as<gfx::instance_component<def::mesh_info>>();
+
+        const auto min = glm::vec3(tc.matrix() * glm::vec4(ic.handle->meshes[0].value().base->_bounds.min, 1));
+
+        if (mc.gravity != 0 && min.y < 0.f)
+        {
+            tc.position.y -= min.y;
+            mc.impulse.y = -mc.impulse.y;
+        }
+
+        if (mc.gravity != 0 && min.x < -50.f)
+        {
+            tc.position.x += -50.f - min.x;
+            mc.impulse.x = -mc.impulse.x;
+        }
+        else if (mc.gravity != 0 && min.x > 50.f)
+        {
+            tc.position.x += 50.f - min.x;
+            mc.impulse.x = -mc.impulse.x;
+        }
+        if (mc.gravity != 0 && min.z < -50.f)
+        {
+            tc.position.z += -50.f - min.z;
+            mc.impulse.z = -mc.impulse.z;
+        }
+        else if (mc.gravity != 0 && min.z > 50.f)
+        {
+            tc.position.z += 50.f - min.z;
+            mc.impulse.z = -mc.impulse.z;
+        }
+
+        if (_explode)
+        {
+            mc.impulse = {dist(gen) * 200, dist(gen) * 200 + 100, dist(gen) * 200};
+            mc.gravity  = 9.81f;
+        }
+    }
+
+    void post_update() override { _explode = false; }
+
+private:
+};
+
 void opengl_app::on_run()
 {
     state_t s;
@@ -53,6 +133,12 @@ void opengl_app::on_run()
     gfx::ecs::ecs        ecs;
     gfx::opengl::context context(panel.winId(), {{gfx::opengl::GL_CONTEXT_FLAGS_ARB, gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB}},
                                  {{gfx::opengl::GL_SAMPLE_BUFFERS_ARB, true}, {gfx::opengl::GL_SAMPLES_ARB, 8}});
+
+    gfx::ecs::system_list physics_list;
+    gfx::movement_system  movements;
+    bouncy_system         bounce(*_input.get());
+    physics_list.add(movements);
+    physics_list.add(bounce);
 
     std::atomic_bool      init = false;
     gfx::ecs::system_list graphics_list;
@@ -72,7 +158,7 @@ void opengl_app::on_run()
 
     gfx::opengl::instance_proxy<def::mesh_info> opengl_proxy;
     gfx::instance_system<def::mesh_info>        instances(opengl_proxy,
-                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
+                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
     graphics_list.add(instances);
     user_data = &instances;
 
@@ -124,10 +210,18 @@ void opengl_app::on_run()
     std::vector<gfx::ecs::shared_entity> mesh_entities =
         scene::scene_manager_t::get_mesh_entities(ecs, instances, scene::current_scene(), make_texture_id);
 
+    for (auto& entity : mesh_entities)
+    {
+        gfx::movement_component mc;
+        mc.movement_drag = 0;
+        mc.rotation_drag = 0;
+        entity->add(mc);
+    }
+
     samplers.resize(textures.size());
     std::fill(samplers.begin(), samplers.end(), sampler);
-    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
-                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
+                                                gfx::grabbed_cursor_component{}, gfx::camera_controls{});
 
     glEnable(GL_MULTISAMPLE);
     glClipControl(GL_UPPER_LEFT, GL_ZERO_TO_ONE);
@@ -137,8 +231,8 @@ void opengl_app::on_run()
 
     shaders_lib.load("shaders_gl");
     const auto* const vs_shadow_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs_shadow.vert");
-    std::array        spec_constant_ids {def::constant_id_texture_count};
-    std::array        spec_constant_values {std::uint32_t(textures.size())};
+    std::array        spec_constant_ids{def::constant_id_texture_count};
+    std::array        spec_constant_values{std::uint32_t(textures.size())};
     mygl::shader      shadow_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderBinary(1, &shadow_vertex_shader, GL_SHADER_BINARY_FORMAT_SPIR_V, std::data(*vs_shadow_shader),
                    gfx::u32(std::size(*vs_shadow_shader) * sizeof(uint32_t)));
@@ -193,10 +287,10 @@ void opengl_app::on_run()
     glVertexArrayAttribBinding(vao, 1, 0);
     glVertexArrayAttribBinding(vao, 2, 0);
 
-    gfx::opengl::buffer<gfx::camera_matrices> camera_buffer({gfx::camera_matrices {}});
+    gfx::opengl::buffer<gfx::camera_matrices> camera_buffer({gfx::camera_matrices{}});
 
     constexpr int max_frames = 2;
-    mygl::sync    fences[max_frames] {};
+    mygl::sync    fences[max_frames]{};
     int           current_frame = 0;
 
     struct query_handler
@@ -319,6 +413,7 @@ void opengl_app::on_run()
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT);    // What the actual f*?
 
+
         // bind all textures
         glBindTextures(def::texture_binding_all, std::int32_t(textures.size()), textures.data());
         glBindSamplers(def::texture_binding_all, std::int32_t(samplers.size()), samplers.data());
@@ -329,7 +424,9 @@ void opengl_app::on_run()
                           light_camera_buffer.size() * sizeof(gfx::camera_matrices));
 
         glBindBufferRange(GL_UNIFORM_BUFFER, 0, camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
-
+        /*
+                gfx::opengl::buffer data = opengl_proxy.instances_mapped();
+        */
         if constexpr (DEF_use_rt_shadows)
         {
             glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_vertex, opengl_proxy.vertex_buffer().get_buffer(), 0,
@@ -358,6 +455,11 @@ void opengl_app::on_run()
         return self.value_after(true, update_time_graphics);
     });
 
+    gfx::worker physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+        ecs.update(delta, physics_list);
+        return self.value_after(true, update_time_physics);
+    });
+
     QTimer* fixed_updater;
     run_in_gui([&] {
         fixed_updater = new QTimer(&panel);
@@ -371,6 +473,8 @@ void opengl_app::on_run()
     // run_in_gui([&] { fixed_updater->stop(); });
 
     opengl_graphics_worker.stop_and_wait();
+    physics_worker.stop_and_wait();
+
     fixed_updater->stop();
 }
 
@@ -379,8 +483,8 @@ void opengl_app::create_program()
     const auto getst = [&]() -> state_t& { return *static_cast<state_t*>(state); };
     if (glIsProgram(getst().program)) { glDeleteProgram(getst().program); }
 
-    std::array spec_constant_ids {def::constant_id_texture_count};
-    std::array spec_constant_values {std::uint32_t(texture_count)};
+    std::array spec_constant_ids{def::constant_id_texture_count};
+    std::array spec_constant_values{std::uint32_t(texture_count)};
 
     shaders_lib.load("shaders_gl");
     auto vs_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs.vert");

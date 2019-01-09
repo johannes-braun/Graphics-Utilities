@@ -9,6 +9,7 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/mat4x4.hpp>
 #include <variant>
+#include <optional>
 
 namespace gfx {
 inline namespace v1 {
@@ -208,6 +209,7 @@ struct submesh3d
     u32       base_index   = 0;
     u32       base_vertex  = 0;
     transform transformation{};
+    std::optional<bounds3f>  bounds;
 };
 
 struct mesh3d
@@ -217,7 +219,7 @@ struct mesh3d
 
     mesh3d   extract(submesh3d sm) const;
     void     collapse();
-    bounds3f compute_bounds() const;
+    bounds3f compute_bounds();
 
     mesh3d  operator+(const mesh3d& other) const;
     mesh3d& operator+=(const mesh3d& other);

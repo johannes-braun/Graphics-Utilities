@@ -249,7 +249,7 @@ private:
             // set current scene
             const float                 scale      = static_cast<float>(_general_tab.scene_scale->value());
             const std::filesystem::path scene_path = _general_tab.scene_select->text().toStdString();
-            scene::scene_manager.load(scene_path, scale, true, [this](float p) -> bool {
+            scene::scene_manager().load(scene_path, scale, true, [this](float p) -> bool {
                 gfx::ilog << "Progress: " << p;
                 _general_tab.current_load_progress = 1000 * p;
                 return true;

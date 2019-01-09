@@ -119,6 +119,7 @@ scene_file::scene_file(const files::path& path, float scale, const std::function
         auto& geo        = current_mesh.geometries.emplace_back();
         geo.index_count  = static_cast<u32>(current_mesh.indices.size());
         geo.vertex_count = static_cast<u32>(current_mesh.vertices.size());
+        current_mesh.compute_bounds();
         mesh += current_mesh;
         mesh_names.emplace_back(ai_mesh->mName.C_Str());
         mesh_material_indices[u32(mesh.geometries.size() - 1)] = ai_mesh->mMaterialIndex;

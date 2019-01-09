@@ -21,7 +21,7 @@ project(${var_project_name}
 )
 
 if(MSVC)
-    set(compile_options /EHsc -MP -permissive- -Zc:twoPhase-) # -openmp
+    set(compile_options /EHsc -MP -permissive- -Zc:twoPhase-) # -openmp 
 else()
     set(compile_options -Wnon-template-friend -Wclass-memaccess -Wtautological-compare -Wconversion-null)
 endif()
