@@ -1,9 +1,0 @@
-#pragma once
-
-/*
-    This file is generated with CMake. Changes in the *.hpp will be overwritten.
-*/
-
-namespace gfx {
-constexpr const char* relative_path = "@PROJECT_SOURCE_DIR@/";
-}

@@ -388,9 +388,9 @@ void vulkan_app::on_run()
     gfx::movement_system movement;
     graphics_list.add(movement);
 
-    gfx::user_camera_system cam_system(*_input.get());
+    gfx::user_camera_system cam_system(*_input);
     gfx::ecs::system_list   inputs_list;
-    inputs_list.add(*_input.get());
+    inputs_list.add(*_input);
     inputs_list.add(cam_system);
 
     auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
@@ -496,7 +496,6 @@ void vulkan_app::on_run()
         const gfx::camera_matrices cam                                             = *gfx::get_camera_info(*user_entity);
         current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
 
-
         {
             const vk::ClearValue clear_values[1]{{vk::ClearDepthStencilValue(1.f, 0)}};
             current.get_command_buffer().beginRenderPass(
@@ -507,18 +506,15 @@ void vulkan_app::on_run()
             const vk::Rect2D   scissor({0, 0}, {1024, 1024});
             current.get_command_buffer().setViewport(0, viewport);
             current.get_command_buffer().setScissor(0, scissor);
-
             current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
             current.get_command_buffer().bindDescriptorSets(
                 vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
                 {shadow_cam_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
             current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
             current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
-
             current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
                                                              std::max(vulkan_proxy.instances_mapped().size(), 1ll),
                                                              sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
-
             current.get_command_buffer().endRenderPass();
         }
 

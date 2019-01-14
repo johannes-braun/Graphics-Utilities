@@ -424,9 +424,7 @@ void opengl_app::on_run()
                           light_camera_buffer.size() * sizeof(gfx::camera_matrices));
 
         glBindBufferRange(GL_UNIFORM_BUFFER, 0, camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
-        /*
-                gfx::opengl::buffer data = opengl_proxy.instances_mapped();
-        */
+
         if constexpr (DEF_use_rt_shadows)
         {
             glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_vertex, opengl_proxy.vertex_buffer().get_buffer(), 0,
@@ -469,8 +467,6 @@ void opengl_app::on_run()
 
     gfx::timed_while::run(
         [&](gfx::timed_while& self, gfx::timed_while::duration delta) { return self.value_after(panel.isVisible(), update_time_inputs); });
-
-    // run_in_gui([&] { fixed_updater->stop(); });
 
     opengl_graphics_worker.stop_and_wait();
     physics_worker.stop_and_wait();

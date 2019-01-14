@@ -28,7 +28,7 @@ public:
         axisY->setTitleText("FT (ms)");
         chart->addAxis(axisY, Qt::AlignLeft);
 
-        constexpr const char* series_names[] {"Frame Begin", "Shadow Map", "Render"};
+        constexpr const char* series_names[]{"Frame Begin", "Shadow Map", "Render"};
 
         for (int i = 1; i < std::size(_stamp_times); ++i)
         {
@@ -107,10 +107,12 @@ public:
         {
             if (_stamp_times[i]->count() + 1 > max_samples) { _stamp_times[i]->remove(0); }
         }
+
+        std::stringstream line;
         const auto acc = std::accumulate(_accum_frametimes.begin(), _accum_frametimes.end(), std::chrono::nanoseconds(0));
         auto       ft  = acc.count() / (1'000'000.0 * _accum_frametimes.size());
         *_frame_times << QPointF(_frametime_max, ft);
-
+        line << ft << ",";
         double last = 0.0;
         for (int i = 1; i < std::size(_stamp_times); ++i)
         {
@@ -120,7 +122,10 @@ public:
             _accum_stamptimes[i].clear();
             _timestamp_labels[i - 1]->setText(QString::fromStdString(std::to_string(ft - last) + "ms"));
             last = ft;
+            line << ft << ",";
         }
+        line << "\n";
+        std::cout << line.str();
         _frametime_chart_view->repaint();
         _framerate_label->setText(QString::fromStdString(std::to_string(ft) + "ms"));
 
@@ -277,8 +282,8 @@ private:
         _general_tab.run_settings_layout = new QFormLayout(_general_tab.run_settings);
 
         _general_tab.scene_scale = new QDoubleSpinBox(_general_tab.run_group);
-        _general_tab.scene_scale->setDecimals(2);
-        _general_tab.scene_scale->setMinimum(0.01);
+        _general_tab.scene_scale->setDecimals(3);
+        _general_tab.scene_scale->setMinimum(0.001);
         _general_tab.scene_scale->setMaximum(100.0);
         _general_tab.scene_scale->setValue(1.0);
 
