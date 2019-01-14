@@ -1,4 +1,4 @@
-set(gfx_current_module ecs.defaults2)
+set(gfx_current_module ecs.components)
 
 # Load Sources, headers and natvis files as a library
 file(GLOB_RECURSE gfx_current_sources src/*.cpp src/*.c src/*.cc)

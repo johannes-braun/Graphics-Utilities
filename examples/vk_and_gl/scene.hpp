@@ -3,7 +3,7 @@
 #include "camera.hpp"
 #include "gfx.file/file.hpp"
 #include "shaders/def.hpp"
-#include <gfx.ecs.defaults2/prototype.hpp>
+#include <gfx.ecs.components/prototype.hpp>
 #include <random>
 #include <shared_mutex>
 
@@ -71,7 +71,7 @@ struct scene_manager_t
             gfx::shared_mesh      mesh  = instances.get_mesh_allocator().allocate_mesh(scene.mesh, scene.mesh.geometries[i], true);
             gfx::shared_prototype proto = instances.get_instantiator().allocate_prototype(scene.mesh_names[i], {&mesh, 1});
 
-            gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(i)]);
+            gfx::instance_component<def::mesh_info> instance_component(std::move(proto), mesh_infos[scene.mesh_material_indices.at(static_cast<std::uint32_t>(i))]);
             gfx::transform_component                transform_component = scene.mesh.geometries[i].transformation.matrix();
             mesh_entities.emplace_back(ecs.create_entity_shared(instance_component, transform_component));
         }

@@ -7,8 +7,8 @@
 #include "shaders/def.hpp"
 #include <gfx.core/log.hpp>
 #include <gfx.core/worker.hpp>
-#include <gfx.ecs.defaults2/movement.hpp>
-#include <gfx.ecs.defaults2/prototype_proxies.hpp>
+#include <gfx.ecs.components/movement.hpp>
+#include <gfx.ecs.components/prototype_proxies.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.file/file.hpp>
 #include <gfx.graphics/graphics.hpp>
@@ -181,7 +181,7 @@ void opengl_app::on_run()
 
     const auto make_texture_id = [&](const gfx::image_file& t) {
         assert(t.channels == 1 || t.channels == 4);
-        const int id = textures.size();
+        const int id = static_cast<int>(textures.size());
         switch (t.channels)
         {
         case 1:

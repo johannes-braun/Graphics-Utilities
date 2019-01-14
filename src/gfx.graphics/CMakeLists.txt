@@ -21,7 +21,6 @@ target_compile_definitions(gfx.${gfx_current_module} PUBLIC NOMINMAX WIN32_LEAN_
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.core)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.file)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.shaders)
 
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::mygl)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::glsp)

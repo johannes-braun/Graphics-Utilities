@@ -23,7 +23,7 @@ public:
     {
         u32 const srco = (src_offset ? *src_offset : 0u) * sizeof(T);
         u32 const dsto = (dst_offset ? *dst_offset : 0u) * sizeof(T);
-        u32 const size = (count ? *count : std::min(src.size(), dst.size())) * sizeof(T);
+        u32 const size = static_cast<u32>((count ? *count : std::min(src.size(), dst.size())) * sizeof(T));
 
         _buf->copyBuffer(src.get_buffer(), dst.get_buffer(), vk::BufferCopy(srco, dsto, size));
     }

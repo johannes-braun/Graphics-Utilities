@@ -130,7 +130,7 @@ context::context(native_handle window, std::vector<std::pair<context_attribs, in
         load_fun(wglChoosePixelFormatARB);
         load_fun(wglGetPixelFormatAttribivARB);
         load_fun(wglSwapIntervalEXT);
-#undef load_fun;
+#undef load_fun
     }
 
     _device_context = native_dc(GetDC(reinterpret_cast<HWND&>(_own_window)));
@@ -167,7 +167,7 @@ void context::set_pixel_format(std::vector<std::pair<pixel_format_attribs, int>>
 
     UINT format_count     = 0;
     int  pixel_format[16] = {0};
-    _native->wglChoosePixelFormatARB(native_dc(_device_context), attr, pixel_attribs_f, std::size(pixel_format), pixel_format,
+    _native->wglChoosePixelFormatARB(native_dc(_device_context), attr, pixel_attribs_f, static_cast<std::uint32_t>(std::size(pixel_format)), pixel_format,
                                      &format_count);
     assert(format_count != 0);
     if (format_count == 0) return;

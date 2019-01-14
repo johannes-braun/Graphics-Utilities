@@ -1,9 +1,9 @@
 #include "vulkan.hpp"
 #include "camera.hpp"
 #include "gfx.core/log.hpp"
-#include "gfx.ecs.defaults2/movement.hpp"
-#include "gfx.ecs.defaults2/prototype.hpp"
-#include "gfx.ecs.defaults2/prototype_proxies.hpp"
+#include "gfx.ecs.components/movement.hpp"
+#include "gfx.ecs.components/prototype.hpp"
+#include "gfx.ecs.components/prototype_proxies.hpp"
 #include "gfx.file/file.hpp"
 #include "gfx.math/geometry.hpp"
 #include "globals.hpp"
@@ -242,7 +242,7 @@ void vulkan_app::on_run()
     std::vector<vk::UniqueImageView> texture_views;
     const auto                       make_texture_id = [&](const gfx::image_file& t) {
         assert(t.channels == 1 || t.channels == 4);
-        const int id = textures.size();
+        const int id = static_cast<int>(textures.size());
         switch (t.channels)
         {
         case 1:
@@ -326,7 +326,7 @@ void vulkan_app::on_run()
     // add placeholder texture
     const gfx::image_file placeholder("placeholder.png", gfx::bits::b8, 4);
     make_texture_id(placeholder);
-    vulkan_state->texture_count = textures.size();
+    vulkan_state->texture_count = static_cast<std::uint32_t>(textures.size());
 
     {
         vk::SamplerCreateInfo sci;
@@ -856,7 +856,7 @@ void vulkan_app::create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapc
         msaa_info.queueFamilyIndexCount = gfx::u32(std::size(queue_indices));
         msaa_info.pQueueFamilyIndices   = std::data(queue_indices);
 
-        for (auto i = 0; i < swapchain.count(); ++i)
+        for (auto i = 0ull; i < swapchain.count(); ++i)
         {
             const auto& da = vulkan_state->depth_attachments.emplace_back(gpu, depth_info);
 
@@ -873,7 +873,7 @@ void vulkan_app::create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapc
     }
 
     vulkan_state->framebuffers.clear();
-    for (auto i = 0; i < swapchain.count(); ++i)
+    for (auto i = 0ull; i < swapchain.count(); ++i)
     {
         const auto&               res = swapchain.images()[i].get_image();
         vk::ImageViewCreateInfo   rc({}, res, vk::ImageViewType::e2D, swapchain.format(), {},

@@ -1,6 +1,6 @@
 #include "vulkan/instance.hpp"
-#include "vulkan/extensions.hpp"
 #include "info.hpp"
+#include "vulkan/extensions.hpp"
 
 #include <gfx.core/log.hpp>
 #include <unordered_set>
@@ -15,8 +15,16 @@ void instance::hint_layer_path(std::filesystem::path const& vk_layer_path)
 
     if (std::filesystem::exists(vk_layer_path))
     {
-        char const* const env_value = std::getenv(env_name);
-        std::string       concat    = absolute(vk_layer_path).string() + (env_value ? separator + std::string(env_value) : "");
+        size_t required = 0;
+        getenv_s(&required, nullptr, 0, env_name);
+        std::string env_value;
+        if (required > 0)
+        {
+            env_value.resize(required, ' ');
+            size_t required_s = required;
+            getenv_s(&required_s, env_value.data(), required, env_name);
+        }
+        std::string concat = absolute(vk_layer_path).string() + (!env_value.empty() ? separator + std::string(env_value) : "");
 
 #if _POSIX_C_SOURCE >= 200112L || /* Glibc versions <= 2.19: */ _BSD_SOURCE
         setenv(env_name, concat.c_str(), true);
@@ -38,7 +46,7 @@ struct instance_init_
 
 instance::instance(std::string_view app_name, version_t app_version, bool debug, bool surface_support,
                    vk::ArrayProxy<char const* const> additional_extensions)
-      : _app_name(app_name), _app_version(app_version), _capabilities {debug, surface_support}
+      : _app_name(app_name), _app_version(app_version), _capabilities{debug, surface_support}
 {
     initialize(app_name, app_version, debug, surface_support, additional_extensions);
 }

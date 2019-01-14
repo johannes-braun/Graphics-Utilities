@@ -5,7 +5,7 @@
 
 #include <filesystem>
 
-#include <gfx.ecs.defaults2/prototype.hpp>
+#include <gfx.ecs.components/prototype.hpp>
 
 #include <QtCharts/QtCharts>
 #include <QtCore/QtCore>

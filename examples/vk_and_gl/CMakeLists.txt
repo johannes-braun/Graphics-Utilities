@@ -23,10 +23,9 @@ add_dependencies(${current_executable} ${current_executable}.shaders_vk ${curren
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.math)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs)
-target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs.defaults2)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs.components)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.file)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.graphics)
-target_link_libraries(${current_executable} PRIVATE jbraun::gfx.shaders)
 
 target_link_libraries(${current_executable} PRIVATE gfx_ext::qt5_core)
 target_link_libraries(${current_executable} PRIVATE gfx_ext::qt5_widgets)

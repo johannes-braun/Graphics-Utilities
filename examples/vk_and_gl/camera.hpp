@@ -2,7 +2,7 @@
 
 #include "gfx.ecs/ecs.hpp"
 #include "gfx.math/geometry.hpp"
-#include "gfx.ecs.defaults2/basic.hpp"
+#include "gfx.ecs.components/basic.hpp"
 #include "input.hpp"
 #include <optional>
 #include <gfx.core/log.hpp>
