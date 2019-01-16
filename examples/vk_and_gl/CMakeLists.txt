@@ -2,15 +2,17 @@ set(current_executable vk_and_gl)
 mark_as_executable(${current_executable})
 
 include(spv/spv_to_dll)
-add_shader(${current_executable}.shaders_vk vulkan
+add_shader(${current_executable}.shaders_vk
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/vk_vs.vert
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/vk_fs.frag
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/vk_vs_shadow.vert)
+target_compile_options(${current_executable}.shaders_vk PRIVATE --target-env=vulkan)
 	
-add_shader(${current_executable}.shaders_gl opengl
+add_shader(${current_executable}.shaders_gl
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_vs.vert
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_fs.frag
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_vs_shadow.vert)
+target_compile_options(${current_executable}.shaders_gl PRIVATE --target-env=opengl)
 
 set_target_properties(${current_executable}.shaders_vk PROPERTIES 
 	RUNTIME_OUTPUT_NAME shaders_vk
