@@ -20,7 +20,6 @@ find_package(vulkan-headers QUIET)				# Defines:	vulkan::headers
 find_package(vulkan-loader QUIET)				# Defines:	vulkan::loader
 find_package(vulkan-validation-layers QUIET)	# Defines:	vulkan::validation-layers
 find_package(vulkan-memory-allocator QUIET)		# Defines:	vulkan::memory-allocator
-find_package(range-v3 QUIET)					# Defines:	range-v3
 find_package(glfw3 QUIET)						# Defines:	glfw
 find_package(glm QUIET)							# Defines:  glm
 find_package(Eigen3 QUIET)						# Defines:  Eigen3::Eigen
@@ -29,7 +28,6 @@ find_package(Qt5Widgets QUIET)					# Defines:	Qt5::Widgets
 find_package(Qt5Gui QUIET)						# Defines:	Qt5::Gui
 find_package(Qt5Concurrent QUIET)				# Defines:	Qt5::Concurrent
 find_package(Qt5Charts QUIET)				# Defines:	Qt5::Concurrent
-find_package(glsp QUIET)						# Defines:	jbraun::glsp
 find_package(assimp QUIET)
 add_subdirectory(mygl)							# Defines:	jbraun::mygl
 
@@ -38,7 +36,6 @@ make_global(vulkan::headers				vk_headers)
 make_global(vulkan::loader				vk_loader)
 make_global(vulkan::validation-layers	vk_validation)
 make_global(vulkan::memory-allocator	vk_mem_alloc)
-make_global(range-v3					range-v3)
 make_global(glfw						glfw)
 make_global(glm							glm)
 make_global(Eigen3::Eigen				eigen3)
@@ -47,7 +44,6 @@ make_global(Qt5::Widgets				qt5_widgets)
 make_global(Qt5::Gui					qt5_gui)
 make_global(Qt5::Concurrent				qt5_concurrent)
 make_global(Qt5::Charts					qt5_charts)
-make_global(jbraun::glsp				glsp)
 make_global(jbraun::mygl				mygl)
 
 if(${assimp_FOUND})

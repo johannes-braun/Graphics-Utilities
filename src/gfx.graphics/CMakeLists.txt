@@ -23,11 +23,9 @@ target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.math)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC jbraun::gfx.file)
 
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::mygl)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::glsp)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_headers)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_loader)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_validation)
 target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::vk_mem_alloc)
-target_link_libraries(gfx.${gfx_current_module} PUBLIC gfx_ext::range-v3)
 
 add_library(jbraun::gfx.${gfx_current_module} ALIAS gfx.${gfx_current_module})

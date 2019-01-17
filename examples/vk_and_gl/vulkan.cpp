@@ -112,8 +112,8 @@ void vulkan_app::on_run()
     gfx::vulkan::semaphore             acquire_semaphore(gpu);
     gfx::vulkan::semaphore             finish_semaphore(gpu);
     std::vector<gfx::vulkan::commands> commands = gpu.allocate_graphics_commands(surface_swapchain.count());
-    std::vector<gfx::vulkan::fence>    command_fences;
-    for (size_t i = 0; i < surface_swapchain.count(); ++i) command_fences.emplace_back(gpu, true);
+    std::vector<gfx::vulkan::fence>    command_fences(surface_swapchain.count(), gfx::vulkan::fence {gpu, false});
+
     gfx::ecs::system_list graphics_list;
 
     gfx::ecs::system_list physics_list;
@@ -744,7 +744,7 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     specialization.dataSize      = sizeof(shader_constants);
     specialization.pData         = &shader_constants;
 
-    shaders_lib.load("vk_and_gl.shaders_vk");
+    shaders_lib.load("shaders_vk");
     auto* const         vs_source = gfx::import_shader(shaders_lib, "shaders/vk_vs.vert");
     auto* const         fs_source = gfx::import_shader(shaders_lib, "shaders/vk_fs.frag");
     gfx::vulkan::shader vertex_shader(gpu, *vs_source);
@@ -1032,7 +1032,7 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     specialization.dataSize      = sizeof(shader_constants);
     specialization.pData         = &shader_constants;
 
-    shaders_lib.load("vk_and_gl.shaders_vk");
+    shaders_lib.load("shaders_vk");
     auto* const         vs_source = gfx::import_shader(shaders_lib, "shaders/vk_vs_shadow.vert");
     gfx::vulkan::shader vertex_shader(gpu, *vs_source);
     shaders_lib.unload();
