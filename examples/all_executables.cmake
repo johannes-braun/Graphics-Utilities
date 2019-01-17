@@ -1,2 +1,0 @@
-add_subdirectory(equilateral_to_cubemap)
-add_subdirectory(vk_and_gl)

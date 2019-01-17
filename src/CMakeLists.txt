@@ -1,4 +1,5 @@
 add_subdirectory(gfx.core)
+add_subdirectory(gfx.default_app)
 add_subdirectory(gfx.math)
 add_subdirectory(gfx.file)
 add_subdirectory(gfx.ecs)

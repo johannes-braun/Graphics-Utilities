@@ -744,7 +744,7 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     specialization.dataSize      = sizeof(shader_constants);
     specialization.pData         = &shader_constants;
 
-    shaders_lib.load("shaders_vk");
+    shaders_lib.load("vk_and_gl.shaders_vk");
     auto* const         vs_source = gfx::import_shader(shaders_lib, "shaders/vk_vs.vert");
     auto* const         fs_source = gfx::import_shader(shaders_lib, "shaders/vk_fs.frag");
     gfx::vulkan::shader vertex_shader(gpu, *vs_source);
@@ -1032,7 +1032,7 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     specialization.dataSize      = sizeof(shader_constants);
     specialization.pData         = &shader_constants;
 
-    shaders_lib.load("shaders_vk");
+    shaders_lib.load("vk_and_gl.shaders_vk");
     auto* const         vs_source = gfx::import_shader(shaders_lib, "shaders/vk_vs_shadow.vert");
     gfx::vulkan::shader vertex_shader(gpu, *vs_source);
     shaders_lib.unload();

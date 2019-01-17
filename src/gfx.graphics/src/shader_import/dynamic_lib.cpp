@@ -18,6 +18,7 @@ dynamic_library_t::~dynamic_library_t()
 void dynamic_library_t::load(std::string name)
 {
     _name = std::move(name);
+    if (_name.length() < 4 || memcmp(_name.data() + _name.length() - 4, ".dll", 4) != 0) _name += ".dll";
     reload();
 }
 

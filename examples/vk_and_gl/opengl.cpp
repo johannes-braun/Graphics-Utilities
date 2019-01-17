@@ -229,7 +229,7 @@ void opengl_app::on_run()
     texture_count = textures.size();
     create_program();
 
-    shaders_lib.load("shaders_gl");
+    shaders_lib.load("vk_and_gl.shaders_gl");
     const auto* const vs_shadow_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs_shadow.vert");
     std::array        spec_constant_ids{def::constant_id_texture_count};
     std::array        spec_constant_values{std::uint32_t(textures.size())};
@@ -482,7 +482,7 @@ void opengl_app::create_program()
     std::array spec_constant_ids{def::constant_id_texture_count};
     std::array spec_constant_values{std::uint32_t(texture_count)};
 
-    shaders_lib.load("shaders_gl");
+    shaders_lib.load("vk_and_gl.shaders_gl");
     auto vs_shader = gfx::import_shader(shaders_lib, "shaders/gl_vs.vert");
     auto fs_shader = gfx::import_shader(shaders_lib, "shaders/gl_fs.frag");
 

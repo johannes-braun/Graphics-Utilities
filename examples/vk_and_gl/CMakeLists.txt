@@ -1,5 +1,7 @@
 set(current_executable vk_and_gl)
-mark_as_executable(${current_executable})
+
+file(GLOB_RECURSE CPPS *.cpp *.natvis)
+add_executable(${current_executable} ${CPPS})
 
 include(spv/spv_to_dll)
 add_shader(${current_executable}.shaders_vk
@@ -14,14 +16,8 @@ add_shader(${current_executable}.shaders_gl
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/gl_vs_shadow.vert)
 target_compile_options(${current_executable}.shaders_gl PRIVATE --target-env=opengl)
 
-set_target_properties(${current_executable}.shaders_vk PROPERTIES 
-	RUNTIME_OUTPUT_NAME shaders_vk
-	RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:${current_executable}>)
-set_target_properties(${current_executable}.shaders_gl PROPERTIES 
-	RUNTIME_OUTPUT_NAME shaders_gl
-	RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:${current_executable}>)
-
 add_dependencies(${current_executable} ${current_executable}.shaders_vk ${current_executable}.shaders_gl)
+target_link_libraries(${current_executable} PRIVATE jbraun::gfx.default_app)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.math)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.ecs)
