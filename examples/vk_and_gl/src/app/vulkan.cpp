@@ -10,6 +10,7 @@
 #include "input/camera.hpp"
 #include "input/input.hpp"
 #include "scene/scene.hpp"
+#include "vulkan_postprocess.hpp"
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
@@ -98,13 +99,12 @@ public:
     }
 
     void post_update() override { _explode = false; }
-
 };
 
 void vulkan_app::on_run()
 {
-    gfx::ecs::ecs ecs;
-    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, false, true);
+    gfx::ecs::ecs                      ecs;
+    gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, true, true);
     gfx::vulkan::surface               surface(vulkan, panel.winId());
     gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {}, surface);
     gfx::vulkan::swapchain             surface_swapchain(gpu, surface);
@@ -405,6 +405,9 @@ void vulkan_app::on_run()
     bool                       runs_queries      = false;
     std::vector<std::uint64_t> query_times(2 * _stamp_id_count);
 
+    blur_pass vblur(gpu, surface_swapchain.count(), surface_swapchain.extent(), 1, 5);
+    blur_pass hblur(gpu, surface_swapchain.count(), surface_swapchain.extent(), 0, 5);
+
     gfx::worker vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
 
@@ -546,6 +549,38 @@ void vulkan_app::on_run()
                                                          sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
         current.get_command_buffer().endRenderPass();
+
+        vblur.render(current, surface_swapchain.current_index(), surface_swapchain.images()[surface_swapchain.current_index()].get_image(),
+                     vulkan_state->color_att_views[surface_swapchain.current_index()].get(), vk::ImageLayout::eGeneral, {});
+        hblur.render(current, surface_swapchain.current_index(), vblur.get_image(surface_swapchain.current_index()).get_image(),
+                     vblur.get_image_view(surface_swapchain.current_index()), vk::ImageLayout::eGeneral, {});
+
+        vk::ImageBlit blit;
+        blit.srcOffsets[0] = VkOffset3D {0, 0, 0};
+        blit.srcOffsets[1] = VkOffset3D {int(surface_swapchain.extent().width), int(surface_swapchain.extent().height), 1};
+        blit.dstOffsets[0] = VkOffset3D {0, 0, 0};
+        blit.dstOffsets[1] = VkOffset3D {int(surface_swapchain.extent().width), int(surface_swapchain.extent().height), 1};
+        blit.srcSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+        blit.dstSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+
+        vk::ImageMemoryBarrier imb;
+        imb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imb.image               = vblur.get_image(surface_swapchain.current_index()).get_image();
+        imb.srcAccessMask    = {};
+        imb.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+        imb.oldLayout           = vk::ImageLayout::eShaderReadOnlyOptimal;
+        imb.newLayout           = vk::ImageLayout::eGeneral;
+        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
+                                                 vk::DependencyFlagBits::eByRegion, {}, {}, imb);
+        current.get_command_buffer().blitImage(vblur.get_image(surface_swapchain.current_index()).get_image(), vk::ImageLayout::eGeneral,
+            surface_swapchain.images()[surface_swapchain.current_index()].get_image(), vk::ImageLayout::eGeneral,
+            blit, vk::Filter::eLinear);
+        imb.image            = surface_swapchain.images()[surface_swapchain.current_index()].get_image();
+        imb.oldLayout        = vk::ImageLayout::eGeneral;
+        imb.newLayout        = vk::ImageLayout::ePresentSrcKHR;
+        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
+                                                 vk::DependencyFlagBits::eByRegion, {}, {}, imb);
 
         vulkan_proxy.swap(current);
 
