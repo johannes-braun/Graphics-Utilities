@@ -1,5 +1,5 @@
 #include "vulkan.hpp"
-#include "camera.hpp"
+#include "def.hpp"
 #include "gfx.core/log.hpp"
 #include "gfx.ecs.components/movement.hpp"
 #include "gfx.ecs.components/prototype.hpp"
@@ -7,9 +7,9 @@
 #include "gfx.file/file.hpp"
 #include "gfx.math/geometry.hpp"
 #include "globals.hpp"
-#include "input.hpp"
-#include "scene.hpp"
-#include "shaders/def.hpp"
+#include "input/camera.hpp"
+#include "input/input.hpp"
+#include "scene/scene.hpp"
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.graphics/graphics.hpp>
@@ -25,7 +25,7 @@
 class bouncy_system : public gfx::ecs::system
 {
     mutable std::mt19937                  gen;
-    std::uniform_real_distribution<float> dist{-1, 1};
+    std::uniform_real_distribution<float> dist {-1, 1};
 
     bool               _explode      = false;
     bool               _explode_lock = false;
@@ -99,7 +99,6 @@ public:
 
     void post_update() override { _explode = false; }
 
-private:
 };
 
 void vulkan_app::on_run()
@@ -112,7 +111,7 @@ void vulkan_app::on_run()
     gfx::vulkan::semaphore             acquire_semaphore(gpu);
     gfx::vulkan::semaphore             finish_semaphore(gpu);
     std::vector<gfx::vulkan::commands> commands = gpu.allocate_graphics_commands(surface_swapchain.count());
-    std::vector<gfx::vulkan::fence>    command_fences(surface_swapchain.count(), gfx::vulkan::fence {gpu, false});
+    std::vector<gfx::vulkan::fence>    command_fences(surface_swapchain.count(), gfx::vulkan::fence {gpu, true});
 
     gfx::ecs::system_list graphics_list;
 
@@ -124,9 +123,9 @@ void vulkan_app::on_run()
 
     vulkan_state = std::make_unique<vulkan_state_t>();
 
-    vk::DescriptorPoolSize               sizes[3]{vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
-                                    vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 8),
-                                    vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 512)};
+    vk::DescriptorPoolSize               sizes[3] {vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
+                                     vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 8),
+                                     vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 512)};
     const vk::DescriptorPoolCreateInfo   pool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 16, gfx::u32(std::size(sizes)),
                                                  sizes);
     vk::UniqueDescriptorPool             descriptor_pool = gpu.get_device().createDescriptorPoolUnique(pool_info);
@@ -152,10 +151,10 @@ void vulkan_app::on_run()
     std::vector<vk::Sampler> shadow_samplers(1, vulkan_state->shadow_sampler.get());
 
     vk::DescriptorSetLayoutBinding shadow_set_bindings[2];
-    shadow_set_bindings[0]          = vk::DescriptorSetLayoutBinding{def::shadow_map_binding, vk::DescriptorType::eCombinedImageSampler, 1,
-                                                            vk::ShaderStageFlagBits::eAllGraphics, std::data(shadow_samplers)};
-    shadow_set_bindings[1]          = vk::DescriptorSetLayoutBinding{def::shadow_cam_binding, vk::DescriptorType::eStorageBuffer, 1,
-                                                            vk::ShaderStageFlagBits::eAllGraphics};
+    shadow_set_bindings[0]          = vk::DescriptorSetLayoutBinding {def::shadow_map_binding, vk::DescriptorType::eCombinedImageSampler, 1,
+                                                             vk::ShaderStageFlagBits::eAllGraphics, std::data(shadow_samplers)};
+    shadow_set_bindings[1]          = vk::DescriptorSetLayoutBinding {def::shadow_cam_binding, vk::DescriptorType::eStorageBuffer, 1,
+                                                             vk::ShaderStageFlagBits::eAllGraphics};
     vulkan_state->shadow_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(
         {{}, static_cast<std::uint32_t>(std::size(shadow_set_bindings)), std::data(shadow_set_bindings)});
 
@@ -215,7 +214,7 @@ void vulkan_app::on_run()
         gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
     }
 
-    std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings{
+    std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings {
         {0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
         {def::buffer_binding_vertex, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
         {def::buffer_binding_element, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics}};
@@ -234,7 +233,7 @@ void vulkan_app::on_run()
 
     gfx::vulkan::instance_proxy<def::mesh_info> vulkan_proxy(gpu);
     gfx::instance_system<def::mesh_info>        instances(vulkan_proxy,
-                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
+                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
     graphics_list.add(instances);
     user_data = &instances;
 
@@ -379,7 +378,7 @@ void vulkan_app::on_run()
     vk::UniqueDescriptorSet cam_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);
 
-    gfx::vulkan::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices{}});
+    gfx::vulkan::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices {}});
     const vk::DescriptorBufferInfo            cam_buf(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
     const vk::WriteDescriptorSet cam_buf_write(cam_buffer_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
     gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
@@ -393,19 +392,20 @@ void vulkan_app::on_run()
     inputs_list.add(*_input);
     inputs_list.add(cam_system);
 
-    auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
-                                                gfx::grabbed_cursor_component{}, gfx::camera_controls{});
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
+                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
 
     const vk::QueryPoolCreateInfo query_pool_create_info({}, vk::QueryType::eTimestamp, _stamp_id_count, {});
     vk::UniqueQueryPool           query_pool = gpu.get_device().createQueryPoolUnique(query_pool_create_info);
 
-    vk::Buffer curr_buffers[2]{nullptr, nullptr};
-    size_t     curr_buffer_sizes[2]{0, 0};
+    vk::Buffer curr_buffers[2] {nullptr, nullptr};
+    size_t     curr_buffer_sizes[2] {0, 0};
 
     int                        available_results = 0;
     bool                       runs_queries      = false;
     std::vector<std::uint64_t> query_times(2 * _stamp_id_count);
-    gfx::worker                vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+
+    gfx::worker vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
 
         if (surface_swapchain.swap(acquire_semaphore))
@@ -441,7 +441,7 @@ void vulkan_app::on_run()
             runs_queries      = false;
         }
 
-        current.get_command_buffer().begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+        current.get_command_buffer().begin(vk::CommandBufferBeginInfo {vk::CommandBufferUsageFlagBits::eSimultaneousUse});
 
         if (!runs_queries) current.get_command_buffer().resetQueryPool(query_pool.get(), 0, _stamp_id_count);
         if (!runs_queries)
@@ -457,7 +457,7 @@ void vulkan_app::on_run()
                 vk::DescriptorBufferInfo info;
                 info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
                 info.offset = 0;
-                info.range = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                info.range  = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
                 const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
@@ -497,7 +497,7 @@ void vulkan_app::on_run()
         current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
 
         {
-            const vk::ClearValue clear_values[1]{{vk::ClearDepthStencilValue(1.f, 0)}};
+            const vk::ClearValue clear_values[1] {{vk::ClearDepthStencilValue(1.f, 0)}};
             current.get_command_buffer().beginRenderPass(
                 vk::RenderPassBeginInfo(vulkan_state->shadow_render_pass.get(), shadow_map_fb.get(), vk::Rect2D({0, 0}, {1024, 1024}),
                                         gfx::u32(std::size(clear_values)), std::data(clear_values)),
@@ -521,8 +521,8 @@ void vulkan_app::on_run()
         if (!runs_queries)
             current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_shadowmap);
 
-        const vk::ClearValue clear_values[3]{
-            {}, {vk::ClearColorValue(std::array<float, 4>{1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
+        const vk::ClearValue clear_values[3] {
+            {}, {vk::ClearColorValue(std::array<float, 4> {1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
         current.get_command_buffer().beginRenderPass(
             vk::RenderPassBeginInfo(vulkan_state->render_pass.get(), vulkan_state->framebuffers[surface_swapchain.current_index()].get(),
                                     vk::Rect2D({0, 0}, surface_swapchain.extent()), gfx::u32(std::size(clear_values)),
@@ -575,21 +575,16 @@ void vulkan_app::on_run()
     QTimer* fixed_updater;
     run_in_gui([&] {
         fixed_updater = new QTimer(&panel);
-        QObject::connect(fixed_updater, &QTimer::timeout, [&]
-        {
-            if (!vulkan_graphics_worker.has_stopped())
-                ecs.update(update_time_inputs, inputs_list);
+        QObject::connect(fixed_updater, &QTimer::timeout, [&] {
+            if (!vulkan_graphics_worker.has_stopped()) ecs.update(update_time_inputs, inputs_list);
         });
         fixed_updater->start(update_time_inputs.count());
     });
 
-    gfx::timed_while::run([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
-        return self.value_after(panel.isVisible(), update_time_inputs);
-    });
+    gfx::timed_while::run(
+        [&](gfx::timed_while& self, gfx::timed_while::duration delta) { return self.value_after(panel.isVisible(), update_time_inputs); });
 
-    run_in_gui([&] {
-        fixed_updater->stop();
-    });
+    run_in_gui([&] { fixed_updater->stop(); });
 
     vulkan_graphics_worker.stop_and_wait();
     physics_worker.stop_and_wait();
@@ -638,7 +633,7 @@ void vulkan_app::create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapch
     dependency.dstSubpass      = 0;
     dependency.srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
     dependency.dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dependency.srcAccessMask   = vk::AccessFlagBits{};
+    dependency.srcAccessMask   = vk::AccessFlagBits {};
     dependency.dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
     dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
@@ -714,8 +709,8 @@ void vulkan_app::create_shadow_renderpass(gfx::vulkan::device& gpu)
 
 vk::UniquePipelineLayout vulkan_app::create_pipeline_layout(gfx::vulkan::device& gpu)
 {
-    vk::DescriptorSetLayout set_layouts[]{vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get(),
-                                          vulkan_state->all_textures_layout.get(), vulkan_state->shadow_set_layout.get()};
+    vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get(),
+                                           vulkan_state->all_textures_layout.get(), vulkan_state->shadow_set_layout.get()};
 
     vk::PipelineLayoutCreateInfo info;
     info.pSetLayouts    = set_layouts;
@@ -735,8 +730,8 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     shader_constants.texture_count = vulkan_state->texture_count;
 
     vk::SpecializationMapEntry spec_entries[1];
-    spec_entries[0] = vk::SpecializationMapEntry{def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
-                                                 sizeof(shader_constants.texture_count)};
+    spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
+                                                  sizeof(shader_constants.texture_count)};
 
     vk::SpecializationInfo specialization;
     specialization.mapEntryCount = std::uint32_t(std::size(spec_entries));
@@ -744,7 +739,7 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     specialization.dataSize      = sizeof(shader_constants);
     specialization.pData         = &shader_constants;
 
-    shaders_lib.load("shaders_vk");
+    shaders_lib.load("vk_and_gl.shaders_vk");
     auto* const         vs_source = gfx::import_shader(shaders_lib, "shaders/vk_vs.vert");
     auto* const         fs_source = gfx::import_shader(shaders_lib, "shaders/vk_fs.frag");
     gfx::vulkan::shader vertex_shader(gpu, *vs_source);
@@ -778,7 +773,7 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     depth.depthWriteEnable  = true;
     info.pDepthStencilState = &depth;
 
-    vk::DynamicState                   dynamic_states[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::DynamicState                   dynamic_states[] {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamic;
     dynamic.dynamicStateCount = gfx::u32(std::size(dynamic_states));
     dynamic.pDynamicStates    = dynamic_states;
@@ -960,10 +955,10 @@ void vulkan_app::generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std
 
             const auto    clm = [](uint32_t i) -> std::int32_t { return static_cast<std::int32_t>(std::max(i, 1u)); };
             vk::ImageBlit blit;
-            blit.srcOffsets[0] = VkOffset3D{0, 0, 0};
-            blit.srcOffsets[1] = VkOffset3D{clm(extent.width >> (i - 1)), clm(extent.height >> (i - 1)), clm(extent.depth >> (i - 1))};
-            blit.dstOffsets[0] = VkOffset3D{0, 0, 0};
-            blit.dstOffsets[1] = VkOffset3D{clm(extent.width >> (i)), clm(extent.height >> (i)), clm(extent.depth >> (i))};
+            blit.srcOffsets[0] = VkOffset3D {0, 0, 0};
+            blit.srcOffsets[1] = VkOffset3D {clm(extent.width >> (i - 1)), clm(extent.height >> (i - 1)), clm(extent.depth >> (i - 1))};
+            blit.dstOffsets[0] = VkOffset3D {0, 0, 0};
+            blit.dstOffsets[1] = VkOffset3D {clm(extent.width >> (i)), clm(extent.height >> (i)), clm(extent.depth >> (i))};
             blit.srcSubresource.aspectMask     = vk::ImageAspectFlagBits::eColor;
             blit.srcSubresource.baseArrayLayer = layer;
             blit.srcSubresource.layerCount     = 1;
@@ -1003,7 +998,7 @@ void vulkan_app::generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std
 
 vk::UniquePipelineLayout vulkan_app::create_shadow_pipeline_layout(gfx::vulkan::device& gpu)
 {
-    vk::DescriptorSetLayout set_layouts[]{vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
+    vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
 
     vk::PipelineLayoutCreateInfo info;
     info.pSetLayouts    = set_layouts;
@@ -1023,8 +1018,8 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     shader_constants.texture_count = vulkan_state->texture_count;
 
     vk::SpecializationMapEntry spec_entries[1];
-    spec_entries[0] = vk::SpecializationMapEntry{def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
-                                                 sizeof(shader_constants.texture_count)};
+    spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
+                                                  sizeof(shader_constants.texture_count)};
 
     vk::SpecializationInfo specialization;
     specialization.mapEntryCount = std::uint32_t(std::size(spec_entries));
@@ -1032,7 +1027,7 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     specialization.dataSize      = sizeof(shader_constants);
     specialization.pData         = &shader_constants;
 
-    shaders_lib.load("shaders_vk");
+    shaders_lib.load("vk_and_gl.shaders_vk");
     auto* const         vs_source = gfx::import_shader(shaders_lib, "shaders/vk_vs_shadow.vert");
     gfx::vulkan::shader vertex_shader(gpu, *vs_source);
     shaders_lib.unload();
@@ -1056,7 +1051,7 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     depth.depthWriteEnable  = true;
     info.pDepthStencilState = &depth;
 
-    vk::DynamicState                   dynamic_states[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::DynamicState                   dynamic_states[] {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamic;
     dynamic.dynamicStateCount = gfx::u32(std::size(dynamic_states));
     dynamic.pDynamicStates    = dynamic_states;

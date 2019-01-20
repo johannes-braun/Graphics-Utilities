@@ -6,7 +6,7 @@
 #include <gfx.ecs/ecs.hpp>
 #include <shared_mutex>
 #include <thread>
-#include "input_qt.hpp"
+#include "input/input_qt.hpp"
 
 namespace gfx {
 inline namespace v1 {

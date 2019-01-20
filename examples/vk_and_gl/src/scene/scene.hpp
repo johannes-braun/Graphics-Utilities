@@ -1,8 +1,8 @@
 #pragma once
 
-#include "camera.hpp"
+#include "input/camera.hpp"
 #include "gfx.file/file.hpp"
-#include "shaders/def.hpp"
+#include "def.hpp"
 #include <gfx.ecs.components/prototype.hpp>
 #include <random>
 #include <shared_mutex>

@@ -72,7 +72,7 @@ prototype_handle prototype_instantiator<InstanceInfo>::enqueue(const prototype& 
 {
     static u64 current_handle = 0;
     const auto next           = prototype_handle(current_handle++);
-    int        count = 0;
+    int        count          = 0;
     for (const auto& m : p.meshes)
     {
         if (!m) break;
@@ -154,6 +154,10 @@ void instance_system<Info>::update(duration_type delta, ecs::component_base** co
     _instantiator.enqueue(inst.handle, transform, infos);
 }
 
+template<typename Info>
+void instance_system<Info>::post_update()
+{
+}
 
 template<typename Info>
 const prototype_instantiator<Info>& instance_system<Info>::get_instantiator() const noexcept
@@ -171,7 +175,7 @@ template<typename Info>
 prototype_instantiator<Info>& instance_system<Info>::get_instantiator() noexcept
 {
     return _instantiator;
-} 
+}
 
 template<typename Info>
 mesh_allocator& instance_system<Info>::get_mesh_allocator() noexcept

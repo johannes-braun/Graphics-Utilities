@@ -1,7 +1,9 @@
 set(current_executable vk_and_gl)
 
-file(GLOB_RECURSE CPPS *.cpp *.natvis)
+file(GLOB_RECURSE CPPS src/*.cpp src/*.natvis)
 add_executable(${current_executable} ${CPPS})
+target_include_directories(${current_executable} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(${current_executable} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 
 include(spv/spv_to_dll)
 add_shader(${current_executable}.shaders_vk

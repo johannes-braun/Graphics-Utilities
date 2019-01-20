@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 namespace gfx {
 inline namespace v1 {
@@ -226,6 +227,7 @@ public:
 
     void pre_update() override;
     void update(duration_type delta, ecs::component_base** components) const override;
+    void post_update() override;
 
     const prototype_instantiator<Info>& get_instantiator() const noexcept;
     const mesh_allocator&               get_mesh_allocator() const noexcept;

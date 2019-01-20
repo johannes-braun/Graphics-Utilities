@@ -1,7 +1,7 @@
-#include "app.hpp"
-#include "opengl.hpp"
-#include "vulkan.hpp"
-#include "scene.hpp"
+#include "app/app.hpp"
+#include "app/opengl.hpp"
+#include "app/vulkan.hpp"
+#include "scene/scene.hpp"
 
 #include <filesystem>
 

@@ -23,6 +23,7 @@ public:
     const buffer<bvh<3>::node>& bvh_buffer() const noexcept;
 
     void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
+
 private:
     device* _device;
 
@@ -56,7 +57,7 @@ private:
     size_t                 _current_instance_index = 0;
     mapped<basic_instance> _instance_descriptions_src[instance_swap_buffer_count];
 };
-}    // namespace impl
+}    // namespace vulkan
 
 
 namespace opengl {
@@ -74,6 +75,7 @@ public:
     const buffer<bvh<3>::node>& bvh_buffer() const noexcept;
 
     void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
+
 private:
     mapped<vertex3d>     _staging_vertex_buffer;
     mapped<index32>      _staging_index_buffer;
@@ -105,7 +107,7 @@ private:
     size_t                 _current_instance_index = 0;
     mapped<basic_instance> _instance_descriptions_src[instance_swap_buffer_count];
 };
-}    // namespace vulkan
+}    // namespace opengl
 }    // namespace v1
 }    // namespace gfx
 

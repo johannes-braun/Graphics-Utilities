@@ -1,13 +1,14 @@
 #define MYGL_IMPLEMENTATION
 
 #include "opengl.hpp"
-#include "camera.hpp"
+#include "input/camera.hpp"
 #include "globals.hpp"
-#include "scene.hpp"
-#include "shaders/def.hpp"
+#include "scene/scene.hpp"
+#include "def.hpp"
 #include <gfx.core/log.hpp>
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs.components/movement.hpp>
+#include <gfx.ecs.components/basic.hpp>
 #include <gfx.ecs.components/prototype_proxies.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.file/file.hpp>
