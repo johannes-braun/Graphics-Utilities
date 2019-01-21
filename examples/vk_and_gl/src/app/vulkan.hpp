@@ -9,6 +9,7 @@ struct vulkan_state_t
 {
     vk::UniqueRenderPass               render_pass;
     std::vector<vk::UniqueFramebuffer> framebuffers;
+    std::vector<gfx::vulkan::image>    color_attachments;
     std::vector<gfx::vulkan::image>    msaa_attachments;
     std::vector<gfx::vulkan::image>    depth_attachments;
     std::vector<vk::UniqueImageView>   color_att_views;

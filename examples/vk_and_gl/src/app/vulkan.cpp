@@ -10,6 +10,8 @@
 #include "input/camera.hpp"
 #include "input/input.hpp"
 #include "scene/scene.hpp"
+#include "vulkan_cutoff.hpp"
+#include "vulkan_overlay.hpp"
 #include "vulkan_postprocess.hpp"
 #include <gfx.core/worker.hpp>
 #include <gfx.ecs/ecs.hpp>
@@ -26,7 +28,7 @@
 class bouncy_system : public gfx::ecs::system
 {
     mutable std::mt19937                  gen;
-    std::uniform_real_distribution<float> dist {-1, 1};
+    std::uniform_real_distribution<float> dist{-1, 1};
 
     bool               _explode      = false;
     bool               _explode_lock = false;
@@ -111,7 +113,7 @@ void vulkan_app::on_run()
     gfx::vulkan::semaphore             acquire_semaphore(gpu);
     gfx::vulkan::semaphore             finish_semaphore(gpu);
     std::vector<gfx::vulkan::commands> commands = gpu.allocate_graphics_commands(surface_swapchain.count());
-    std::vector<gfx::vulkan::fence>    command_fences(surface_swapchain.count(), gfx::vulkan::fence {gpu, true});
+    std::vector<gfx::vulkan::fence>    command_fences(surface_swapchain.count(), gfx::vulkan::fence{gpu, true});
 
     gfx::ecs::system_list graphics_list;
 
@@ -123,9 +125,9 @@ void vulkan_app::on_run()
 
     vulkan_state = std::make_unique<vulkan_state_t>();
 
-    vk::DescriptorPoolSize               sizes[3] {vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
-                                     vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 8),
-                                     vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 512)};
+    vk::DescriptorPoolSize               sizes[3]{vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
+                                    vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, 8),
+                                    vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, 512)};
     const vk::DescriptorPoolCreateInfo   pool_info(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 16, gfx::u32(std::size(sizes)),
                                                  sizes);
     vk::UniqueDescriptorPool             descriptor_pool = gpu.get_device().createDescriptorPoolUnique(pool_info);
@@ -151,10 +153,10 @@ void vulkan_app::on_run()
     std::vector<vk::Sampler> shadow_samplers(1, vulkan_state->shadow_sampler.get());
 
     vk::DescriptorSetLayoutBinding shadow_set_bindings[2];
-    shadow_set_bindings[0]          = vk::DescriptorSetLayoutBinding {def::shadow_map_binding, vk::DescriptorType::eCombinedImageSampler, 1,
-                                                             vk::ShaderStageFlagBits::eAllGraphics, std::data(shadow_samplers)};
-    shadow_set_bindings[1]          = vk::DescriptorSetLayoutBinding {def::shadow_cam_binding, vk::DescriptorType::eStorageBuffer, 1,
-                                                             vk::ShaderStageFlagBits::eAllGraphics};
+    shadow_set_bindings[0]          = vk::DescriptorSetLayoutBinding{def::shadow_map_binding, vk::DescriptorType::eCombinedImageSampler, 1,
+                                                            vk::ShaderStageFlagBits::eAllGraphics, std::data(shadow_samplers)};
+    shadow_set_bindings[1]          = vk::DescriptorSetLayoutBinding{def::shadow_cam_binding, vk::DescriptorType::eStorageBuffer, 1,
+                                                            vk::ShaderStageFlagBits::eAllGraphics};
     vulkan_state->shadow_set_layout = gpu.get_device().createDescriptorSetLayoutUnique(
         {{}, static_cast<std::uint32_t>(std::size(shadow_set_bindings)), std::data(shadow_set_bindings)});
 
@@ -214,7 +216,7 @@ void vulkan_app::on_run()
         gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
     }
 
-    std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings {
+    std::vector<vk::DescriptorSetLayoutBinding> model_info_bindings{
         {0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
         {def::buffer_binding_vertex, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics},
         {def::buffer_binding_element, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eAllGraphics}};
@@ -233,7 +235,7 @@ void vulkan_app::on_run()
 
     gfx::vulkan::instance_proxy<def::mesh_info> vulkan_proxy(gpu);
     gfx::instance_system<def::mesh_info>        instances(vulkan_proxy,
-                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag {});
+                                                   DEF_use_rt_shadows ? gfx::mesh_allocator_flag::use_bvh : gfx::mesh_allocator_flag{});
     graphics_list.add(instances);
     user_data = &instances;
 
@@ -378,7 +380,7 @@ void vulkan_app::on_run()
     vk::UniqueDescriptorSet cam_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);
 
-    gfx::vulkan::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices {}});
+    gfx::vulkan::buffer<gfx::camera_matrices> camera_buffer(gpu, {gfx::camera_matrices{}});
     const vk::DescriptorBufferInfo            cam_buf(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices));
     const vk::WriteDescriptorSet cam_buf_write(cam_buffer_set.get(), 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &cam_buf);
     gpu.get_device().updateDescriptorSets(cam_buf_write, nullptr);
@@ -392,215 +394,235 @@ void vulkan_app::on_run()
     inputs_list.add(*_input);
     inputs_list.add(cam_system);
 
-    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
-                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
+                                                gfx::grabbed_cursor_component{}, gfx::camera_controls{});
 
     const vk::QueryPoolCreateInfo query_pool_create_info({}, vk::QueryType::eTimestamp, _stamp_id_count, {});
     vk::UniqueQueryPool           query_pool = gpu.get_device().createQueryPoolUnique(query_pool_create_info);
 
-    vk::Buffer curr_buffers[2] {nullptr, nullptr};
-    size_t     curr_buffer_sizes[2] {0, 0};
+    vk::Buffer curr_buffers[2]{nullptr, nullptr};
+    size_t     curr_buffer_sizes[2]{0, 0};
 
     int                        available_results = 0;
     bool                       runs_queries      = false;
     std::vector<std::uint64_t> query_times(2 * _stamp_id_count);
 
-    blur_pass vblur(gpu, surface_swapchain.count(), surface_swapchain.extent(), 1, 5);
-    blur_pass hblur(gpu, surface_swapchain.count(), surface_swapchain.extent(), 0, 5);
+    vk::Extent2D blur_extent(surface_swapchain.extent());
+    blur_extent.width /= 2;
+    blur_extent.height /= 2;
+    blur_pass     vblur(gpu, surface_swapchain.count(), blur_extent, 1, 5);
+    blur_pass     hblur(gpu, surface_swapchain.count(), blur_extent, 0, 5);
+    cutoff_pass   cutoff(gpu, surface_swapchain.count(), blur_extent);
+    overlay_pass  overlay(gpu, surface_swapchain.count(), surface_swapchain.extent());
 
-    gfx::worker vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
-        update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
+        gfx::worker vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+            update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
 
-        if (surface_swapchain.swap(acquire_semaphore))
-        {
-            if (!surface_swapchain.recreate()) return false;
-            create_framebuffer(gpu, surface_swapchain);
-            return true;
-        }
-
-        auto& current = commands[surface_swapchain.current_index()];
-
-        gpu.wait_for({command_fences[surface_swapchain.current_index()]});
-        gpu.reset_fences({command_fences[surface_swapchain.current_index()]});
-        current.get_command_buffer().reset({});
-        ecs.update(delta, graphics_list);
-
-        if (_input->key_down(gfx::key::kb_p))
-        {
-            gpu.get_device().waitIdle();
-            pipeline = create_pipeline(gpu, pipeline_layout.get());
-        }
-
-        if (runs_queries)
-            gpu.get_device().getQueryPoolResults(query_pool.get(), 0, _stamp_id_count, query_times.size() * sizeof(std::uint64_t),
-                                                 query_times.data(), sizeof(std::uint64_t),
-                                                 vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability);
-        available_results = _stamp_id_count * query_times[_stamp_id_count];
-        if (available_results >= _stamp_id_count)
-        {
-            std::shared_lock lock(_stamp_time_mutex);
-            for (int i = 0; i < _stamp_id_count; ++i) { _stamp_times[i] = query_times[i]; }
-            available_results = 0;
-            runs_queries      = false;
-        }
-
-        current.get_command_buffer().begin(vk::CommandBufferBeginInfo {vk::CommandBufferUsageFlagBits::eSimultaneousUse});
-
-        if (!runs_queries) current.get_command_buffer().resetQueryPool(query_pool.get(), 0, _stamp_id_count);
-        if (!runs_queries)
-            current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, query_pool.get(), stamp_id_begin);
-
-        if (curr_buffers[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_mapped().get_buffer()
-            || curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_mapped().size())
-        {
-            curr_buffers[vulkan_proxy.instance_buffer_index()]      = vulkan_proxy.instances_mapped().get_buffer();
-            curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_mapped().size();
-
+            if (surface_swapchain.swap(acquire_semaphore))
             {
-                vk::DescriptorBufferInfo info;
-                info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
-                info.offset = 0;
-                info.range  = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
-                                                     vk::DescriptorType::eStorageBuffer, nullptr, &info);
-                gpu.get_device().updateDescriptorSets(updater, nullptr);
+                if (!surface_swapchain.recreate()) return false;
+                create_framebuffer(gpu, surface_swapchain);
+                return true;
             }
+
+            auto& current = commands[surface_swapchain.current_index()];
+
+            gpu.wait_for({command_fences[surface_swapchain.current_index()]});
+            gpu.reset_fences({command_fences[surface_swapchain.current_index()]});
+            current.get_command_buffer().reset({});
+            ecs.update(delta, graphics_list);
+
+            if (_input->key_down(gfx::key::kb_p))
             {
-                vk::DescriptorBufferInfo info;
-                info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
-                vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), def::buffer_binding_vertex, 0,
-                                               1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
-                info.offset = 0;
+                gpu.get_device().waitIdle();
+                pipeline = create_pipeline(gpu, pipeline_layout.get());
+            }
 
-                if constexpr (DEF_use_rt_shadows)
+            if (runs_queries)
+                gpu.get_device().getQueryPoolResults(query_pool.get(), 0, _stamp_id_count, query_times.size() * sizeof(std::uint64_t),
+                                                     query_times.data(), sizeof(std::uint64_t),
+                                                     vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWithAvailability);
+            available_results = _stamp_id_count * query_times[_stamp_id_count];
+            if (available_results >= _stamp_id_count)
+            {
+                std::shared_lock lock(_stamp_time_mutex);
+                for (int i = 0; i < _stamp_id_count; ++i) { _stamp_times[i] = query_times[i]; }
+                available_results = 0;
+                runs_queries      = false;
+            }
+
+            current.get_command_buffer().begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eSimultaneousUse});
+
+            if (!runs_queries) current.get_command_buffer().resetQueryPool(query_pool.get(), 0, _stamp_id_count);
+            if (!runs_queries)
+                current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, query_pool.get(), stamp_id_begin);
+
+            if (curr_buffers[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_mapped().get_buffer()
+                || curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] != vulkan_proxy.instances_mapped().size())
+            {
+                curr_buffers[vulkan_proxy.instance_buffer_index()]      = vulkan_proxy.instances_mapped().get_buffer();
+                curr_buffer_sizes[vulkan_proxy.instance_buffer_index()] = vulkan_proxy.instances_mapped().size();
+
                 {
-                    updater.dstBinding = def::buffer_binding_vertex;
-                    info.buffer        = vulkan_proxy.vertex_buffer().get_buffer();
-                    info.range         = vulkan_proxy.vertex_buffer().size() * sizeof(gfx::vertex3d);
-                    gpu.get_device().updateDescriptorSets(updater, nullptr);
-
-                    updater.dstBinding = def::buffer_binding_element;
-                    info.buffer        = vulkan_proxy.index_buffer().get_buffer();
-                    info.range         = vulkan_proxy.index_buffer().size() * sizeof(gfx::index32);
-                    gpu.get_device().updateDescriptorSets(updater, nullptr);
-
-                    updater.dstBinding = def::buffer_binding_bvh;
-                    info.buffer        = vulkan_proxy.bvh_buffer().get_buffer();
-                    info.range         = vulkan_proxy.bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
+                    vk::DescriptorBufferInfo info;
+                    info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
+                    info.offset = 0;
+                    info.range =
+                        vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                    const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
+                                                         vk::DescriptorType::eStorageBuffer, nullptr, &info);
                     gpu.get_device().updateDescriptorSets(updater, nullptr);
                 }
+                {
+                    vk::DescriptorBufferInfo info;
+                    info.offset = sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                    vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), def::buffer_binding_vertex,
+                                                   0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &info);
+                    info.offset = 0;
+
+                    if constexpr (DEF_use_rt_shadows)
+                    {
+                        updater.dstBinding = def::buffer_binding_vertex;
+                        info.buffer        = vulkan_proxy.vertex_buffer().get_buffer();
+                        info.range         = vulkan_proxy.vertex_buffer().size() * sizeof(gfx::vertex3d);
+                        gpu.get_device().updateDescriptorSets(updater, nullptr);
+
+                        updater.dstBinding = def::buffer_binding_element;
+                        info.buffer        = vulkan_proxy.index_buffer().get_buffer();
+                        info.range         = vulkan_proxy.index_buffer().size() * sizeof(gfx::index32);
+                        gpu.get_device().updateDescriptorSets(updater, nullptr);
+
+                        updater.dstBinding = def::buffer_binding_bvh;
+                        info.buffer        = vulkan_proxy.bvh_buffer().get_buffer();
+                        info.range         = vulkan_proxy.bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
+                        gpu.get_device().updateDescriptorSets(updater, nullptr);
+                    }
+                }
             }
-        }
 
-        user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
-        user_entity->get<gfx::projection_component>()->perspective().inverse_z     = false;
-        user_entity->get<gfx::projection_component>()->perspective().screen_width  = surface_swapchain.extent().width;
-        user_entity->get<gfx::projection_component>()->perspective().screen_height = surface_swapchain.extent().height;
-        const gfx::camera_matrices cam                                             = *gfx::get_camera_info(*user_entity);
-        current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
+            user_entity->get<gfx::projection_component>()->perspective().negative_y    = true;
+            user_entity->get<gfx::projection_component>()->perspective().inverse_z     = false;
+            user_entity->get<gfx::projection_component>()->perspective().screen_width  = surface_swapchain.extent().width;
+            user_entity->get<gfx::projection_component>()->perspective().screen_height = surface_swapchain.extent().height;
+            const gfx::camera_matrices cam                                             = *gfx::get_camera_info(*user_entity);
+            current.get_command_buffer().updateBuffer(camera_buffer.get_buffer(), 0, sizeof(gfx::camera_matrices), &cam);
 
-        {
-            const vk::ClearValue clear_values[1] {{vk::ClearDepthStencilValue(1.f, 0)}};
+            {
+                const vk::ClearValue clear_values[1]{{vk::ClearDepthStencilValue(1.f, 0)}};
+                current.get_command_buffer().beginRenderPass(
+                    vk::RenderPassBeginInfo(vulkan_state->shadow_render_pass.get(), shadow_map_fb.get(), vk::Rect2D({0, 0}, {1024, 1024}),
+                                            gfx::u32(std::size(clear_values)), std::data(clear_values)),
+                    vk::SubpassContents::eInline);
+                const vk::Viewport viewport(0, 0, 1024, 1024, 0.f, 1.f);
+                const vk::Rect2D   scissor({0, 0}, {1024, 1024});
+                current.get_command_buffer().setViewport(0, viewport);
+                current.get_command_buffer().setScissor(0, scissor);
+                current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
+                current.get_command_buffer().bindDescriptorSets(
+                    vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
+                    {shadow_cam_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
+                current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
+                current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
+                current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
+                                                                 std::max(vulkan_proxy.instances_mapped().size(), 1ll),
+                                                                 sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+                current.get_command_buffer().endRenderPass();
+            }
+
+            if (!runs_queries)
+                current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_shadowmap);
+
+            const vk::ClearValue clear_values[3]{
+                {}, {vk::ClearColorValue(std::array<float, 4>{1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
             current.get_command_buffer().beginRenderPass(
-                vk::RenderPassBeginInfo(vulkan_state->shadow_render_pass.get(), shadow_map_fb.get(), vk::Rect2D({0, 0}, {1024, 1024}),
-                                        gfx::u32(std::size(clear_values)), std::data(clear_values)),
+                vk::RenderPassBeginInfo(
+                    vulkan_state->render_pass.get(), vulkan_state->framebuffers[surface_swapchain.current_index()].get(),
+                    vk::Rect2D({0, 0}, surface_swapchain.extent()), gfx::u32(std::size(clear_values)), std::data(clear_values)),
                 vk::SubpassContents::eInline);
-            const vk::Viewport viewport(0, 0, 1024, 1024, 0.f, 1.f);
-            const vk::Rect2D   scissor({0, 0}, {1024, 1024});
+            const vk::Viewport viewport(0, 0, surface_swapchain.extent().width, surface_swapchain.extent().height, 0.f, 1.f);
+            const vk::Rect2D   scissor({0, 0}, surface_swapchain.extent());
             current.get_command_buffer().setViewport(0, viewport);
             current.get_command_buffer().setScissor(0, scissor);
-            current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, shadow_pipeline.get());
-            current.get_command_buffer().bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, shadow_pipeline_layout.get(), 0,
-                {shadow_cam_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get()}, {});
+
+            current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.get());
+            current.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0,
+                                                            {cam_buffer_set.get(),
+                                                             model_info_sets[vulkan_proxy.instance_buffer_index()].get(),
+                                                             all_textures_set.get(), shadow_map_set.get()},
+                                                            {});
             current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
             current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
+
             current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
                                                              std::max(vulkan_proxy.instances_mapped().size(), 1ll),
                                                              sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+
             current.get_command_buffer().endRenderPass();
-        }
 
-        if (!runs_queries)
-            current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_shadowmap);
+            cutoff.render(current, surface_swapchain.current_index(),
+                          vulkan_state->color_attachments[surface_swapchain.current_index()].get_image(),
+                          vulkan_state->color_att_views[surface_swapchain.current_index()].get(), vk::ImageLayout::eGeneral, {}, 0.9f);
 
-        const vk::ClearValue clear_values[3] {
-            {}, {vk::ClearColorValue(std::array<float, 4> {1.f, 0.3f, 0.f, 1.f})}, {vk::ClearDepthStencilValue(1.f, 0)}};
-        current.get_command_buffer().beginRenderPass(
-            vk::RenderPassBeginInfo(vulkan_state->render_pass.get(), vulkan_state->framebuffers[surface_swapchain.current_index()].get(),
-                                    vk::Rect2D({0, 0}, surface_swapchain.extent()), gfx::u32(std::size(clear_values)),
-                                    std::data(clear_values)),
-            vk::SubpassContents::eInline);
-        const vk::Viewport viewport(0, 0, surface_swapchain.extent().width, surface_swapchain.extent().height, 0.f, 1.f);
-        const vk::Rect2D   scissor({0, 0}, surface_swapchain.extent());
-        current.get_command_buffer().setViewport(0, viewport);
-        current.get_command_buffer().setScissor(0, scissor);
+            vblur.render(current, surface_swapchain.current_index(), cutoff.get_image(surface_swapchain.current_index()).get_image(),
+                         cutoff.get_image_view(surface_swapchain.current_index()), vk::ImageLayout::eGeneral, {});
 
-        current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.get());
-        current.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline_layout.get(), 0,
-                                                        {cam_buffer_set.get(), model_info_sets[vulkan_proxy.instance_buffer_index()].get(),
-                                                         all_textures_set.get(), shadow_map_set.get()},
-                                                        {});
-        current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
-        current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
+            hblur.render(current, surface_swapchain.current_index(), vblur.get_image(surface_swapchain.current_index()).get_image(),
+                         vblur.get_image_view(surface_swapchain.current_index()), vk::ImageLayout::eGeneral, {});
 
-        current.get_command_buffer().drawIndexedIndirect(vulkan_proxy.instances_mapped().get_buffer(), 0,
-                                                         std::max(vulkan_proxy.instances_mapped().size(), 1ll),
-                                                         sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+            overlay.render(current, surface_swapchain.current_index(),
+                           vulkan_state->color_attachments[surface_swapchain.current_index()].get_image(),
+                           vulkan_state->color_att_views[surface_swapchain.current_index()].get(),
+                           hblur.get_image(surface_swapchain.current_index()).get_image(),
+                           hblur.get_image_view(surface_swapchain.current_index()), vk::ImageLayout::eGeneral, {});
 
-        current.get_command_buffer().endRenderPass();
+            vk::ImageBlit blit;
+            blit.srcOffsets[0]  = VkOffset3D{0, 0, 0};
+            blit.srcOffsets[1]  = VkOffset3D{int(surface_swapchain.extent().width), int(surface_swapchain.extent().height), 1};
+            blit.dstOffsets[0]  = VkOffset3D{0, 0, 0};
+            blit.dstOffsets[1]  = VkOffset3D{int(surface_swapchain.extent().width), int(surface_swapchain.extent().height), 1};
+            blit.srcSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+            blit.dstSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
 
-        vblur.render(current, surface_swapchain.current_index(), surface_swapchain.images()[surface_swapchain.current_index()].get_image(),
-                     vulkan_state->color_att_views[surface_swapchain.current_index()].get(), vk::ImageLayout::eGeneral, {});
-        hblur.render(current, surface_swapchain.current_index(), vblur.get_image(surface_swapchain.current_index()).get_image(),
-                     vblur.get_image_view(surface_swapchain.current_index()), vk::ImageLayout::eGeneral, {});
+            vk::ImageMemoryBarrier imb;
+            imb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imb.image               = overlay.get_image(surface_swapchain.current_index()).get_image();
+            imb.srcAccessMask       = {};
+            imb.subresourceRange    = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+            imb.oldLayout           = vk::ImageLayout::eShaderReadOnlyOptimal;
+            imb.newLayout           = vk::ImageLayout::eGeneral;
+            current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
+                                                         vk::DependencyFlagBits::eByRegion, {}, {}, imb);
+            current.get_command_buffer().blitImage(overlay.get_image(surface_swapchain.current_index()).get_image(),
+                                                   vk::ImageLayout::eGeneral,
+                                                   surface_swapchain.images()[surface_swapchain.current_index()].get_image(),
+                                                   vk::ImageLayout::eGeneral, blit, vk::Filter::eLinear);
+            imb.image     = surface_swapchain.images()[surface_swapchain.current_index()].get_image();
+            imb.oldLayout = vk::ImageLayout::eGeneral;
+            imb.newLayout = vk::ImageLayout::ePresentSrcKHR;
+            current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
+                                                         vk::DependencyFlagBits::eByRegion, {}, {}, imb);
 
-        vk::ImageBlit blit;
-        blit.srcOffsets[0] = VkOffset3D {0, 0, 0};
-        blit.srcOffsets[1] = VkOffset3D {int(surface_swapchain.extent().width), int(surface_swapchain.extent().height), 1};
-        blit.dstOffsets[0] = VkOffset3D {0, 0, 0};
-        blit.dstOffsets[1] = VkOffset3D {int(surface_swapchain.extent().width), int(surface_swapchain.extent().height), 1};
-        blit.srcSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
-        blit.dstSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+            vulkan_proxy.swap(current);
 
-        vk::ImageMemoryBarrier imb;
-        imb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imb.image               = vblur.get_image(surface_swapchain.current_index()).get_image();
-        imb.srcAccessMask    = {};
-        imb.subresourceRange = vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-        imb.oldLayout           = vk::ImageLayout::eShaderReadOnlyOptimal;
-        imb.newLayout           = vk::ImageLayout::eGeneral;
-        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
-                                                 vk::DependencyFlagBits::eByRegion, {}, {}, imb);
-        current.get_command_buffer().blitImage(vblur.get_image(surface_swapchain.current_index()).get_image(), vk::ImageLayout::eGeneral,
-            surface_swapchain.images()[surface_swapchain.current_index()].get_image(), vk::ImageLayout::eGeneral,
-            blit, vk::Filter::eLinear);
-        imb.image            = surface_swapchain.images()[surface_swapchain.current_index()].get_image();
-        imb.oldLayout        = vk::ImageLayout::eGeneral;
-        imb.newLayout        = vk::ImageLayout::ePresentSrcKHR;
-        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eBottomOfPipe,
-                                                 vk::DependencyFlagBits::eByRegion, {}, {}, imb);
+            if (!runs_queries)
+                current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_render);
 
-        vulkan_proxy.swap(current);
+            current.get_command_buffer().end();
+            gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore},
+                                        command_fences[surface_swapchain.current_index()]);
 
-        if (!runs_queries)
-            current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_render);
+            if (gpu.present_queue().present({{surface_swapchain.current_index(), surface_swapchain}}, {finish_semaphore}))
+            {
+                if (!surface_swapchain.recreate()) return false;
+                create_framebuffer(gpu, surface_swapchain);
+                return true;
+            }
 
-        current.get_command_buffer().end();
-        gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore}, command_fences[surface_swapchain.current_index()]);
+            runs_queries = true;
 
-        if (gpu.present_queue().present({{surface_swapchain.current_index(), surface_swapchain}}, {finish_semaphore}))
-        {
-            if (!surface_swapchain.recreate()) return false;
-            create_framebuffer(gpu, surface_swapchain);
-            return true;
-        }
-
-        runs_queries = true;
-
-        return self.value_after(true, update_time_graphics);
-    });
+            return self.value_after(true, update_time_graphics);
+        });
 
     gfx::worker physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         ecs.update(delta, physics_list);
@@ -635,7 +657,7 @@ void vulkan_app::create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapch
     vk::AttachmentDescription attachments[att_id::_count];
     attachments[att_id::color].initialLayout  = vk::ImageLayout::eUndefined;
     attachments[att_id::color].finalLayout    = vk::ImageLayout::ePresentSrcKHR;
-    attachments[att_id::color].format         = swapchain.format();
+    attachments[att_id::color].format         = vk::Format::eR16G16B16A16Sfloat;
     attachments[att_id::color].samples        = vk::SampleCountFlagBits::e1;
     attachments[att_id::color].loadOp         = vk::AttachmentLoadOp::eDontCare;
     attachments[att_id::color].storeOp        = vk::AttachmentStoreOp::eStore;
@@ -644,7 +666,7 @@ void vulkan_app::create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapch
 
     attachments[att_id::msaa].initialLayout  = vk::ImageLayout::eUndefined;
     attachments[att_id::msaa].finalLayout    = vk::ImageLayout::eColorAttachmentOptimal;
-    attachments[att_id::msaa].format         = swapchain.format();
+    attachments[att_id::msaa].format         = vk::Format::eR16G16B16A16Sfloat;
     attachments[att_id::msaa].samples        = vk::SampleCountFlagBits::e4;
     attachments[att_id::msaa].loadOp         = vk::AttachmentLoadOp::eClear;
     attachments[att_id::msaa].storeOp        = vk::AttachmentStoreOp::eStore;
@@ -668,7 +690,7 @@ void vulkan_app::create_renderpass(gfx::vulkan::device& gpu, gfx::vulkan::swapch
     dependency.dstSubpass      = 0;
     dependency.srcStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
     dependency.dstStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    dependency.srcAccessMask   = vk::AccessFlagBits {};
+    dependency.srcAccessMask   = vk::AccessFlagBits{};
     dependency.dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
     dependency.dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
@@ -744,8 +766,8 @@ void vulkan_app::create_shadow_renderpass(gfx::vulkan::device& gpu)
 
 vk::UniquePipelineLayout vulkan_app::create_pipeline_layout(gfx::vulkan::device& gpu)
 {
-    vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get(),
-                                           vulkan_state->all_textures_layout.get(), vulkan_state->shadow_set_layout.get()};
+    vk::DescriptorSetLayout set_layouts[]{vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get(),
+                                          vulkan_state->all_textures_layout.get(), vulkan_state->shadow_set_layout.get()};
 
     vk::PipelineLayoutCreateInfo info;
     info.pSetLayouts    = set_layouts;
@@ -765,8 +787,8 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     shader_constants.texture_count = vulkan_state->texture_count;
 
     vk::SpecializationMapEntry spec_entries[1];
-    spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
-                                                  sizeof(shader_constants.texture_count)};
+    spec_entries[0] = vk::SpecializationMapEntry{def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
+                                                 sizeof(shader_constants.texture_count)};
 
     vk::SpecializationInfo specialization;
     specialization.mapEntryCount = std::uint32_t(std::size(spec_entries));
@@ -808,7 +830,7 @@ vk::UniquePipeline vulkan_app::create_pipeline(gfx::vulkan::device& gpu, vk::Pip
     depth.depthWriteEnable  = true;
     info.pDepthStencilState = &depth;
 
-    vk::DynamicState                   dynamic_states[] {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::DynamicState                   dynamic_states[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamic;
     dynamic.dynamicStateCount = gfx::u32(std::size(dynamic_states));
     dynamic.pDynamicStates    = dynamic_states;
@@ -875,7 +897,7 @@ void vulkan_app::create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapc
         vk::ImageCreateInfo msaa_info;
         msaa_info.arrayLayers           = 1;
         msaa_info.extent                = vk::Extent3D(1920, 1080, 1);
-        msaa_info.format                = swapchain.format();
+        msaa_info.format                = vk::Format::eR16G16B16A16Sfloat;
         msaa_info.imageType             = vk::ImageType::e2D;
         msaa_info.initialLayout         = vk::ImageLayout::eUndefined;
         msaa_info.mipLevels             = 1;
@@ -886,16 +908,33 @@ void vulkan_app::create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapc
         msaa_info.queueFamilyIndexCount = gfx::u32(std::size(queue_indices));
         msaa_info.pQueueFamilyIndices   = std::data(queue_indices);
 
+        vk::ImageCreateInfo color_info;
+        color_info.arrayLayers          = 1;
+        color_info.extent               = vk::Extent3D(swapchain.extent().width, swapchain.extent().height, 1);
+        color_info.format               = vk::Format::eR16G16B16A16Sfloat;
+        color_info.imageType            = vk::ImageType::e2D;
+        color_info.initialLayout        = vk::ImageLayout::eUndefined;
+        color_info.mipLevels            = 1;
+        color_info.samples              = vk::SampleCountFlagBits::e1;
+        color_info.sharingMode          = vk::SharingMode::eExclusive;
+        color_info.tiling               = vk::ImageTiling::eOptimal;
+        color_info.usage                = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc;
+        color_info.queueFamilyIndexCount = gfx::u32(std::size(queue_indices));
+        color_info.pQueueFamilyIndices   = std::data(queue_indices);
+
         for (auto i = 0ull; i < swapchain.count(); ++i)
         {
-            const auto& da = vulkan_state->depth_attachments.emplace_back(gpu, depth_info);
+            const auto&               res = vulkan_state->color_attachments.emplace_back(gpu, color_info);
+            vk::ImageViewCreateInfo   rc({}, res.get_image(), vk::ImageViewType::e2D, color_info.format, {},
+                                       vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+            const auto&               rv = vulkan_state->color_att_views.emplace_back(gpu.get_device().createImageViewUnique(rc));
 
+            const auto& da = vulkan_state->depth_attachments.emplace_back(gpu, depth_info);
             vk::ImageViewCreateInfo dc({}, da.get_image(), vk::ImageViewType::e2D, depth_info.format, {},
                                        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1));
             const auto&             dv = vulkan_state->depth_att_views.emplace_back(gpu.get_device().createImageViewUnique(dc));
 
             const auto& ma = vulkan_state->msaa_attachments.emplace_back(gpu, msaa_info);
-
             vk::ImageViewCreateInfo mc({}, ma.get_image(), vk::ImageViewType::e2D, msaa_info.format, {},
                                        vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
             const auto&             mv = vulkan_state->msaa_att_views.emplace_back(gpu.get_device().createImageViewUnique(mc));
@@ -905,13 +944,10 @@ void vulkan_app::create_framebuffer(gfx::vulkan::device& gpu, gfx::vulkan::swapc
     vulkan_state->framebuffers.clear();
     for (auto i = 0ull; i < swapchain.count(); ++i)
     {
-        const auto&               res = swapchain.images()[i].get_image();
-        vk::ImageViewCreateInfo   rc({}, res, vk::ImageViewType::e2D, swapchain.format(), {},
-                                   vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-        const auto&               rv = vulkan_state->color_att_views.emplace_back(gpu.get_device().createImageViewUnique(rc));
         vk::FramebufferCreateInfo info;
         info.renderPass        = vulkan_state->render_pass.get();
-        const auto attachments = {rv.get(), vulkan_state->msaa_att_views[i].get(), vulkan_state->depth_att_views[i].get()};
+        const auto attachments = {vulkan_state->color_att_views[i].get(), vulkan_state->msaa_att_views[i].get(),
+                                  vulkan_state->depth_att_views[i].get()};
         info.attachmentCount   = gfx::u32(std::size(attachments));
         info.pAttachments      = std::data(attachments);
         info.layers            = 1;
@@ -990,10 +1026,10 @@ void vulkan_app::generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std
 
             const auto    clm = [](uint32_t i) -> std::int32_t { return static_cast<std::int32_t>(std::max(i, 1u)); };
             vk::ImageBlit blit;
-            blit.srcOffsets[0] = VkOffset3D {0, 0, 0};
-            blit.srcOffsets[1] = VkOffset3D {clm(extent.width >> (i - 1)), clm(extent.height >> (i - 1)), clm(extent.depth >> (i - 1))};
-            blit.dstOffsets[0] = VkOffset3D {0, 0, 0};
-            blit.dstOffsets[1] = VkOffset3D {clm(extent.width >> (i)), clm(extent.height >> (i)), clm(extent.depth >> (i))};
+            blit.srcOffsets[0] = VkOffset3D{0, 0, 0};
+            blit.srcOffsets[1] = VkOffset3D{clm(extent.width >> (i - 1)), clm(extent.height >> (i - 1)), clm(extent.depth >> (i - 1))};
+            blit.dstOffsets[0] = VkOffset3D{0, 0, 0};
+            blit.dstOffsets[1] = VkOffset3D{clm(extent.width >> (i)), clm(extent.height >> (i)), clm(extent.depth >> (i))};
             blit.srcSubresource.aspectMask     = vk::ImageAspectFlagBits::eColor;
             blit.srcSubresource.baseArrayLayer = layer;
             blit.srcSubresource.layerCount     = 1;
@@ -1033,7 +1069,7 @@ void vulkan_app::generate_mipmaps(gfx::vulkan::device& gpu, vk::Image image, std
 
 vk::UniquePipelineLayout vulkan_app::create_shadow_pipeline_layout(gfx::vulkan::device& gpu)
 {
-    vk::DescriptorSetLayout set_layouts[] {vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
+    vk::DescriptorSetLayout set_layouts[]{vulkan_state->cam_buffer_layout.get(), vulkan_state->model_info_layout.get()};
 
     vk::PipelineLayoutCreateInfo info;
     info.pSetLayouts    = set_layouts;
@@ -1053,8 +1089,8 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     shader_constants.texture_count = vulkan_state->texture_count;
 
     vk::SpecializationMapEntry spec_entries[1];
-    spec_entries[0] = vk::SpecializationMapEntry {def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
-                                                  sizeof(shader_constants.texture_count)};
+    spec_entries[0] = vk::SpecializationMapEntry{def::constant_id_texture_count, offsetof(decltype(shader_constants), texture_count),
+                                                 sizeof(shader_constants.texture_count)};
 
     vk::SpecializationInfo specialization;
     specialization.mapEntryCount = std::uint32_t(std::size(spec_entries));
@@ -1086,7 +1122,7 @@ vk::UniquePipeline vulkan_app::create_shadow_pipeline(gfx::vulkan::device& gpu, 
     depth.depthWriteEnable  = true;
     info.pDepthStencilState = &depth;
 
-    vk::DynamicState                   dynamic_states[] {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    vk::DynamicState                   dynamic_states[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamic;
     dynamic.dynamicStateCount = gfx::u32(std::size(dynamic_states));
     dynamic.pDynamicStates    = dynamic_states;

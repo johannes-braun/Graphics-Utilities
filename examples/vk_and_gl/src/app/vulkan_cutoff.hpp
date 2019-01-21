@@ -1,8 +1,8 @@
 #pragma once
 
-struct blur_pass
+struct cutoff_pass
 {
-    blur_pass(gfx::vulkan::device& gpu, std::uint32_t images, vk::Extent2D size, std::uint32_t direction, std::uint32_t half_size)
+    cutoff_pass(gfx::vulkan::device& gpu, std::uint32_t images, vk::Extent2D size)
           : _gpu(&gpu), size(size)
     {
         vk::RenderPassCreateInfo rpassc;
@@ -62,7 +62,7 @@ struct blur_pass
         inslc.pBindings    = &inbinding;
         input_set_layout   = gpu.get_device().createDescriptorSetLayoutUnique(inslc);
 
-        create_pipeline(direction, half_size);
+        create_pipeline();
 
         for (std::uint32_t i = 0; i < images; ++i)
         {
@@ -77,7 +77,7 @@ struct blur_pass
     }
 
     void render(gfx::vulkan::commands& cmd, std::uint32_t image, vk::Image input_base, vk::ImageView input, vk::ImageLayout dst_layout,
-                vk::AccessFlagBits dst_access)
+                vk::AccessFlagBits dst_access, float cutoff)
     {
         auto& cframe = _frames[image];
         auto& cdset  = _dsets[image];
@@ -116,8 +116,7 @@ struct blur_pass
         cmd.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipe_layout.get(), 0, cdset.get(), {});
         cmd.get_command_buffer().draw(3, 1, 0, 0);
 
-        cmd.get_command_buffer().pushConstants(pipe_layout.get(), vk::ShaderStageFlagBits::eFragment, 0, sizeof(scissor.extent),
-                                               &scissor.extent);
+        cmd.get_command_buffer().pushConstants(pipe_layout.get(), vk::ShaderStageFlagBits::eFragment, 0, sizeof(cutoff), &cutoff);
         cmd.get_command_buffer().endRenderPass();
 
         imb.srcAccessMask    = imb.dstAccessMask;
@@ -133,13 +132,13 @@ struct blur_pass
     const vk::ImageView&      get_image_view(std::uint32_t idx) const { return _frames[idx].view.get(); }
 
 private:
-    void create_pipeline(std::uint32_t direction, std::uint32_t half_size)
+    void create_pipeline()
     {
         vk::PipelineLayoutCreateInfo plc;
         plc.setLayoutCount = 1;
         plc.pSetLayouts    = &input_set_layout.get();
         vk::PushConstantRange pc_range;
-        pc_range.size              = sizeof(glm::ivec2);
+        pc_range.size              = sizeof(float);
         pc_range.offset            = 0;
         pc_range.stageFlags        = vk::ShaderStageFlagBits::eFragment;
         plc.pushConstantRangeCount = 1;
@@ -198,30 +197,14 @@ private:
 
         shader_lib.load("vk_and_gl.blur_shaders_vk");
         const auto          vs = gfx::import_shader(shader_lib, "shaders/screen.vert");
-        const auto          fs = gfx::import_shader(shader_lib, "shaders/blur.frag");
+        const auto          fs = gfx::import_shader(shader_lib, "shaders/cutoff.frag");
         gfx::vulkan::shader vert(*_gpu, *vs);
         gfx::vulkan::shader frag(*_gpu, *fs);
         shader_lib.unload();
 
-        struct spec_t
-        {
-            std::uint32_t kernel_half_size;
-            std::uint32_t blur_direction;
-        } specialization {half_size, direction};
-
-        vk::SpecializationInfo spec_info;
-        spec_info.mapEntryCount = 2;
-        spec_info.dataSize      = sizeof(specialization);
-        spec_info.pData         = &specialization;
-
-        vk::SpecializationMapEntry entries[] {
-            vk::SpecializationMapEntry(0, offsetof(spec_t, kernel_half_size), sizeof(spec_t::kernel_half_size)),
-            vk::SpecializationMapEntry(1, offsetof(spec_t, blur_direction), sizeof(spec_t::blur_direction))};
-        spec_info.pMapEntries = entries;
-
         vk::PipelineShaderStageCreateInfo stgs[] {
             vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vert.get_module(), "main", nullptr),
-            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, frag.get_module(), "main", &spec_info)};
+            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, frag.get_module(), "main", nullptr)};
         gpc.pStages    = stgs;
         gpc.stageCount = 2;
 

@@ -254,7 +254,7 @@ void main()
 	const vec3 to_sun = normalize(light_pos3 - position);
 	const float cosThetaLight = dot(to_sun, real_normal);
 	const float shadowed = cosThetaLight>0 ? shadow(light_cameras[0], position).r : 0.f;
-	color += shadowed * diffuse * 1.0f * cosThetaLight;
+	color += shadowed * diffuse * 1.4f * cosThetaLight;
 }
 
 

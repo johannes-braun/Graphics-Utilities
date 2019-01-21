@@ -20,7 +20,9 @@ target_compile_options(${current_executable}.shaders_gl PRIVATE --target-env=ope
 
 add_shader(${current_executable}.blur_shaders_vk
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/screen.vert
-	${CMAKE_CURRENT_SOURCE_DIR}/shaders/blur.frag)
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/blur.frag
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/overlay.frag
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/cutoff.frag)
 target_compile_options(${current_executable}.blur_shaders_vk PRIVATE --target-env=vulkan)
 target_compile_definitions(${current_executable}.blur_shaders_vk PRIVATE -Dgl_VertexID=gl_VertexIndex)
 
