@@ -113,7 +113,7 @@ vec2 deep_parallax(
     return mix(ofs,prev_ofs,weight); 
 }
 
-const int smoothing_size = 3;
+const int smoothing_size = 5;
 vec3 get_pos(mat4 mat, vec3 pos)
 {
     vec4 map_pos = mat * vec4(pos, 1);
@@ -136,10 +136,37 @@ vec3 shadow(in camera_t cam, vec3 pos){
 	if(tmpuv.x < 0 || tmpuv.x > 1 || tmpuv.y < 0 || tmpuv.y > 1)
 		return vec3(1);
 
+	const float kernel[25] = {0.003765,
+		0.015019,
+		0.023792,
+		0.015019,
+		0.003765,
+		0.015019,
+		0.059912,
+		0.094907,
+		0.059912,
+		0.015019,
+		0.023792,
+		0.094907,
+		0.150342,
+		0.094907,
+		0.023792,
+		0.015019,
+		0.059912,
+		0.094907,
+		0.059912,
+		0.015019,
+		0.003765,
+		0.015019,
+		0.023792,
+		0.015019,
+		0.003765};
+
     for(int i=0; i<smoothing_size*smoothing_size; ++i)
     {
         const int x = (i % smoothing_size - (smoothing_size >> 1)-1);
         const int y = (i / smoothing_size - (smoothing_size >> 1)-1);
+
         const vec2 offset = vec2(x, y) * inv_size;
 
         const vec2 uv = clamp(map_pos.xy + offset, vec2(0), vec2(1));
@@ -149,9 +176,9 @@ vec3 shadow(in camera_t cam, vec3 pos){
 		#else
 		const float depth = 1-texture(shadow_map, vec3(remap_uv(uv), map_pos.z + 0.0001)).r;
 		#endif
-		shadow += depth;
+		shadow += depth * kernel[i];
     }
-    return vec3(1)*shadow / (smoothing_size*smoothing_size);
+    return vec3(1)*shadow;// / (smoothing_size*smoothing_size);
 }
 
 void main()

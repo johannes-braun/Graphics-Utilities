@@ -11,7 +11,7 @@ struct overlay_pass
         main_attachment_description.storeOp        = vk::AttachmentStoreOp::eStore;
         main_attachment_description.initialLayout  = vk::ImageLayout::eUndefined;
         main_attachment_description.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;
-        main_attachment_description.format         = vk::Format::eR32G32B32A32Sfloat;
+        main_attachment_description.format         = vk::Format::eR16G16B16A16Sfloat;
         main_attachment_description.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
         main_attachment_description.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
         main_attachment_description.samples        = vk::SampleCountFlagBits::e1;

@@ -1,14 +1,17 @@
 #define MYGL_IMPLEMENTATION
 
 #include "opengl.hpp"
-#include "input/camera.hpp"
-#include "globals.hpp"
-#include "scene/scene.hpp"
 #include "def.hpp"
+#include "globals.hpp"
+#include "input/camera.hpp"
+#include "opengl_blur.hpp"
+#include "opengl_cutoff.hpp"
+#include "opengl_overlay.hpp"
+#include "scene/scene.hpp"
 #include <gfx.core/log.hpp>
 #include <gfx.core/worker.hpp>
-#include <gfx.ecs.components/movement.hpp>
 #include <gfx.ecs.components/basic.hpp>
+#include <gfx.ecs.components/movement.hpp>
 #include <gfx.ecs.components/prototype_proxies.hpp>
 #include <gfx.ecs/ecs.hpp>
 #include <gfx.file/file.hpp>
@@ -116,7 +119,7 @@ public:
         if (_explode)
         {
             mc.impulse = {dist(gen) * 200, dist(gen) * 200 + 100, dist(gen) * 200};
-            mc.gravity  = 9.81f;
+            mc.gravity = 9.81f;
         }
     }
 
@@ -132,7 +135,7 @@ void opengl_app::on_run()
     const auto getst = [&]() -> state_t& { return *static_cast<state_t*>(state); };
 
     gfx::ecs::ecs        ecs;
-    gfx::opengl::context context(panel.winId(), {{gfx::opengl::GL_CONTEXT_FLAGS_ARB, gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB}},
+    gfx::opengl::context context(panel.winId(), {{gfx::opengl::GL_CONTEXT_FLAGS_ARB, 0 /*gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB*/}},
                                  {{gfx::opengl::GL_SAMPLE_BUFFERS_ARB, true}, {gfx::opengl::GL_SAMPLES_ARB, 8}});
 
     gfx::ecs::system_list physics_list;
@@ -144,6 +147,7 @@ void opengl_app::on_run()
     std::atomic_bool      init = false;
     gfx::ecs::system_list graphics_list;
 
+    // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(
         [](gl_enum source, gl_enum type, std::uint32_t id, gl_enum severity, std::int32_t length, const char* message,
            const void* userParam) {
@@ -176,9 +180,45 @@ void opengl_app::on_run()
 
     mygl::sampler sampler;
     glCreateSamplers(1, &sampler);
-    glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glSamplerParameterf(sampler, GL_TEXTURE_MAX_ANISOTROPY, 16.f);
+
+    int width = panel.size().width(), height = panel.size().height();
+
+    mygl::framebuffer main_fb;
+    glCreateFramebuffers(1, &main_fb);
+
+    struct sample_count
+    {
+        enum
+        {
+            x1  = 1,
+            x2  = 2,
+            x4  = 4,
+            x8  = 8,
+            x16 = 16
+        };
+    };
+
+    mygl::texture att_msaa;
+    glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &att_msaa);
+    glTextureStorage2DMultisample(att_msaa, sample_count::x8, GL_RGBA16F, width, height, true);
+    mygl::texture att_depth;
+    glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &att_depth);
+    glTextureStorage2DMultisample(att_depth, sample_count::x8, GL_DEPTH32F_STENCIL8, width, height, true);
+
+    glNamedFramebufferTexture(main_fb, GL_COLOR_ATTACHMENT0, att_msaa, 0);
+    glNamedFramebufferTexture(main_fb, GL_DEPTH_STENCIL_ATTACHMENT, att_depth, 0);
+    glNamedFramebufferDrawBuffer(main_fb, GL_COLOR_ATTACHMENT0);
+
+    mygl::framebuffer resolve_fb;
+    glCreateFramebuffers(1, &resolve_fb);
+    mygl::texture att_resolve;
+    glCreateTextures(GL_TEXTURE_2D, 1, &att_resolve);
+    glTextureStorage2D(att_resolve, 1, GL_RGBA16F, width, height);
+    glNamedFramebufferTexture(resolve_fb, GL_COLOR_ATTACHMENT0, att_resolve, 0);
+    glNamedFramebufferDrawBuffer(resolve_fb, GL_COLOR_ATTACHMENT0);
 
     const auto make_texture_id = [&](const gfx::image_file& t) {
         assert(t.channels == 1 || t.channels == 4);
@@ -347,6 +387,12 @@ void opengl_app::on_run()
 
     query_handler timers(_stamp_times, _stamp_time_mutex);
 
+    glm::ivec2     blur_size(width, height);
+    glblur_pass    hblur(blur_size, 0, 15);
+    glblur_pass    vblur(blur_size, 1, 15);
+    glcutoff_pass  cutoff(blur_size);
+    gloverlay_pass overlay({width, height});
+
     glClearDepthf(0.f);
     context.set_swap_interval(0);
     gfx::opengl::context::clear_current();
@@ -371,6 +417,9 @@ void opengl_app::on_run()
 
         /* Render Shadow Map */ {
             glBindFramebuffer(GL_FRAMEBUFFER, shadow_map_framebuffer);
+            glEnable(GL_DEPTH_TEST);
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);    // What the actual f*?
             glDepthFunc(GL_GEQUAL);
             glDepthRangef(0.f, 1.f);
             glClearNamedFramebufferfi(shadow_map_framebuffer, GL_DEPTH_STENCIL, 0, 0.f, 0);
@@ -392,8 +441,9 @@ void opengl_app::on_run()
         timers.capture(stamp_id_shadowmap);
 
         glm::vec4 clear_color(0.3f, 0.5f, 0.9f, 1.f);
-        glClearNamedFramebufferfv(mygl::framebuffer::zero(), GL_COLOR, 0, glm::value_ptr(clear_color));
-        glClearNamedFramebufferfi(mygl::framebuffer::zero(), GL_DEPTH_STENCIL, 0, 1.f, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, main_fb);
+        glClearNamedFramebufferfv(main_fb, GL_COLOR, 0, glm::value_ptr(clear_color));
+        glClearNamedFramebufferfi(main_fb, GL_DEPTH_STENCIL, 0, 1.f, 0);
 
         int width = panel.size().width(), height = panel.size().height();
 
@@ -444,6 +494,24 @@ void opengl_app::on_run()
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, opengl_proxy.instances_mapped().get_buffer());
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, opengl_proxy.instances_mapped().size(),
                                     sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+        glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero());
+        glBlitNamedFramebuffer(main_fb, resolve_fb, 0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+        cutoff.render(att_resolve);
+        hblur.render(cutoff.get_image());
+        vblur.render(hblur.get_image());
+        overlay.render(att_resolve, vblur.get_image());
+        for (int i = 0; i < arbitrary_bloom_count_which_i_don_t_know_the_purpose_of; ++i)
+        {
+            cutoff.render(overlay.get_image());
+            hblur.render(cutoff.get_image());
+            vblur.render(hblur.get_image());
+            overlay.render(att_resolve, vblur.get_image());
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero());
+        glBlitNamedFramebuffer(overlay.get_framebuffer(), mygl::framebuffer::zero(), 0, 0, width, height, 0, 0, width, height,
+                               GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
         timers.capture(stamp_id_render);
 

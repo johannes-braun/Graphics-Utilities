@@ -1,8 +1,14 @@
 #version 460 core
 
+#ifdef VULKAN
 layout( push_constant ) uniform ConstantBlock {
     float luma_cutoff;
 } constants;
+#else
+uniform ConstantBlock {
+    float luma_cutoff;
+} constants;
+#endif
 
 layout(location = 0) in vec2 uv;
 

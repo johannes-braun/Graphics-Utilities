@@ -152,7 +152,7 @@ void main()
 
 			if(!trace.hits)
 			{
-				const float roughness = 0.4f;
+				const float roughness = 0.8f;
 				const vec3 diffuse = sample_color(models[draw_index].info.diffuse, new_uv).rgb;
 
 				const float alpha = max(roughness * roughness, 1e-3f);

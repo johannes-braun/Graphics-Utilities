@@ -26,7 +26,18 @@ add_shader(${current_executable}.blur_shaders_vk
 target_compile_options(${current_executable}.blur_shaders_vk PRIVATE --target-env=vulkan)
 target_compile_definitions(${current_executable}.blur_shaders_vk PRIVATE -Dgl_VertexID=gl_VertexIndex)
 
-add_dependencies(${current_executable} ${current_executable}.shaders_vk ${current_executable}.shaders_gl ${current_executable}.blur_shaders_vk)
+add_shader(${current_executable}.blur_shaders_gl
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/screen.vert
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/blur.frag
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/overlay.frag
+	${CMAKE_CURRENT_SOURCE_DIR}/shaders/cutoff.frag)
+target_compile_options(${current_executable}.blur_shaders_gl PRIVATE --target-env=opengl)
+
+add_dependencies(${current_executable} 
+	${current_executable}.shaders_vk 
+	${current_executable}.shaders_gl 
+	${current_executable}.blur_shaders_vk 
+	${current_executable}.blur_shaders_gl)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.default_app)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.core)
 target_link_libraries(${current_executable} PRIVATE jbraun::gfx.math)
