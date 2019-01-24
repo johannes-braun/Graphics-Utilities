@@ -1,0 +1,83 @@
+#version 460 core
+#include "particle.h"
+
+layout(local_size_x = 256) in;
+
+#ifdef VULKAN
+layout( push_constant ) uniform Globals
+{
+	float delta_time;
+	float random_number;
+};
+#else
+layout(location = 0) uniform float delta_time;
+layout(location = 1) uniform float random_number;
+#endif
+
+layout(binding = 1) restrict buffer Particles
+{
+	particle_t particles[];
+};
+
+vec2 random_hammersley_2d(float current, float inverse_sample_count)
+{
+    vec2 result;
+    result.x = current * inverse_sample_count;
+
+    // Radical inverse
+    uint bits = uint(current);
+    bits      = (bits << 16u) | (bits >> 16u);
+    bits      = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits      = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits      = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits      = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    result.y  = float(bits) * 2.3283064365386963e-10f;
+    return result;
+}
+vec3 sample_cosine_hemisphere(vec2 uv)
+{
+    // (Uniformly) sample a point on the unit disk
+    float r     = sqrt(uv.x);
+    float theta = 2 * 3.14159265359f * uv.y;
+    float x     = r * cos(theta);
+    float y     = r * sin(theta);
+
+    // Project point up to the unit sphere
+    float z = float(sqrt(max(0.f, 1 - x * x - y * y)));
+    return vec3(x, y, z);
+}
+
+void main()
+{
+	if(gl_GlobalInvocationID.x > particles.length())
+		return;
+	
+	particle_t particle = particles[gl_GlobalInvocationID.x];
+
+	if(particle.life <= 0)
+	{
+		// Revive particle
+		particle.position = vec3(0);
+
+		const float current = uint(gl_GlobalInvocationID.x + random_number * particles.length()) % particles.length();
+		const float inv_max = 1.f / particles.length();
+
+		vec2 random_sample = random_hammersley_2d(current, inv_max);
+		particle.velocity =  9.f * sample_cosine_hemisphere(random_sample).xzy;
+		particle.max_lifetime = 0.1f + 0.4f * dot(particle.velocity, vec3(0, 1, 0));
+		particle.life = 1.f;
+	}
+	else
+	{
+		const vec3 gravity = vec3(0, -9.81, 0);
+		particle.position += delta_time * particle.velocity;
+		particle.velocity += delta_time * gravity;
+		particle.life -= delta_time / particle.max_lifetime;
+		if(particle.position.y <= 0)
+		{
+			particle.position.y = 0;
+			particle.velocity.y = -particle.velocity.y;
+		}
+	}
+	particles[gl_GlobalInvocationID.x] = particle;
+}	

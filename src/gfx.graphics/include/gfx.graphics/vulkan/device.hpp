@@ -75,6 +75,8 @@ public:
 
     [[nodiscard]] auto allocate_graphics_commands(u32 count, bool primary = true) const noexcept -> std::vector<commands>;
     [[nodiscard]] auto allocate_graphics_command(bool primary = true) const noexcept -> commands;
+    [[nodiscard]] auto allocate_compute_commands(u32 count, bool primary = true) const noexcept -> std::vector<commands>;
+    [[nodiscard]] auto allocate_compute_command(bool primary = true) const noexcept -> commands;
     [[nodiscard]] auto allocate_transfer_commands(u32 count, bool primary = true) const noexcept -> std::vector<commands>;
     [[nodiscard]] auto allocate_transfer_command(bool primary = true) const noexcept -> commands;
 

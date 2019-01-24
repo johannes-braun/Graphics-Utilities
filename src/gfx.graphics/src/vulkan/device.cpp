@@ -7,8 +7,9 @@
 #include "vulkan/instance.hpp"
 #include "vulkan/sync.hpp"
 
-#include <unordered_set>
+#include "gfx.core/log.hpp"
 #include <string_view>
+#include <unordered_set>
 
 namespace gfx {
 inline namespace v1 {
@@ -162,32 +163,48 @@ extension_dispatch const& device::get_dispatcher() const noexcept
 
 std::vector<commands> device::allocate_graphics_commands(u32 count, bool primary) const noexcept
 {
-    vk::CommandBufferAllocateInfo const alloc {_command_pools[u32(queue_type::graphics)].get(),
-                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
+    vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::graphics)].get(),
+                                              primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
 }
 
 commands device::allocate_graphics_command(bool primary) const noexcept
 {
-    vk::CommandBufferAllocateInfo const alloc {_command_pools[u32(queue_type::graphics)].get(),
-                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
+    vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::graphics)].get(),
+                                              primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
+    auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+    return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
+}
+
+auto device::allocate_compute_commands(u32 count, bool primary) const noexcept -> std::vector<commands>
+{
+    vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::compute)].get(),
+                                              primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
+    auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
+    return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
+}
+
+auto device::allocate_compute_command(bool primary) const noexcept -> commands
+{
+    vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::compute)].get(),
+                                              primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
 }
 
 std::vector<commands> device::allocate_transfer_commands(u32 count, bool primary) const noexcept
 {
-    vk::CommandBufferAllocateInfo const alloc {_command_pools[u32(queue_type::transfer)].get(),
-                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
+    vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::transfer)].get(),
+                                              primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, count};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<std::vector<commands>&>(cmd_bufs));
 }
 
 commands device::allocate_transfer_command(bool primary) const noexcept
 {
-    vk::CommandBufferAllocateInfo const alloc {_command_pools[u32(queue_type::transfer)].get(),
-                                               primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
+    vk::CommandBufferAllocateInfo const alloc{_command_pools[u32(queue_type::transfer)].get(),
+                                              primary ? vk::CommandBufferLevel::ePrimary : vk::CommandBufferLevel::eSecondary, 1};
     auto                                cmd_bufs = _device->allocateCommandBuffersUnique(alloc);
     return std::move(reinterpret_cast<commands&>(cmd_bufs[0]));
 }
@@ -285,7 +302,7 @@ void device::initialize_preset(u32 graphics_queue_count, u32 compute_queue_count
     _command_pools[u32(queue_type::transfer)] = _device->createCommandPoolUnique({vk::CommandPoolCreateFlagBits::eTransient, ftransfer});
     if (_enable_present) _queues[u32(queue_type::present)].push_back(_device->getQueue(fpresent, queue_counter[fpresent]++));
 
-    VmaAllocatorCreateInfo allocator_create_info {};
+    VmaAllocatorCreateInfo allocator_create_info{};
     allocator_create_info.device         = _device.get();
     allocator_create_info.physicalDevice = _gpu;
     allocator_create_info.flags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
@@ -309,14 +326,20 @@ std::tuple<u32, u32, u32> device::dedicated_families(gsl::span<vk::QueueFamilyPr
             if (compute_family == ~0u)
                 compute_family = i;
             else if ((props[i].queueFlags & qp::eGraphics) != qp::eGraphics)
+            {
                 compute_family = i;
+                gfx::ilog << "Found dedicated async compute queue";
+            }
         }
         if ((props[i].queueFlags & qp::eTransfer) == qp::eTransfer)
         {
             if (transfer_family == ~0u)
                 transfer_family = i;
             else if ((props[i].queueFlags & qp::eGraphics) != qp::eGraphics)
+            {
+                gfx::ilog << "Found dedicated async transfer queue";
                 transfer_family = i;
+            }
         }
     }
     return {graphics_family, compute_family, transfer_family};

@@ -108,7 +108,7 @@ void vulkan_app::on_run()
     gfx::ecs::ecs                      ecs;
     gfx::vulkan::instance              vulkan("Vulkan", {1, 0, 0}, false, true);
     gfx::vulkan::surface               surface(vulkan, panel.winId());
-    gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {}, surface);
+    gfx::vulkan::device                gpu(vulkan, gfx::vulkan::device_target::gpu, 1.f, {1.f}, surface);
     gfx::vulkan::swapchain             surface_swapchain(gpu, surface);
     gfx::vulkan::semaphore             acquire_semaphore(gpu);
     gfx::vulkan::semaphore             finish_semaphore(gpu);
@@ -324,6 +324,17 @@ void vulkan_app::on_run()
         entity->add(mc);
     }
 
+    const gfx::scene_file particle_scene("broken_torus.dae");
+    struct particle_info
+    {
+        glm::vec3 position{0, 0, 0};
+        float     life{0};
+        glm::vec3 velocity{0, 0, 0};
+        float     _p{0};
+    };
+    gfx::vulkan::mapped<particle_info> particles(gpu, 20'000);
+    gfx::shared_prototype              particle_proto = instances.get_instantiator().allocate_prototype("Particle", particle_scene.mesh);
+
     // add placeholder texture
     const gfx::image_file placeholder("placeholder.png", gfx::bits::b8, 4);
     make_texture_id(placeholder);
@@ -376,6 +387,139 @@ void vulkan_app::on_run()
     vk::UniquePipeline       pipeline               = create_pipeline(gpu, pipeline_layout.get());
     vk::UniquePipelineLayout shadow_pipeline_layout = create_shadow_pipeline_layout(gpu);
     vk::UniquePipeline       shadow_pipeline        = create_shadow_pipeline(gpu, pipeline_layout.get());
+
+
+    struct compute_pushc_t
+    {
+        float delta_time;
+        float random_number;
+    } compute_pushc;
+
+    vk::DescriptorSetLayoutCreateInfo particle_buffer_set_layoutc;
+    particle_buffer_set_layoutc.bindingCount = 1;
+    vk::DescriptorSetLayoutBinding particle_binding(1, vk::DescriptorType::eStorageBuffer, 1,
+                                                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eCompute);
+    particle_buffer_set_layoutc.pBindings = &particle_binding;
+    const auto particle_set_layout        = gpu.get_device().createDescriptorSetLayoutUnique(particle_buffer_set_layoutc);
+
+    vk::PipelineLayoutCreateInfo cpipelc;
+    cpipelc.setLayoutCount = 1;
+    cpipelc.pSetLayouts    = &particle_set_layout.get();
+
+    vk::PushConstantRange ppcrs[]{
+        {vk::ShaderStageFlagBits::eCompute, offsetof(compute_pushc_t, delta_time), sizeof(compute_pushc_t::delta_time)},
+        {vk::ShaderStageFlagBits::eCompute, offsetof(compute_pushc_t, random_number), sizeof(compute_pushc_t::random_number)},
+    };
+
+    cpipelc.pushConstantRangeCount = 2;
+    cpipelc.pPushConstantRanges    = ppcrs;
+    const auto ppipe_layout        = gpu.get_device().createPipelineLayoutUnique(cpipelc);
+
+    vk::ComputePipelineCreateInfo cpipec;
+    cpipec.layout = ppipe_layout.get();
+
+    shaders_lib.load("vk_and_gl.particle_shaders_vk");
+
+    gfx::vulkan::shader pcomp(gpu, *gfx::import_shader(shaders_lib, "shaders/particle.comp"));
+    cpipec.stage.module = pcomp.get_module();
+    cpipec.stage.stage  = vk::ShaderStageFlagBits::eCompute;
+    cpipec.stage.pName  = "main";
+    const auto cpipe    = gpu.get_device().createComputePipelineUnique(nullptr, cpipec);
+    shaders_lib.unload();
+
+    vk::UniqueDescriptorSet particle_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
+        vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &particle_set_layout.get()))[0]);
+    {
+        vk::WriteDescriptorSet pw;
+        pw.descriptorCount = 1;
+        pw.descriptorType  = vk::DescriptorType::eStorageBuffer;
+        pw.dstArrayElement = 0;
+        pw.dstBinding      = 1;
+        pw.dstSet          = particle_buffer_set.get();
+
+        vk::DescriptorBufferInfo binf(particles.get_buffer(), 0, particles.size() * sizeof(particle_info));
+        pw.pBufferInfo = &binf;
+        gpu.get_device().updateDescriptorSets(pw, nullptr);
+    }
+
+    vk::PipelineLayoutCreateInfo prlc;
+    vk::DescriptorSetLayout      prlcl[]{vulkan_state->cam_buffer_layout.get(), particle_set_layout.get()};
+    prlc.setLayoutCount      = 2;
+    prlc.pSetLayouts         = prlcl;
+    const auto prpipe_layout = gpu.get_device().createPipelineLayoutUnique(prlc);
+
+    vk::GraphicsPipelineCreateInfo gpci;
+    gpci.renderPass = vulkan_state->render_pass.get();
+    gpci.subpass    = 0;
+    gpci.layout     = prpipe_layout.get();
+
+    vk::PipelineColorBlendStateCreateInfo cbsci;
+    cbsci.attachmentCount = 1;
+    vk::PipelineColorBlendAttachmentState cbatt;
+    cbatt.blendEnable = false;
+    cbatt.colorWriteMask =
+        vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+    cbsci.pAttachments    = &cbatt;
+    gpci.pColorBlendState = &cbsci;
+
+    vk::PipelineDepthStencilStateCreateInfo cbdp;
+    cbdp.depthTestEnable    = true;
+    cbdp.depthWriteEnable   = true;
+    cbdp.depthCompareOp     = vk::CompareOp::eLessOrEqual;
+    gpci.pDepthStencilState = &cbdp;
+
+    vk::PipelineDynamicStateCreateInfo cbds;
+    vk::DynamicState                   cbdss[]{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+    cbds.dynamicStateCount = 2;
+    cbds.pDynamicStates    = cbdss;
+    gpci.pDynamicState     = &cbds;
+
+    vk::PipelineInputAssemblyStateCreateInfo cbia;
+    cbia.primitiveRestartEnable = false;
+    cbia.topology               = vk::PrimitiveTopology::eTriangleList;
+    gpci.pInputAssemblyState    = &cbia;
+
+    vk::PipelineMultisampleStateCreateInfo cbms;
+    cbms.rasterizationSamples = vk::SampleCountFlagBits::e4;
+    gpci.pMultisampleState    = &cbms;
+
+    vk::PipelineRasterizationStateCreateInfo cbrs;
+    cbrs.cullMode            = vk::CullModeFlagBits::eBack;
+    cbrs.lineWidth           = 1.f;
+    cbrs.polygonMode         = vk::PolygonMode::eFill;
+    gpci.pRasterizationState = &cbrs;
+
+
+    shaders_lib.load("vk_and_gl.particle_shaders_vk");
+    gfx::vulkan::shader prvert(gpu, *gfx::import_shader(shaders_lib, "shaders/particles_simple.vert"));
+    gfx::vulkan::shader prfrag(gpu, *gfx::import_shader(shaders_lib, "shaders/particles_simple.frag"));
+    gpci.stageCount = 2;
+    vk::PipelineShaderStageCreateInfo cbstg[]
+    {
+        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, prvert.get_module(), "main", nullptr),
+        vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, prfrag.get_module(), "main", nullptr),
+    };
+    gpci.pStages = cbstg;
+    shaders_lib.unload();
+
+    vk::VertexInputAttributeDescription attrs[3];
+    attrs[0] = vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(gfx::vertex3d, position));
+    attrs[1] = vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(gfx::vertex3d, normal));
+    attrs[2] = vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(gfx::vertex3d, uv));
+    vk::VertexInputBindingDescription bindings[1];
+    bindings[0] = vk::VertexInputBindingDescription(0, sizeof(gfx::vertex3d), vk::VertexInputRate::eVertex);
+    vk::PipelineVertexInputStateCreateInfo cbvi;
+    cbvi.vertexAttributeDescriptionCount = gfx::u32(std::size(attrs));
+    cbvi.vertexBindingDescriptionCount   = gfx::u32(std::size(bindings));
+    cbvi.pVertexAttributeDescriptions    = attrs;
+    cbvi.pVertexBindingDescriptions      = bindings;
+    gpci.pVertexInputState               = &cbvi;
+
+    vk::PipelineViewportStateCreateInfo cbvc;
+    cbvc.scissorCount               = 1;
+    cbvc.viewportCount              = 1;
+    gpci.pViewportState             = &cbvc;
+    const auto particle_render_pipe = gpu.get_device().createGraphicsPipelineUnique(nullptr, gpci);
 
     vk::UniqueDescriptorSet cam_buffer_set = std::move(gpu.get_device().allocateDescriptorSetsUnique(
         vk::DescriptorSetAllocateInfo(descriptor_pool.get(), 1, &vulkan_state->cam_buffer_layout.get()))[0]);
@@ -555,6 +699,14 @@ void vulkan_app::on_run()
                                                          std::max(vulkan_proxy.instances_mapped().size(), 1ll),
                                                          sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
+        current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, particle_render_pipe.get());
+        current.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, prpipe_layout.get(), 0,
+                                                        {cam_buffer_set.get(), particle_buffer_set.get()}, {});
+        current.get_command_buffer().bindVertexBuffers(0, vulkan_proxy.vertex_buffer().get_buffer(), {0ull});
+        current.get_command_buffer().bindIndexBuffer(vulkan_proxy.index_buffer().get_buffer(), 0ull, vk::IndexType::eUint32);
+        current.get_command_buffer().drawIndexed(particle_proto->meshes[0]->base->_index_count, particles.size(),
+                                                 particle_proto->meshes[0]->base->_base_index,
+                                                 particle_proto->meshes[0]->base->_base_vertex, 0);
         current.get_command_buffer().endRenderPass();
 
         cutoff.render(current, surface_swapchain.current_index(),
@@ -632,8 +784,30 @@ void vulkan_app::on_run()
         return self.value_after(true, update_time_graphics);
     });
 
+    auto                                  ccmds = gpu.allocate_compute_command();
+    gfx::vulkan::fence                    compute_fence(gpu, true);
+    std::mt19937                          gen;
+    std::uniform_real_distribution<float> dist;
+
     gfx::worker physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         ecs.update(delta, physics_list);
+
+        gpu.wait_for({compute_fence});
+        ccmds.get_command_buffer().reset({});
+        ccmds.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+        {
+            compute_pushc.delta_time    = delta.count();
+            compute_pushc.random_number = dist(gen);
+            ccmds.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eCompute, cpipe.get());
+            ccmds.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eCompute, ppipe_layout.get(), 0, particle_buffer_set.get(),
+                                                          {});
+            ccmds.get_command_buffer().pushConstants(ppipe_layout.get(), vk::ShaderStageFlagBits::eCompute, 0, sizeof(compute_pushc),
+                                                     &compute_pushc);
+            ccmds.get_command_buffer().dispatch((particles.size() + 255) / 256, 1, 1);
+        }
+        ccmds.get_command_buffer().end();
+        gpu.compute_queue().submit({ccmds}, {}, {}, compute_fence);
+
         return self.value_after(true, update_time_physics);
     });
 

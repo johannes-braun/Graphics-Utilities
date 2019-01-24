@@ -138,6 +138,10 @@ void opengl_app::on_run()
     gfx::opengl::context context(panel.winId(), {{gfx::opengl::GL_CONTEXT_FLAGS_ARB, 0 /*gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB*/}},
                                  {{gfx::opengl::GL_SAMPLE_BUFFERS_ARB, true}, {gfx::opengl::GL_SAMPLES_ARB, 8}});
 
+    gfx::opengl::context physics_context(nullptr, {{gfx::opengl::GL_CONTEXT_FLAGS_ARB, 0 /*gfx::opengl::GL_CONTEXT_DEBUG_BIT_ARB*/}}, {},
+                                         &context);
+
+    context.make_current();
     gfx::ecs::system_list physics_list;
     gfx::movement_system  movements;
     bouncy_system         bounce(*_input.get());
@@ -250,6 +254,48 @@ void opengl_app::on_run()
 
     std::vector<gfx::ecs::shared_entity> mesh_entities =
         scene::scene_manager_t::get_mesh_entities(ecs, instances, scene::current_scene(), make_texture_id);
+
+
+    const gfx::scene_file particle_scene("broken_torus.dae");
+    struct particle_info
+    {
+        glm::vec3 position{0, 0, 0};
+        float     life{0};
+        glm::vec3 velocity{0, 0, 0};
+        float     _p{0};
+    };
+    gfx::opengl::mapped<particle_info> particles(20'000);
+    gfx::shared_prototype              particle_proto = instances.get_instantiator().allocate_prototype("Particle", particle_scene.mesh);
+
+    shaders_lib.load("vk_and_gl.particle_shaders_gl");
+    mygl::shader pcomp = glCreateShader(GL_COMPUTE_SHADER);
+    mygl::shader pvert = glCreateShader(GL_VERTEX_SHADER);
+    mygl::shader pfrag = glCreateShader(GL_FRAGMENT_SHADER);
+    const auto   psrc  = gfx::import_shader(shaders_lib, "shaders/particle.comp");
+    const auto   pvsrc = gfx::import_shader(shaders_lib, "shaders/particles_simple.vert");
+    const auto   pfsrc = gfx::import_shader(shaders_lib, "shaders/particles_simple.frag");
+    glShaderBinary(1, &pcomp, GL_SHADER_BINARY_FORMAT_SPIR_V, psrc->data(), psrc->size() * sizeof(glm::uint32_t));
+    glSpecializeShader(pcomp, "main", 0, nullptr, nullptr);
+    glShaderBinary(1, &pvert, GL_SHADER_BINARY_FORMAT_SPIR_V, pvsrc->data(), pvsrc->size() * sizeof(glm::uint32_t));
+    glSpecializeShader(pvert, "main", 0, nullptr, nullptr);
+    glShaderBinary(1, &pfrag, GL_SHADER_BINARY_FORMAT_SPIR_V, pfsrc->data(), pfsrc->size() * sizeof(glm::uint32_t));
+    glSpecializeShader(pfrag, "main", 0, nullptr, nullptr);
+
+    mygl::shader_program particle_program = glCreateProgram();
+    glAttachShader(particle_program, pcomp);
+    glLinkProgram(particle_program);
+    check_linkage(particle_program);
+
+    mygl::shader_program particle_render_program = glCreateProgram();
+    glAttachShader(particle_render_program, pvert);
+    glAttachShader(particle_render_program, pfrag);
+    glLinkProgram(particle_render_program);
+    check_linkage(particle_render_program);
+    shaders_lib.unload();
+
+    std::mt19937                          gen;
+    std::uniform_real_distribution<float> dist;
+
 
     for (auto& entity : mesh_entities)
     {
@@ -494,6 +540,19 @@ void opengl_app::on_run()
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, opengl_proxy.instances_mapped().get_buffer());
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, opengl_proxy.instances_mapped().size(),
                                     sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
+
+        glUseProgram(particle_render_program);
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, particles.get_buffer(), 0, particles.size() * sizeof(particle_info));
+        glDrawElementsInstancedBaseVertex(
+            GL_TRIANGLES, particle_proto->meshes[0]->base->_index_count, GL_UNSIGNED_INT,
+            reinterpret_cast<const void*>(particle_proto->meshes[0]->base->_base_index * sizeof(gfx::index32)), particles.size(),
+            particle_proto->meshes[0]->base->_base_vertex);
+        glUseProgram(particle_program);
+        glProgramUniform1f(particle_program, 0, delta.count());
+        glProgramUniform1f(particle_program, 1, dist(gen));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, particles.get_buffer(), 0, particles.size() * sizeof(particle_info));
+        glDispatchCompute(((particles.size() + 255) / 256), 1, 1);
+
         glBindFramebuffer(GL_FRAMEBUFFER, mygl::framebuffer::zero());
         glBlitNamedFramebuffer(main_fb, resolve_fb, 0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
@@ -522,8 +581,15 @@ void opengl_app::on_run()
         return self.value_after(true, update_time_graphics);
     });
 
+    bool        phy_init = false;
     gfx::worker physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+        if (!phy_init)
+        {
+            physics_context.make_current();
+            phy_init = true;
+        }
         ecs.update(delta, physics_list);
+
         return self.value_after(true, update_time_physics);
     });
 

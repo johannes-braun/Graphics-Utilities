@@ -27,7 +27,7 @@ template<typename InstanceInfo>
 shared_prototype prototype_instantiator<InstanceInfo>::allocate_prototype_impl(std::string name, const mesh3d& m)
 {
     shared_prototype proto(new prototype, [this](prototype* proto) { free_prototype_impl(proto); });
-    _prototypes.emplace(name, std::make_unique<prototype>()).first->second;
+    _prototypes.emplace(name, proto).first->second;
     for (int i = 0; i < std::min(prototype::max_submeshes, m.geometries.size()); ++i)
     { proto->meshes[i] = {_alloc->allocate_mesh_impl(m, m.geometries[i]), m.geometries[i].transformation}; }
     proto->name = std::move(name);

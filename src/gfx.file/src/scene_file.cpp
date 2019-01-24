@@ -89,7 +89,8 @@ scene_file::scene_file(const files::path& path, float scale, const std::function
 
         load_if(current_material.texture_diffuse, 4, AI_MATKEY_TEXTURE_DIFFUSE(0));
         load_if(current_material.texture_bump, 1, AI_MATKEY_TEXTURE_HEIGHT(0));
-        on_progress(0.5f + 0.25f * (++current / float(scene->mNumMaterials)));
+        if (on_progress)
+            on_progress(0.5f + 0.25f * (++current / float(scene->mNumMaterials)));
     }
     current            = 0;
     const auto to_vec3 = [](const aiVector3D& vec) { return glm::vec3(vec.x, vec.y, vec.z); };
@@ -124,10 +125,12 @@ scene_file::scene_file(const files::path& path, float scale, const std::function
         mesh_names.emplace_back(ai_mesh->mName.C_Str());
         mesh_material_indices[u32(mesh.geometries.size() - 1)] = ai_mesh->mMaterialIndex;
 
-        on_progress(0.5f + 0.25f + 0.25f * (++current / float(scene->mNumMeshes)));
+        if (on_progress)
+            on_progress(0.5f + 0.25f + 0.25f * (++current / float(scene->mNumMeshes)));
     }
 
     handle_node(*this, scene->mRootNode, scene, glm::scale(glm::vec3(scale)));
-    on_progress(1.f);
+    if (on_progress)
+        on_progress(1.f);
 }
 }    // namespace gfx
