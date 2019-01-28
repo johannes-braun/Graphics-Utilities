@@ -494,8 +494,7 @@ void vulkan_app::on_run()
     gfx::vulkan::shader prvert(gpu, *gfx::import_shader(shaders_lib, "shaders/particles_simple.vert"));
     gfx::vulkan::shader prfrag(gpu, *gfx::import_shader(shaders_lib, "shaders/particles_simple.frag"));
     gpci.stageCount = 2;
-    vk::PipelineShaderStageCreateInfo cbstg[]
-    {
+    vk::PipelineShaderStageCreateInfo cbstg[]{
         vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, prvert.get_module(), "main", nullptr),
         vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, prfrag.get_module(), "main", nullptr),
     };
@@ -559,7 +558,8 @@ void vulkan_app::on_run()
     cutoff_pass  cutoff(gpu, surface_swapchain.count(), blur_extent);
     overlay_pass overlay(gpu, surface_swapchain.count(), surface_swapchain.extent());
 
-    gfx::worker vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+    std::atomic_bool do_sim = true;
+    gfx::worker      vulkan_graphics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         update_frametime(std::chrono::duration_cast<std::chrono::nanoseconds>(delta));
 
         if (surface_swapchain.swap(acquire_semaphore))
@@ -611,7 +611,7 @@ void vulkan_app::on_run()
                 vk::DescriptorBufferInfo info;
                 info.buffer = curr_buffers[vulkan_proxy.instance_buffer_index()];
                 info.offset = 0;
-                info.range  = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
+                info.range = vulkan_proxy.instances_mapped().size() * sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance);
                 const vk::WriteDescriptorSet updater(model_info_sets[vulkan_proxy.instance_buffer_index()].get(), 0, 0, 1,
                                                      vk::DescriptorType::eStorageBuffer, nullptr, &info);
                 gpu.get_device().updateDescriptorSets(updater, nullptr);
@@ -699,6 +699,16 @@ void vulkan_app::on_run()
                                                          std::max(vulkan_proxy.instances_mapped().size(), 1ll),
                                                          sizeof(gfx::prototype_instantiator<def::mesh_info>::basic_instance));
 
+        vk::BufferMemoryBarrier bmb;
+        bmb.buffer        = particles.get_buffer();
+        bmb.size          = particles.size() * sizeof(particle_info);
+        bmb.offset        = 0;
+        bmb.srcAccessMask = {};
+        bmb.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllGraphics,
+                                                     vk::DependencyFlagBits::eByRegion, {}, bmb, {});
+
         current.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eGraphics, particle_render_pipe.get());
         current.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, prpipe_layout.get(), 0,
                                                         {cam_buffer_set.get(), particle_buffer_set.get()}, {});
@@ -708,6 +718,10 @@ void vulkan_app::on_run()
                                                  particle_proto->meshes[0]->base->_base_index,
                                                  particle_proto->meshes[0]->base->_base_vertex, 0);
         current.get_command_buffer().endRenderPass();
+        bmb.srcAccessMask = bmb.dstAccessMask;
+        bmb.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+        current.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eAllGraphics, vk::PipelineStageFlagBits::eAllCommands,
+                                                     vk::DependencyFlagBits::eByRegion, {}, bmb, {});
 
         cutoff.render(current, surface_swapchain.current_index(),
                       vulkan_state->color_attachments[surface_swapchain.current_index()].get_image(),
@@ -780,7 +794,7 @@ void vulkan_app::on_run()
         }
 
         runs_queries = true;
-
+        do_sim       = true;
         return self.value_after(true, update_time_graphics);
     });
 
@@ -789,25 +803,50 @@ void vulkan_app::on_run()
     std::mt19937                          gen;
     std::uniform_real_distribution<float> dist;
 
-    gfx::worker physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
+    gfx::timed_while::duration sim_delta = 0s;
+    gfx::worker                physics_worker([&](gfx::timed_while& self, gfx::timed_while::duration delta) {
         ecs.update(delta, physics_list);
 
-        gpu.wait_for({compute_fence});
-        ccmds.get_command_buffer().reset({});
-        ccmds.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+        if (do_sim)
         {
-            compute_pushc.delta_time    = delta.count();
-            compute_pushc.random_number = dist(gen);
-            ccmds.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eCompute, cpipe.get());
-            ccmds.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eCompute, ppipe_layout.get(), 0, particle_buffer_set.get(),
-                                                          {});
-            ccmds.get_command_buffer().pushConstants(ppipe_layout.get(), vk::ShaderStageFlagBits::eCompute, 0, sizeof(compute_pushc),
-                                                     &compute_pushc);
-            ccmds.get_command_buffer().dispatch((particles.size() + 255) / 256, 1, 1);
-        }
-        ccmds.get_command_buffer().end();
-        gpu.compute_queue().submit({ccmds}, {}, {}, compute_fence);
+            do_sim = false;
+            gpu.wait_for({compute_fence});
 
+            vk::BufferMemoryBarrier bmb;
+            bmb.buffer        = particles.get_buffer();
+            bmb.size          = particles.size() * sizeof(particle_info);
+            bmb.offset        = 0;
+            bmb.srcAccessMask = {};
+            bmb.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+
+            ccmds.get_command_buffer().reset({});
+            ccmds.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
+            {
+                ccmds.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eAllGraphics,
+                                                           vk::PipelineStageFlagBits::eComputeShader, vk::DependencyFlagBits::eByRegion, {},
+                                                           bmb, {});
+                compute_pushc.delta_time    = (sim_delta + delta).count();
+                compute_pushc.random_number = dist(gen);
+                ccmds.get_command_buffer().bindPipeline(vk::PipelineBindPoint::eCompute, cpipe.get());
+                ccmds.get_command_buffer().bindDescriptorSets(vk::PipelineBindPoint::eCompute, ppipe_layout.get(), 0,
+                                                              particle_buffer_set.get(), {});
+                ccmds.get_command_buffer().pushConstants(ppipe_layout.get(), vk::ShaderStageFlagBits::eCompute, 0, sizeof(compute_pushc),
+                                                         &compute_pushc);
+                ccmds.get_command_buffer().dispatch((particles.size() + 255) / 256, 1, 1);
+                bmb.srcAccessMask = bmb.dstAccessMask;
+                bmb.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+                ccmds.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                                           vk::PipelineStageFlagBits::eAllGraphics, vk::DependencyFlagBits::eByRegion, {},
+                                                           bmb, {});
+            }
+            ccmds.get_command_buffer().end();
+            gpu.compute_queue().submit({ccmds}, {}, {}, compute_fence);
+            sim_delta = 0s;
+        }
+        else
+        {
+            sim_delta += delta;
+        }
         return self.value_after(true, update_time_physics);
     });
 
