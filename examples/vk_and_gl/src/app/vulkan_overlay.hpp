@@ -72,7 +72,7 @@ struct overlay_pass
             dsa.descriptorPool     = dpool.get();
             dsa.descriptorSetCount = 1;
             dsa.pSetLayouts        = &input_set_layout.get();
-            _dsets.emplace_back(std::move(gpu.get_device().allocateDescriptorSets(dsa)[0]));
+            _dsets.emplace_back(std::move(gpu.get_device().allocateDescriptorSetsUnique(dsa)[0]));
         }
     }
 
