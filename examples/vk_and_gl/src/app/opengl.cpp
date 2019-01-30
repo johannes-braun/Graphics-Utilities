@@ -256,7 +256,7 @@ void opengl_app::on_run()
         scene::scene_manager_t::get_mesh_entities(ecs, instances, scene::current_scene(), make_texture_id);
 
 
-    const gfx::scene_file particle_scene("broken_torus.dae");
+    const gfx::scene_file particle_scene("cube/cube.obj");
     struct particle_info
     {
         glm::vec3 position{0, 0, 0};
@@ -264,7 +264,7 @@ void opengl_app::on_run()
         glm::vec3 velocity{0, 0, 0};
         float     _p{0};
     };
-    gfx::opengl::mapped<particle_info> particles(20'000);
+    gfx::opengl::mapped<particle_info> particles(100'000);
     gfx::shared_prototype              particle_proto = instances.get_instantiator().allocate_prototype("Particle", particle_scene.mesh);
 
     shaders_lib.load("vk_and_gl.particle_shaders_gl");

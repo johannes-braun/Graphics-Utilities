@@ -118,6 +118,7 @@ public:
         {
             const auto acc = std::accumulate(_accum_stamptimes[i].begin(), _accum_stamptimes[i].end(), std::chrono::nanoseconds(0));
             auto       ft  = acc.count() / (1'000'000.0 * _accum_stamptimes[i].size());
+            if (isnan(ft) || isinf(ft)) ft = 0;
             *_stamp_times[i] << QPointF(_frametime_max, ft);
             _accum_stamptimes[i].clear();
             _timestamp_labels[i - 1]->setText(QString::fromStdString(std::to_string(ft - last) + "ms"));
@@ -125,7 +126,6 @@ public:
             line << ft << ",";
         }
         line << "\n";
-        std::cout << line.str();
         _frametime_chart_view->repaint();
         _framerate_label->setText(QString::fromStdString(std::to_string(ft) + "ms"));
 
@@ -255,7 +255,6 @@ private:
             const float                 scale      = static_cast<float>(_general_tab.scene_scale->value());
             const std::filesystem::path scene_path = _general_tab.scene_select->text().toStdString();
             scene::scene_manager().load(scene_path, scale, true, [this](float p) -> bool {
-                gfx::ilog << "Progress: " << p;
                 _general_tab.current_load_progress = 1000 * p;
                 return true;
             });
@@ -297,7 +296,7 @@ private:
 
         connect(scene_select_browse, &QPushButton::clicked, [this] {
             QString fileName =
-                QFileDialog::getOpenFileName(this, tr("Load Scene Book"), "", tr("Geometry File (*.obj *.dae *.fbx *.blend)"));
+                QFileDialog::getOpenFileName(this, tr("Load Scene"), "", tr("Geometry File (*.obj *.dae *.fbx *.blend)"));
             if (!fileName.isEmpty()) _general_tab.scene_select->setText(fileName);
         });
 

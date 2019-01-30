@@ -20,7 +20,7 @@ function(add_shader SPVGEN_LIB_NAME)
 
 		string(REGEX REPLACE "[- .\\/]" "_" SPVGEN_SHADER_NAME ${SPVGEN_CURRENT_FILE})
 		configure_file(${SPVGEN_CURRENT_DIR}/shader_template.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SPVGEN_CURRENT_FILE}.${SPVGEN_LIB_NAME}.hpp.in @ONLY)
-
+		message(${GLSLC_COMMAND} -M "${SPVGEN_CURRENT_FILE}")
 		file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/__tmp_shader_${SPVGEN_LIB_NAME}.cpp "#include \"${SPVGEN_CURRENT_FILE}.${SPVGEN_LIB_NAME}.hpp\"\n")
 		string(REPLACE "\n" "" FILE_DEPENDENCIES ${FILE_DEPENDENCIES})
 		string(REPLACE " " ";" FILE_DEPENDENCY_LIST ${FILE_DEPENDENCIES})

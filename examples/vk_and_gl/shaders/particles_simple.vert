@@ -25,9 +25,11 @@ layout(set = 0, binding = 0) uniform Camera
 #endif
 
 layout(location = 0) out float life;
+layout(location = 1) out vec3 velocity;
 void main()
 {
-	const vec3 out_position = particles[gl_InstanceID].position + 0.3*position;
+	const vec3 out_position = particles[gl_InstanceID].position + 0.1*position;
 	gl_Position = camera.proj * camera.view * vec4(out_position, 1);
 	life = particles[gl_InstanceID].life;
+	velocity = particles[gl_InstanceID].velocity;
 }
