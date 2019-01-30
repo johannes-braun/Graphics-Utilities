@@ -130,7 +130,7 @@ public:
         _framerate_label->setText(QString::fromStdString(std::to_string(ft) + "ms"));
 
         _frametime_chart_view->chart()->axisX()->setRange(_frametime_min, _frametime_max);
-        _frametime_chart_view->chart()->axisY()->setRange(0, 16);
+        _frametime_chart_view->chart()->axisY()->setRange(0, 25);
         _accum_frametimes.clear();
     }
 

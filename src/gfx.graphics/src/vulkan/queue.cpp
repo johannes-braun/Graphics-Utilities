@@ -40,7 +40,7 @@ std::optional<present_error> queue::present(vk::ArrayProxy<std::pair<u32, std::r
         swaps[i]  = swapchains.data()[i].second.get().get_swapchain();
     }
     std::vector<vk::Semaphore> semaphores(wait_for.size());
-    for (size_t i = 0; i < swapchains.size(); ++i) semaphores[i] = wait_for.data()[i].get().get_semaphore();
+    for (size_t i = 0; i < wait_for.size(); ++i) semaphores[i] = wait_for.data()[i].get().get_semaphore();
 
     vk::PresentInfoKHR const pr(u32(semaphores.size()), semaphores.data(), u32(swaps.size()), swaps.data(), images.data(), nullptr);
     vk::Result const         r = _queue.presentKHR(&pr);

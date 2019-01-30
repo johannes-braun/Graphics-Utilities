@@ -24,6 +24,7 @@
 #include <QtCore/QtCore>
 #include <QtWidgets/QtWidgets>
 
+//#define USE_ASYNC_COMPUTE
 
 class bouncy_system : public gfx::ecs::system
 {
@@ -114,6 +115,7 @@ void vulkan_app::on_run()
     gfx::vulkan::swapchain                surface_swapchain(gpu, surface);
     gfx::vulkan::semaphore                acquire_semaphore(gpu);
     gfx::vulkan::semaphore                finish_semaphore(gpu);
+    gfx::vulkan::semaphore                compute_semaphore(gpu);
     std::vector<gfx::vulkan::commands>    commands = gpu.allocate_graphics_commands(surface_swapchain.count());
     std::vector<gfx::vulkan::fence>       command_fences(surface_swapchain.count(), gfx::vulkan::fence{gpu, true});
 
@@ -592,9 +594,10 @@ void vulkan_app::on_run()
 
                 gpu.wait_for({command_fences[surface_swapchain.current_index()]});
                 gpu.reset_fences({command_fences[surface_swapchain.current_index()]});
+
                 current.get_command_buffer().reset({});
                 ecs.update(delta, graphics_list);
-
+                
                 if (_input->key_down(gfx::key::kb_p))
                 {
                     gpu.get_device().waitIdle();
@@ -826,20 +829,12 @@ void vulkan_app::on_run()
 
                 vulkan_proxy.swap(current);
 
-                if (!runs_queries)
-                    current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_render);
-
-                current.get_command_buffer().end();
-                gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore},
-                                            command_fences[surface_swapchain.current_index()]);
-
+                
 
 #ifndef USE_ASYNC_COMPUTE
+
                 {
-                    auto& cf = compute_fences[current_ccmd];
-                    gpu.wait_for({cf});
-                    gpu.reset_fences({cf});
-                    auto& ccmds = ccmdsx[current_ccmd];
+                    auto& ccmds = current;
 
                     vk::BufferMemoryBarrier bmb;
                     bmb.buffer              = particles.get_buffer();
@@ -850,8 +845,6 @@ void vulkan_app::on_run()
                     bmb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                     bmb.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-                    ccmds.get_command_buffer().reset({});
-                    ccmds.get_command_buffer().begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse));
                     {
                         ccmds.get_command_buffer().pipelineBarrier(vk::PipelineStageFlagBits::eAllGraphics,
                                                                    vk::PipelineStageFlagBits::eComputeShader,
@@ -870,14 +863,19 @@ void vulkan_app::on_run()
                                                                    vk::PipelineStageFlagBits::eAllGraphics,
                                                                    vk::DependencyFlagBits::eByRegion, {}, bmb, {});
                     }
-                    ccmds.get_command_buffer().end();
-                    gpu.compute_queue().submit({ccmds}, {}, {}, {cf});
                     current_ccmd = (current_ccmd + 1) % ccmdsx.size();
                 }
 #endif
 
+                if (!runs_queries)
+                    current.get_command_buffer().writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, query_pool.get(), stamp_id_render);
 
-                if (gpu.present_queue().present({{surface_swapchain.current_index(), surface_swapchain}}, {finish_semaphore}))
+                current.get_command_buffer().end();
+                gpu.graphics_queue().submit({current}, {acquire_semaphore}, {finish_semaphore},
+                                            command_fences[surface_swapchain.current_index()]);
+                               
+                const std::array<std::reference_wrapper<gfx::vulkan::semaphore const>, 2> sems = {std::cref(finish_semaphore), std::cref(compute_semaphore)};
+                if (gpu.present_queue().present({{surface_swapchain.current_index(), surface_swapchain}}, sems))
                 {
                     if (!surface_swapchain.recreate()) return false;
                     create_framebuffer(gpu, surface_swapchain);
