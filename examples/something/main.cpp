@@ -22,7 +22,7 @@ vec2 r2(uint num)
 
 void main()
 {
-    gl_Position = vec4(r2(uint(gl_VertexID)), 0.5f, 1.f);
+    gl_Position = vec4(r2(51653 + uint(gl_VertexID)), 0.5f, 1.f);
 }
 )";
 

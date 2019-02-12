@@ -10,7 +10,7 @@ option(GFX_USE_INSTALL "Enable install targets" OFF)
 option(GFX_USE_TESTS   "Enable test targets"	ON)
 
 macro(gfx_msg)
-	message("GFX -- " ${ARGV})
+	message("GFX -- " ${ARGV}) 
 endmacro()
 
 project(${var_project_name}
