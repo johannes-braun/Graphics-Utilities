@@ -268,6 +268,28 @@ mat4 rotationMatrix(vec3 axis, float angle)
                 0.0,                                0.0,                                0.0,                                1.0);
 }
 
+vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out float y)
+{
+    const float PI = 3.14159265359;
+    // Sample a point on a unit disk
+    float r = sqrt(u);
+    float theta = 2 * PI * v;
+    x = r * cos(theta);
+    y = r * sin (theta);
+
+	// multiply radius
+    vec3 dir = vec3( radius * x, radius * y, 0 );
+
+    // Create an orthonormal basis around the surface normal
+   vec3 s = abs(normal.x) > abs(normal.y) ?
+            vec3(-normal.z, 0, normal.x) / sqrt(normal.x * normal.x + normal.z * normal.z):
+            vec3(0, normal.z, -normal.y) / sqrt(normal.y * normal.y + normal.z * normal.z);
+    vec3 t = cross(normal, s);
+
+    // Transform into local shading coordinate system
+    return dir.x * s + dir.y * t;
+}
+
 void main()
 {
     const uint cs = cur_sample + uint(prand1(uint(gl_FragCoord.x)) * 138203 + prand1(uint(gl_FragCoord.y)) * 28103);
@@ -285,9 +307,19 @@ void main()
     {
         vec2 img_size = imageSize(accum_image).xy;
         vec2 random_value = prand2(cs);
+        vec2 random_value2 = prand2(cs + uint(rndm * 61));
 	    vec2 uv = vec2(((gl_FragCoord.xy + random_value*2-1) / vec2(img_size)) * 2 - 1);
         dir.xyz = vec3(inverse_view_projection * vec4(uv, 0.f, 1.f));
         orb.xyz = cam_pos;
+    
+        const float focal_length = 7.f;
+		const vec3 focal_point = orb.xyz + focal_length * normalize(dir.xyz);
+        vec2 offset;
+        vec3 disk = randDisk(random_value2.x, random_value2.y, vec3(inverse_view_projection * vec4(0, 0, 0.f, 1.f)), 1.f, offset.x, offset.y);
+
+        orb.xyz = orb.xyz + 0.02f * disk;
+		dir.xyz = focal_point - orb.xyz;
+
         fac = vec4(1, 1, 1, 1);
         dir.w = 1.f;
         arb.x += 1.f;
@@ -312,7 +344,7 @@ void main()
         true
     };
     float rough[] = {
-        0.8f,
+        0.5f,
         0.1f,
         0.01f,
         0.01f,
@@ -353,7 +385,9 @@ void main()
         const float ior_out = 1.5f;
         float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
 	    F0 = mix(F0, 1.0, 0.0f);
-        float fresnel = F0 + (1 - F0) * pow(1.0 - max(dot(-dir.xyz, msn), 0), 5.0);
+        float fresnel = F0 + (1 - F0) * pow(1.0 - max(dot(normalize(-dir.xyz), msn), 0), 5.0);
+        //out_color = vec4(fresnel);
+       // return;
 
         dir.xyz = reflect(normalize(dir.xyz), msn);
 

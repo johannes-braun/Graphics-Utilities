@@ -79,7 +79,6 @@ class projection
 {
     struct perspective_info
     {
-        perspective_info()  = default;
         float field_of_view = glm::radians(80.f);
         int   screen_width  = 100;
         int   screen_height = 100;
