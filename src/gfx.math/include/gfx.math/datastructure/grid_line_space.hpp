@@ -12,7 +12,7 @@ namespace gfx
     public:
         grid_line_space(int count_x, int count_y, int count_z, int size_x, int size_y, int size_z);
 
-        void generate(const bvh<3>& bvh);
+        void generate(const basic_bvh<3>& bvh);
         const std::vector<gfx::line_space>& line_spaces() const noexcept;
 
         int size_x() const noexcept;

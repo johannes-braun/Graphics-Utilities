@@ -10,3 +10,8 @@ target_link_libraries(pt_simple PRIVATE jbraun::gfx.core)
 target_link_libraries(pt_simple PRIVATE jbraun::gfx.math)
 target_link_libraries(pt_simple PRIVATE jbraun::gfx.ecs)
 target_link_libraries(pt_simple PRIVATE jbraun::gfx.ecs.components)
+
+target_link_libraries(pt_simple PRIVATE gfx_ext::qt5_core)
+target_link_libraries(pt_simple PRIVATE gfx_ext::qt5_widgets)
+target_link_libraries(pt_simple PRIVATE gfx_ext::qt5_gui)
+target_compile_definitions(pt_simple PRIVATE QT_NO_OPENGL)

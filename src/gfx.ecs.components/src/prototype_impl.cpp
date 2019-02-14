@@ -13,7 +13,7 @@ mesh_proxy::mesh_proxy(device& gpu)
       , _bvh_buffer(gpu)
 {}
 
-std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<bvh<3>::node>> mesh_proxy::data() const noexcept
+std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<basic_bvh<3>::node>> mesh_proxy::data() const noexcept
 {
     return {_staging_vertex_buffer, _staging_index_buffer, _staging_bvh_buffer};
 }
@@ -47,7 +47,7 @@ const buffer<index32>& mesh_proxy::index_buffer() const noexcept
     return _index_buffer;
 }
 
-const buffer<bvh<3>::node>& mesh_proxy::bvh_buffer() const noexcept
+const buffer<basic_bvh<3>::node>& mesh_proxy::bvh_buffer() const noexcept
 {
     return _bvh_buffer;
 }
@@ -73,7 +73,7 @@ mesh_proxy::mesh_proxy()
       : _staging_vertex_buffer(), _staging_index_buffer(), _staging_bvh_buffer(), _vertex_buffer(), _index_buffer(), _bvh_buffer()
 {}
 
-std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<bvh<3>::node>> mesh_proxy::data() const noexcept
+std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<basic_bvh<3>::node>> mesh_proxy::data() const noexcept
 {
     return {_staging_vertex_buffer, _staging_index_buffer, _staging_bvh_buffer};
 }
@@ -102,7 +102,7 @@ const buffer<index32>& mesh_proxy::index_buffer() const noexcept
     return _index_buffer;
 }
 
-const buffer<bvh<3>::node>& mesh_proxy::bvh_buffer() const noexcept
+const buffer<basic_bvh<3>::node>& mesh_proxy::bvh_buffer() const noexcept
 {
     return _bvh_buffer;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "line_space.hpp"
-#include "bvh.hpp"
+#include "basic_bvh.hpp"
 
 namespace gfx::gpu
 {

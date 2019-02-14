@@ -661,7 +661,7 @@ void vulkan_app::on_run()
 
                             updater.dstBinding = def::buffer_binding_bvh;
                             info.buffer        = vulkan_proxy.bvh_buffer().get_buffer();
-                            info.range         = vulkan_proxy.bvh_buffer().size() * sizeof(gfx::bvh<3>::node);
+                            info.range         = vulkan_proxy.bvh_buffer().size() * sizeof(gfx::basic_bvh<3>::node);
                             gpu.get_device().updateDescriptorSets(updater, nullptr);
                         }
                     }

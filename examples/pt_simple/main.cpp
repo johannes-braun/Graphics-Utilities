@@ -12,9 +12,13 @@
 #include <gfx.ecs.components/basic.hpp>
 #include <gfx.ecs.components/movement.hpp>
 #include <gfx.ecs/ecs.hpp>
+#include <gfx.file/file.hpp>
+#include <gfx.math/datastructure/basic_bvh.hpp>
 #include <mygl/mygl.hpp>
 #include <random>
-#include <gfx.file/file.hpp>
+
+#include <Qt>
+#include <QtWidgets/QtWidgets>
 
 constexpr const char* screen = R"(
 #version 460 core
@@ -267,6 +271,12 @@ mat4 rotationMatrix(vec3 axis, float angle)
                 oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
                 0.0,                                0.0,                                0.0,                                1.0);
 }
+mat4 translate(const vec3 delta)
+{
+    mat4 u = mat4(1.0);    
+    u[3].xyz = delta;
+    return u;
+}
 
 vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out float y)
 {
@@ -307,17 +317,17 @@ void main()
     {
         vec2 img_size = imageSize(accum_image).xy;
         vec2 random_value = prand2(cs);
-        vec2 random_value2 = prand2(cs + uint(rndm * 61));
+        vec2 random_value2 = prand2(cs + uint(mix(34144u, 1431223u, rndm)));
 	    vec2 uv = vec2(((gl_FragCoord.xy + random_value*2-1) / vec2(img_size)) * 2 - 1);
         dir.xyz = vec3(inverse_view_projection * vec4(uv, 0.f, 1.f));
         orb.xyz = cam_pos;
     
-        const float focal_length = 7.f;
+        const float focal_length = 5.f;
 		const vec3 focal_point = orb.xyz + focal_length * normalize(dir.xyz);
         vec2 offset;
         vec3 disk = randDisk(random_value2.x, random_value2.y, vec3(inverse_view_projection * vec4(0, 0, 0.f, 1.f)), 1.f, offset.x, offset.y);
 
-        orb.xyz = orb.xyz + 0.02f * disk;
+        orb.xyz = orb.xyz + 0.01f * disk;
 		dir.xyz = focal_point - orb.xyz;
 
         fac = vec4(1, 1, 1, 1);
@@ -328,39 +338,57 @@ void main()
     const vec3 ndir = normalize(dir.xyz);
     
     vec3 colors[] = {
-        vec3(1.f, 1.f, 1.f),
-        vec3(1.f, 0.4f, 0.f),
-        vec3(0.5f, 0.2f, 0.8f),
-        vec3(0.96f, 0.95f, 0.98f),
-        vec3(0.96f, 0.89f, 0.85f),
-        vec3(0.2f, 0.5f, 0.6f)
+        vec3(1),
+        vec3(1, 0, 0),
+        vec3(0, 0, 1),
+        vec3(1),
+        vec3(1),
+        vec3(0.95, 0.9, 0.85),
+        vec3(1),
+        vec3(1)
     };
     bool metal[] = {
         true,
         false,
         false,
+        false,
         true,
+        true,
+        false,
+        false
+    };
+    bool transmit[] = {
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
         true,
         true
     };
     float rough[] = {
         0.5f,
+        0.5f,
+        0.5f, 
+        0.5f,
         0.1f,
-        0.01f,
-        0.01f,
         0.3f,
-        0.2f
+        0.1f,
+        0.1f
     };
-    
-    mat4 rot = rotationMatrix(normalize(vec3(1, 0.8f, 0.2)), -40.f * 3.14159265359 / 360);
+    mat4 rot = rotationMatrix(normalize(vec3(1, 0.8f, 0.2)), 40.f * 3.14159265359 / 360);
     mat4 rot2 = rotationMatrix(normalize(vec3(0, 0.7f, 1.2)), -60.f * 3.14159265359 / 360);
     hit_t all_hits[] = {
-        ray_oobb_hit(0, orb.xyz, ndir, vec3(-4, -0.2, -4), vec3(4, 0.2, 4), rot),
-        ray_aabb_hit(1, orb.xyz, ndir, vec3(-1, 0.35, -1), vec3(1, 2, 1)),
-        ray_oobb_hit(2, orb.xyz, ndir, vec3(-0.4, 0, -0.4), vec3(0.4, 4, 0.4), rot2),
-        ray_sphere_hit(3, orb.xyz, ndir, vec3(1, 1.4, 1), 1.f),
-        ray_sphere_hit(4, orb.xyz, ndir, vec3(1, 2.8, 1), 0.6f),
-        ray_sphere_hit(5, orb.xyz, ndir, vec3(1, 3.5, 1), 0.3f),
+        ray_aabb_hit(0, orb.xyz, ndir, vec3(-1, -1.1, -1), vec3(1, -1, 1)),
+        ray_aabb_hit(1, orb.xyz, ndir, vec3(-1.1, -1, -1), vec3(-1, 1, 1)),
+        ray_aabb_hit(2, orb.xyz, ndir, vec3(1, -1, -1), vec3(1.1, 1, 1)),
+        ray_aabb_hit(3, orb.xyz, ndir, vec3(-1, -1, 1), vec3(1, 1, 1.1)),
+        
+        ray_sphere_hit(4, orb.xyz, ndir, vec3(0.5f, -0.6f, 0.3f), 0.4f),
+        ray_sphere_hit(5, orb.xyz, ndir, vec3(0.7f, -0.8f, -0.3f), 0.2f),
+        ray_sphere_hit(6, orb.xyz, ndir, vec3(-0.5f, -0.6f, -0.6f), 0.4f),
+        ray_sphere_hit(7, orb.xyz, ndir, vec3(-0.5f, -0.2f, -0.6f), 0.2f),
     };
 
     hit_t nearest;
@@ -373,29 +401,38 @@ void main()
     if(nearest.hits)
     {
         vec3 norm = nearest.norm;
+        vec3 fnorm = faceforward(norm, dir.xyz, norm);
         orb.xyz = nearest.pos;
             
         const float alpha = rough[nearest.id] * rough[nearest.id];
-        float D = DistributionGGX(norm, dir.xyz, alpha);
+        float D = DistributionGGX(fnorm, dir.xyz, alpha);
         if(isnan(D) || isinf(D) || D < 1e-5) D = 1.f;
-        const vec2 smp = prand2(cs + uint(rndm * 30));
-        const vec3 msn = normalize(bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(smp, alpha)), norm));
+        const vec2 smp = prand2(cs + uint(mix(381u, 2930u, rndm)));
+        const vec3 msn = normalize(bsdf_local_to_world(ggx_importance_hemisphere(ggx_importance_sample(smp, alpha)), fnorm));
 
         const float ior_in = 1.f;
         const float ior_out = 1.5f;
         float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
-	    F0 = mix(F0, 1.0, 0.0f);
         float fresnel = F0 + (1 - F0) * pow(1.0 - max(dot(normalize(-dir.xyz), msn), 0), 5.0);
-        //out_color = vec4(fresnel);
-       // return;
-
+        vec3 odir = normalize(dir.xyz);
         dir.xyz = reflect(normalize(dir.xyz), msn);
 
-        if(!metal[nearest.id] && prand1(cs + uint(rndm * 777)) > fresnel)
+        if(!metal[nearest.id] && prand1(cs + uint(mix(2931u, 18021u, rndm))) > fresnel)
         {
-            dir.xyz = bsdf_local_to_world(sample_cosine_hemisphere(prand2(cs + uint(rndm * 13))), norm);
-            fac *= vec4(colors[nearest.id], 1);
-            D = 3.14159265359;
+            if(transmit[nearest.id])
+            {
+                vec3 refracted = refract(odir, msn, fnorm == norm ? ior_in/ior_out : ior_out/ior_in);
+                //if(dot(refracted, refracted) != 0) {
+                    dir.xyz = refracted;
+                    orb.xyz -= 2e-3 * msn;
+                //}
+            }
+            else
+            {
+                dir.xyz = bsdf_local_to_world(sample_cosine_hemisphere(prand2(cs + uint(mix(41u, 381u, rndm)))), norm);
+                fac *= vec4(colors[nearest.id], 1);
+                D = 3.14159265359;
+            }
         }
 
         fac *= D;// * abs(dot(norm, dir.xyz));
@@ -422,7 +459,7 @@ void main()
 }
 )";
 
-int main()
+int  main(int argc, char** argv)
 {
     glfwInit();
     glfwWindowHint(GLFW_SAMPLES, 4);
@@ -430,7 +467,7 @@ int main()
     glfwMakeContextCurrent(w);
     mygl::load();
 
-    std::mt19937 g;
+    std::mt19937                          g;
     std::uniform_real_distribution<float> d(0, 1);
 
     gfx::ecs::ecs ecs;
@@ -480,12 +517,12 @@ int main()
     glGetProgramInfoLog(pr, 512, &l, buf);
     std::cout << buf << '\n';
 
-    gfx::image_file cpx("moulton_station_train_tunnel_west_16k.hdr/hdr/posx.hdr", gfx::bits::b32, 4);
-    gfx::image_file cnx("moulton_station_train_tunnel_west_16k.hdr/hdr/negx.hdr", gfx::bits::b32, 4);
-    gfx::image_file cpy("moulton_station_train_tunnel_west_16k.hdr/hdr/posy.hdr", gfx::bits::b32, 4);
-    gfx::image_file cny("moulton_station_train_tunnel_west_16k.hdr/hdr/negy.hdr", gfx::bits::b32, 4);
-    gfx::image_file cpz("moulton_station_train_tunnel_west_16k.hdr/hdr/posz.hdr", gfx::bits::b32, 4);
-    gfx::image_file cnz("moulton_station_train_tunnel_west_16k.hdr/hdr/negz.hdr", gfx::bits::b32, 4);
+    gfx::image_file cpx("hdri/hdr/posx.hdr", gfx::bits::b32, 4);
+    gfx::image_file cnx("hdri/hdr/negx.hdr", gfx::bits::b32, 4);
+    gfx::image_file cpy("hdri/hdr/posy.hdr", gfx::bits::b32, 4);
+    gfx::image_file cny("hdri/hdr/negy.hdr", gfx::bits::b32, 4);
+    gfx::image_file cpz("hdri/hdr/posz.hdr", gfx::bits::b32, 4);
+    gfx::image_file cnz("hdri/hdr/negz.hdr", gfx::bits::b32, 4);
 
     mygl::texture cubemap;
     glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &cubemap);
@@ -504,6 +541,21 @@ int main()
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_R, GL_REPEAT);
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    gfx::bvh3d bvh2(2);
+    std::vector<gfx::bounds3f> all_bounds;
+    for (int i = 0; i < 1000; ++i) {
+        glm::vec3 center = 20 * glm::vec3(d(g), d(g), d(g)) - 10.f;
+        auto&     b      = all_bounds.emplace_back();
+        b.min            = center - glm::vec3(d(g) * 2);
+        b.max            = center + glm::vec3(d(g) * 2);
+    }
+
+    std::vector<std::uint32_t> indices(all_bounds.size());
+    std::iota(indices.begin(), indices.end(), 0u);
+    const auto t = std::chrono::steady_clock::now();
+    bvh2.sort(indices.begin(), indices.end(), [&](const std::uint32_t i) { return reinterpret_cast<glm::vec4*>(all_bounds.data())[i]; });
+    std::cout << (std::chrono::steady_clock::now() - t).count() << "\n";
 
     mygl::vertex_array arr;
     glCreateVertexArrays(1, &arr);
@@ -555,4 +607,20 @@ int main()
 
     glfwTerminate();
     return 0;
+}
+
+void main_settings(int argc, char** argv)
+{
+    QApplication app(argc, argv);
+
+    QMainWindow settings_window;
+
+    QWidget* settings_widget = new QWidget(&settings_window);
+    settings_window.setCentralWidget(settings_widget);
+
+    QFormLayout* items_layout = new QFormLayout(settings_widget);
+
+    settings_window.show();
+
+    QApplication::exec();
 }

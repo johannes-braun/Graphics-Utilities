@@ -1,7 +1,7 @@
 #pragma once
 #include "prototype.hpp"
 #include <gfx.graphics/graphics.hpp>
-#include <gfx.math/datastructure/bvh.hpp>
+#include <gfx.math/datastructure/basic_bvh.hpp>
 #include <gfx.math/geometry.hpp>
 #include <gsl/span>
 
@@ -13,14 +13,14 @@ class mesh_proxy : public mesh_allocator::proxy
 {
 public:
     mesh_proxy(device& gpu);
-    std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<bvh<3>::node>> data() const noexcept override;
+    std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<basic_bvh<3>::node>> data() const noexcept override;
     void resize_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
     void update_buffers(bool vertices, bool indices, bool bvh) override;
 
     const device&               get_device() const;
     const buffer<vertex3d>&     vertex_buffer() const noexcept;
     const buffer<index32>&      index_buffer() const noexcept;
-    const buffer<bvh<3>::node>& bvh_buffer() const noexcept;
+    const buffer<basic_bvh<3>::node>& bvh_buffer() const noexcept;
 
     void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
 
@@ -29,11 +29,11 @@ private:
 
     mapped<vertex3d>     _staging_vertex_buffer;
     mapped<index32>      _staging_index_buffer;
-    mapped<bvh<3>::node> _staging_bvh_buffer;
+    mapped<basic_bvh<3>::node> _staging_bvh_buffer;
 
     buffer<vertex3d>     _vertex_buffer;
     buffer<index32>      _index_buffer;
-    buffer<bvh<3>::node> _bvh_buffer;
+    buffer<basic_bvh<3>::node> _bvh_buffer;
 };
 
 template<typename InstanceInfo>
@@ -66,24 +66,24 @@ class mesh_proxy : public mesh_allocator::proxy
 {
 public:
     mesh_proxy();
-    std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<bvh<3>::node>> data() const noexcept override;
+    std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<basic_bvh<3>::node>> data() const noexcept override;
     void resize_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
     void update_buffers(bool vertices, bool indices, bool bvh) override;
 
     const buffer<vertex3d>&     vertex_buffer() const noexcept;
     const buffer<index32>&      index_buffer() const noexcept;
-    const buffer<bvh<3>::node>& bvh_buffer() const noexcept;
+    const buffer<basic_bvh<3>::node>& bvh_buffer() const noexcept;
 
     void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh) override;
 
 private:
     mapped<vertex3d>     _staging_vertex_buffer;
     mapped<index32>      _staging_index_buffer;
-    mapped<bvh<3>::node> _staging_bvh_buffer;
+    mapped<basic_bvh<3>::node> _staging_bvh_buffer;
 
     buffer<vertex3d>     _vertex_buffer;
     buffer<index32>      _index_buffer;
-    buffer<bvh<3>::node> _bvh_buffer;
+    buffer<basic_bvh<3>::node> _bvh_buffer;
 };
 
 template<typename InstanceInfo>

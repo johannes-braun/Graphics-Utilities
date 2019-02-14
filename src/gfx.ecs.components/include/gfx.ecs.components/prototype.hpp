@@ -3,7 +3,7 @@
 #include <array>
 #include <gfx.core/flags.hpp>
 #include <gfx.ecs/ecs.hpp>
-#include <gfx.math/datastructure/bvh.hpp>
+#include <gfx.math/datastructure/basic_bvh.hpp>
 #include <gfx.math/geometry.hpp>
 #include <gsl/span>
 #include <memory>
@@ -77,7 +77,7 @@ public:
     {
     public:
         virtual ~proxy()                                                                                           = default;
-        virtual std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<bvh<3>::node>> data() const noexcept = 0;
+        virtual std::tuple<gsl::span<vertex3d>, gsl::span<index32>, gsl::span<basic_bvh<3>::node>> data() const noexcept = 0;
         virtual void resize_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh)         = 0;
         virtual void reserve_stages(ptrdiff_t delta_vertices, ptrdiff_t delta_indices, ptrdiff_t delta_bvh)        = 0;
         virtual void update_buffers(bool vertices, bool indices, bool bvh)                                         = 0;
@@ -103,7 +103,7 @@ private:
     proxy*                 _proxy;
     mesh_allocator_flags   _flags;
     std::vector<weak_mesh> _meshes;
-    bvh<3>                 _bvh_generator;
+    basic_bvh<3>                 _bvh_generator;
 };
 
 enum class prototype_handle : u64

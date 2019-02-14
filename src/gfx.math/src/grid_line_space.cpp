@@ -8,7 +8,7 @@ namespace gfx
 
     }
 
-    void grid_line_space::generate(const bvh<3>& bvh)
+    void grid_line_space::generate(const basic_bvh<3>& bvh)
     {
         _bounds = bvh.get_bounds();
         const glm::vec3 qsize = _bounds.size() / glm::vec3{ _count_x, _count_y, _count_z };

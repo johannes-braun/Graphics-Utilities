@@ -7,12 +7,12 @@ namespace gfx
     {
     }
 
-    void line_space::generate(const bvh<3>& bvh)
+    void line_space::generate(const basic_bvh<3>& bvh)
     {
         generate(bvh, bvh.get_bounds());
     }
 
-    void line_space::generate(const bvh<3>& bvh, bounds3f bounds)
+    void line_space::generate(const basic_bvh<3>& bvh, bounds3f bounds)
     {
         _bounds = bounds;
         glm::ivec3 subdiv;
@@ -77,9 +77,7 @@ namespace gfx
                             const glm::vec3 direction = normalize(end_center - start_center);
                             const glm::vec3 origin = start_center - 1e-2f*direction;
 
-                            if (e == 2 && s == 5)
-                                pex = pex;
-
+                            #if 0 // FIXME
                             const auto hit = bvh.intersect_ray(origin, direction, length(end_center - start_center) + 2 * 1e-2f);
 
                             // if first start-face and there is any hit...
@@ -87,6 +85,7 @@ namespace gfx
                                 empty = false;
 
                             _storages[s][e].at(index_start + (pey * patch_size_end.x + pex)).triangle = hit.hits ? hit.indices.front().index / 3 : -1;
+                            #endif
                         }
                 }
             }

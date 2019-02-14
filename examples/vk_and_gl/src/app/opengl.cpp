@@ -529,7 +529,7 @@ void opengl_app::on_run()
             glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_element, opengl_proxy.index_buffer().get_buffer(), 0,
                               opengl_proxy.index_buffer().size() * sizeof(gfx::index32));
             glBindBufferRange(GL_SHADER_STORAGE_BUFFER, def::buffer_binding_bvh, opengl_proxy.bvh_buffer().get_buffer(), 0,
-                              opengl_proxy.bvh_buffer().size() * sizeof(gfx::bvh<3>::node));
+                              opengl_proxy.bvh_buffer().size() * sizeof(gfx::basic_bvh<3>::node));
         }
 
         glBindVertexArray(vao);
