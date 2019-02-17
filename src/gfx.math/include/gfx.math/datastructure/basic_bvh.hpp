@@ -46,9 +46,12 @@ public:
     basic_bvh& operator=(basic_bvh&& other) noexcept = default;
     ~basic_bvh()                                     = default;
 
-    template<typename It, typename GetFun,
-             typename = std::enable_if_t<sizeof(decltype(std::declval<GetFun>()(*std::declval<It>()))) >= Dimension * sizeof(float)>>
-    void sort(It begin, It end, GetFun&& get_vertex, size_t max_per_node = 1);
+    template<typename It, typename GetFun>
+    using enable_if_getter_valid =
+        std::enable_if_t<sizeof(decltype(std::declval<GetFun>()(*std::declval<It>()))) >= sizeof(vec_type)>;
+
+    template<typename It, typename GetFun, typename = enable_if_getter_valid<It, GetFun>>
+    void build_indexed(It begin, It end, GetFun&& get_vertex, size_t max_per_node = 1);
 
     auto nodes() const noexcept -> std::vector<node> const&;
     auto get_bounds() const -> bounds_type const&;

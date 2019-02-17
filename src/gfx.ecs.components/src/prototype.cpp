@@ -40,7 +40,7 @@ shared_mesh mesh_allocator::allocate_mesh_impl(const gsl::span<const vertex3d>& 
 
     if (_flags.has(mesh_allocator_flag::use_bvh))
     {
-        _bvh_generator.sort(index_buffer.begin() + m->_base_index, index_buffer.end(),
+        _bvh_generator.build_indexed(index_buffer.begin() + m->_base_index, index_buffer.end(),
                             [&](const index32 i) { return vertex_buffer[i + m->_base_vertex].position; });
 
         m->_base_bvh_node  = static_cast<uint32_t>(bvh_buffer.size());

@@ -33,7 +33,7 @@ struct temporaries_t
 
 template<size_t Dimension>
 template<typename It, typename GetFun, typename>
-void basic_bvh<Dimension>::sort(It begin, It end, GetFun&& get_vertex, size_t max_per_node)
+void basic_bvh<Dimension>::build_indexed(It begin, It end, GetFun&& get_vertex, size_t max_per_node)
 {
     const int count = int(std::distance(begin, end) / float(_points_per_shape));
     if (count <= 0) return;
@@ -135,7 +135,8 @@ template<size_t Dimension>
 template<typename Fun, typename>
 void basic_bvh<Dimension>::visit(Fun&& fun)
 {
-    for (const auto& n : _nodes) fun(n);
+    for (const auto& n : _nodes)
+        if (n.type == node_type::leaf) fun(n);
 }
 
 template<size_t Dimension>

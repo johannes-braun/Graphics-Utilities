@@ -33,7 +33,7 @@ void main()
 }
 )";
 
-constexpr const char* pt = R"(
+static std::string pt = R"(
 #version 460 core
 
 layout(location=0) in vec2 uv;
@@ -58,6 +58,37 @@ uniform vec3 cam_pos;
 uniform float rndm;
 layout(binding = 0) uniform samplerCube cubemap;
 
+struct bvh_node
+{
+    vec4 bounds_min;
+    vec4 bounds_max;
+    uint type;
+    uint left;
+    uint right;
+    uint parent;
+};
+struct vertex_t
+{
+	vec3 position;
+	uint metadata_position;
+	vec3 normal;
+	uint metadata_normal;
+	vec2 uv;
+	uint metadata_uv;
+};
+layout(std430, binding = 0) restrict readonly buffer BVH 
+{ 
+    bvh_node nodes[]; 
+} bvh;
+layout(std430, binding = 1) restrict readonly buffer VTX 
+{ 
+    vertex_t vertices[]; 
+};
+layout(std430, binding = 2) restrict readonly buffer IDX 
+{ 
+    uint indices[]; 
+};
+
 layout(rgba32f, binding = 0) uniform image2D fac_image;
 layout(rgba32f, binding = 1) uniform image2D accum_image;
 layout(rgba32f, binding = 2) uniform image2D i_orig_bounce;
@@ -70,6 +101,79 @@ const vec3 box_normals[] = vec3[](
     vec3(-1, 0, 0), vec3(0, -1, 0), vec3(0, 0, -1),
     vec3(1, 0, 0), vec3(0, 1, 0), vec3(0, 0, 1)
 );
+
+const uint bvh_node_type_inner = 0;
+const uint bvh_node_type_leaf  = 1;
+const uint bvh_mode_any      = 0;
+const uint bvh_mode_nearest  = 1;
+
+struct bvh_result
+{
+    // The index of the nearest and farthest triangles.
+    // (multiply by 3 to get the element index)
+    uint near_triangle;
+
+    float near_distance;
+
+    // Only two barycentric coordinates are needed.
+    // Calculate the last one with z = 1 - bary.x - bary.y .
+    vec2 near_barycentric;
+	uint instance;
+    bool hits;
+};
+
+uint       _bvh_mode_current = bvh_mode_nearest;
+void       bvh_state_set_mode(uint mode)
+{
+    _bvh_mode_current = mode;
+}
+
+bvh_result bvh_hit(const vec3 origin, const vec3 direction, const float max_distance);
+bvh_result bvh_hit(vec3 origin, vec3 direction, const float max_distance, uint root_node);
+bvh_result bvh_hit_instanced(const vec3 origin, const vec3 direction, const float max_distance);
+void       bvh_state_set_mode(uint mode);
+
+
+
+bool intersect_bounds(const vec3 origin, const vec3 direction,
+
+                      const vec3 bounds_min, const vec3 bounds_max, const float max_distance)
+{
+    vec3 inv_direction = 1.f / direction;
+
+    // intersections with box planes parallel to x, y, z axis
+    vec3 t135 = (bounds_min - origin) * inv_direction;
+    vec3 t246 = (bounds_max - origin) * inv_direction;
+
+    vec3 min_values = min(t135, t246);
+    vec3 max_values = max(t135, t246);
+
+    float tmin = max(max(min_values.x, min_values.y), min_values.z);
+    float tmax = min(min(max_values.x, max_values.y), max_values.z);
+
+    return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
+}
+
+bool intersect_bounds(const vec3 origin, const vec3 direction,
+
+                      const vec3 bounds_min, const vec3 bounds_max, const float max_distance, inout float min_distance)
+{
+    vec3 inv_direction = 1.f / direction;
+
+    // intersections with box planes parallel to x, y, z axis
+    vec3 t135 = (bounds_min - origin) * inv_direction;
+    vec3 t246 = (bounds_max - origin) * inv_direction;
+
+    vec3 min_values = min(t135, t246);
+    vec3 max_values = max(t135, t246);
+
+    float tmin = max(max(min_values.x, min_values.y), min_values.z);
+    float tmax = min(min(max_values.x, max_values.y), max_values.z);
+
+    min_distance = min(tmin, tmax);
+    return tmax >= 0 && tmin <= tmax && tmin <= max_distance;
+}
+
 
 int faceID(float t, float t1, float t2, float t3, float t4, float t5, float t6)
 {
@@ -116,7 +220,127 @@ bool intersect_bounds(const vec3 origin, const vec3 direction,
     }
     return false;
 }
-hit_t ray_aabb_hit(int id, vec3 r0, vec3 rd, vec3 bmin, vec3 bmax)
+bool intersect_triangle(const vec3 origin, const vec3 direction, const vec3 v1, const vec3 v2, const vec3 v3, inout float t,
+                        inout vec2 barycentric)
+{
+    float float_epsilon  = 1e-23f;
+    float border_epsilon = 1e-6f;
+
+    // Find vectors for two edges sharing V1
+    vec3 e1 = v2 - v1;
+    vec3 e2 = v3 - v1;
+
+    // if determinant is near zero, ray lies in plane of triangle
+    vec3  P   = cross(vec3(direction), e2);
+    float det = dot(e1, P);
+    if (det > -float_epsilon && det < float_epsilon) return false;
+
+    // Calculate u parameter and test bound
+    float inv_det = 1.f / det;
+    vec3  T       = origin.xyz - v1;
+    barycentric.x = dot(T, P) * inv_det;
+
+    // The intersection lies outside of the triangle
+    if (barycentric.x < -border_epsilon || barycentric.x > 1.f + border_epsilon) return false;
+
+    // Calculate V parameter and test bound
+    vec3 Q        = cross(T, e1);
+    barycentric.y = dot(vec3(direction), Q) * inv_det;
+    // The intersection lies outside of the triangle
+    if (barycentric.y < -border_epsilon || barycentric.x + barycentric.y > 1.f + border_epsilon) return false;
+
+    return (t = dot(e2, Q) * inv_det) > float_epsilon;
+}
+
+bvh_result bvh_hit(uint root, uint base_vertex, uint base_index, vec3 origin, vec3 direction, const float max_distance, mat4 transform)
+{
+    bvh_result result;
+    result.near_distance   = max_distance;
+    result.hits            = false;
+    float current_distance = 0;
+	
+	mat4 inv_tf = inverse(transform);
+	origin		= (inv_tf * vec4(origin, 1)).xyz;
+	direction	= ((inv_tf * vec4(direction, 0)).xyz);
+	uint root_node = root;
+
+    bvh_node current_node = bvh.nodes[root_node];
+    uint     current_id   = root_node;
+    bool     hits_scene   = intersect_bounds(origin, direction, current_node.bounds_min.xyz, current_node.bounds_max.xyz, max_distance);
+
+    uint bitstack    = 0;
+    uint switchstack = 0;
+
+    while (hits_scene)
+    {
+        while (current_node.type == bvh_node_type_inner)
+        {
+            uint  left      = current_node.left;
+            uint  right     = current_node.right;
+            float min_left  = 1.f / 0.f;
+            float min_right = 1.f / 0.f;
+            bool hits_left = intersect_bounds(origin, direction, bvh.nodes[root_node + left].bounds_min.xyz, bvh.nodes[root_node + left].bounds_max.xyz,
+                                              result.near_distance, min_left);
+            bool hits_right = intersect_bounds(origin, direction, bvh.nodes[root_node + right].bounds_min.xyz,
+                                               bvh.nodes[root_node + right].bounds_max.xyz, result.near_distance, min_right);
+
+            if (!hits_left && !hits_right) break;
+
+            bool nrm         = min_left < min_right;
+            uint first       = nrm ? left : right;
+            uint second      = nrm ? right : left;
+            bool hits_first  = nrm ? hits_left : hits_right;
+            bool hits_second = nrm ? hits_right : hits_left;
+
+            switchstack  = (switchstack << 1) | int(nrm);    // 0x1 -> right next, 0x0 -> left next
+            bitstack     = (bitstack << 1) | int(hits_left && hits_right);
+            current_node = bvh.nodes[root_node + (current_id = hits_first ? first : second)];
+        }
+
+        if (current_node.type == bvh_node_type_leaf)
+        {
+            vec2 current_barycentric;
+            uint start = current_node.left;
+            uint end   = current_node.right;
+            for (uint i = start; i != end + 1; ++i)
+            {
+                vec3 tv1 = vertices[base_vertex + indices[base_index + 3 * i + 0]].position;
+                vec3 tv2 = vertices[base_vertex + indices[base_index + 3 * i + 1]].position;
+                vec3 tv3 = vertices[base_vertex + indices[base_index + 3 * i + 2]].position;
+
+                if (intersect_triangle(origin, direction, tv1, tv2, tv3, current_distance, current_barycentric)
+                    && current_distance < result.near_distance)
+                {
+                    result.hits             = true;
+                    result.near_distance    = current_distance;
+                    result.near_barycentric = current_barycentric;
+                    result.near_triangle    = i;
+
+                    if (_bvh_mode_current == bvh_mode_any) return result;
+                }
+            }
+        }
+
+        while ((bitstack & 1) == 0)
+        {
+            if (bitstack == 0) return result;
+
+            current_id  = bvh.nodes[root_node + current_id].parent;
+            bitstack    = bitstack >> 1;
+            switchstack = switchstack >> 1;
+        }
+
+        current_id = ((switchstack & 0x1) == 0x1) ? bvh.nodes[root_node + bvh.nodes[root_node + current_id].parent].right
+                                                  : bvh.nodes[root_node + bvh.nodes[root_node + current_id].parent].left;
+
+        current_node = bvh.nodes[root_node + current_id];
+        bitstack     = bitstack ^ 1;
+    }
+    return result;
+}
+
+hit_t
+    ray_aabb_hit(int id, vec3 r0, vec3 rd, vec3 bmin, vec3 bmax)
 {
     int fmin, fmax;
     float tmin = 0, tmax = 0;
@@ -256,7 +480,7 @@ float DistributionGGX(vec3 N, vec3 H, float a)
 }
 
 vec3 tonemapFilmic(const vec3 color) {
-	vec3 x = max(vec3(0.0), color - 0.004);
+	vec3 x = max(vec3(0.0), color + 0.004);
 	return (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06);
 }
 mat4 rotationMatrix(vec3 axis, float angle)
@@ -299,6 +523,9 @@ vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out floa
     // Transform into local shading coordinate system
     return dir.x * s + dir.y * t;
 }
+
+)"
+R"(
 
 void main()
 {
@@ -345,7 +572,7 @@ void main()
         vec3(1),
         vec3(0.95, 0.9, 0.85),
         vec3(1),
-        vec3(1)
+        vec3(1, 0.3, 0.1)
     };
     bool metal[] = {
         true,
@@ -375,8 +602,30 @@ void main()
         0.1f,
         0.3f,
         0.1f,
-        0.1f
+        0.01f
     };
+
+    hit_t bun_hit;
+    bvh_result bun_hit_bvh = bvh_hit(0, 0, 0, orb.xyz, ndir, 1.f / 0.f, mat4(1.f));
+    if(bun_hit_bvh.hits)
+    {
+        uint v0  = uint(0) + indices[0 + bun_hit_bvh.near_triangle * 3 + 1];
+		uint v1  = uint(0) + indices[0 + bun_hit_bvh.near_triangle * 3 + 2];
+		uint v2  = uint(0) + indices[0 + bun_hit_bvh.near_triangle * 3 + 0];
+		bun_hit.norm = normalize((mat4(1.f) * vec4(bun_hit_bvh.near_barycentric.x * vertices[v0].normal + bun_hit_bvh.near_barycentric.y * vertices[v1].normal
+					+ (1 - bun_hit_bvh.near_barycentric.x - bun_hit_bvh.near_barycentric.y) * vertices[v2].normal, 0)).xyz);
+		bun_hit.pos = (mat4(1.f) * vec4(bun_hit_bvh.near_barycentric.x * vertices[v0].position + bun_hit_bvh.near_barycentric.y * vertices[v1].position
+					+ (1 - bun_hit_bvh.near_barycentric.x - bun_hit_bvh.near_barycentric.y) * vertices[v2].position, 1)).xyz + 1e-3 * bun_hit.norm;
+        bun_hit.hits = true;
+        bun_hit.t = bun_hit_bvh.near_distance;
+        bun_hit.id = 7;
+    }
+    else
+    {
+        bun_hit.hits = false;
+    }
+
+
     mat4 rot = rotationMatrix(normalize(vec3(1, 0.8f, 0.2)), 40.f * 3.14159265359 / 360);
     mat4 rot2 = rotationMatrix(normalize(vec3(0, 0.7f, 1.2)), -60.f * 3.14159265359 / 360);
     hit_t all_hits[] = {
@@ -388,7 +637,7 @@ void main()
         ray_sphere_hit(4, orb.xyz, ndir, vec3(0.5f, -0.6f, 0.3f), 0.4f),
         ray_sphere_hit(5, orb.xyz, ndir, vec3(0.7f, -0.8f, -0.3f), 0.2f),
         ray_sphere_hit(6, orb.xyz, ndir, vec3(-0.5f, -0.6f, -0.6f), 0.4f),
-        ray_sphere_hit(7, orb.xyz, ndir, vec3(-0.5f, -0.2f, -0.6f), 0.2f),
+        bun_hit, //ray_sphere_hit(7, orb.xyz, ndir, vec3(-0.5f, -0.2f, -0.6f), 0.2f),
     };
 
     hit_t nearest;
@@ -415,17 +664,18 @@ void main()
         float F0 = pow((ior_in-ior_out)/(ior_in+ior_out), 2);
         float fresnel = F0 + (1 - F0) * pow(1.0 - max(dot(normalize(-dir.xyz), msn), 0), 5.0);
         vec3 odir = normalize(dir.xyz);
-        dir.xyz = reflect(normalize(dir.xyz), msn);
+        dir.xyz = reflect(normalize(odir.xyz), msn);
 
         if(!metal[nearest.id] && prand1(cs + uint(mix(2931u, 18021u, rndm))) > fresnel)
         {
             if(transmit[nearest.id])
             {
                 vec3 refracted = refract(odir, msn, fnorm == norm ? ior_in/ior_out : ior_out/ior_in);
-                //if(dot(refracted, refracted) != 0) {
+                if(dot(refracted, refracted) != 0)
+                {
                     dir.xyz = refracted;
                     orb.xyz -= 2e-3 * msn;
-                //}
+                }
             }
             else
             {
@@ -458,14 +708,19 @@ void main()
     imageStore(i_arb, ivec2(gl_FragCoord.xy), arb);
 }
 )";
-
 int  main(int argc, char** argv)
 {
     glfwInit();
     glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
     const auto w = glfwCreateWindow(1280, 720, "Test", nullptr, nullptr);
     glfwMakeContextCurrent(w);
     mygl::load();
+
+    
+    glDebugMessageCallback([](gl_enum source, gl_enum type, std::uint32_t id, gl_enum severity, std::int32_t length, const char* message,
+                              const void* userParam) { std::cout << message << '\n';
+        }, nullptr);
 
     std::mt19937                          g;
     std::uniform_real_distribution<float> d(0, 1);
@@ -483,8 +738,9 @@ int  main(int argc, char** argv)
     glShaderSource(vs, 1, &screen, nullptr);
     glCompileShader(vs);
 
+    const char* css = pt.data();
     auto fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &pt, nullptr);
+    glShaderSource(fs, 1, &css, nullptr);
     glCompileShader(fs);
 
     auto pr = glCreateProgram();
@@ -509,12 +765,12 @@ int  main(int argc, char** argv)
     glTextureStorage2D(arb, 1, GL_RGBA32F, 1280, 720);
 
     int  l;
-    char buf[512];
-    glGetShaderInfoLog(vs, 512, &l, buf);
+    char buf[2048];
+    glGetShaderInfoLog(vs, 2048, &l, buf);
     std::cout << buf << '\n';
-    glGetShaderInfoLog(fs, 512, &l, buf);
+    glGetShaderInfoLog(fs, 2048, &l, buf);
     std::cout << buf << '\n';
-    glGetProgramInfoLog(pr, 512, &l, buf);
+    glGetProgramInfoLog(pr, 2048, &l, buf);
     std::cout << buf << '\n';
 
     gfx::image_file cpx("hdri/hdr/posx.hdr", gfx::bits::b32, 4);
@@ -542,20 +798,15 @@ int  main(int argc, char** argv)
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    gfx::bvh3d bvh2(2);
-    std::vector<gfx::bounds3f> all_bounds;
-    for (int i = 0; i < 1000; ++i) {
-        glm::vec3 center = 20 * glm::vec3(d(g), d(g), d(g)) - 10.f;
-        auto&     b      = all_bounds.emplace_back();
-        b.min            = center - glm::vec3(d(g) * 2);
-        b.max            = center + glm::vec3(d(g) * 2);
-    }
+    gfx::bvh3d bvh(3);
+    gfx::scene_file bun("bunny.dae", 0.3f );
+    bvh.build_indexed(bun.mesh.indices.begin(), bun.mesh.indices.end(), [&](std::uint32_t i) { return bun.mesh.vertices[i]; });
 
-    std::vector<std::uint32_t> indices(all_bounds.size());
-    std::iota(indices.begin(), indices.end(), 0u);
-    const auto t = std::chrono::steady_clock::now();
-    bvh2.sort(indices.begin(), indices.end(), [&](const std::uint32_t i) { return reinterpret_cast<glm::vec4*>(all_bounds.data())[i]; });
-    std::cout << (std::chrono::steady_clock::now() - t).count() << "\n";
+    mygl::buffer bun_bufs[3];
+    glCreateBuffers(3, bun_bufs);
+    glNamedBufferStorage(bun_bufs[0], bvh.nodes().size() * sizeof(gfx::bvh3d::node), bvh.nodes().data(), GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(bun_bufs[1], bun.mesh.vertices.size() * sizeof(gfx::vertex3d), bun.mesh.vertices.data(), GL_DYNAMIC_STORAGE_BIT);
+    glNamedBufferStorage(bun_bufs[2], bun.mesh.indices.size() * sizeof(gfx::index32), bun.mesh.indices.data(), GL_DYNAMIC_STORAGE_BIT);
 
     mygl::vertex_array arr;
     glCreateVertexArrays(1, &arr);
@@ -587,6 +838,10 @@ int  main(int argc, char** argv)
         glUniform1ui(0, count);
         glBindTextureUnit(0, cubemap);
         glBindSampler(0, cubemap_sampler);
+
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 0, bun_bufs[0], 0, bvh.nodes().size() * sizeof(gfx::bvh3d::node));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 1, bun_bufs[1], 0, bun.mesh.vertices.size() * sizeof(gfx::vertex3d));
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, 2, bun_bufs[2], 0, bun.mesh.indices.size() * sizeof(gfx::index32));
 
         const auto iv = inverse(user_entity->get<gfx::transform_component>()->matrix());
         const auto ip = user_entity->get<gfx::projection_component>()->matrix();
