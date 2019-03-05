@@ -253,6 +253,12 @@ namespace gfx
     }
 
     template<typename T, size_t Dim, size_t Align>
+    constexpr bool bounds<T, Dim, Align>::overlaps(const bounds& p) const noexcept
+    {
+        return !bounds(*this).clip(p).empty();
+    }
+
+    template<typename T, size_t Dim, size_t Align>
     constexpr bool bounds<T, Dim, Align>::operator==(const bounds& other) const noexcept
     {
         return vec_eq(min, other.min) && vec_eq(max, other.max);

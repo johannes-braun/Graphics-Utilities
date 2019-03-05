@@ -20,7 +20,7 @@ template<size_t Dimension>
 struct temporaries_t
 {
     using bvh_type = basic_bvh<Dimension>;
-    std::atomic_int       range_position;
+    std::atomic_int                          range_position;
     std::vector<typename bvh_type::vec_type> centroids;
 
     std::vector<bvh_range_t>                    index_ranges;
@@ -29,11 +29,19 @@ struct temporaries_t
     std::vector<bvh_range_t>                    swap_index_ranges;
     std::vector<typename bvh_type::bounds_type> swap_centroid_bounds;
 };
-}
+}    // namespace detail
 
 template<size_t Dimension>
 template<typename It, typename GetFun, typename>
 void basic_bvh<Dimension>::build_indexed(It begin, It end, GetFun&& get_vertex, size_t max_per_node)
+{
+    build_cache tmp {};
+    build_indexed(tmp, begin, end, get_vertex, max_per_node);
+}
+
+template<size_t Dimension>
+template<typename It, typename GetFun, typename>
+void basic_bvh<Dimension>::build_indexed(build_cache& cache, It begin, It end, GetFun&& get_vertex, size_t max_per_node)
 {
     const int count = int(std::distance(begin, end) / float(_points_per_shape));
     if (count <= 0) return;
@@ -42,7 +50,7 @@ void basic_bvh<Dimension>::build_indexed(It begin, It end, GetFun&& get_vertex, 
     _depth      = 0;
     _nodes.clear();
 
-    detail::temporaries_t<Dimension> temporaries;
+    detail::temporaries_t<Dimension>& temporaries = cache.temporaries;
     temporaries.centroids.resize(count, vec_type(0));
     temporaries.index_ranges.resize(count);
     temporaries.centroid_bounds.resize(count);
@@ -52,34 +60,26 @@ void basic_bvh<Dimension>::build_indexed(It begin, It end, GetFun&& get_vertex, 
 
     temporaries.index_ranges[0] = {/*start=*/0, /*end=*/int(count - 1), /*parent=*/-1};
 
-    const int           concurrency = std::thread::hardware_concurrency();
-    std::vector<bounds_type> bounds(concurrency);
-
-    //#pragma omp parallel for schedule(static)
     for (int i = 0; i < count; ++i)
     {
         vec_type& centroid = temporaries.centroids[i];
         for (int c = 0; c < _points_per_shape; ++c)
             centroid += reinterpret_cast<vec_type&>(get_vertex(*std::next(begin, i * _points_per_shape + c)));
         centroid /= float(_points_per_shape);
-        bounds[omp_get_thread_num()] += centroid;
+        temporaries.centroid_bounds[0] += centroid;
     }
-    for (const auto& b : bounds)
-        if (!b.empty()) temporaries.centroid_bounds[0] += b;
 
     _node_count = 0;
     temporaries.range_position.store(0);
-    for (std::atomic_int i{1}; i.load() != 0;)
+    for (std::atomic_int i {1}; i.load() != 0;)
     {
         ++_depth;
         temporaries.range_position.store(0);
         const int c = i.load();
-        //#pragma omp parallel for schedule(dynamic)
         for (int gid = 0; gid < c; ++gid) i += split_sah(begin, end, gid, std::forward<GetFun&&>(get_vertex), temporaries, max_per_node);
 
         _node_count += c;
 
-        //#pragma omp parallel for schedule(static)
         for (auto p = 0; p < i; ++p)
         {
             temporaries.index_ranges[p]    = std::move(temporaries.swap_index_ranges[p]);
@@ -99,7 +99,8 @@ void basic_bvh<Dimension>::build_indexed(It begin, It end, GetFun&& get_vertex, 
 }
 
 template<size_t Dimension>
-std::vector<std::byte> pack(const basic_bvh<Dimension>& bvh, size_t vertex_stride, size_t vertex_offset, size_t index_stride, size_t index_offset)
+std::vector<std::byte> pack(const basic_bvh<Dimension>& bvh, size_t vertex_stride, size_t vertex_offset, size_t index_stride,
+                            size_t index_offset)
 {
     using u32                   = uint32_t;
     u32                    vstr = u32(vertex_stride);
@@ -132,17 +133,30 @@ const typename basic_bvh<Dimension>::bounds_type& basic_bvh<Dimension>::get_boun
 }
 
 template<size_t Dimension>
-template<typename Fun, typename>
-void basic_bvh<Dimension>::visit(Fun&& fun)
+template<typename Leaf>
+void basic_bvh<Dimension>::visit_leafs(Leaf&& leaf)
 {
     for (const auto& n : _nodes)
-        if (n.type == node_type::leaf) fun(n);
+        if (n.type == node_type::leaf) leaf(n);
+}
+
+template<size_t Dimension>
+template<typename Inner, typename Leaf>
+void basic_bvh<Dimension>::visit_all(Inner&& inner, Leaf&& leaf)
+{
+    for (const auto& n : _nodes)
+        if (n.type == node_type::leaf)
+            leaf(n);
+        else
+            inner(n);
 }
 
 template<size_t Dimension>
 template<typename Cond, typename Comp, typename Leaf>
 void basic_bvh<Dimension>::visit_conditional(Cond&& cond, Comp&& comp, Leaf&& leaf)
 {
+    if (_nodes.empty()) return;
+
     const node*             root_node    = _nodes.data();
     const node*             current_node = _nodes.data();
     std::stack<const node*> node_stack;
@@ -193,9 +207,9 @@ int basic_bvh<Dimension>::split_sah(It begin, It end, int gid, GetFun&& get_vert
     constexpr static float bin_epsilon = 0.01f;
 
     const detail::bvh_range_t& current_range  = temporaries.index_ranges[gid];
-    const bounds_type& current_bounds = temporaries.centroid_bounds[gid];
-    const int     candidates     = int(current_range.end + 1 - current_range.start);
-    const int     current_node   = int(gid + _node_count);
+    const bounds_type&         current_bounds = temporaries.centroid_bounds[gid];
+    const int                  candidates     = int(current_range.end + 1 - current_range.start);
+    const int                  current_node   = int(gid + _node_count);
 
     if ((candidates > max_per_node || current_range.parent == -1) && !current_bounds.empty())
     {
@@ -203,11 +217,11 @@ int basic_bvh<Dimension>::split_sah(It begin, It end, int gid, GetFun&& get_vert
 
         struct
         {
-            float  cost        = std::numeric_limits<float>::max();
-            float  centbox_min = 0;
-            float  k           = 0;
-            int    axis        = 0;
-            int    plane       = 0;
+            float       cost        = std::numeric_limits<float>::max();
+            float       centbox_min = 0;
+            float       k           = 0;
+            int         axis        = 0;
+            int         plane       = 0;
             bounds_type left_bounds;
             bounds_type right_bounds;
         } best;
@@ -215,7 +229,7 @@ int basic_bvh<Dimension>::split_sah(It begin, It end, int gid, GetFun&& get_vert
         struct bin
         {
             bounds_type aabb;
-            int    objects = 0;
+            int         objects = 0;
         };
 
         for (auto axis = 0; axis < Dimension; ++axis)

@@ -87,7 +87,7 @@ prototype_handle prototype_instantiator<InstanceInfo>::enqueue(const prototype& 
         basic_instance& new_instance = objects[current];
         new_instance.base_index      = m->base->_base_index;
         new_instance.index_count     = m->base->_index_count;
-        new_instance.base_instance   = 0;
+        new_instance.base_instance   = _enqueued_ranges.size();
         new_instance.instance_count  = 1;
         new_instance.base_vertex     = m->base->_base_vertex;
         new_instance.vertex_count    = m->base->_vertex_count;

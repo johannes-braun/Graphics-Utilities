@@ -167,6 +167,7 @@ struct bounds
     constexpr value_type     center() const noexcept;
     constexpr bool           contains(const bounds& other) const noexcept;
     constexpr bool           contains(const value_type& p) const noexcept;
+    constexpr bool           overlaps(const bounds& other) const noexcept;
     constexpr bool           operator==(const bounds& other) const noexcept;
     constexpr bool           operator!=(const bounds& other) const noexcept;
     constexpr component_type surface() const noexcept;

@@ -30,6 +30,12 @@ public:
     using vec_dim_type = glm::vec<Dimension, float, glm::packed_highp>;
     using bounds_type  = gfx::bounds<float, Dimension, 4 * std::clamp<size_t>(1ll << (Dimension - 1), 0, 4)>;
 
+	class build_cache
+    {
+        friend basic_bvh;
+        detail::temporaries_t<Dimension> temporaries;
+    };
+
     struct node
     {
         bounds_type aabb;
@@ -47,17 +53,21 @@ public:
     ~basic_bvh()                                     = default;
 
     template<typename It, typename GetFun>
-    using enable_if_getter_valid =
-        std::enable_if_t<sizeof(decltype(std::declval<GetFun>()(*std::declval<It>()))) >= sizeof(vec_type)>;
+    using enable_if_getter_valid = std::enable_if_t<sizeof(decltype(std::declval<GetFun>()(*std::declval<It>()))) >= sizeof(vec_type)>;
 
     template<typename It, typename GetFun, typename = enable_if_getter_valid<It, GetFun>>
     void build_indexed(It begin, It end, GetFun&& get_vertex, size_t max_per_node = 1);
+    template<typename It, typename GetFun, typename = enable_if_getter_valid<It, GetFun>>
+    void build_indexed(build_cache& cache, It begin, It end, GetFun&& get_vertex, size_t max_per_node = 1);
 
     auto nodes() const noexcept -> std::vector<node> const&;
     auto get_bounds() const -> bounds_type const&;
 
-    template<typename Fun, typename = decltype(std::declval<Fun>()(node{}))>
-    void visit(Fun&& fun);
+    template<typename Leaf>
+    void visit_leafs(Leaf&& leaf);
+
+    template<typename Inner, typename Leaf>
+    void visit_all(Inner&& inner, Leaf&& leaf);
 
     template<typename Cond, typename Comp, typename Leaf>
     void visit_conditional(Cond&& cond, Comp&& comp, Leaf&& leaf);

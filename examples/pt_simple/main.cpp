@@ -525,7 +525,7 @@ vec3 randDisk(float u, float v, vec3 normal, float radius, out float x, out floa
 }
 
 )"
-R"(
+                        R"(
 
 void main()
 {
@@ -708,7 +708,7 @@ void main()
     imageStore(i_arb, ivec2(gl_FragCoord.xy), arb);
 }
 )";
-int  main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     glfwInit();
     glfwWindowHint(GLFW_SAMPLES, 4);
@@ -717,17 +717,17 @@ int  main(int argc, char** argv)
     glfwMakeContextCurrent(w);
     mygl::load();
 
-    
+
     glDebugMessageCallback([](gl_enum source, gl_enum type, std::uint32_t id, gl_enum severity, std::int32_t length, const char* message,
-                              const void* userParam) { std::cout << message << '\n';
-        }, nullptr);
+                              const void* userParam) { std::cout << message << '\n'; },
+                           nullptr);
 
     std::mt19937                          g;
     std::uniform_real_distribution<float> d(0, 1);
 
     gfx::ecs::ecs ecs;
-    auto user_entity = ecs.create_entity_shared(gfx::transform_component{glm::vec3{0, 0, 4}, glm::vec3(3)}, gfx::projection_component{},
-                                                gfx::grabbed_cursor_component{}, gfx::camera_controls{});
+    auto user_entity = ecs.create_entity_shared(gfx::transform_component {glm::vec3 {0, 0, 4}, glm::vec3(3)}, gfx::projection_component {},
+                                                gfx::grabbed_cursor_component {}, gfx::camera_controls {});
     gfx::ecs::system_list   main_systems;
     gfx::glfw_input_system  input(w);
     gfx::user_camera_system camera_system(input);
@@ -739,7 +739,7 @@ int  main(int argc, char** argv)
     glCompileShader(vs);
 
     const char* css = pt.data();
-    auto fs = glCreateShader(GL_FRAGMENT_SHADER);
+    auto        fs  = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fs, 1, &css, nullptr);
     glCompileShader(fs);
 
@@ -798,10 +798,16 @@ int  main(int argc, char** argv)
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glSamplerParameteri(cubemap_sampler, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    gfx::bvh3d bvh(3);
-    gfx::scene_file bun("bunny.dae", 0.3f );
-    bvh.build_indexed(bun.mesh.indices.begin(), bun.mesh.indices.end(), [&](std::uint32_t i) { return bun.mesh.vertices[i]; });
+    gfx::bvh3d      bvh(3);
+    gfx::scene_file bun("bunny.dae", 0.3f);
 
+	gfx::bvh3d::build_cache cache;
+    for (int i = 0; i < 10; ++i)
+    {
+        auto t = std::chrono::steady_clock::now();
+        bvh.build_indexed(cache, bun.mesh.indices.begin(), bun.mesh.indices.end(), [&](std::uint32_t i) { return bun.mesh.vertices[i]; });
+        std::cout << (std::chrono::steady_clock::now() - t).count() << '\n';
+	}
     mygl::buffer bun_bufs[3];
     glCreateBuffers(3, bun_bufs);
     glNamedBufferStorage(bun_bufs[0], bvh.nodes().size() * sizeof(gfx::bvh3d::node), bvh.nodes().data(), GL_DYNAMIC_STORAGE_BIT);
